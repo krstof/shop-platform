@@ -4,7 +4,10 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(Die täglichen Läufe tragen hier neue Fragen ein.)
+1. **Öffentlicher Testserver?** Bisher läuft die Plattform nur in Claudes Cloud-Umgebung und in automatischen Tests, niemand kann sie von außen im Browser ansehen. Ein kleiner gemieteter Server kostet etwa 5 bis 10 Euro im Monat. Antwort: **nein** / **später** (ab Ende Welle 1) / **ja**
+2. **Repository privat lassen?** Private Repositories haben auf GitHub begrenzte kostenlose Rechenzeit für automatische Prüfungen, langsame Browser-Tests laufen dann nur nachts. Öffentlich gäbe es unbegrenzte Rechenzeit und kostenlose Sicherheitsanalysen, aber jeder könnte den Code lesen. Antwort: **privat** / **öffentlich**
+3. **KI-Modell für den Händler-Assistenten (Welle 2)?** Ein freies Modell auf eigenem Server braucht einen Rechner mit starker Grafikkarte, ein Bezahlmodell wie Claude kostet pro Nutzung, braucht aber keine Hardware. Antwort: **lokal** / **API** / **beides** (API zuerst, lokal als Option)
+4. **Stripe-Testmodus schon in Welle 1?** Geplant ist ein selbst gebauter Test-Zahlungsanbieter. Stripe im Testmodus würde zeigen, dass die Zahlungsschnittstelle mit einem echten Anbieter funktioniert, braucht aber ein kostenloses Stripe-Konto. Antwort: **nein** (erst Welle 2) / **ja**
 
 ## Beantwortet
 
