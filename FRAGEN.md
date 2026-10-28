@@ -4,15 +4,13 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Better Auth als Anmelde-Baustein behalten?** Die Bibliothek für die Anmeldung hatte 2025 und 2026 mehrere ernste Sicherheitslücken, die jeweils schnell behoben wurden. Empfehlung: behalten, aber nur mit den nötigsten Funktionen, fester Version und wöchentlicher Prüfung; die Alternative Zitadel ist robuster, aber deutlich schwerer zu betreiben.
-   Antwort: **behalten** / **wechseln**
-2. **Rechnungen 8 oder 10 Jahre aufbewahren?** Seit 2025 verlangt das Gesetz für Rechnungen nur noch 8 Jahre, im ursprünglichen Auftrag standen 10. Für die Plattform ist das nur ein Einstellungswert.
-   Antwort: **8** / **10**
-3. **Betreiberkonto schon in Welle 1 mit Zwei-Faktor schützen?** Die Plattform-Verwaltung ist das mächtigste Konto, und der zweite Faktor (Code aus einer App) ist wenig Zusatzarbeit. Für Händler kommt er laut Plan erst in Welle 2.
-   Antwort: **ja** / **später**
+(Keine offenen Fragen.)
 
 ## Beantwortet
 
+- **Better Auth behalten?** Ja, behalten, mit den nötigsten Funktionen, fester Version und wöchentlicher Prüfung. (28.10.2026)
+- **Rechnungen 8 oder 10 Jahre aufbewahren?** 10 Jahre, wie im ursprünglichen Auftrag (mehr als gesetzlich nötig). (28.10.2026)
+- **Betreiberkonto in Welle 1 mit Zwei-Faktor?** Ja, schon in Welle 1. (28.10.2026)
 - **Öffentlicher Testserver?** Nein, nur lokal und in Tests. (27.10.2026)
 - **Repository privat?** Ja, bleibt privat. (27.10.2026)
 - **KI-Modell Welle 2?** Beides: zuerst Bezahl-API (z. B. Claude), freies lokales Modell als Option offenhalten. (27.10.2026)

@@ -1,6 +1,6 @@
 # Sicherheitskonzept der Shop-Plattform
 
-Stand: 28.10.2026. Zweck: Dieses Dokument legt fest, wovor die Plattform geschützt wird, mit welchen Maßnahmen und wie automatische Tests beweisen, dass die Maßnahmen wirken. Es baut auf der Architektur (`docs/03_Architektur.md`), dem Datenmodell (`docs/04_Datenmodell.md`) und den Sicherheitsfunktionen SIC-01 bis SIC-11 aus dem Featurekatalog (`docs/02_Featurekatalog.md`) auf.
+Stand: 28.10.2026, Antworten von Kristof vom selben Tag eingearbeitet. Zweck: Dieses Dokument legt fest, wovor die Plattform geschützt wird, mit welchen Maßnahmen und wie automatische Tests beweisen, dass die Maßnahmen wirken. Es baut auf der Architektur (`docs/03_Architektur.md`), dem Datenmodell (`docs/04_Datenmodell.md`) und den Sicherheitsfunktionen SIC-01 bis SIC-11 aus dem Featurekatalog (`docs/02_Featurekatalog.md`) auf.
 
 **Rahmen:** Die Plattform ist ein privates Experiment ohne echte Händler, Kunden oder Zahlungen und läuft nur lokal und in Tests (Antwort in `FRAGEN.md`). Trotzdem wird so gebaut, als wäre sie öffentlich erreichbar. Dann ist ein späterer Schritt ins Internet keine Umbauarbeit, sondern nur noch eine Prüfung.
 
@@ -23,7 +23,7 @@ Stand: 28.10.2026. Zweck: Dieses Dokument legt fest, wovor die Plattform geschü
 7. Automatische Sicherheitstests
 8. Härtung der Datenbankrollen (heute umgesetzt und getestet)
 9. Restrisiken und bewusste Entscheidungen
-10. Offene Fragen an Kristof
+10. Entscheidungen von Kristof
 
 ---
 
@@ -171,11 +171,11 @@ Ausführlich beschrieben in Architektur Kapitel 5 und Datenmodell Kapitel 2.6. K
 | Abmelden überall | Bei Passwortänderung und auf Knopfdruck werden alle anderen Sitzungen beendet. Der Händler sieht seine aktiven Sitzungen mit Gerät und ungefährem Ort. | Muss |
 | Einmalcodes | Für E-Mail-Bestätigung, „Passwort vergessen“ und Einladungen: 32 Byte Zufall, nur der Hash in der Datenbank, einmal verwendbar, Ablauf nach 30 Minuten (Einladungen 7 Tage). „Passwort vergessen“ verrät nicht, ob es die E-Mail gibt. | Muss |
 | API-Token | Präfix `shp_at_`, 32 Byte Zufall, nur der Hash gespeichert, immer an genau einen Shop und eine Liste von Berechtigungen gebunden, optional Ablaufdatum, jederzeit widerrufbar, letzte Nutzung sichtbar. Das Token wird nur einmal beim Anlegen angezeigt. | Muss |
-| Zwei-Faktor und Passkeys | Für Händler ab Welle 2 (SIC-09). Für das **Betreiberkonto** schon in Welle 1 geplant, siehe Frage 3. | Muss (Welle 2) |
+| Zwei-Faktor und Passkeys | Für das **Betreiberkonto** schon in Welle 1 Pflicht (Code aus einer Authenticator-App nach TOTP, dazu Ersatzcodes; Entscheidung Kristof 28.10.2026). Für Händler ab Welle 2 (SIC-09). | Muss (Betreiber Welle 1, Händler Welle 2) |
 | Neue Anmeldung von unbekanntem Gerät | E-Mail an den Kontoinhaber | Wäre gut |
 | Kundenkonten der Storefront | erst ab Welle 2, dann mit denselben Regeln und eigener Cookie-Domain je Shop | Welle 2 |
 
-**Zu Better Auth:** Die Bibliothek hatte 2025 und 2026 mehrere ernste Sicherheitsmeldungen (zum Beispiel CVE-2025-61928 zu fehlender Rechteprüfung, die genaue Liste ist zu prüfen). Das ist bei einer jungen, viel genutzten Bibliothek nicht ungewöhnlich, verlangt aber Vorsicht. Deshalb gilt: Version fest eintragen, Sicherheitsmeldungen des Projekts wöchentlich automatisch prüfen, nur die Funktionen einschalten, die wir brauchen (E-Mail und Passwort, später Passkeys und Zwei-Faktor, **keine** fremden Anmeldedienste, Geräte-Anmeldung oder OAuth-Proxy), und die Anmeldung hinter einer eigenen Schnittstelle halten, damit ein Wechsel möglich bleibt. Siehe Frage 1.
+**Zu Better Auth:** Die Bibliothek hatte 2025 und 2026 mehrere ernste Sicherheitsmeldungen (zum Beispiel CVE-2025-61928 zu fehlender Rechteprüfung, die genaue Liste ist zu prüfen). Das ist bei einer jungen, viel genutzten Bibliothek nicht ungewöhnlich, verlangt aber Vorsicht. Deshalb gilt: Version fest eintragen, Sicherheitsmeldungen des Projekts wöchentlich automatisch prüfen, nur die Funktionen einschalten, die wir brauchen (E-Mail und Passwort, später Passkeys und Zwei-Faktor, **keine** fremden Anmeldedienste, Geräte-Anmeldung oder OAuth-Proxy), und die Anmeldung hinter einer eigenen Schnittstelle halten, damit ein Wechsel möglich bleibt. Kristof hat am 28.10.2026 entschieden, Better Auth unter diesen Bedingungen zu behalten.
 
 ### 5.3 Rechte und Rollen (SIC-03)
 
@@ -313,7 +313,7 @@ Bereits in Architektur 4.11 festgelegt: Die KI nutzt dieselbe Admin API mit eine
 ### 5.15 Datenschutz (SIC-10, SIC-11)
 
 - **Datensparsamkeit:** Gespeichert wird nur, was gebraucht wird. IP-Adressen werden für Nachweise (Einwilligungen, Widerrufe) nur gekürzt und mit einem täglich wechselnden Geheimnis gehasht gespeichert.
-- **Fristen und Löschung:** Datenmodell Kapitel 5. Die Frist für Rechnungen und Buchungsbelege beträgt nach dem Vierten Bürokratieentlastungsgesetz seit 2025 **8 Jahre** (§ 147 Abs. 3 AO, § 257 Abs. 4 HGB, § 14b UStG, gilt für alle Belege, deren 10-Jahres-Frist am 1.1.2025 noch lief). Ausnahmen gelten für Banken, Versicherungen und Wertpapierinstitute, also nicht für Händler. Fristbeginn ist nach allgemeiner Regel das Ende des Kalenderjahres, in dem der Beleg entstanden ist. Siehe Frage 2.
+- **Fristen und Löschung:** Datenmodell Kapitel 5. Die Frist für Rechnungen und Buchungsbelege beträgt nach dem Vierten Bürokratieentlastungsgesetz seit 2025 **8 Jahre** (§ 147 Abs. 3 AO, § 257 Abs. 4 HGB, § 14b UStG, gilt für alle Belege, deren 10-Jahres-Frist am 1.1.2025 noch lief). Ausnahmen gelten für Banken, Versicherungen und Wertpapierinstitute, also nicht für Händler. Fristbeginn ist nach allgemeiner Regel das Ende des Kalenderjahres, in dem der Beleg entstanden ist. **Entscheidung (Kristof, 28.10.2026): Die Plattform bewahrt Rechnungen und Belege 10 Jahre auf**, also länger als gesetzlich nötig. Der Wert ist eine Einstellung und kann später auf 8 Jahre gesenkt werden.
 - **Testdaten:** Die Plattform arbeitet ausschließlich mit erfundenen Daten. Echte Personendaten werden nie eingespielt.
 
 ### 5.16 Betrieb
@@ -458,26 +458,23 @@ OK   Erlaubte Spalten (id, name, email) der Nutzer sind lesbar
 |---|---|---|
 | Eigenes JavaScript und Tracking-Skripte von Händlern | in Welle 1 nicht erlaubt | Fremde Skripte im Shop sind die häufigste Ursache für gestohlene Kundendaten. Ab Welle 4 nur über geprüfte Apps mit eigener CSP-Freigabe. |
 | SVG-Bilder | nicht erlaubt | siehe 5.7 |
-| Zwei-Faktor für Händler | erst Welle 2 | Featurekatalog SIC-09. Die Plattform ist in Welle 1 nicht öffentlich. |
+| Zwei-Faktor für Händler | erst Welle 2 | Featurekatalog SIC-09. Die Plattform ist in Welle 1 nicht öffentlich. Das Betreiberkonto bekommt den zweiten Faktor schon in Welle 1. |
 | Anfragebremse im Arbeitsspeicher | Welle 1 | Reicht für eine Instanz. Bei mehreren Instanzen kommt Valkey. |
-| Better Auth hat schon Sicherheitslücken gehabt | behalten, eingehegt | siehe 5.2 und Frage 1 |
+| Better Auth hat schon Sicherheitslücken gehabt | behalten, eingehegt (Entscheidung Kristof) | siehe 5.2 |
 | Kein externer Penetrationstest | – | Kostet Geld und lohnt sich für ein privates Experiment nicht. Automatische Scans (T-21) ersetzen ihn teilweise. |
 | Superuser der Datenbank | existiert nur für die Einrichtung | Die Anwendung benutzt ihn nie. Auf einem echten Server wird sein Passwort getrennt verwahrt. |
 
 ---
 
-## 10. Offene Fragen an Kristof
+## 10. Entscheidungen von Kristof (28.10.2026)
 
-Die Fragen stehen auch in `FRAGEN.md`.
+| Frage | Antwort | Wirkung |
+|---|---|---|
+| Better Auth als Anmelde-Baustein behalten? | **behalten** | Nur nötige Funktionen, feste Version, wöchentliche Prüfung der Sicherheitsmeldungen (5.2) |
+| Rechnungen 8 oder 10 Jahre aufbewahren? | **10 Jahre** | Einstellungswert 10 Jahre ab Ende des Kalenderjahres (5.15, Datenmodell 5.2) |
+| Betreiberkonto schon in Welle 1 mit Zwei-Faktor? | **ja** | Zwei-Faktor für das Betreiberkonto ist Muss in Welle 1 (5.2) |
 
-**Frage 1: Better Auth als Anmelde-Baustein behalten?** Better Auth hatte 2025 und 2026 mehrere ernste Sicherheitslücken, die jeweils schnell behoben wurden. Empfehlung: behalten, aber nur mit den nötigsten Funktionen, fester Version und wöchentlicher Prüfung. Die Alternative wäre ein eigener Anmeldedienst wie Zitadel, der robuster, aber deutlich schwerer zu betreiben ist.
-Antwort: **behalten** / **wechseln**
-
-**Frage 2: Rechnungen 8 oder 10 Jahre aufbewahren?** Seit 2025 verlangt das Gesetz für Rechnungen und Buchungsbelege nur noch 8 Jahre, im ursprünglichen Auftrag standen 10. Für die Plattform ist das nur ein Einstellungswert, 8 Jahre entsprechen der aktuellen Rechtslage.
-Antwort: **8** / **10**
-
-**Frage 3: Das Betreiberkonto schon in Welle 1 mit Zwei-Faktor schützen?** Die Plattform-Verwaltung ist das mächtigste Konto. Mit Better Auth ist der zweite Faktor (Code aus einer App wie Google Authenticator) wenig Zusatzarbeit, für Händler kommt er laut Plan erst in Welle 2.
-Antwort: **ja** / **später**
+Es gibt keine offenen Fragen zu diesem Dokument.
 
 ---
 
