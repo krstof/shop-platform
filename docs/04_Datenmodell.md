@@ -1920,7 +1920,7 @@ Die Lösung ist: Die Datenbank trennt Belegdaten von reinen Personendaten. Perso
 
 | Daten | Frist | Was danach passiert | Status |
 |---|---|---|---|
-| Rechnungen, Gutschriften, Stornos (`invoicing.*`) | 10 Jahre laut Auftrag. Das Vierte Bürokratieentlastungsgesetz hat die Frist für Buchungsbelege ab 2025 auf 8 Jahre verkürzt, Handelsbücher und Jahresabschlüsse bleiben bei 10 Jahren. | Käuferdaten anonymisieren, Beträge bleiben für Statistik | **zu prüfen** (8 oder 10 Jahre, Fristbeginn am Ende des Kalenderjahres) |
+| Rechnungen, Gutschriften, Stornos (`invoicing.*`) | 10 Jahre laut Auftrag. Das Vierte Bürokratieentlastungsgesetz hat die Frist für Buchungsbelege ab 2025 auf 8 Jahre verkürzt (§ 147 Abs. 3 AO, § 257 Abs. 4 HGB, § 14b UStG), Handelsbücher und Jahresabschlüsse bleiben bei 10 Jahren. | Käuferdaten anonymisieren, Beträge bleiben für Statistik | geprüft am 28.10.2026: gesetzlich 8 Jahre ab Ende des Kalenderjahres, Wert als Einstellung, Entscheidung bei Kristof (Sicherheitskonzept 5.15) |
 | Bestellungen mit Positionen, Steuern, Zahlungen (`orders.*`, `payments.*`) | wie Rechnungen, weil sie Teil der Buchführung sind, solange es keine Rechnung gibt | `order.email`, `phone`, `customer_note` und `order_address` anonymisieren | **zu prüfen** |
 | Bestellbestätigungen und andere geschäftliche E-Mails (`notifications.email_message`) | 6 Jahre als Handelsbriefe | Empfänger anonymisieren, gespeicherte E-Mail-Datei löschen | **zu prüfen** |
 | Widerrufe (`orders.withdrawal`) | wie die zugehörige Bestellung | anonymisieren | **zu prüfen** |
@@ -2040,14 +2040,14 @@ OK   Abgebrochene Transaktionen haben keine Nummer verbraucht, die nächste ist 
 ### 6.4 Was der Test nicht abdeckt
 
 - **Verweise über Modulgrenzen** prüft die Datenbank bewusst nicht (ADR-002). Shop A könnte also technisch in seiner eigenen Preistabelle die ID einer Variante von Shop B eintragen. Er sieht dadurch keine Daten von B, aber der Eintrag wäre Unsinn. Das verhindern die Fassaden, die jede fremde ID unter RLS nachschlagen, und der API-Isolationstest (IDOR-Test, Architektur 5.7) in Welle 1.
-- **Die Anmeldetabellen** (`identity.user` usw.) sind global und für `shop_app` zugänglich. Ihr Schutz beruht auf Better Auth und wird im Sicherheitskonzept bewertet.
+- **Die Anmeldetabellen** (`identity.user` usw.) sind global. Nachtrag 28.10.2026: Sie gehören seit dem Sicherheitskonzept allein der Rolle `shop_auth`, `shop_app` liest nur unkritische Spalten von `identity.user` (ADR-008, `docs/05_Sicherheit.md` Kapitel 8). Der Test `db/test_sicherheit.sql` prüft das.
 - **Leistung** unter Last wurde nicht gemessen. Das folgt mit echten Datenmengen in Welle 1.
 
 ---
 
 ## 7. Abweichungen von früheren Dokumenten
 
-Diese Punkte weichen von `docs/03_Architektur.md` oder `docs/01_Marktanalyse.md` ab. Nach der Arbeitsregel „erst das Dokument anpassen“ sollte die Architektur an diesen Stellen nachgezogen werden.
+Diese Punkte wichen von `docs/03_Architektur.md` oder `docs/01_Marktanalyse.md` ab. Nachtrag 28.10.2026: Alle sechs Punkte sind in Architektur und Marktanalyse eingearbeitet.
 
 | Nr. | Stelle | Bisher | Jetzt | Grund |
 |---|---|---|---|---|

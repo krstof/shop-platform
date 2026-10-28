@@ -3,7 +3,9 @@
 # test_isolation.sh
 # Legt eine frische Testdatenbank an, spielt db/schema_welle1.sql ein, erzeugt
 # zwei Shops (A und B) und führt db/test_isolation.sql als Anwendungsrolle
-# shop_app aus. Danach prüft es lückenlose Nummern bei gleichzeitigen Bestellungen.
+# shop_app aus. Danach prüft es mit db/test_sicherheit.sql die Rechte aller Datenbankrollen,
+# versucht als shop_app echte Zugriffe auf Anmeldedaten und prüft lückenlose Nummern
+# bei gleichzeitigen Bestellungen.
 #
 # Voraussetzung: PostgreSQL 18 läuft lokal. Standard: Port 5433, Superuser postgres.
 # Einstellbar über Umgebungsvariablen PGPORT, TEST_DB, ADMIN_PSQL.
@@ -53,12 +55,40 @@ INSERT INTO platform.tenant_domain (tenant_id, hostname, kind, is_primary) VALUE
 INSERT INTO audit.audit_entry (tenant_id, actor_type, action, entity_type) VALUES (NULL, 'operator', 'platform.tenant.created', 'tenant');
 SQL
 
+echo "== Inhaber-Konten anlegen (als shop_auth, das Anmeldemodul)"
+admin -d "$TEST_DB" <<SQL
+SET ROLE shop_auth;
+WITH u AS (
+  INSERT INTO identity."user" (email, name) VALUES
+    ('a@haendler.test', 'Inhaber a'), ('b@haendler.test', 'Inhaber b') RETURNING id, email
+)
+INSERT INTO identity.account (user_id, provider_id, account_id, password_hash)
+SELECT id, 'credential', email, '\$argon2id\$v=19\$m=19456,t=2,p=1\$dGVzdA\$dGVzdA' FROM u;
+SQL
+
 APP_CONN="host=127.0.0.1 port=$PGPORT dbname=$TEST_DB user=shop_app"
 
 echo "== Isolationstest als shop_app"
 PGPASSWORD="$APP_PW" PGOPTIONS="-c test.a=$A -c test.b=$B" \
   psql "$APP_CONN" -X -v A="$A" -v B="$B" -f "$HERE/test_isolation.sql" 2>&1 \
   | sed -e 's/^psql:[^ ]* NOTICE:  //' -e 's/^NOTICE:  //'
+
+echo "== Rechte der Datenbankrollen"
+admin -d "$TEST_DB" -f "$HERE/test_sicherheit.sql" 2>&1 | sed -e 's/^psql:[^ ]* NOTICE:  //' -e 's/^NOTICE:  //'
+
+echo "== Echte Zugriffsversuche als shop_app auf Anmeldedaten"
+for Q in 'SELECT password_hash FROM identity.account' 'SELECT token_hash FROM identity.session' \
+         'SELECT * FROM identity."user"' "UPDATE identity.\"user\" SET status = 'active'"; do
+  if ERR="$(PGPASSWORD="$APP_PW" psql "$APP_CONN" -X -q -tA -c "$Q" 2>&1)"; then
+    echo "FEHLGESCHLAGEN: shop_app durfte ausführen: $Q"; exit 1
+  elif echo "$ERR" | grep -q "permission denied\|keine Berechtigung"; then
+    echo "OK   Verweigert: $Q"
+  else
+    echo "FEHLGESCHLAGEN: unerwarteter Fehler bei $Q: $ERR"; exit 1
+  fi
+done
+N="$(PGPASSWORD="$APP_PW" psql "$APP_CONN" -X -q -tA -c 'SELECT count(*) FROM (SELECT id, name, email FROM identity."user") u')"
+[ "$N" = "2" ] && echo "OK   Erlaubte Spalten (id, name, email) der Nutzer sind lesbar" || { echo "FEHLGESCHLAGEN: Nutzer nicht lesbar"; exit 1; }
 
 echo "== Lückenlose Nummern bei 20 gleichzeitigen Transaktionen (5 davon brechen ab)"
 OUT="$(mktemp)"

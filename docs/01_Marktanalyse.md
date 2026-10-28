@@ -194,7 +194,7 @@ Ergebnis: **Kein System deckt unsere Kombination aus echter Mehrmandantenfähigk
 
 | Bereich | Entscheidung | Vorbild |
 |---|---|---|
-| Mandant | Jede Tabelle hat `tenant_id` (Händler) und, wo sinnvoll, `shop_id`. IDs als UUIDv7 (zeitlich sortierbar, nicht erratbar). | Shopify, Postgres RLS |
+| Mandant | Jede Tabelle hat `tenant_id`, und ein Mandant ist ein Shop (Nachtrag 28.10.2026: so entschieden in ADR-003, der Händler ist `platform.merchant`). IDs als UUIDv7 (zeitlich sortierbar, nicht erratbar). | Shopify, Postgres RLS |
 | Geld | Beträge als ganze Zahlen in der kleinsten Einheit (Cent) plus Währungscode, nie als Kommazahl. Rundungsregel pro Währung gespeichert. | commercetools, Medusa |
 | Kanal | Eigene Tabelle `sales_channel`: Shop, Land/Markt, Währung, Sprache(n), Steuermodus (brutto/netto), Domain. Produkte werden pro Kanal veröffentlicht. | Saleor, Vendure |
 | Produkt | Trennung `product` (Beschreibung) und `variant` (kaufbare Einheit/SKU). Varianten-Achsen (Größe, Farbe) über `product_type`/Attribute. Einfache Produkte haben genau eine Variante. | Saleor, Medusa, Shopify |

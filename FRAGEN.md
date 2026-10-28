@@ -4,7 +4,12 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(Keine offenen Fragen.)
+1. **Better Auth als Anmelde-Baustein behalten?** Die Bibliothek für die Anmeldung hatte 2025 und 2026 mehrere ernste Sicherheitslücken, die jeweils schnell behoben wurden. Empfehlung: behalten, aber nur mit den nötigsten Funktionen, fester Version und wöchentlicher Prüfung; die Alternative Zitadel ist robuster, aber deutlich schwerer zu betreiben.
+   Antwort: **behalten** / **wechseln**
+2. **Rechnungen 8 oder 10 Jahre aufbewahren?** Seit 2025 verlangt das Gesetz für Rechnungen nur noch 8 Jahre, im ursprünglichen Auftrag standen 10. Für die Plattform ist das nur ein Einstellungswert.
+   Antwort: **8** / **10**
+3. **Betreiberkonto schon in Welle 1 mit Zwei-Faktor schützen?** Die Plattform-Verwaltung ist das mächtigste Konto, und der zweite Faktor (Code aus einer App) ist wenig Zusatzarbeit. Für Händler kommt er laut Plan erst in Welle 2.
+   Antwort: **ja** / **später**
 
 ## Beantwortet
 

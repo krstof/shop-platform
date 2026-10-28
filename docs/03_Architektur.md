@@ -1,6 +1,6 @@
 # Architektur der Shop-Plattform
 
-Stand: 27.10.2026. Zweck: Dieses Dokument legt fest, wie die Shop-Plattform technisch gebaut wird. Es baut auf der Marktanalyse (`docs/01_Marktanalyse.md`) und dem Featurekatalog (`docs/02_Featurekatalog.md`) auf und setzt die Entscheidungen aus `FRAGEN.md` um: Die Plattform ist ein rein privates Experiment, sie wird als modularer Monolith gebaut, und Welle 1 enthält alle 63 Muss-Funktionen inklusive der deutschen Rechtspflichten.
+Stand: 27.10.2026, angepasst am 28.10.2026 (Abweichungen aus Datenmodell Kapitel 7 und ADR-008 eingearbeitet). Zweck: Dieses Dokument legt fest, wie die Shop-Plattform technisch gebaut wird. Es baut auf der Marktanalyse (`docs/01_Marktanalyse.md`) und dem Featurekatalog (`docs/02_Featurekatalog.md`) auf und setzt die Entscheidungen aus `FRAGEN.md` um: Die Plattform ist ein rein privates Experiment, sie wird als modularer Monolith gebaut, und Welle 1 enthält alle 63 Muss-Funktionen inklusive der deutschen Rechtspflichten.
 
 **Bewertungsskala in diesem Dokument:** 1 = beste Eignung, 9 = schlechteste Eignung.
 
@@ -139,7 +139,7 @@ Die Spalte „Welle“ nennt, wann das Modul gebaut wird. „1 (Grundgerüst)“
 
 | Modul | Aufgabe | Eigene Tabellen | Öffentliche Schnittstelle (Auszug) | Ereignisse (Auszug) | Welle |
 |---|---|---|---|---|---|
-| `identity` | Anmeldung, Sitzungen, Passkeys, Zwei-Faktor, Mitgliedschaften und Rollen, API-Token mit Berechtigungen | `user`, `session`, `account`, `verification`, `passkey`, `two_factor`, `membership`, `role`, `role_permission`, `api_token` | `getActor(token)`, `assertPermission(actor, permission)`, `listMemberships(userId)`, `createApiToken(...)` | `identity.user.registered.v1`, `identity.login.failed.v1`, `identity.membership.changed.v1` | 1 |
+| `identity` | Anmeldung, Sitzungen, Passkeys, Zwei-Faktor, Mitgliedschaften und Rollen, API-Token mit Berechtigungen | `user`, `session`, `account`, `verification`, `passkey`, `two_factor` (nur über die Rolle `shop_auth`, ADR-008), `membership`, `role`, `role_permission` (nur eigene Rollen ab Welle 5, Systemrollen `owner` und `staff` stehen im Code), `api_token` | `getActor(token)`, `assertPermission(actor, permission)`, `listMemberships(userId)`, `createApiToken(...)` | `identity.user.registered.v1`, `identity.login.failed.v1`, `identity.membership.changed.v1` | 1 |
 | `platform` | Händlerkonten, Shops (Mandanten), Tarife und Funktionsschalter, Domains, Plattform-Einstellungen | `merchant`, `tenant`, `tenant_domain`, `plan`, `plan_feature`, `tenant_feature_override`, `platform_setting` | `resolveTenantByHost(host)`, `getTenant(id)`, `isFeatureEnabled(tenantId, feature)`, `createTenant(...)` | `platform.tenant.created.v1`, `platform.tenant.suspended.v1`, `platform.tenant.deleted.v1` | 1 |
 | `shop-settings` | Firmendaten und Pflichtangaben des Händlers, Verkaufskanäle, Länder und Zonen, Nummernkreise | `shop_profile`, `sales_channel`, `sales_country`, `zone`, `zone_country`, `number_range` | `getShopProfile()`, `getDefaultChannel()`, `nextNumber(type)` | `shop_settings.profile.updated.v1`, `shop_settings.shop.went_online.v1` | 1 |
 | `audit` | Unveränderliches Änderungsprotokoll: wer hat was wann getan, ob Mensch, KI oder App | `audit_entry` | `record(entry)`, `list(filter)` | keine (hört auf alle anderen) | 1 |
@@ -165,7 +165,7 @@ Die Spalte „Welle“ nennt, wann das Modul gebaut wird. „1 (Grundgerüst)“
 | `payments` | Anbieterneutrale Zahlungsabwicklung über austauschbare Adapter, zuerst ein Test-Anbieter mit gehosteter Bezahlseite, Prüfung signierter Rückmeldungen | `payment_method_config`, `payment`, `payment_attempt`, `refund`, `provider_event` | `createPaymentSession(order)`, `handleProviderWebhook(provider, request)`, `refund(...)` | `payments.payment.authorized.v1`, `payments.payment.captured.v1`, `payments.payment.failed.v1`, `payments.refund.completed.v1` | 1 |
 | `shipping` | Versandarten, Versandkostenregeln (pauschal, später Gewicht, Wert, Zonen), Sendungen | `shipping_method`, `shipping_rate`, `shipment` | `quote(cart, address)`, `createShipment(...)` | `shipping.shipment.created.v1` | 1 |
 | `customers` | Kunden und Gastkunden, Adressen, Kundengruppen (Standardgruppe „Endkunden“), vorbereitete Firmenkonten | `customer`, `customer_address`, `customer_group`, `customer_group_member`, `company`, `company_member` | `findOrCreateGuest(email)`, `getCustomerGroups(customerId)` | `customers.customer.created.v1`, `customers.customer.erased.v1` | 1 (Kundenkonto ab 2, Firmen ab 3) |
-| `invoicing` | Rechnungen, Gutschriften, Stornorechnungen als unveränderliche Belege, später E-Rechnung | `invoice`, `invoice_line`, `credit_note` | `issueInvoice(orderId)` | `invoicing.invoice.issued.v1` | 2 |
+| `invoicing` | Rechnungen, Gutschriften, Stornorechnungen als unveränderliche Belege, später E-Rechnung | `invoice` (Belegart Rechnung, Gutschrift, Storno in `document_type`), `invoice_line` | `issueInvoice(orderId)` | `invoicing.invoice.issued.v1` | 2 |
 
 **Inhalte, Darstellung und Kommunikation**
 
@@ -210,7 +210,7 @@ Es gibt genau zwei erlaubte Wege.
 
 1. Das Modul ändert seine Daten und schreibt **in derselben Transaktion** eine Zeile in die Tabelle `kernel.outbox`. Entweder gelingt beides oder nichts.
 2. Ein Hintergrundprozess, das **Relay** (Weiterleiter), liest neue Zeilen aus der Outbox und stellt für jeden Interessenten eine Aufgabe in die Warteschlange (pg-boss).
-3. Jeder Interessent (Subscriber) verarbeitet seine Aufgabe. Weil eine Aufgabe nach einem Fehler wiederholt wird, kann ein Ereignis mehr als einmal ankommen. Jeder Subscriber merkt sich daher in seiner Tabelle `processed_event` (Inbox), welche Ereignisse er schon verarbeitet hat, und ignoriert Wiederholungen. Diese Eigenschaft heißt **Idempotenz**: Doppelte Ausführung ändert nichts am Ergebnis.
+3. Jeder Interessent (Subscriber) verarbeitet seine Aufgabe. Weil eine Aufgabe nach einem Fehler wiederholt wird, kann ein Ereignis mehr als einmal ankommen. Jeder Subscriber merkt sich daher in seiner Tabelle `processed_event` (Inbox, nur in Modulen, die tatsächlich auf Ereignisse hören, in Welle 1 `audit`, `inventory`, `customers`, `orders` und `notifications`), welche Ereignisse er schon verarbeitet hat, und ignoriert Wiederholungen. Diese Eigenschaft heißt **Idempotenz**: Doppelte Ausführung ändert nichts am Ergebnis.
 
 Ein Ereignis hat immer dieselbe Hülle: `id` (UUIDv7), `type` (zum Beispiel `orders.order.placed.v1`), `tenantId`, `occurredAt`, `actor` (wer es ausgelöst hat), `correlationId` (verbindet alle Schritte eines Vorgangs) und `data` (der Inhalt, mit Zod-Schema beschrieben).
 
@@ -401,7 +401,7 @@ CREATE POLICY tenant_isolation ON catalog.product
 1. Die API-Schicht ermittelt den Mandanten. In der Storefront API geschieht das über die Domain, in der Admin API über die Kopfzeile `Shop-Id` (geprüft gegen die Mitgliedschaft des Nutzers) oder über den Shop des Tokens.
 2. Der Mandant und der Akteur werden in einem **Anfrage-Kontext** abgelegt. Technisch ist das `AsyncLocalStorage`, ein Mechanismus von Node.js, der Daten an eine laufende Anfrage heftet, ohne sie durch jede Funktion durchreichen zu müssen.
 3. Jeder Datenbankzugriff läuft über die Funktion `withTenantTransaction` aus dem `kernel`. Sie öffnet eine Transaktion und setzt als Erstes `SELECT set_config('app.tenant_id', $1, true)`. Der dritte Parameter `true` bedeutet „nur für diese Transaktion“. Am Ende der Transaktion ist der Wert automatisch weg, und die nächste Anfrage auf derselben Datenbankverbindung startet sauber. Zusätzlich wird `app.actor_id` gesetzt, damit Datenbank-Trigger den Urheber kennen.
-4. Es gibt keinen anderen Weg zur Datenbank. Der rohe Verbindungspool ist nicht exportiert, und eine ESLint-Regel verbietet direkte Zugriffe.
+4. Es gibt keinen anderen Weg zur Datenbank. Der rohe Verbindungspool ist nicht exportiert, und eine ESLint-Regel verbietet direkte Zugriffe. Einzige Ausnahme ist der eigene Pool des Anmeldemoduls `identity` mit der Rolle `shop_auth`, der nur innerhalb dieses Moduls sichtbar ist (ADR-008).
 5. Hintergrundjobs tragen die `tenant_id` in ihren Daten. Der Worker öffnet für jeden Job eine eigene `withTenantTransaction` mit diesem Mandanten.
 
 Dieses Verfahren funktioniert auch mit **PgBouncer** im Transaktionsmodus. PgBouncer ist ein Verbindungsverteiler, der später viele Anwendungsinstanzen auf wenige Datenbankverbindungen bündelt.
@@ -413,12 +413,13 @@ Eine Datenbankrolle ist ein Benutzerkonto in der Datenbank mit festgelegten Rech
 | Rolle | Zweck | Wichtige Eigenschaften |
 |---|---|---|
 | `shop_owner` | Besitzt alle Tabellen, führt Migrationen aus | Kann sich im Betrieb nicht anmelden, nur der Migrationslauf nutzt sie. Durch `FORCE` gilt RLS auch für sie. |
-| `shop_app` | Laufender Kern (API und Worker) | `NOSUPERUSER`, `NOBYPASSRLS`, nur Lese- und Schreibrechte auf Tabellen, keine Rechte zum Ändern der Struktur |
-| `shop_platform` | Platform API | Rechte nur auf Tabellen im Schema `platform` und auf ausgewählte Auswertungs-Sichten, kein Zugriff auf Shopdaten |
+| `shop_app` | Laufender Kern (API und Worker) | `NOSUPERUSER`, `NOBYPASSRLS`, nur Lese- und Schreibrechte auf Tabellen, keine Rechte zum Ändern der Struktur, von den Anmeldetabellen nur unkritische Spalten von `identity.user` lesbar |
+| `shop_auth` | Anmeldemodul (Better Auth) | Als einzige Rolle Lese- und Schreibrechte auf Passwörter, Sitzungen, Einmalcodes, Zwei-Faktor und Passkeys, sonst keinerlei Rechte (ADR-008, Sicherheitskonzept Kapitel 8) |
+| `shop_platform` | Platform API | Rechte nur auf Tabellen im Schema `platform`, auf ausgewählte Auswertungs-Sichten und auf unkritische Spalten von `identity.user`, kein Zugriff auf Shopdaten und Anmeldegeheimnisse |
 | `shop_relay` | Outbox-Weiterleitung | Lesen und Markieren der Outbox über alle Mandanten, sonst nichts |
-| `shop_backup` | Datensicherung | Nur Leserechte, Nutzung ausschließlich durch den Sicherungsdienst |
+| `shop_backup` | Datensicherung | Nur Leserechte plus `BYPASSRLS`, weil `pg_dump` sonst bei RLS-Tabellen abbricht. Nutzung ausschließlich durch den Sicherungsdienst, nie durch die Anwendung |
 
-Keine Rolle, die die Anwendung im Betrieb benutzt, hat `SUPERUSER` oder `BYPASSRLS`. Ein Prüfskript in der CI stellt das sicher.
+Keine Rolle, die die Anwendung im Betrieb benutzt, hat `SUPERUSER` oder `BYPASSRLS`. Die Prüfskripte `db/test_isolation.sql` und `db/test_sicherheit.sql` stellen das bei jeder Änderung sicher.
 
 ### 5.5 Zugriff des Plattform-Betreibers
 

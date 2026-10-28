@@ -34,6 +34,11 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'shop_platform') THEN
     CREATE ROLE shop_platform LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
   END IF;
+  -- Anmeldemodul: einzige Rolle mit Zugriff auf Passwort-Hashes, Sitzungen und Einmalcodes
+  -- (Sicherheitskonzept 4.2, ADR-008)
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'shop_auth') THEN
+    CREATE ROLE shop_auth LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'shop_relay') THEN
     CREATE ROLE shop_relay LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
   END IF;
@@ -2671,7 +2676,7 @@ INSERT INTO platform.plan (code, name, is_default, limits) VALUES
 RESET ROLE;
 
 REVOKE ALL ON DATABASE :"DBNAME" FROM PUBLIC;
-GRANT CONNECT, TEMPORARY ON DATABASE :"DBNAME" TO shop_app, shop_platform, shop_relay, shop_backup;
+GRANT CONNECT, TEMPORARY ON DATABASE :"DBNAME" TO shop_app, shop_auth, shop_platform, shop_relay, shop_backup;
 
 -- Schemas
 GRANT USAGE ON SCHEMA kernel, identity, shop_settings, audit, catalog, pricing, tax, inventory,
@@ -2702,9 +2707,10 @@ GRANT SELECT ON kernel.currency, kernel.country, tax.tax_class, tax.tax_rate, st
 GRANT SELECT ON platform.tenant, platform.tenant_domain, platform.plan, platform.plan_feature,
   platform.tenant_feature_override, platform.platform_setting TO shop_app;
 
--- Anmeldung (globale Tabellen ohne Mandant, Zugriff über Better Auth)
-GRANT SELECT, INSERT, UPDATE, DELETE ON identity."user", identity.account, identity.session,
-  identity.verification, identity.two_factor, identity.passkey TO shop_app;
+-- Anmeldung: Die globalen Anmeldetabellen gehören allein der Rolle shop_auth (ADR-008).
+-- shop_app darf von Nutzern nur unkritische Spalten lesen (Namen im Team, Einladung per E-Mail).
+-- Passwort-Hashes, Sitzungen, Einmalcodes, Zwei-Faktor und Passkeys sind für shop_app unsichtbar.
+GRANT SELECT (id, email, email_verified, name, image_url, locale, status) ON identity."user" TO shop_app;
 
 -- Funktionen
 GRANT EXECUTE ON FUNCTION shop_settings.next_number(text), pricing.lowest_price(uuid, kernel.currency_code, uuid, integer, timestamptz) TO shop_app;
@@ -2712,10 +2718,16 @@ GRANT EXECUTE ON FUNCTION shop_settings.next_number(text), pricing.lowest_price(
 -- Plattform-Verwaltung
 GRANT USAGE ON SCHEMA kernel, platform, identity, audit TO shop_platform;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA platform TO shop_platform;
-GRANT SELECT, INSERT, UPDATE, DELETE ON identity."user", identity.account, identity.session,
-  identity.verification, identity.two_factor, identity.passkey TO shop_platform;
+-- Nutzer anlegen, sperren und Passwörter zurücksetzen erledigt die Plattform über das Anmeldemodul (shop_auth).
+GRANT SELECT (id, email, email_verified, name, image_url, locale, status, locked_until, created_at)
+  ON identity."user" TO shop_platform;
 GRANT SELECT, INSERT ON audit.audit_entry, kernel.outbox TO shop_platform;
 GRANT SELECT ON kernel.currency, kernel.country TO shop_platform;
+
+-- Anmeldemodul (Better Auth läuft mit einem eigenen Verbindungspool als shop_auth)
+GRANT USAGE ON SCHEMA kernel, identity TO shop_auth;
+GRANT SELECT, INSERT, UPDATE, DELETE ON identity."user", identity.account, identity.session,
+  identity.verification, identity.two_factor, identity.passkey TO shop_auth;
 
 -- Outbox-Weiterleitung
 GRANT USAGE ON SCHEMA kernel TO shop_relay;

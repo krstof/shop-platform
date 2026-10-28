@@ -212,7 +212,8 @@ BEGIN
   INSERT INTO notifications.processed_event (tenant_id, event_id, subscriber) VALUES (t, uuidv7(), 'test');
 
   -- identity (Mitgliedschaft, eigene Rolle, API-Token)
-  INSERT INTO identity."user" (email, name) VALUES (label || '@haendler.test', 'Inhaber ' || label) RETURNING id INTO v_user;
+  -- Nutzer legt das Anmeldemodul (shop_auth) an, siehe test_isolation.sh. shop_app findet ihn nur per E-Mail.
+  SELECT id INTO STRICT v_user FROM identity."user" WHERE email = label || '@haendler.test';
   INSERT INTO identity.membership (tenant_id, user_id, role_key) VALUES (t, v_user, 'owner');
   INSERT INTO identity.role (tenant_id, key, name) VALUES (t, 'packer', 'Packer') RETURNING id INTO v_role;
   INSERT INTO identity.role_permission (tenant_id, role_id, permission) VALUES (t, v_role, 'orders:read');
@@ -239,9 +240,9 @@ END $$;
 SELECT pg_temp.ok(current_user = 'shop_app', 'Test läuft angemeldet als shop_app');
 SELECT pg_temp.ok(NOT rolsuper AND NOT rolbypassrls, 'shop_app hat weder SUPERUSER noch BYPASSRLS')
   FROM pg_roles WHERE rolname = current_user;
-SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname IN ('shop_app','shop_platform','shop_relay','shop_owner')
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname IN ('shop_app','shop_auth','shop_platform','shop_relay','shop_owner')
                                                        AND (rolsuper OR rolbypassrls)),
-                  'Keine Betriebsrolle (app, platform, relay, owner) hat SUPERUSER oder BYPASSRLS');
+                  'Keine Betriebsrolle (app, auth, platform, relay, owner) hat SUPERUSER oder BYPASSRLS');
 
 -- Jede Tabelle mit tenant_id außerhalb von platform hat RLS, FORCE und eine Policy
 SELECT pg_temp.ok(count(*) = 0, 'Jede Tabelle mit tenant_id hat RLS ENABLE + FORCE + Policy (Verstöße: '
