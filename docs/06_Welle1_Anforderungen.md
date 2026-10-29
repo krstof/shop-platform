@@ -14,7 +14,7 @@ Stand: 29.10.2026, Antworten von Kristof vom selben Tag eingearbeitet. Zweck: Di
 4. Anforderungen je Funktion
 5. Bau-Reihenfolge (26 Etappen)
 6. Ergebnisse der Recherche vom 29.10.2026
-7. Fragen an Kristof
+7. Entscheidungen von Kristof
 
 ---
 
