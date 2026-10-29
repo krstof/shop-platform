@@ -162,7 +162,7 @@ Ausführlich beschrieben in Architektur Kapitel 5 und Datenmodell Kapitel 2.6. K
 
 | Maßnahme | Einzelheiten | Priorität |
 |---|---|---|
-| Passwörter mit **Argon2id** speichern | Mindestens 19 MiB Speicher, 2 Durchläufe, Parallelität 1 (Mindestempfehlung von OWASP, zu prüfen beim Bau). Ein Passwort-Hash ist ein unumkehrbarer Fingerabdruck. Argon2id ist absichtlich langsam und speicherhungrig, damit massenhaftes Raten teuer wird. | Muss |
+| Passwörter mit **Argon2id** speichern | Mindestens 19 MiB Speicher, 2 Durchläufe, Parallelität 1 (Mindestempfehlung von OWASP, am 29.10.2026 bestätigt). Ein Passwort-Hash ist ein unumkehrbarer Fingerabdruck. Argon2id ist absichtlich langsam und speicherhungrig, damit massenhaftes Raten teuer wird. | Muss |
 | Passwortregeln nach NIST | Mindestens 12 Zeichen, höchstens 128, alle Zeichen erlaubt, **keine** Zwangsregeln wie „ein Sonderzeichen“, **kein** regelmäßiger Wechselzwang. Neue Passwörter werden gegen eine mitgelieferte Liste der häufigsten gestohlenen Passwörter geprüft (ohne Internetverbindung). | Muss |
 | Bremse bei Fehlversuchen | Je Konto und je IP-Adresse: nach 5 Fehlversuchen wachsende Wartezeit, nach 20 eine Sperre von 15 Minuten (`identity.user.locked_until`) und eine E-Mail an den Kontoinhaber. Die Antwort ist immer gleich („E-Mail oder Passwort falsch“), auch wenn es die E-Mail gar nicht gibt, und dauert gleich lang. | Muss |
 | Anmeldedaten nur im Anmeldemodul | Better Auth arbeitet mit einer eigenen Datenbankrolle `shop_auth`. Der restliche Kern sieht keine Passwörter, Sitzungen oder Einmalcodes (Kapitel 8, ADR-008). | Muss, **umgesetzt** |
@@ -284,7 +284,7 @@ Die Lieferkette sind alle fremden Bausteine, auf denen die Plattform aufbaut. An
 |---|---|---|
 | Feste Versionen | `pnpm-lock.yaml` ist eingecheckt, Installation in der CI nur mit `--frozen-lockfile`. | Muss |
 | Keine Installationsskripte | pnpm führt Installationsskripte fremder Pakete nur für eine ausdrückliche Liste aus (`onlyBuiltDependencies`, zum Beispiel für sharp und argon2). | Muss |
-| Wartezeit für neue Versionen | Neue Paketversionen werden erst nach 7 Tagen übernommen (pnpm-Einstellung `minimumReleaseAge`, zu prüfen). Die meisten verseuchten Versionen werden in dieser Zeit entdeckt und entfernt. | Muss |
+| Wartezeit für neue Versionen | Neue Paketversionen werden erst nach 7 Tagen übernommen (pnpm-Einstellung `minimumReleaseAge` in Minuten, also `10080`, am 29.10.2026 bestätigt). Die meisten verseuchten Versionen werden in dieser Zeit entdeckt und entfernt. | Muss |
 | Lücken-Scan | OSV-Scanner und `pnpm audit` bei jedem Push, Trivy für Container wöchentlich. Kritische Lücken lassen den Build scheitern. | Muss |
 | Updates | Dependabot wöchentlich, Claude prüft und übernimmt sie im täglichen Lauf. | Muss |
 | GitHub Actions | Fremde Actions werden mit der vollständigen Commit-Kennung statt eines Versionsnamens eingebunden. Die Rechte des CI-Tokens sind auf „nur lesen“ gestellt. | Muss |
