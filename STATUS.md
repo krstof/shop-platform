@@ -15,16 +15,20 @@ Stand: 29.10.2026
 - `docs/02_Featurekatalog.md`: alle Features aus den Featurelisten von ePages Now und ePages Store, ergänzt um neue Features, priorisiert nach Muss / Wäre gut / Vielleicht später und Wellen zugeordnet.
 - `docs/06_Welle1_Anforderungen.md` (29.10.2026): alle 63 Funktionen der Welle 1 in Muss / Wäre gut / Vielleicht später zerlegt, 21 Querschnitts-Anforderungen, Bau-Reihenfolge in 26 Etappen mit „Fertig, wenn“, Zielablauf für das Ende von Welle 1. Recherche: Widerrufsbutton nach § 356a BGB (9 Anforderungen), Barrierefreiheitserklärung als neue Pflichtseite, GPSR-Angaben, Argon2id-Werte und pnpm-Wartezeit bestätigt, neue Better-Auth-Meldungen ausgewertet (IPv6-Kürzung für die Anfragebremse).
 - Antworten vom 29.10.2026 eingearbeitet: Rechtstext-Vorlagen, unbezahlte Bestellungen verfallen nach 24 Stunden, Bestand erst bei Bestellung reservieren, Kleinunternehmerregelung später, schlichtes Design, Testshops Tee und Mode.
+- **Etappe E1 Grundgerüst (29.10.2026):** pnpm-Monorepo mit Turborepo und gemeinsamen Einstellungen (`packages/config`), strenge Lieferkettenregeln in `pnpm-workspace.yaml`, Docker Compose mit Caddy (HTTPS, Sicherheits-Header), PostgreSQL 18.6, Garage (Objektspeicher mit öffentlichem und privatem Bereich) und Mailpit (mit Passwort). Alle Container ohne Administratorrechte. `pnpm dev` legt die `.env` mit Zufallspasswörtern an und startet alles mit einem Befehl. `pnpm check` bündelt Format, Lint, Typen, Tests, gitleaks, OSV-Scanner, `pnpm audit` und den Datenbanktest. CI auf GitHub Actions mit fünf Jobs, Dependabot wöchentlich. Getestet: 12 Werkzeug-Tests (inkl. Gegenprobe, dass gitleaks eingeschleuste Geheimnisse findet), 39 Prüfungen im Infrastruktur-Rauchtest, Datenbanktest grün, Kaltstart aus leerem Zustand in 16 Sekunden.
 
 ## Nächste Schritte (in dieser Reihenfolge)
 
 Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anforderungen.md` Kapitel 5. Jeder Lauf nimmt die nächste offene Etappe.
 
-1. **E1 Grundgerüst:** Monorepo (pnpm, Turborepo), Docker Compose mit Caddy, PostgreSQL, Garage, Mailpit, `.env`-Erzeugung, CI mit gitleaks, OSV-Scanner und `pnpm audit`, pnpm-Lieferkettenregeln (`minimumReleaseAge: 10080`, `onlyBuiltDependencies`). Versionen beim Aufsetzen gegen die aktuelle stabile Fassung prüfen.
-2. **E2 Kernel:** Geld, Steuer-Basispunkte, UUIDv7, Problem Details, Konfigurationsprüfung, Protokoll mit Schwärzung, `withTenantTransaction`.
-3. **E3 Migrationen:** Schema auf Module aufteilen, Isolations- und Rechtetest in Testcontainers.
+1. **E2 Kernel** (`packages/kernel`): Geld, Steuer-Basispunkte, UUIDv7, Problem Details, Konfigurationsprüfung beim Start, Protokoll mit Schwärzung (T-19), `withTenantTransaction`. Tests zuerst.
+2. **E3 Migrationen:** `db/schema_welle1.sql` auf die Module aufteilen, `migrate`-Dienst, Isolations- und Rechtetest in Testcontainers (ersetzt `tools/db-test.sh`), kysely-codegen je Modul, dependency-cruiser.
+3. **E4 API-Gerüst** (siehe `docs/06_Welle1_Anforderungen.md` Kapitel 5).
 
 ## Nachzutragen
+
+- Wöchentlicher Container-Scan mit Trivy und SBOM (Sicherheit 5.11, Architektur 8.2): eigener geplanter CI-Ablauf, spätestens mit E4, wenn es eigene Container-Abbilder gibt.
+- Erster CI-Lauf auf GitHub: Ergebnis im nächsten Lauf prüfen und Fehler zuerst beheben.
 
 - Vor E6: vollständige Liste der Better-Auth-Sicherheitsmeldungen auf GitHub lesen (bei der Recherche nicht erreichbar) und Mindestversion 1.6.11 oder neuer fest eintragen.
 - Vor E15/E23: Angaben zur Button-Lösung (§ 312j BGB) gegen eine Quelle prüfen (Anforderungen 6.2).

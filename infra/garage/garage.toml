@@ -1,0 +1,27 @@
+# Garage: selbst betriebener Objektspeicher mit S3-Schnittstelle (ADR-001, BET-04).
+# Geheimnisse (rpc_secret, admin_token, metrics_token) kommen NICHT aus dieser Datei,
+# sondern aus den Umgebungsvariablen GARAGE_RPC_SECRET, GARAGE_ADMIN_TOKEN und
+# GARAGE_METRICS_TOKEN (.env).
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+# Ein einzelner Knoten reicht lokal (Architektur 9: ab 1.000 Shops drei Knoten).
+replication_factor = 1
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:3900"
+root_domain = ".s3.garage.internal"
+
+# Öffentliche Auslieferung fertiger Bilder über https://media.localhost (Sicherheit 5.7).
+[s3_web]
+bind_addr = "0.0.0.0:3902"
+root_domain = ".web.garage.internal"
+index = "index.html"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"

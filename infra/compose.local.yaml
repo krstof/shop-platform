@@ -1,0 +1,20 @@
+# =============================================================================
+# Ergänzung NUR für die lokale Entwicklung (SHOP_ENV=local).
+# In der Entwicklung laufen api, worker und Tests direkt auf dem Rechner (mit
+# automatischem Neuladen) und brauchen deshalb Zugang zu Datenbank und
+# Objektspeicher. Beide werden ausschließlich auf 127.0.0.1 freigegeben, also
+# nur für den eigenen Rechner, nie für das Netz.
+# Auf einem Server wird diese Datei nicht benutzt (Sicherheit 5.16).
+# =============================================================================
+networks:
+  hostaccess: {}
+
+services:
+  postgres:
+    networks: [internal, hostaccess]
+    ports:
+      - "127.0.0.1:${SHOP_DB_PORT:-5432}:5432"
+  garage:
+    networks: [internal, hostaccess]
+    ports:
+      - "127.0.0.1:${SHOP_S3_PORT:-3900}:3900"

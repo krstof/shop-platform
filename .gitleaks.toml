@@ -1,0 +1,22 @@
+# Regeln für die Suche nach Geheimnissen (Sicherheit 5.10, Test T-06).
+# Die Standardregeln von gitleaks gelten weiter, dazu kommen eigene Regeln.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "shop-api-token"
+description = "API-Token der Shop-Plattform (Präfix shp_at_)"
+regex = '''shp_at_[A-Za-z0-9_-]{32,}'''
+keywords = ["shp_at_"]
+
+[[rules]]
+id = "shop-env-secret"
+description = "Geheimnis aus .env im Klartext (Passwort, Token, Schlüssel)"
+regex = '''(?i)(?:PASSWORD|SECRET|TOKEN|MASTER_KEY_V\d+)\s*=\s*['"]?([A-Za-z0-9+/_=-]{24,})'''
+secretGroup = 1
+entropy = 3.5
+keywords = ["password", "secret", "token", "master_key"]
+
+[allowlist]
+description = "Vorlagen ohne echte Werte"
+paths = ['''\.env\.example$''', '''pnpm-lock\.yaml$''']

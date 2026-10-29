@@ -1,0 +1,147 @@
+# =============================================================================
+# Docker Compose für die lokale Entwicklung (Architektur 7.1, BET-02).
+# Start und Stopp erledigt `pnpm dev` beziehungsweise `pnpm dev:down`.
+#
+# Härtung (Sicherheit 5.11, 5.16):
+# - Abbilder mit fester Version UND fester Prüfsumme (digest).
+# - Kein Dienst läuft als Administrator (root), keine zusätzlichen Linux-Rechte
+#   (cap_drop: ALL), no-new-privileges, Dateisystem wo möglich nur lesbar.
+# - Nur Caddy ist von außen erreichbar. Datenbank, Objektspeicher und Mailpit
+#   hängen in einem internen Netz ohne Internetzugang.
+# - Programme (api, worker, Oberflächen) kommen mit ihren Etappen dazu.
+# =============================================================================
+name: shop-platform
+
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: local
+    options:
+      max-size: 10m
+      max-file: "3"
+
+networks:
+  edge: {}
+  internal:
+    internal: true
+
+volumes:
+  postgres-data: {}
+  garage-meta: {}
+  garage-data: {}
+  caddy-data: {}
+  caddy-config: {}
+
+services:
+  # Einmaliger Helfer: gibt die Datenordner den Nutzern der Dienste (UID 1000).
+  # Braucht als einziger kurz das Recht CHOWN und beendet sich danach.
+  volume-init:
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+    entrypoint: ["sh", "-c", "chown -R 1000:1000 /v/garage-meta /v/garage-data /v/caddy-data /v/caddy-config"]
+    user: "0:0"
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    network_mode: none
+    restart: "no"
+    volumes:
+      - garage-meta:/v/garage-meta
+      - garage-data:/v/garage-data
+      - caddy-data:/v/caddy-data
+      - caddy-config:/v/caddy-config
+
+  caddy:
+    <<: *hardening
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+    user: "1000:1000"
+    read_only: true
+    # Das Caddy-Programm trägt die Dateiberechtigung NET_BIND_SERVICE. Ohne dieses
+    # Recht im erlaubten Rahmen startet es nicht. Die Ports öffnet es dank sysctl
+    # unten auch ohne Sonderrechte.
+    cap_add: [NET_BIND_SERVICE]
+    # Erlaubt einem normalen Nutzer, die Ports 80 und 443 im Container zu öffnen.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    environment:
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?fehlt}
+      SHOP_S3_BUCKET_PUBLIC: ${SHOP_S3_BUCKET_PUBLIC:?fehlt}
+    ports:
+      - "127.0.0.1:${SHOP_HTTP_PORT:-80}:80"
+      - "127.0.0.1:${SHOP_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    tmpfs: [/tmp]
+    networks: [edge, internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2020/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      volume-init: { condition: service_completed_successfully }
+      mailpit: { condition: service_healthy }
+      garage: { condition: service_healthy }
+
+  postgres:
+    <<: *hardening
+    image: postgres:18.6-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    user: "70:70"
+    read_only: true
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?fehlt}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    tmpfs: [/tmp, /var/run/postgresql]
+    shm_size: 128m
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  garage:
+    <<: *hardening
+    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
+    user: "1000:1000"
+    read_only: true
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?fehlt}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?fehlt}
+      GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN:?fehlt}
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    networks: [internal]
+    depends_on:
+      volume-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    <<: *hardening
+    image: axllent/mailpit:v1.32.0@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    user: "1000:1000"
+    read_only: true
+    environment:
+      MP_UI_AUTH: "${MAILPIT_UI_USER:?fehlt}:${MAILPIT_UI_PASSWORD:?fehlt}"
+      MP_MAX_MESSAGES: "2000"
+      MP_DATABASE: /tmp/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    tmpfs: [/tmp]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

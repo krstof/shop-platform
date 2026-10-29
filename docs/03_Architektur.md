@@ -550,6 +550,8 @@ Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen
 | `mailpit` | Fängt alle E-Mails ab und zeigt sie an | `mail.localhost` |
 | `migrate` | Führt beim Start Migrationen aus und beendet sich dann | intern |
 
+**Stand Etappe E1 (29.10.2026):** `caddy`, `postgres`, `garage` und `mailpit` laufen, die Programme kommen mit ihren Etappen dazu. Alle Container laufen ohne Administratorrechte, ohne Linux-Sonderrechte, mit schreibgeschütztem Dateisystem und `no-new-privileges` (geprüft durch `pnpm test:infra`). Weil `api`, `worker` und die Tests in der Entwicklung direkt auf dem Rechner laufen, gibt die Zusatzdatei `infra/compose.local.yaml` Datenbank und Objektspeicher **nur lokal** auf `127.0.0.1` frei. Auf einem Server wird sie nicht benutzt. Der Objektspeicher hat zwei Bereiche: `media-public` (wird über `media.localhost` ausgeliefert) und `media-private` (Uploads vor der Prüfung, nie öffentlich).
+
 Adressen auf `.localhost` zeigen in modernen Browsern automatisch auf den eigenen Rechner, sodass keine Einstellungen am Rechner nötig sind. Bilder werden bewusst von einer eigenen Adresse (`media.localhost`) ausgeliefert, damit eine manipulierte Datei keinen Zugriff auf Cookies des Shops bekommt.
 
 Ab etwa 1.000 Shops kommen `valkey` (schneller Zwischenspeicher), `meilisearch` (Suche) und die Überwachung (`grafana`, `prometheus`, `loki`) hinzu.

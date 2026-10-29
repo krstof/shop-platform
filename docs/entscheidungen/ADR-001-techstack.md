@@ -32,3 +32,22 @@ Die Plattform soll nur mit kostenloser, selbst hostbarer Open-Source-Technik geb
 - Mit PostgreSQL, Garage, Mailpit und den Programmen kommt Welle 1 mit wenigen Containern aus.
 - Anmeldung und Objektspeicher liegen hinter eigenen Schnittstellen, damit ein späterer Wechsel des Werkzeugs nur ein Modul betrifft.
 - Versionen werden beim Aufsetzen gegen die aktuelle stabile Fassung geprüft und fest eingetragen.
+
+## Nachtrag 29.10.2026: Versionen beim Aufsetzen (Etappe E1)
+
+Alle Versionen sind mindestens 7 Tage alt (Sicherheit 5.11) und fest eingetragen.
+
+| Baustein | Version | Anmerkung |
+|---|---|---|
+| Node.js | 24.22.1 (LTS „Krypton“) | Node 26 ist seit Oktober 2026 ebenfalls LTS. Wechsel frühestens, wenn alle Bibliotheken ihn unterstützen. |
+| pnpm | 12.15.0 | Lieferkettenregeln in `pnpm-workspace.yaml`: `minimumReleaseAge: 10080`, `minimumReleaseAgeStrict`, `trustPolicy: no-downgrade`, `blockExoticSubdeps`, `strictDepBuilds` mit `allowBuilds` (ersetzt das frühere `onlyBuiltDependencies`) |
+| TypeScript | 6.0.3 | TypeScript 7 (neuer, schneller Compiler) wird von typescript-eslint noch nicht unterstützt. Wechsel, sobald es das tut. |
+| ESLint / typescript-eslint | 10.13 / 8.72 | |
+| Turborepo | 2.11.10 | |
+| PostgreSQL | 18.6 (Abbild `postgres:18.6-alpine`, Tests `postgres:18.6`) | |
+| Caddy | 2.11.7 | |
+| Garage | 2.4.1 | 2.5.0 war beim Aufsetzen jünger als 7 Tage |
+| Mailpit | 1.32.0 | |
+| gitleaks / OSV-Scanner | 8.30.1 / 2.7.0 | Download mit Prüfsumme über `tools/ensure-tool.sh` |
+
+Container-Abbilder sind zusätzlich mit ihrer Prüfsumme (digest) eingetragen.

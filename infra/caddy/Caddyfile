@@ -1,0 +1,78 @@
+# =============================================================================
+# Caddy: einziger Eingang von außen (Sicherheit 3.2 „Grenze 1“, 5.5, 5.16).
+# Lokal mit selbst erzeugten Zertifikaten (SIC-01). Die Inhalts-Sicherheitsregel
+# (CSP) setzt jede Oberfläche selbst, weil sie Nonces braucht (Sicherheit 5.5).
+# Weitere Adressen (api, backoffice, platform, Shops, pay) kommen mit ihren Etappen.
+# =============================================================================
+{
+	# Keine Verwaltungsschnittstelle im Container (Härtung).
+	admin off
+	# Lokale Zertifikate statt Let's Encrypt (Antwort Kristof: kein öffentlicher Server).
+	local_certs
+	skip_install_trust
+	servers {
+		timeouts {
+			read_header 10s
+			idle 60s
+		}
+		max_header_size 32KB
+		# Nur HTTP/1.1 und HTTP/2, UDP für HTTP/3 ist nicht freigegeben.
+		protocols h1 h2
+	}
+}
+
+# Gemeinsame Sicherheits-Header für alle Adressen (Sicherheit 5.5).
+(security_headers) {
+	# Cross-Origin-Resource-Policy setzt jede Adresse selbst (Bilder brauchen „cross-origin“).
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		X-Frame-Options "DENY"
+		# HSTS lokal aus, auf einem echten Server: max-age=63072000; includeSubDomains
+		-Server
+		-Via
+	}
+}
+
+# Startseite: zeigt nur, dass die Plattform läuft.
+{$SHOP_DOMAIN} {
+	import security_headers
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+	header Cross-Origin-Resource-Policy "same-site"
+	header Cache-Control "no-store"
+	request_body {
+		max_size 1MB
+	}
+	respond "Shop-Plattform läuft." 200
+}
+
+# Test-Mails (Mailpit). Zusätzlich durch Mailpit selbst mit Passwort geschützt.
+mail.{$SHOP_DOMAIN} {
+	import security_headers
+	header Cache-Control "no-store"
+	header Cross-Origin-Resource-Policy "same-site"
+	reverse_proxy mailpit:8025
+}
+
+# Bilder und Dokumente: eigene Adresse ohne Cookies (Sicherheit 5.7).
+media.{$SHOP_DOMAIN} {
+	import security_headers
+	header {
+		Cross-Origin-Resource-Policy "cross-origin"
+		Content-Security-Policy "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox"
+		-Set-Cookie
+	}
+	@write not method GET HEAD OPTIONS
+	respond @write 405
+	reverse_proxy garage:3902 {
+		header_up Host {$SHOP_S3_BUCKET_PUBLIC}.web.garage.internal
+		header_down -Set-Cookie
+	}
+}
+
+# Interner Gesundheitscheck für Docker, nicht nach außen veröffentlicht.
+http://:2020 {
+	respond "ok" 200
+}

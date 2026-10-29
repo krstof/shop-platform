@@ -1,0 +1,18 @@
+# pnpm-Workspace der Shop-Plattform (Architektur 6.1, Sicherheit 5.11)
+packages:
+  - apps/*
+  - modules/*
+  - packages/*
+
+# --- Lieferkette (Sicherheit 5.11, SIC-08) ---
+# Neue Paketversionen erst nach 7 Tagen (Angabe in Minuten).
+minimumReleaseAge: 10080
+# Fehlt das Veröffentlichungsdatum, wird nicht installiert statt geraten.
+minimumReleaseAgeStrict: true
+# Abbrechen, wenn ein Paket plötzlich mit weniger Herkunftsnachweisen erscheint als früher.
+trustPolicy: no-downgrade
+# Unterabhängigkeiten nur aus der Registry, nie direkt aus Git oder von Adressen.
+blockExoticSubdeps: true
+# Installationsskripte fremder Pakete nur nach ausdrücklicher Freigabe.
+strictDepBuilds: true
+allowBuilds: {}

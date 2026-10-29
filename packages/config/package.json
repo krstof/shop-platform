@@ -1,0 +1,12 @@
+{
+  "name": "@shop/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gemeinsame Einstellungen für TypeScript, ESLint und Prettier",
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.config.js",
+    "./prettier": "./prettier.config.js"
+  }
+}

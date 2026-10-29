@@ -1,0 +1,16 @@
+# Abhängigkeiten und Build
+node_modules/
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Einstellungen mit echten Geheimnissen – nie einchecken (Sicherheit 5.10)
+.env
+.env.*
+!.env.example
+
+# Lokale Laufzeitdaten
+infra/.data/
+*.log
+.DS_Store
