@@ -4,16 +4,16 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-Gestellt am 29.10.2026 zum Anforderungskatalog Welle 1 (`docs/06_Welle1_Anforderungen.md`). Bis zur Antwort gilt die Empfehlung.
-
-1. **Rechtstext-Vorlagen?** Ein neuer Shop kann leere Rechtstexte bekommen oder Vorlagen mit Platzhaltern, die die Plattform aus den Firmendaten füllt. Vorlagen sind bequemer, aber keine geprüften Rechtstexte. Antwort: **Vorlagen** (Empfehlung) / **leer**
-2. **Wann verfällt eine unbezahlte Bestellung?** Bricht ein Kunde die Zahlung ab, bleibt die Bestellung offen und die Ware reserviert. Nach dieser Frist wird sie automatisch storniert. Antwort: **1** / **24** (Empfehlung) / **72** (Stunden)
-3. **Ware schon im Warenkorb reservieren?** Reservieren beim Hineinlegen blockiert Ware durch verlassene Warenkörbe. Reservieren erst beim Bestellen kann bedeuten, dass ein Produkt kurz vorher ausverkauft ist, dann sieht der Kunde einen Hinweis. Antwort: **Bestellung** (Empfehlung) / **Warenkorb**
-4. **Kleinunternehmerregelung schon in Welle 1?** Kleinunternehmer weisen keine Umsatzsteuer aus. Das Datenmodell kann es schon, die Funktion kostet etwa einen halben Lauf mehr. Antwort: **später** (Empfehlung) / **jetzt**
-5. **Stil des Standard-Designs der Storefront?** Das Design ist in Welle 1 fest, der Händler wählt nur Logo, Farbe und Schrift. Antwort: **schlicht** (Empfehlung) / **verspielt** / **edel**
-6. **Was verkaufen die zwei Testshops?** Beispieldaten machen Tests und Vorführungen anschaulicher. Geplant sind ein Teeladen und ein Modeladen. Antwort: **passt** / oder zwei andere Branchen nennen
+(Keine offenen Fragen.)
 
 ## Beantwortet
+
+- **Rechtstext-Vorlagen?** Vorlagen mit Platzhaltern, gefüllt aus den Firmendaten. (29.10.2026)
+- **Wann verfällt eine unbezahlte Bestellung?** Nach 24 Stunden automatisch storniert. (29.10.2026)
+- **Ware schon im Warenkorb reservieren?** Nein, erst bei der Bestellung. (29.10.2026)
+- **Kleinunternehmerregelung in Welle 1?** Nein, später. (29.10.2026)
+- **Stil des Standard-Designs?** Schlicht. (29.10.2026)
+- **Testshops?** Teeladen und Modeladen passen. (29.10.2026)
 
 - **Better Auth behalten?** Ja, behalten, mit den nötigsten Funktionen, fester Version und wöchentlicher Prüfung. (28.10.2026)
 - **Rechnungen 8 oder 10 Jahre aufbewahren?** 10 Jahre, wie im ursprünglichen Auftrag (mehr als gesetzlich nötig). (28.10.2026)

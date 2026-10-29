@@ -1,6 +1,6 @@
 # Anforderungskatalog Welle 1 (MVP Deutschland)
 
-Stand: 29.10.2026. Zweck: Dieses Dokument legt für jede der 63 Funktionen der Welle 1 fest, **was genau** gebaut wird, was nur „wäre gut“ ist und was bewusst später kommt. Außerdem legt es die **Bau-Reihenfolge** fest, in der die täglichen Läufe vorgehen. Es baut auf dem Featurekatalog (`docs/02_Featurekatalog.md`), der Architektur (`docs/03_Architektur.md`), dem Datenmodell (`docs/04_Datenmodell.md`) und dem Sicherheitskonzept (`docs/05_Sicherheit.md`) auf.
+Stand: 29.10.2026, Antworten von Kristof vom selben Tag eingearbeitet. Zweck: Dieses Dokument legt für jede der 63 Funktionen der Welle 1 fest, **was genau** gebaut wird, was nur „wäre gut“ ist und was bewusst später kommt. Außerdem legt es die **Bau-Reihenfolge** fest, in der die täglichen Läufe vorgehen. Es baut auf dem Featurekatalog (`docs/02_Featurekatalog.md`), der Architektur (`docs/03_Architektur.md`), dem Datenmodell (`docs/04_Datenmodell.md`) und dem Sicherheitskonzept (`docs/05_Sicherheit.md`) auf.
 
 **Disclaimer:** Rechtliche Punkte sind technische Anforderungen nach Recherche vom 29.10.2026 und keine Rechtsberatung. Die Plattform bleibt ein privates Experiment ohne echte Kunden.
 
@@ -128,19 +128,19 @@ Diese Querschnitts-Anforderungen stehen nicht bei jeder einzelnen Funktion, gelt
 | **PRD-05** Produktbilder | Bis zu 10 Bilder je Produkt, Reihenfolge änderbar, Alternativtext Pflicht vor dem Veröffentlichen (Barrierefreiheit). Hochladen über signierte Adressen, Prüfung am Inhalt, Neu-Kodierung mit sharp, Größen 320/640/1024/1600 px in WebP und AVIF, Grenzen 50 Megapixel und 20 MB, kein SVG (Sicherheit 5.7, T-16). | Bildausschnitt wählen | Bildbearbeitung und Hintergrund entfernen mit KI (Welle 2) | E9, E19 |
 | **PRS-01** Preis mit Steuerklasse | Ein Bruttopreis in Euro pro Variante für Kanal „Storefront“ und Gruppe „Endkunden“, gespeichert in der Preistabelle (A-02). Jede Änderung landet im Preisverlauf (A-03). Steuerklasse „normal“ oder „ermäßigt“. | Streichpreis („statt“) mit Pflicht-Hinweis auf 30-Tage-Tiefstpreis | Staffel-, Gruppen- und Aktionspreise (Welle 2 und 3) | E11 |
 | **KAT-01** Kategorien | Kategorien mit Name, Beschreibung, Bild, Adresse, Reihenfolge, eine Unterebene. Produkte in mehrere Kategorien. Kategorien bilden das Hauptmenü. | Reihenfolge per Ziehen | Mehr als zwei Ebenen, automatische Kategorien nach Regeln | E10, E19 |
-| **LAG-01** Bestandsführung | Bestand je Variante im Standardlager. Reservierung beim Bestellen mit Prüfregel in der Datenbank (umgesetzt), Abbuchung nach Zahlung, Freigabe bei Abbruch. Bewegungsprotokoll. Einstellung je Produkt „Bestand führen ja/nein“. | Warnung bei niedrigem Bestand | Mehrere Lager, Vorbestellung | E11 |
+| **LAG-01** Bestandsführung | Bestand je Variante im Standardlager. Reservierung erst beim Bestellen, nicht schon im Warenkorb (Entscheidung Kristof), mit Prüfregel in der Datenbank (umgesetzt), Abbuchung nach Zahlung, Freigabe bei Abbruch. Bewegungsprotokoll. Einstellung je Produkt „Bestand führen ja/nein“. | Warnung bei niedrigem Bestand | Mehrere Lager, Vorbestellung | E11 |
 | **BUH-01** Nummernkreise | Bestell-, Kunden-, Widerrufs- und Rechnungsnummern pro Shop mit Präfix und Mindeststellen (z. B. `B-10001`). Lückenlos und parallel sicher (getestet). Format änderbar, solange noch keine Nummer vergeben ist. | – | Jahreswechsel im Format (`2027-…`) | E8 |
 
 ### 4.3 Storefront, Warenkorb und Checkout
 
 | ID | Muss | Wäre gut | Vielleicht später | Etappe |
 |---|---|---|---|---|
-| **EDI-01** Responsives Standard-Design | Ein festes Design aus Abschnitten und Bausteinen (ADR-005), gespeichert als JSON. Händler kann Logo, Hauptfarbe und Schrift aus einer Liste wählen. Kontraste werden geprüft: Eine Farbe mit zu wenig Kontrast wird abgelehnt (WCAG). Ladezeit der Produktseite auf dem Handy unter 2,5 Sekunden (LCP) im Test. | Zwei Schriftpaare zur Auswahl | Visueller Editor (Welle 2) | E22 |
+| **EDI-01** Responsives Standard-Design | Ein festes, **schlichtes** Design (Entscheidung Kristof) aus Abschnitten und Bausteinen (ADR-005), gespeichert als JSON. Händler kann Logo, Hauptfarbe und Schrift aus einer Liste wählen. Kontraste werden geprüft: Eine Farbe mit zu wenig Kontrast wird abgelehnt (WCAG). Ladezeit der Produktseite auf dem Handy unter 2,5 Sekunden (LCP) im Test. | Zwei Schriftpaare zur Auswahl | Visueller Editor (Welle 2) | E22 |
 | **EDI-02** Footer mit Pflichtseiten | Impressum, AGB, Widerruf, Datenschutz, Versand und Zahlung, Barrierefreiheitserklärung und der **Widerrufsbutton** stehen auf jeder Seite, nicht entfernbar. Eigene Links darunter ergänzbar und sortierbar. | – | – | E12, E22 |
 | **INH-01** Einfache Textseiten | Seiten mit Titel, Adresse und Text, gespeichert als Bausteine. Entwurf und veröffentlicht. | Vorschau | Bilder und weitere Bausteine (Welle 2) | E12, E20 |
 | **STF-01** Grundgerüst der Storefront | Startseite (Kategorien und neueste Produkte), Kategorieseite mit seitenweiser Liste, Produktseite, Warenkorb, Checkout, Bestellbestätigung, Inhaltsseiten, Widerrufsseite, 404-Seite. Alles serverseitig erzeugt, funktioniert ohne JavaScript. Daten nur über die Storefront-API. | Sortierung in der Kategorie | Suche, Filter (Welle 2) | E22, E23 |
 | **STF-02** Produktdarstellung | Bilder mit Alternativtext, Name, Preis mit Pflichtangaben (STR-02), Grundpreis, Lieferzeit, Verfügbarkeit, Beschreibung, wesentliche Merkmale, Produktsicherheit (STR-10). | Bildergalerie mit Vergrößerung | Bewertungen, ähnliche Produkte | E22 |
-| **WKC-01** Warenkorb | Hinzufügen, Menge ändern (1 bis 999), entfernen. Warenkorb-Token wie in Sicherheit 5.6. Preise werden bei jedem Abruf neu berechnet, Änderungen seit dem Hinzufügen werden angezeigt. Warenkorb gilt 30 Tage. | Kleiner Warenkorb-Hinweis ohne Seitenwechsel | Merkzettel, Warenkorb teilen | E14, E23 |
+| **WKC-01** Warenkorb | Hinzufügen, Menge ändern (1 bis 999), entfernen. Warenkorb-Token wie in Sicherheit 5.6. Preise werden bei jedem Abruf neu berechnet, Änderungen seit dem Hinzufügen werden angezeigt. Der Warenkorb reserviert keine Ware. Ist ein Produkt beim Bestellen ausverkauft, sieht der Kunde einen klaren Hinweis. Warenkorb gilt 30 Tage. | Kleiner Warenkorb-Hinweis ohne Seitenwechsel | Merkzettel, Warenkorb teilen | E14, E23 |
 | **WKC-02** Sicherer, rechtskonformer Checkout | Eine Seite mit Abschnitten: E-Mail, Rechnungs- und Lieferadresse, Versandart, Zahlart, Übersicht mit wesentlichen Merkmalen (STR-04), Gesamtpreis mit Steuer und Versand, Lieferzeit, Hinweis auf AGB und Widerruf mit Links, Knopf „zahlungspflichtig bestellen“ (STR-06). Server rechnet alles neu, Abweichung erfordert erneute Bestätigung. `Idempotency-Key` Pflicht. Verstecktes Prüffeld gegen CSRF. Bremse 60 Anfragen je Minute (Sicherheit 5.6, T-14). ⚠ Ablauf über mehrere Module mit Kompensation | Adresse prüfen (Postleitzahl passt zum Ort) | Express-Checkout, Bot-Schutz im Browser (ALTCHA) | E15, E23 |
 | **WKC-03** Bestellung als Gast | Bestellen nur mit E-Mail und Adresse, Gastkunde wird angelegt (`kind = guest`). | – | Konto mit einem Klick nach der Bestellung (Welle 2) | E15 |
 | **MKT-01** Sprechende Adressen | `/kategorie/<slug>`, `/produkt/<slug>`, `/seite/<slug>`. Slugs aus dem Namen erzeugt, pro Shop eindeutig. Ändert sich ein Slug, entsteht automatisch eine dauerhafte Weiterleitung (301). Kanonische Adresse und Seitentitel auf jeder Seite. | Seitenbeschreibung (Meta Description) pflegbar | Sitemap, strukturierte Daten (Welle 2) | E10, E22 |
@@ -156,18 +156,18 @@ Diese Querschnitts-Anforderungen stehen nicht bei jeder einzelnen Funktion, gelt
 | **BST-04** Benachrichtigung bei neuer Bestellung | Meldung im Backoffice (Glocke mit Zähler) und E-Mail an den Shop. | – | Push aufs Handy | E16, E20 |
 | **BST-05** Bestellbestätigung per E-Mail | Sofort nach dem Bestellen: Bestellnummer, Positionen mit wesentlichen Merkmalen, Preise, Steuer, Versand, Gesamtsumme, Adressen, Lieferzeit, Zahlart, Firmendaten des Händlers, AGB, Widerrufsbelehrung und Muster-Widerrufsformular (STR-07), Link zum Widerrufsbutton. Klarer Hinweis, ob die Zahlung schon eingegangen ist. | Versandbestätigung | Rechnungs-PDF im Anhang (Welle 2) | E16 |
 | **ZAH-01** Test-Zahlung | Eigener Dienst `pay.localhost` mit gehosteter Bezahlseite und drei Knöpfen: Erfolg, Ablehnung, Abbruch. Schickt signierte Rückmeldungen (HMAC-SHA256 mit Zeitstempel). | Knopf „Rückmeldung verzögern“, um langsame Anbieter zu simulieren | Erstattung über die Testzahlung | E13 |
-| **ZAH-02** Austauschbare Zahlungs-Schnittstelle | Feste Adapter-Schnittstelle (`createSession`, `verifyWebhook`, `getStatus`, später `refund`). Signatur, Alter und Doppelte werden geprüft, Betrag und Währung müssen passen, Status nie aus dem Browser (Sicherheit 5.6, T-15). Unbezahlte Bestellungen werden nach einer Frist storniert (siehe Frage 2). | – | Stripe und weitere Anbieter (ab Welle 2) | E13 |
+| **ZAH-02** Austauschbare Zahlungs-Schnittstelle | Feste Adapter-Schnittstelle (`createSession`, `verifyWebhook`, `getStatus`, später `refund`). Signatur, Alter und Doppelte werden geprüft, Betrag und Währung müssen passen, Status nie aus dem Browser (Sicherheit 5.6, T-15). Unbezahlte Bestellungen werden nach 24 Stunden automatisch storniert, der Bestand wird freigegeben (Frist als Einstellung, Entscheidung Kristof). | – | Stripe und weitere Anbieter (ab Welle 2) | E13 |
 | **VER-01** Eigene Versandarten | Versandarten mit Name, Beschreibung, Preis, Versandkostenfreigrenze, Lieferland Deutschland. Mindestens eine aktiv. Abholung als eigene Art ohne Adresse. | Versandkosten nach Gewicht | Versanddienstleister-Anbindung, Etiketten | E13 |
 
 ### 4.5 Deutsches Recht
 
 | ID | Muss | Wäre gut | Vielleicht später | Etappe |
 |---|---|---|---|---|
-| **STR-01** Steuersätze und Steuerklassen | Sätze in einer Tabelle pro Land mit Gültigkeitsdatum (19 % und 7 %). Berechnung zeilenweise aus Bruttopreisen, kaufmännisch gerundet, Steuer auch auf Versandkosten nach dem Anteil der Waren. Tests zuerst. | – | Kleinunternehmerregelung (siehe Frage 4), andere Länder (Welle 4) | E8 |
+| **STR-01** Steuersätze und Steuerklassen | Sätze in einer Tabelle pro Land mit Gültigkeitsdatum (19 % und 7 %). Berechnung zeilenweise aus Bruttopreisen, kaufmännisch gerundet, Steuer auch auf Versandkosten nach dem Anteil der Waren. Tests zuerst. | – | Kleinunternehmerregelung (später, Entscheidung Kristof), andere Länder (Welle 4) | E8 |
 | **STR-02** Preisangaben | Bei jedem Preis „inkl. MwSt., zzgl. Versandkosten“, wobei „Versandkosten“ auf die Seite Versand und Zahlung verweist. | – | – | E22 |
 | **STR-03** Grundpreis | Füllmenge und Einheit (g, kg, ml, l, m, m², m³, Stück). Anzeige pro 1 kg, 1 l, 1 m usw. (bei bis zu 250 g oder ml auch pro 100 g oder ml möglich). Überall dort, wo der Preis steht. Tests zuerst. | – | Grundpreis aus Etikettenfoto (KI) | E10, E22 |
 | **STR-04** Wesentliche Merkmale | Je Produkt ein kurzes Feld „wesentliche Merkmale“ (Pflicht beim Veröffentlichen). Steht im Checkout direkt über dem Bestellknopf und in der Bestellung. | – | – | E10, E23 |
-| **STR-05** Rechtstexte-Seiten | Impressum, AGB, Widerrufsbelehrung, Muster-Widerrufsformular, Datenschutz, Versand und Zahlung, **Barrierefreiheitserklärung** (neu, Kapitel 6.3). Jede Änderung wird als Version gespeichert, die Bestellung merkt sich die Version. Impressum wird aus EIN-01 erzeugt. Warnung im Backoffice, solange ein Text fehlt. | Vorlagen mit Platzhaltern (siehe Frage 1) | Anbindung von Rechtstext-Diensten | E12, E20 |
+| **STR-05** Rechtstexte-Seiten | Impressum, AGB, Widerrufsbelehrung, Muster-Widerrufsformular, Datenschutz, Versand und Zahlung, **Barrierefreiheitserklärung** (neu, Kapitel 6.3). Jede Änderung wird als Version gespeichert, die Bestellung merkt sich die Version. Impressum wird aus EIN-01 erzeugt. Neue Shops bekommen Vorlagen mit Platzhaltern, die aus den Firmendaten gefüllt werden, mit dem deutlichen Hinweis, dass es keine geprüften Rechtstexte sind (Entscheidung Kristof). Warnung im Backoffice, solange ein Text fehlt oder ein Platzhalter offen ist. | – | Anbindung von Rechtstext-Diensten | E12, E20 |
 | **STR-06** Button-Lösung | Der Knopf heißt fest „zahlungspflichtig bestellen“, nicht änderbar. Test prüft die Beschriftung. | – | – | E23 |
 | **STR-07** Widerrufsbelehrung und -formular | In der Bestellbestätigung als Text (nicht nur als Link), dazu die AGB. | AGB zusätzlich als PDF | – | E16 |
 | **STR-08** Widerrufsbutton (§ 356a BGB) | Siehe eigene Anforderungen in Kapitel 6.1. ⚠ rechtlich neu, genau umsetzen | – | – | E17, E23 |
@@ -293,13 +293,15 @@ Zusätzlich gab es Hinweise auf weitere Meldungen aus 2025 und 2026, deren Inhal
 
 ---
 
-## 7. Fragen an Kristof
+## 7. Entscheidungen von Kristof (29.10.2026)
 
-Die Fragen stehen auch in `FRAGEN.md`. Bis zur Antwort gilt jeweils die Empfehlung, damit die Arbeit nicht stockt.
+| Frage | Antwort | Wirkung |
+|---|---|---|
+| Rechtstext-Vorlagen oder leere Seiten? | **Vorlagen** | Vorlagen mit Platzhaltern aus den Firmendaten, Hinweis „keine geprüften Rechtstexte“ (STR-05, E12) |
+| Wann verfällt eine unbezahlte Bestellung? | **24 Stunden** | Hintergrundjob storniert und gibt Bestand frei, Wert ist eine Einstellung (ZAH-02, E15) |
+| Bestand schon im Warenkorb reservieren? | **erst bei der Bestellung** | Warenkorb reserviert nichts, Hinweis bei Ausverkauf (WKC-01, LAG-01) |
+| Kleinunternehmerregelung in Welle 1? | **später** | bleibt im Datenmodell vorbereitet (STR-01) |
+| Stil des Standard-Designs? | **schlicht** | ruhiges, klares Design mit viel Weißraum (EDI-01, E22) |
+| Testshops? | **Teeladen und Modeladen** | Beispieldaten für Tests und Vorführung (BET-02, E1) |
 
-1. **Rechtstext-Vorlagen?** Ein neuer Shop kann leere Rechtstexte bekommen (der Händler muss alles selbst schreiben) oder Vorlagen mit Platzhaltern, die die Plattform aus den Firmendaten füllt. Vorlagen sind bequemer, aber keine geprüften Rechtstexte. Antwort: **Vorlagen** (Empfehlung) / **leer**
-2. **Wann verfällt eine unbezahlte Bestellung?** Bricht ein Kunde die Zahlung ab, bleibt die Bestellung offen und der Bestand reserviert. Nach dieser Frist wird sie automatisch storniert. Antwort: **1** / **24** (Empfehlung) / **72** (Stunden)
-3. **Bestand schon im Warenkorb reservieren?** Wird schon beim Hineinlegen reserviert, blockieren verlassene Warenkörbe Ware. Wird erst beim Bestellen reserviert, kann ein Produkt zwischen Warenkorb und Bestellung ausverkauft werden, der Kunde sieht dann einen Hinweis. Antwort: **Bestellung** (Empfehlung) / **Warenkorb**
-4. **Kleinunternehmerregelung schon in Welle 1?** Kleinunternehmer weisen keine Umsatzsteuer aus. Das Datenmodell kann es, die Funktion kostet etwa einen halben Lauf mehr. Antwort: **später** (Empfehlung) / **jetzt**
-5. **Welcher Stil für das Standard-Design der Storefront?** Das Design ist in Welle 1 fest, der Händler wählt nur Logo, Farbe und Schrift. Antwort: **schlicht** (Empfehlung) / **verspielt** / **edel**
-6. **Was verkaufen die zwei Testshops?** Die Beispieldaten machen Tests und Vorführungen anschaulicher. Geplant sind ein Teeladen und ein Modeladen. Antwort: **passt** / oder zwei andere Branchen nennen
+Es gibt keine offenen Fragen zu diesem Dokument.

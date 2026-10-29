@@ -14,6 +14,7 @@ Stand: 29.10.2026
 - Nachträge erledigt: Architektur an Datenmodell Kapitel 7 angepasst (Backup-Rolle, Gutschrift als Belegart, Systemrollen im Code, processed_event, Mandantenbegriff in der Marktanalyse). Aufbewahrungsfrist geprüft: gesetzlich 8 Jahre, Kristof hat 10 Jahre gewählt.
 - `docs/02_Featurekatalog.md`: alle Features aus den Featurelisten von ePages Now und ePages Store, ergänzt um neue Features, priorisiert nach Muss / Wäre gut / Vielleicht später und Wellen zugeordnet.
 - `docs/06_Welle1_Anforderungen.md` (29.10.2026): alle 63 Funktionen der Welle 1 in Muss / Wäre gut / Vielleicht später zerlegt, 21 Querschnitts-Anforderungen, Bau-Reihenfolge in 26 Etappen mit „Fertig, wenn“, Zielablauf für das Ende von Welle 1. Recherche: Widerrufsbutton nach § 356a BGB (9 Anforderungen), Barrierefreiheitserklärung als neue Pflichtseite, GPSR-Angaben, Argon2id-Werte und pnpm-Wartezeit bestätigt, neue Better-Auth-Meldungen ausgewertet (IPv6-Kürzung für die Anfragebremse).
+- Antworten vom 29.10.2026 eingearbeitet: Rechtstext-Vorlagen, unbezahlte Bestellungen verfallen nach 24 Stunden, Bestand erst bei Bestellung reservieren, Kleinunternehmerregelung später, schlichtes Design, Testshops Tee und Mode.
 
 ## Nächste Schritte (in dieser Reihenfolge)
 
