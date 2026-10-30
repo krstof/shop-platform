@@ -11,12 +11,18 @@ const steps = [
   ["Formatierung (Prettier)", ["pnpm", "-s", "format:check"]],
   ["Lint (ESLint)", ["pnpm", "-s", "lint"]],
   ["Typprüfung (TypeScript)", ["pnpm", "-s", "typecheck"]],
+  ["Bauen der Pakete", ["pnpm", "-s", "build"]],
   ["Tests der Werkzeuge", ["pnpm", "-s", "test:tools"]],
   ["Geheimnisse (gitleaks, T-06)", ["pnpm", "-s", "scan:secrets"]],
   ["Abhängigkeiten (OSV-Scanner, pnpm audit, T-07)", ["pnpm", "-s", "scan:deps"]],
 ];
 const docker = spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
-if (docker) steps.push(["Datenbank: Isolation und Rechte (T-01 bis T-05)", ["pnpm", "-s", "test:db"]]);
+if (docker) {
+  steps.push(["Datenbank: Isolation und Rechte (T-01 bis T-05)", ["pnpm", "-s", "test:db"]]);
+  steps.push(["Tests der Pakete mit Datenbank (u. a. T-19)", ["pnpm", "-s", "test:with-db"]]);
+} else {
+  steps.push(["Tests der Pakete ohne Datenbank (u. a. T-19)", ["pnpm", "-s", "test"]]);
+}
 
 /** @type {string[]} */
 const failed = [];
@@ -25,7 +31,7 @@ for (const [name, [cmd, ...args]] of steps) {
   const r = spawnSync(cmd ?? "", args, { cwd: root, stdio: "inherit" });
   if (r.status !== 0) failed.push(name);
 }
-if (!docker) console.log("\n⚠ Docker nicht erreichbar: Datenbanktest übersprungen (läuft in der CI).");
+if (!docker) console.log("\n⚠ Docker nicht erreichbar: Datenbanktests übersprungen (laufen in der CI).");
 console.log(
   failed.length === 0 ? "\n✔ Alle Prüfungen bestanden." : `\n✖ Fehlgeschlagen: ${failed.join(", ")}`,
 );

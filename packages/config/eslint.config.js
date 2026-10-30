@@ -33,4 +33,24 @@ export default tseslint.config(
       eqeqeq: ["error", "always"],
     },
   },
+  // Einziger Weg zur Datenbank ist withTenantTransaction aus dem Kernel (Architektur 5.3).
+  // Den Treiber direkt benutzen dürfen nur der Kernel und das Anmeldemodul (ADR-008).
+  {
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs"],
+    ignores: ["packages/kernel/**", "modules/identity/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            { name: "pg", message: "Datenbankzugriff nur über withTenantTransaction aus @shop/kernel." },
+            {
+              name: "postgres",
+              message: "Datenbankzugriff nur über withTenantTransaction aus @shop/kernel.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

@@ -23,3 +23,10 @@ Kommazahlen (Gleitkommazahlen) können viele Dezimalwerte nicht exakt darstellen
 - Summen stimmen immer auf den Cent, und Tests können exakte Werte prüfen.
 - Anzeigen wandeln Beträge erst beim Darstellen in „19,99 €“ um.
 - Grundpreise und Preise pro Einheit, die Bruchteile von Cent haben können, werden mit einer festgelegten Rundung nur für die Anzeige berechnet.
+
+## Nachtrag 30.10.2026: Umsetzung im Kernel (Etappe E2)
+
+- Im Code ist ein Betrag eine JavaScript-Zahl, die eine **sichere ganze Zahl** sein muss (höchstens 2^53 − 1, also gut 90 Billionen Euro). Damit passt sie ohne Umweg in JSON und in die API-Form `{ amount, currency }`. Jede Rechnung läuft intern mit `bigint`, und ein Ergebnis außerhalb des sicheren Bereichs wirft einen Fehler, statt still zu runden.
+- Alternative `bigint` überall (Bewertung 3): exakt bis in beliebige Größen, aber JSON kann `bigint` nicht direkt, und jede Oberfläche bräuchte eine Sonderbehandlung. Für einen Shop ist der sichere Bereich mehr als genug.
+- Rundung: `half_up` ist kaufmännisch (ab der Hälfte weg von null, auch bei negativen Beträgen), `half_even` rundet bei genau der Hälfte zur geraden Zahl. Die Regel kommt aus `kernel.currency.rounding_mode`.
+- Verteilen eines Betrags (zum Beispiel Versandkosten auf Steuersätze) nach dem Verfahren der größten Reste: Die Teile ergeben immer genau die Summe.

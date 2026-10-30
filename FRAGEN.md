@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(Keine offenen Fragen.)
+1. **Sprache der Fehlermeldungen in der API?** Jeder Fehler hat einen festen Code (zum Beispiel `not_found`) und einen Text für Menschen. Heute sind die Texte deutsch. Später nutzen auch Partner und Apps die API (Welle 4). Antwort: **Deutsch** (nur deutsch, Englisch erst mit Welle 4) oder **beide** (Text richtet sich nach der Sprache der Anfrage, schon ab Welle 1).
 
 ## Beantwortet
 

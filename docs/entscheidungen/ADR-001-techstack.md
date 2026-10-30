@@ -51,3 +51,16 @@ Alle Versionen sind mindestens 7 Tage alt (Sicherheit 5.11) und fest eingetragen
 | gitleaks / OSV-Scanner | 8.30.1 / 2.7.0 | Download mit Prüfsumme über `tools/ensure-tool.sh` |
 
 Container-Abbilder sind zusätzlich mit ihrer Prüfsumme (digest) eingetragen.
+
+## Nachtrag 30.10.2026: Bausteine des Kernels (Etappe E2)
+
+Neue Pakete, alle mindestens 7 Tage alt und fest eingetragen. Jedes wird gebraucht und ersetzt Eigenbau:
+
+| Paket | Version | Wofür |
+|---|---|---|
+| zod | 4.6.7 | Prüfschemas für Eingaben, Geld und Einstellungen |
+| pino | 10.4.0 | Technische Protokolle (Schwärzung kommt aus dem Kernel) |
+| kysely | 0.29.7 | Typsichere Abfragen und Transaktionen |
+| pg | 8.23.1 | PostgreSQL-Treiber unter Kysely (nur im Kernel und im Modul `identity` erlaubt, ESLint-Regel) |
+| vitest | 5.0.5 | Unit- und Integrationstests (nur zur Entwicklung) |
+| @types/pg | 8.23.1 | Typen für den Treiber (nur zur Entwicklung) |
