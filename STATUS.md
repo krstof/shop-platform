@@ -32,7 +32,7 @@ Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anford
 - Wöchentlicher Container-Scan mit Trivy und SBOM (Sicherheit 5.11, Architektur 8.2): eigener geplanter CI-Ablauf, spätestens mit E4, wenn es eigene Container-Abbilder gibt.
 
 - Mit E3: den Kernel-Test von der eigenen Demo-Tabelle auf das echte Schema umstellen.
-- Mit E4: Sprache der Fehlertexte nach Antwort auf Frage 1 umsetzen.
+- Mit E4: Fehlertexte auf Deutsch und Englisch (Entscheidung Kristof 30.10.2026). Schlank umsetzen: eine Texttabelle je Fehlercode im Kernel, Auswahl über die Kopfzeile `Accept-Language`, Deutsch als Standard.
 - Vor E6: vollständige Liste der Better-Auth-Sicherheitsmeldungen auf GitHub lesen (bei der Recherche nicht erreichbar) und Mindestversion 1.6.11 oder neuer fest eintragen.
 - Vor E15/E23: Angaben zur Button-Lösung (§ 312j BGB) gegen eine Quelle prüfen (Anforderungen 6.2).
 

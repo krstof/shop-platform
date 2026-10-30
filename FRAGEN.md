@@ -4,10 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Sprache der Fehlermeldungen in der API?** Jeder Fehler hat einen festen Code (zum Beispiel `not_found`) und einen Text für Menschen. Heute sind die Texte deutsch. Später nutzen auch Partner und Apps die API (Welle 4). Antwort: **Deutsch** (nur deutsch, Englisch erst mit Welle 4) oder **beide** (Text richtet sich nach der Sprache der Anfrage, schon ab Welle 1).
+(Keine offenen Fragen.)
 
 ## Beantwortet
 
+- **Sprache der Fehlermeldungen in der API?** Beide: Deutsch und Englisch schon ab Welle 1, die Sprache richtet sich nach der Anfrage. Bedingung: Es darf nicht viele Credits kosten. Umsetzung daher schlank: eine Texttabelle je Fehlercode in zwei Sprachen, Deutsch als Standard. (30.10.2026)
 - **Rechtstext-Vorlagen?** Vorlagen mit Platzhaltern, gefüllt aus den Firmendaten. (29.10.2026)
 - **Wann verfällt eine unbezahlte Bestellung?** Nach 24 Stunden automatisch storniert. (29.10.2026)
 - **Ware schon im Warenkorb reservieren?** Nein, erst bei der Bestellung. (29.10.2026)
