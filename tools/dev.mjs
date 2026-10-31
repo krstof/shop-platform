@@ -1,10 +1,11 @@
 // Startet die lokale Plattform mit einem Befehl (BET-02, Architektur 7.2).
-//   pnpm dev       .env anlegen oder ergänzen, Container starten, Objektspeicher einrichten
+//   pnpm dev       .env anlegen oder ergänzen, Container starten, Objektspeicher einrichten,
+//                  Datenbank anlegen und alle Migrationen ausführen (Dienst migrate)
 //   pnpm dev:down  Container stoppen (Daten bleiben erhalten)
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { setupEnv, parseEnv } from "./setup-env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -58,6 +59,33 @@ function initGarage(env) {
   garage(["bucket", "website", "--allow", env.get("SHOP_S3_BUCKET_PUBLIC") ?? ""]);
 }
 
+/** Baut den Dienst migrate (falls nötig) und führt ihn gegen die lokale Datenbank aus. @param {Map<string,string>} env */
+function migrate(env) {
+  if (!existsSync(resolve(root, "node_modules"))) {
+    execFileSync("pnpm", ["install", "--frozen-lockfile"], { cwd: root, stdio: "inherit" });
+  }
+  execFileSync("pnpm", ["-s", "--filter", "@shop/migrate...", "-r", "run", "build"], {
+    cwd: root,
+    stdio: "inherit",
+  });
+  const url = new URL(`postgres://127.0.0.1:${env.get("SHOP_DB_PORT") ?? "5432"}/`);
+  url.username = "postgres";
+  url.password = env.get("POSTGRES_SUPERUSER_PASSWORD") ?? "";
+  url.pathname = `/${env.get("SHOP_DB_NAME") ?? "shop"}`;
+  const vars = Object.fromEntries([...env].filter(([k]) => k.startsWith("SHOP_DB_PASSWORD_")));
+  execFileSync("node", [resolve(root, "apps/migrate/dist/main.js")], {
+    cwd: root,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      ...vars,
+      SHOP_ENV: env.get("SHOP_ENV") ?? "local",
+      SHOP_MIGRATE_DATABASE_URL: url.href,
+      SHOP_MIGRATE_CREATE_DATABASE: "true",
+    },
+  });
+}
+
 const command = process.argv[2] ?? "up";
 if (command === "down") {
   docker(["down"]);
@@ -71,6 +99,8 @@ if (command === "down") {
   docker(["restart", "caddy"], { quiet: true });
   console.log("Richte Objektspeicher ein …");
   initGarage(env);
+  console.log("Richte Datenbank ein …");
+  migrate(env);
   const d = env.get("SHOP_DOMAIN") ?? "localhost";
   console.log(`
 Die Plattform läuft:

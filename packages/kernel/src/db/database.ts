@@ -91,7 +91,8 @@ async function run<DB, T>(
   fn: (trx: Transaction<DB>) => Promise<T>,
 ): Promise<T> {
   const db = kyselyOf(database);
-  const builder = isolationLevel === undefined ? db.transaction() : db.transaction().setIsolationLevel(isolationLevel);
+  const builder =
+    isolationLevel === undefined ? db.transaction() : db.transaction().setIsolationLevel(isolationLevel);
   return builder.execute(async (trx) => {
     // Werte als Parameter, nie als Text in der Abfrage. `true` = nur für diese Transaktion.
     await sql`select set_config('app.tenant_id', ${tenantId}, true), set_config('app.actor_id', ${actorId}, true)`.execute(
@@ -141,7 +142,10 @@ export async function withPlatformTransaction<DB, T>(
  * aus dem Pool, ohne Transaktion und ohne vorher etwas zu setzen. Damit prüft der Test,
  * dass der Mandant nach dem Ende einer Transaktion nicht an der Verbindung hängen bleibt.
  */
-export async function readSessionSettingForTest(database: Database<unknown>, name: string): Promise<string | null> {
+export async function readSessionSettingForTest(
+  database: Database<unknown>,
+  name: string,
+): Promise<string | null> {
   const db = kyselyOf(database);
   const { rows } = await sql<{ v: string | null }>`select current_setting(${name}, true) as v`.execute(db);
   return rows[0]?.v ?? null;

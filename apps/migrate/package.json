@@ -1,0 +1,26 @@
+{
+  "name": "@shop/migrate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dienst migrate: richtet Rollen ein, führt alle Migrationen aus und beendet sich",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@shop/kernel": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@shop/config": "workspace:*",
+    "@types/node": "^24.19.2",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
+  }
+}

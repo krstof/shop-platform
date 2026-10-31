@@ -1,0 +1,8 @@
+# Befristete Ausnahmen für den OSV-Scanner (T-07, SIC-08). Jede Ausnahme braucht Grund und Ablaufdatum.
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2026-11-07T00:00:00Z
+reason = """minimatch 10.2.6 steckt nur im Prüfwerkzeug ESLint (nicht im laufenden Programm) und
+verarbeitet nur unsere eigenen Dateimuster. Die Korrektur gibt es erst in 11.0.1 vom 27.10.2026;
+die Lieferkettenregel erlaubt neue Versionen erst nach 7 Tagen. Ab 03.11.2026 aktualisieren."""

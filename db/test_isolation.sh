@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # test_isolation.sh
-# Legt eine frische Testdatenbank an, spielt db/schema_welle1.sql ein, erzeugt
-# zwei Shops (A und B) und führt db/test_isolation.sql als Anwendungsrolle
+# Erwartet eine frisch migrierte Testdatenbank (Dienst migrate, aufgerufen von
+# tools/db-test.sh), erzeugt zwei Shops (A und B) und führt db/test_isolation.sql als Anwendungsrolle
 # shop_app aus. Danach prüft es mit db/test_sicherheit.sql die Rechte aller Datenbankrollen,
 # versucht als shop_app echte Zugriffe auf Anmeldedaten und prüft lückenlose Nummern
 # bei gleichzeitigen Bestellungen.
@@ -25,11 +25,9 @@ admin() { $ADMIN_PSQL -p "$PGPORT" -X -q -v ON_ERROR_STOP=1 "$@"; }
 echo "== PostgreSQL-Version"
 admin -d postgres -tAc "SELECT version()"
 
-echo "== Frische Testdatenbank $TEST_DB"
-admin -d postgres -c "DROP DATABASE IF EXISTS $TEST_DB" -c "CREATE DATABASE $TEST_DB"
-
-echo "== Schema einspielen"
-admin -d "$TEST_DB" -o /dev/null -f "$HERE/schema_welle1.sql"
+echo "== Migrationsstand der Testdatenbank $TEST_DB"
+N_MIG="$(admin -d "$TEST_DB" -tAc "SELECT count(*) FROM shop_migration.checksum")"
+[ "$N_MIG" -ge 20 ] && echo "OK   $N_MIG Migrationen ausgeführt" || { echo "FEHLGESCHLAGEN: Datenbank ist nicht migriert"; exit 1; }
 
 # Nur für diesen Test: zufälliges Passwort für shop_app, damit wir uns echt als shop_app anmelden
 APP_PW="$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"

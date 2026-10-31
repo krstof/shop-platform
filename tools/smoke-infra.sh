@@ -51,6 +51,10 @@ check "media.$D: Schreiben ist verboten (405)" '[[ "$("${C[@]}" -o /dev/null -w 
 echo "== Erreichbarkeit"
 check "Mailpit ist nicht direkt vom Rechner erreichbar" '! curl --noproxy "*" -s --max-time 3 -o /dev/null http://127.0.0.1:8025/'
 check "Datenbank lauscht nur auf 127.0.0.1" '[[ "$(docker port shop-platform-postgres-1 5432)" == 127.0.0.1:* ]]'
+PSQL=(docker exec -e PGPASSWORD shop-platform-postgres-1 psql -h 127.0.0.1 -X -q -tA -d "${SHOP_DB_NAME:-shop}")
+check "Migrationen sind ausgeführt (mindestens 20)" '[[ "$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT count(*) FROM shop_migration.checksum")" -ge 20 ]]'
+check "shop_app meldet sich mit dem Passwort aus .env an" '[[ "$(PGPASSWORD="$SHOP_DB_PASSWORD_APP" "${PSQL[@]}" -U shop_app -c "SELECT current_user")" == shop_app ]]'
+check "shop_app ohne richtiges Passwort: abgewiesen" '! PGPASSWORD="falsch-$RANDOM" "${PSQL[@]}" -U shop_app -c "SELECT 1" >/dev/null 2>&1'
 
 echo "== Härtung der Container (Sicherheit 5.16)"
 for c in $(docker ps --filter label=com.docker.compose.project=shop-platform --format '{{.Names}}'); do

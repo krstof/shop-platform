@@ -3,6 +3,8 @@
 // gesetzt und SHOP_REQUIRE_DB_TESTS=true sorgt dafür, dass der Test nicht still übersprungen wird.
 import { randomBytes } from "node:crypto";
 import { sql, type Generated } from "kysely";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runWithContext } from "../context.js";
@@ -15,10 +17,16 @@ import {
   withTenantTransaction,
   type Database,
 } from "./database.js";
+import { runMigrations } from "./migrate.js";
 
+// Eine echte Mandantentabelle aus dem Katalog (Migration des Moduls catalog): RLS mit FORCE,
+// Regel über app.tenant_id, created_by aus app.actor_id. Nur die Spalten, die der Test braucht.
+const TABLE = "catalog.manufacturer";
 interface TestDB {
-  "demo.item": { id: Generated<string>; tenant_id: string; name: string; created_by: Generated<string | null> };
+  [TABLE]: { id: Generated<string>; tenant_id: string; name: string; created_by: Generated<string | null> };
 }
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
 const adminUrl = process.env["SHOP_TEST_DATABASE_URL"];
 const required = process.env["SHOP_REQUIRE_DB_TESTS"] === "true";
@@ -32,10 +40,7 @@ const TENANT_B = uuidv7();
 const ACTOR = uuidv7();
 
 describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)", () => {
-  const suffix = randomBytes(4).toString("hex");
-  const dbName = `kernel_test_${suffix}`;
-  const owner = `kt_owner_${suffix}`;
-  const app = `kt_app_${suffix}`;
+  const dbName = `kernel_test_${randomBytes(4).toString("hex")}`;
   const appPassword = randomBytes(24).toString("hex");
   let admin: pg.Client;
   let database: Database<TestDB>;
@@ -45,68 +50,76 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
     admin = new pg.Client({ connectionString: adminUrl });
     await admin.connect();
     await admin.query(`CREATE DATABASE ${dbName}`);
-    await admin.query(`CREATE ROLE ${owner} NOLOGIN`);
-    await admin.query(`CREATE ROLE ${app} LOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT PASSWORD '${appPassword}'`);
-
     const setupUrl = new URL(adminUrl ?? "");
     setupUrl.pathname = `/${dbName}`;
+
+    // Echtes Schema aller Module über den Migrationslauf, getestet wird als shop_app.
+    await runMigrations({
+      connectionString: setupUrl.href,
+      rootDir: repoRoot,
+      rolePasswords: { shop_app: appPassword },
+    });
+
+    // Zwei Shops anlegen (Plattform-Tabellen, Verwaltungsrolle).
     const setup = new pg.Client({ connectionString: setupUrl.href });
     await setup.connect();
-    // Gleiches Muster wie db/schema_welle1.sql: Policy über app.tenant_id, RLS mit FORCE.
-    await setup.query(`
-      CREATE SCHEMA kernel AUTHORIZATION ${owner};
-      CREATE SCHEMA demo AUTHORIZATION ${owner};
-      SET ROLE ${owner};
-      CREATE FUNCTION kernel.current_tenant_id() RETURNS uuid LANGUAGE sql STABLE
-        AS $$ SELECT nullif(current_setting('app.tenant_id', true), '')::uuid $$;
-      CREATE FUNCTION kernel.current_actor_id() RETURNS uuid LANGUAGE sql STABLE
-        AS $$ SELECT nullif(current_setting('app.actor_id', true), '')::uuid $$;
-      CREATE TABLE demo.item (
-        tenant_id uuid NOT NULL,
-        id uuid NOT NULL DEFAULT gen_random_uuid(),
-        name text NOT NULL,
-        created_by uuid DEFAULT kernel.current_actor_id(),
-        PRIMARY KEY (tenant_id, id)
+    for (const [id, handle] of [
+      [TENANT_A, "teeladen-a"],
+      [TENANT_B, "modeladen-b"],
+    ] as const) {
+      await setup.query(
+        `WITH m AS (INSERT INTO platform.merchant (name) VALUES ($2) RETURNING id)
+         INSERT INTO platform.tenant (id, merchant_id, plan_id, handle, name, status)
+         SELECT $1, m.id, p.id, $2, $2, 'active' FROM m, platform.plan p WHERE p.is_default`,
+        [id, handle],
       );
-      ALTER TABLE demo.item ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE demo.item FORCE ROW LEVEL SECURITY;
-      CREATE POLICY tenant_isolation ON demo.item
-        USING (tenant_id = kernel.current_tenant_id())
-        WITH CHECK (tenant_id = kernel.current_tenant_id());
-      GRANT USAGE ON SCHEMA kernel, demo TO ${app};
-      GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA kernel TO ${app};
-      GRANT SELECT, INSERT, UPDATE, DELETE ON demo.item TO ${app};
-      RESET ROLE;
-    `);
+    }
     await setup.end();
 
-    const u = new URL(adminUrl ?? "");
-    u.username = app;
+    const u = new URL(setupUrl.href);
+    u.username = "shop_app";
     u.password = appPassword;
-    u.pathname = `/${dbName}`;
     appUrl = u.href;
-    database = connectDatabase<TestDB>({ connectionString: appUrl, maxConnections: 3, applicationName: "kernel-test" });
+    database = connectDatabase<TestDB>({
+      connectionString: appUrl,
+      maxConnections: 3,
+      applicationName: "kernel-test",
+    });
 
-    await withTenantTransaction(database, (trx) => trx.insertInto("demo.item").values([{ tenant_id: TENANT_A, name: "Tee A" }]).execute(), {
-      tenantId: TENANT_A,
-    });
-    await withTenantTransaction(database, (trx) => trx.insertInto("demo.item").values([{ tenant_id: TENANT_B, name: "Hemd B" }]).execute(), {
-      tenantId: TENANT_B,
-    });
-  });
+    await withTenantTransaction(
+      database,
+      (trx) =>
+        trx
+          .insertInto(TABLE)
+          .values([{ tenant_id: TENANT_A, name: "Tee A" }])
+          .execute(),
+      {
+        tenantId: TENANT_A,
+      },
+    );
+    await withTenantTransaction(
+      database,
+      (trx) =>
+        trx
+          .insertInto(TABLE)
+          .values([{ tenant_id: TENANT_B, name: "Hemd B" }])
+          .execute(),
+      {
+        tenantId: TENANT_B,
+      },
+    );
+  }, 60_000);
 
   afterAll(async () => {
     await database?.destroy();
     if (admin !== undefined) {
       await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
-      await admin.query(`DROP ROLE IF EXISTS ${app}`);
-      await admin.query(`DROP ROLE IF EXISTS ${owner}`);
       await admin.end();
     }
   });
 
   const names = (tenantId: string) =>
-    withTenantTransaction(database, (trx) => trx.selectFrom("demo.item").select("name").orderBy("name").execute(), {
+    withTenantTransaction(database, (trx) => trx.selectFrom(TABLE).select("name").orderBy("name").execute(), {
       tenantId,
     }).then((rows) => rows.map((r) => r.name));
 
@@ -117,20 +130,27 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
   });
 
   it("ohne Mandant liefert die Datenbank keine Zeilen (Regel schlägt geschlossen fehl)", async () => {
-    const rows = await withPlatformTransaction(database, (trx) => trx.selectFrom("demo.item").selectAll().execute());
+    const rows = await withPlatformTransaction(database, (trx) =>
+      trx.selectFrom(TABLE).selectAll().execute(),
+    );
     expect(rows).toEqual([]);
   });
 
   it("verbietet das Schreiben in einen fremden Shop", async () => {
     await expect(
-      withTenantTransaction(database, (trx) => trx.insertInto("demo.item").values({ tenant_id: TENANT_B, name: "Einbruch" }).execute(), {
-        tenantId: TENANT_A,
-      }),
+      withTenantTransaction(
+        database,
+        (trx) => trx.insertInto(TABLE).values({ tenant_id: TENANT_B, name: "Einbruch" }).execute(),
+        {
+          tenantId: TENANT_A,
+        },
+      ),
     ).rejects.toThrow(/row-level security/);
     // Auch Ändern fremder Zeilen trifft nichts.
     const res = await withTenantTransaction(
       database,
-      (trx) => trx.updateTable("demo.item").set({ name: "geändert" }).where("tenant_id", "=", TENANT_B).executeTakeFirst(),
+      (trx) =>
+        trx.updateTable(TABLE).set({ name: "geändert" }).where("tenant_id", "=", TENANT_B).executeTakeFirst(),
       { tenantId: TENANT_A },
     );
     expect(res.numUpdatedRows).toBe(0n);
@@ -142,7 +162,7 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
       withTenantTransaction(
         database,
         async (trx) => {
-          await trx.insertInto("demo.item").values({ tenant_id: TENANT_A, name: "Halbe Sache" }).execute();
+          await trx.insertInto(TABLE).values({ tenant_id: TENANT_A, name: "Halbe Sache" }).execute();
           throw new Error("Abbruch");
         },
         { tenantId: TENANT_A },
@@ -159,7 +179,9 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
       expect(await readSessionSettingForTest(single, "app.tenant_id")).toBeOneOf(["", null]);
       expect(await readSessionSettingForTest(single, "app.actor_id")).toBeOneOf(["", null]);
       // Und eine Transaktion ohne Mandant sieht keine Zeilen.
-      const rows = await withPlatformTransaction(single, (trx) => trx.selectFrom("demo.item").selectAll().execute());
+      const rows = await withPlatformTransaction(single, (trx) =>
+        trx.selectFrom(TABLE).selectAll().execute(),
+      );
       expect(rows).toEqual([]);
     } finally {
       await single.destroy();
@@ -181,7 +203,7 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
       );
       await new Promise((r) => setTimeout(r, 200));
       expect(errors).toEqual(["57P01"]);
-      const rows = await withTenantTransaction(db, (trx) => trx.selectFrom("demo.item").select("name").execute(), {
+      const rows = await withTenantTransaction(db, (trx) => trx.selectFrom(TABLE).select("name").execute(), {
         tenantId: TENANT_A,
       });
       expect(rows.map((r) => r.name)).toContain("Tee A");
@@ -193,15 +215,21 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
   it("setzt den Urheber für created_by", async () => {
     const row = await withTenantTransaction(
       database,
-      (trx) => trx.insertInto("demo.item").values({ tenant_id: TENANT_A, name: "Mit Urheber" }).returning("created_by").executeTakeFirstOrThrow(),
+      (trx) =>
+        trx
+          .insertInto(TABLE)
+          .values({ tenant_id: TENANT_A, name: "Mit Urheber" })
+          .returning("created_by")
+          .executeTakeFirstOrThrow(),
       { tenantId: TENANT_A, actorId: ACTOR },
     );
     expect(row.created_by).toBe(ACTOR);
   });
 
   it("nimmt Mandant und Urheber aus dem Anfrage-Kontext", async () => {
-    const result = await runWithContext({ requestId: "r1", tenantId: TENANT_B, actor: { type: "user", id: ACTOR } }, () =>
-      withTenantTransaction(database, (trx) => trx.selectFrom("demo.item").select("name").execute()),
+    const result = await runWithContext(
+      { requestId: "r1", tenantId: TENANT_B, actor: { type: "user", id: ACTOR } },
+      () => withTenantTransaction(database, (trx) => trx.selectFrom(TABLE).select("name").execute()),
     );
     expect(result.map((r) => r.name)).toEqual(["Hemd B"]);
   });
@@ -213,7 +241,7 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
         database,
         async (trx) => {
           await sql`select pg_sleep(0.01)`.execute(trx);
-          const rows = await trx.selectFrom("demo.item").select("tenant_id").distinct().execute();
+          const rows = await trx.selectFrom(TABLE).select("tenant_id").distinct().execute();
           return { tenantId, seen: rows.map((r) => r.tenant_id) };
         },
         { tenantId },
@@ -229,16 +257,18 @@ describe("withTenantTransaction ohne Datenbankkontakt", () => {
   afterAll(() => unreachable.destroy());
 
   it("verweigert den Zugriff ohne Mandant, bevor die Datenbank gefragt wird", async () => {
-    await expect(withTenantTransaction(unreachable, async () => 1)).rejects.toBeInstanceOf(MissingTenantError);
+    await expect(withTenantTransaction(unreachable, async () => 1)).rejects.toBeInstanceOf(
+      MissingTenantError,
+    );
     await expect(withTenantTransaction(unreachable, async () => 1, { tenantId: "" })).rejects.toBeInstanceOf(
       MissingTenantError,
     );
   });
 
   it("lehnt Mandanten und Urheber ab, die keine UUID sind (auch SQL-Injection-Versuche)", async () => {
-    await expect(withTenantTransaction(unreachable, async () => 1, { tenantId: "' OR 1=1 --" })).rejects.toThrow(
-      "tenantId muss eine UUID sein",
-    );
+    await expect(
+      withTenantTransaction(unreachable, async () => 1, { tenantId: "' OR 1=1 --" }),
+    ).rejects.toThrow("tenantId muss eine UUID sein");
     await expect(
       withTenantTransaction(unreachable, async () => 1, { tenantId: TENANT_A, actorId: "admin" }),
     ).rejects.toThrow("actorId muss eine UUID sein");
@@ -247,6 +277,8 @@ describe("withTenantTransaction ohne Datenbankkontakt", () => {
   it("ist nach dem Schließen nicht mehr benutzbar", async () => {
     const db = connectDatabase<TestDB>({ connectionString: "postgres://niemand@127.0.0.1:1/keine" });
     await db.destroy();
-    await expect(withTenantTransaction(db, async () => 1, { tenantId: TENANT_A })).rejects.toThrow(/geschlossen/);
+    await expect(withTenantTransaction(db, async () => 1, { tenantId: TENANT_A })).rejects.toThrow(
+      /geschlossen/,
+    );
   });
 });

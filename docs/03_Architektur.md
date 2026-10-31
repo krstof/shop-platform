@@ -508,6 +508,17 @@ shop-platform/
 
 Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen Modulen ein und führt sie nach Zeitstempel geordnet aus.
 
+**Stand Etappe E3, Teil 1 (31.10.2026):** Umgesetzt in `packages/kernel/src/db/migrate.ts` (Kysely-Migrator mit eigenem Lieferanten für SQL-Dateien) und dem Dienst `apps/migrate`. Regeln:
+
+- `db/roles.sql` läuft bei jedem Start zuerst (Rollen, `btree_gist`, Rechte auf der Datenbank). Danach setzt der Dienst die Passwörter der Anmelderollen aus der `.env`, und zwar als SCRAM-Prüfwert: Das Passwort selbst erreicht die Datenbank nie.
+- Migrationen liegen in `packages/kernel/migrations/` und `modules/<modul>/migrations/`, Name `JJJJMMTTTHHMMSS_beschreibung.sql`, eindeutig über alle Module. Jede Migration läuft als `shop_owner`.
+- Verboten in Migrationen (wird beim Laden geprüft): psql-Befehle, `SET ROLE`, Transaktionsbefehle, Rollen und Passwörter.
+- Alle neuen Migrationen laufen in **einer** Transaktion: Scheitert eine, wird nichts übernommen. Eine Sperre sorgt dafür, dass gleichzeitige Läufe nacheinander arbeiten.
+- Ausgeführte Migrationen sind unveränderlich: Der Dienst speichert eine Prüfsumme (SHA-256) und bricht ab, wenn sich eine Datei nachträglich ändert. Es gibt nur Vorwärts-Migrationen.
+- Buchführung im Schema `shop_migration`, für keine Anwendungsrolle erreichbar.
+- Achtung für spätere Migrationen: `GRANT ... ON ALL TABLES IN SCHEMA` gilt nur für Tabellen, die es schon gibt. Neue Tabellen brauchen ihre eigenen Rechte in derselben Migration.
+- Offen für Teil 2: `module.json` je Modul, dependency-cruiser, kysely-codegen je Modul, Testcontainers statt `tools/db-test.sh`, eigenes Container-Abbild für `migrate`.
+
 ### 6.2 Benennungsregeln
 
 | Bereich | Regel | Beispiel |

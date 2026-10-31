@@ -1967,9 +1967,9 @@ Die Lösung ist: Die Datenbank trennt Belegdaten von reinen Personendaten. Perso
 
 | Datei | Inhalt |
 |---|---|
-| `db/schema_welle1.sql` | Rollen, 20 Schemas, 112 Tabellen mit allen Prüfregeln, Schlüsseln und Indizes, RLS mit `ENABLE` und `FORCE` für 93 Tabellen, Trigger, die Funktionen `next_number` und `lowest_price`, Referenzdaten (Währungen, Länder, Steuerklassen, deutsche Steuersätze, Standarddesign, Standardtarif) und alle Rechte. Die Datei enthält keine Passwörter. |
+| ~~`db/schema_welle1.sql`~~ (seit 31.10.2026 aufgeteilt in `db/roles.sql` und je eine Migration pro Modul, siehe Architektur 6.1; Ergebnis mit `pg_dump` geprüft: identische Struktur, Rechte und Referenzdaten) | Rollen, 20 Schemas, 112 Tabellen mit allen Prüfregeln, Schlüsseln und Indizes, RLS mit `ENABLE` und `FORCE` für 93 Tabellen, Trigger, die Funktionen `next_number` und `lowest_price`, Referenzdaten (Währungen, Länder, Steuerklassen, deutsche Steuersätze, Standarddesign, Standardtarif) und alle Rechte. Die Datei enthält keine Passwörter. |
 | `db/test_isolation.sql` | der eigentliche Test, läuft angemeldet als `shop_app` |
-| `db/test_isolation.sh` | legt eine frische Datenbank an, spielt das Schema ein, legt als `shop_platform` zwei Shops an, startet den Test und prüft danach die lückenlosen Nummern mit gleichzeitigen Verbindungen |
+| `db/test_isolation.sh` | prüft eine frisch migrierte Datenbank (seit E3 eingerichtet vom Dienst migrate über `tools/db-test.sh`), legt als `shop_platform` zwei Shops an, startet den Test und prüft danach die lückenlosen Nummern mit gleichzeitigen Verbindungen |
 
 Claude führt den Test aus. Kristof muss dafür nichts tun. In Welle 1 wird der Test in die automatischen Tests mit Testcontainers übernommen (Architektur 8.1).
 

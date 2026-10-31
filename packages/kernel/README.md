@@ -11,6 +11,8 @@ Gemeinsamer Werkzeugkasten aller Module (Architektur 3.2). Der Kernel kennt kein
 | `config.ts` | Prüfung der Umgebungsvariablen beim Start, Geheimnisse mindestens 32 Zeichen, kein Platzhalter, TLS zur Datenbank außerhalb von `local`; Meldungen nennen nur Namen, nie Werte | Sicherheit 5.10 und 5.13 |
 | `logger.ts`, `ip.ts` | pino mit zentraler Schwärzung von Passwörtern, Tokens, Cookies, Zahlungsdaten in jeder Tiefe, in Freitext und in Kind-Protokollen; IP-Adressen gekürzt (IPv4 /24, IPv6 /48, Anfragebremse /64); `requestId` und `tenantId` in jeder Zeile | Sicherheit 5.12, Q-16, T-19 |
 | `context.ts` | Anfrage-Kontext (Mandant, Akteur, requestId) über `AsyncLocalStorage` | Architektur 5.3 |
+| `db/migrate.ts` (Unterpfad `@shop/kernel/migrate`) | Migrationslauf: `db/roles.sql`, SCRAM-Passwörter, Prüfsummen, alle Migrationen in einer Transaktion als `shop_owner`, Sperre gegen gleichzeitige Läufe. Nur für den Dienst `apps/migrate` | Architektur 6.1, BET-01 |
+| `migrations/` | Migrationen des Kernels (Schema `kernel`) | Architektur 6.1 |
 | `db/database.ts` | `connectDatabase`, `withTenantTransaction`, `withPlatformTransaction`. Kysely und Pool sind eingeschlossen; ohne Mandant wird die Datenbank gar nicht erst gefragt | Architektur 5.3, PLA-03 |
 
 Tests: `pnpm --filter @shop/kernel test`. Die Datenbanktests brauchen `SHOP_TEST_DATABASE_URL`;

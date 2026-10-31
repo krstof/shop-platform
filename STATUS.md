@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 30.10.2026
+Stand: 31.10.2026
 
 ## Erledigt
 
@@ -19,11 +19,13 @@ Stand: 30.10.2026
 
 - **Etappe E2 Kernel (30.10.2026):** Paket `packages/kernel` mit Geld-Typ (ganze Cent, nur gleiche Währung, Rundung nur ausdrücklich, Verteilen ohne Rundungsverlust, Anzeige „19,99 €“), Steuer in Basispunkten (Brutto/Netto, Netto + Steuer = Brutto exakt), UUIDv7 nach RFC 9562, Fehler im Format „Problem Details“ (unerwartete Fehler ohne Einzelheiten), Prüfung der Einstellungen beim Start (Meldungen ohne Werte, TLS-Pflicht außerhalb von `local`), Protokoll mit Schwärzung und gekürzten IP-Adressen, Anfrage-Kontext und `withTenantTransaction` (Pool eingeschlossen, ohne Mandant kein Datenbankkontakt). Neue ESLint-Regel: Datenbanktreiber `pg` nur im Kernel und in `identity`. Getestet: 94 Tests grün, davon 12 gegen eine echte PostgreSQL-Datenbank (Mandantentrennung, Rückrollen, kein Hängenbleiben des Mandanten an der Verbindung, 30 parallele Transaktionen, Wiederverbinden nach Verbindungsabbruch). **T-19 grün.** Gegenproben: Abgeschaltete Schwärzung und ein Mandant „für die ganze Sitzung“ statt „nur für die Transaktion“ werden von den Tests erkannt. Fund unterwegs: Ohne Fehler-Empfänger am Verbindungspool kann ein Datenbank-Neustart den ganzen Dienst abstürzen lassen; ist jetzt abgefangen und getestet. CI: neuer Schritt `pnpm test:with-db` mit Wegwerf-Datenbank PostgreSQL 18.6. Lokal liefen die Datenbanktests auf PostgreSQL 16 (kein Docker in der Cloud-Sitzung). Der CI-Lauf auf GitHub ist mit allen fünf Jobs grün, inklusive der Datenbanktests auf PostgreSQL 18.6.
 
+- **Etappe E3 Migrationen, Teil 1 (31.10.2026):** `db/schema_welle1.sql` aufgeteilt in `db/roles.sql` (Rollen, Erweiterung, Datenbankrechte) und 20 Migrationen, je eine pro Modul (`packages/kernel/migrations`, `modules/<modul>/migrations`), jeweils mit eigenen Referenzdaten und Rechten. Die alte Datei ist gelöscht. Gegenprobe mit `pg_dump`: Struktur, Rechte und Referenzdaten sind Zeile für Zeile identisch mit der alten Datei. Neuer Migrationslauf im Kernel (`@shop/kernel/migrate`) und neuer Dienst `apps/migrate`: alle neuen Migrationen in einer Transaktion als `shop_owner`, Sperre gegen gleichzeitige Läufe, Prüfsumme gegen nachträglich geänderte Migrationen, Prüfregeln für Dateien (keine psql-Befehle, kein `SET ROLE`, keine Transaktionsbefehle, keine Rollen oder Passwörter), Passwörter der Anmelderollen aus der `.env` als SCRAM-Prüfwert. `pnpm dev` legt jetzt auch die Datenbank `shop` an und migriert sie; fünf neue Rollen-Passwörter in `.env.example`. `tools/db-test.sh` richtet die Testdatenbank mit dem echten Dienst ein, statt die SQL-Datei einzuspielen. Kernel-Test läuft jetzt auf dem echten Schema (`catalog.manufacturer`) statt auf einer Demo-Tabelle. Getestet: 122 Pakettests grün (davon 28 neu für den Migrationslauf: Fehler rollt alles zurück, geänderte oder fehlende Migration bricht ab, drei gleichzeitige Läufe führen jede Migration genau einmal aus, 20 Schemas / 112 Tabellen / 93 mit RLS, alle Objekte gehören `shop_owner`, Anmeldung mit gesetztem Passwort), Isolations- und Rechtetest mit 23 Prüfungen grün (neu: `shop_app` erreicht die Buchführung der Migrationen nicht), `pnpm dev` zweimal hintereinander (zweiter Lauf ändert nichts), Infrastruktur-Rauchtest mit 3 neuen Prüfungen grün. Gegenprobe: Nimmt man einer Tabelle die Mandantentrennung weg, schlagen 9 Tests fehl. Diesmal lief Docker auch in der Cloud-Sitzung, alle Datenbanktests also auf PostgreSQL 18.6. Unterwegs gefunden: neue mittlere Sicherheitsmeldung für `minimatch` (nur im Prüfwerkzeug ESLint, nicht im Programm); die Korrektur ist erst 4 Tage alt, daher bis 07.11.2026 befristet ausgenommen (`osv-scanner.toml`).
+
 ## Nächste Schritte (in dieser Reihenfolge)
 
 Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anforderungen.md` Kapitel 5. Jeder Lauf nimmt die nächste offene Etappe.
 
-1. **E3 Migrationen** (⚠ eventuell zwei Läufe): `db/schema_welle1.sql` auf die Module aufteilen, `migrate`-Dienst, Isolations- und Rechtetest in Testcontainers (ersetzt `tools/db-test.sh`), kysely-codegen je Modul, dependency-cruiser.
+1. **E3 Migrationen, Teil 2:** `module.json` und `MODULE.md` je Modul, dependency-cruiser-Regeln aus den `module.json`, kysely-codegen je Modul (`db.generated.ts`), Isolations- und Rechtetest in Testcontainers (ersetzt `tools/db-test.sh` und `tools/test-with-db.sh`), `db/global-tables.yaml` statt der Liste im Test.
 2. **E4 API-Gerüst** (siehe `docs/06_Welle1_Anforderungen.md` Kapitel 5). Nutzt `toProblemDetails`, `runWithContext` und `createLogger` aus dem Kernel.
 3. **E5 Outbox und Hintergrundjobs.**
 
@@ -31,7 +33,9 @@ Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anford
 
 - Wöchentlicher Container-Scan mit Trivy und SBOM (Sicherheit 5.11, Architektur 8.2): eigener geplanter CI-Ablauf, spätestens mit E4, wenn es eigene Container-Abbilder gibt.
 
-- Mit E3: den Kernel-Test von der eigenen Demo-Tabelle auf das echte Schema umstellen.
+- Ab 03.11.2026: `minimatch` über ESLint-Update oder Override auf 11.0.1 oder neuer heben, dann die Ausnahme in `osv-scanner.toml` löschen (läuft am 07.11.2026 ab, danach wird die CI rot).
+- Mit E4 oder E25: eigenes Container-Abbild für den Dienst `migrate` in Docker Compose (jetzt läuft er bei `pnpm dev` direkt auf dem Rechner).
+- Hinweis: `turbo` startet in der Cloud-Sitzung keine Unterprozesse („Exec format error“); lokal deshalb `pnpm -r run …` benutzt. In der CI läuft `turbo` normal.
 - Mit E4: Fehlertexte auf Deutsch und Englisch (Entscheidung Kristof 30.10.2026). Schlank umsetzen: eine Texttabelle je Fehlercode im Kernel, Auswahl über die Kopfzeile `Accept-Language`, Deutsch als Standard.
 - Vor E6: vollständige Liste der Better-Auth-Sicherheitsmeldungen auf GitHub lesen (bei der Recherche nicht erreichbar) und Mindestversion 1.6.11 oder neuer fest eintragen.
 - Vor E15/E23: Angaben zur Button-Lösung (§ 312j BGB) gegen eine Quelle prüfen (Anforderungen 6.2).

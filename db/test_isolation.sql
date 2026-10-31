@@ -263,13 +263,17 @@ SELECT pg_temp.ok(count(*) = 0, 'Tabellen ohne tenant_id stehen alle auf der Lis
 FROM (
   SELECT c.oid::regclass::text AS t
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-   WHERE c.relkind = 'r' AND n.nspname NOT IN ('platform','pg_catalog','information_schema','public')
+   WHERE c.relkind = 'r' AND n.nspname NOT IN ('platform','pg_catalog','information_schema','public','shop_migration')
      AND n.nspname NOT LIKE 'pg_%'
      AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped)
      AND c.oid::regclass::text NOT IN ('kernel.currency','kernel.country','identity."user"','identity.account',
            'identity.session','identity.verification','identity.two_factor','identity.passkey',
            'tax.tax_class','tax.tax_rate','storefront.theme')
 ) v;
+
+-- Buchführung des Migrationslaufs ist für die Anwendung unerreichbar
+SELECT pg_temp.ok(NOT has_schema_privilege('shop_migration', 'USAGE'),
+                  'shop_app hat keinen Zugriff auf die Buchführung der Migrationen (shop_migration)');
 
 -- Kein Fremdschlüssel über Modulgrenzen, außer auf platform.tenant
 SELECT pg_temp.ok(count(*) = 0, 'Keine Fremdschlüssel über Modulgrenzen außer auf platform.tenant (Verstöße: '

@@ -9,10 +9,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./migrate": {
+      "types": "./dist/db/migrate.d.ts",
+      "default": "./dist/db/migrate.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "migrations"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

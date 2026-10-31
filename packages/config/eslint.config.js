@@ -37,7 +37,8 @@ export default tseslint.config(
   // Den Treiber direkt benutzen dürfen nur der Kernel und das Anmeldemodul (ADR-008).
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs"],
-    ignores: ["packages/kernel/**", "modules/identity/**"],
+    // Der Test des Dienstes migrate legt seine Wegwerf-Datenbank selbst an.
+    ignores: ["packages/kernel/**", "modules/identity/**", "apps/migrate/src/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
