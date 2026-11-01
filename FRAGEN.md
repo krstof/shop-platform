@@ -4,10 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Testcontainers jetzt oder mit E4?** Der Plan sah vor, die Datenbanktests auf das Werkzeug Testcontainers umzustellen. Die heutigen Skripte prüfen schon genau dasselbe (Wegwerf-Datenbank, alle Tests grün); Testcontainers lohnt sich erst, wenn mit E4 die ersten Module eigene Datenbanktests bekommen. Mein Vorschlag: mit E4 nebenbei, das spart einen eigenen Lauf. Antwort: **jetzt** oder **E4**.
+(Keine offenen Fragen.)
 
 ## Beantwortet
 
+- **Testcontainers jetzt oder mit E4?** Jetzt, als eigene Etappe vor E4. (01.11.2026)
 - **Sprache der Fehlermeldungen in der API?** Beide: Deutsch und Englisch schon ab Welle 1, die Sprache richtet sich nach der Anfrage. Bedingung: Es darf nicht viele Credits kosten. Umsetzung daher schlank: eine Texttabelle je Fehlercode in zwei Sprachen, Deutsch als Standard. (30.10.2026)
 - **Rechtstext-Vorlagen?** Vorlagen mit Platzhaltern, gefüllt aus den Firmendaten. (29.10.2026)
 - **Wann verfällt eine unbezahlte Bestellung?** Nach 24 Stunden automatisch storniert. (29.10.2026)

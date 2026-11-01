@@ -27,9 +27,9 @@ Stand: 01.11.2026
 
 Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anforderungen.md` Kapitel 5. Jeder Lauf nimmt die nächste offene Etappe.
 
-1. **E4 API-Gerüst** (siehe `docs/06_Welle1_Anforderungen.md` Kapitel 5). Nutzt `toProblemDetails`, `runWithContext` und `createLogger` aus dem Kernel. Erste Module bekommen dabei `package.json` und `src/index.ts`; dann greifen die Importregeln auch über Paketnamen (`@shop/<modul>`) – das im ersten Modul mit einem Test belegen. Je nach Antwort auf Frage 1 zuerst oder nebenbei: Datenbanktests auf Testcontainers umstellen.
-2. **E5 Outbox und Hintergrundjobs.**
-3. **E6 Modul `identity`.**
+1. **E3 Teil 3: Testcontainers** (Entscheidung Kristof 01.11.2026: jetzt, vor E4). Neues Paket `packages/testing` mit einer Hilfe, die per Testcontainers eine Wegwerf-Datenbank PostgreSQL 18.6 startet und mit dem Dienst `migrate` einrichtet. Darauf umstellen: Isolations- und Rechtetest (ersetzt `tools/db-test.sh` und `db/test_isolation.sh`, die SQL-Prüfungen bleiben), Pakettests mit Datenbank (ersetzt `tools/test-with-db.sh`) und `pnpm db:types` (ersetzt `tools/lib/pg-container.sh`). Fertig, wenn `pnpm check` und alle fünf CI-Jobs grün sind und die Gegenproben (fehlende RLS, falscher Eintrag in `db/global-tables.yaml`) weiter scheitern.
+2. **E4 API-Gerüst** (siehe `docs/06_Welle1_Anforderungen.md` Kapitel 5). Nutzt `toProblemDetails`, `runWithContext` und `createLogger` aus dem Kernel. Erste Module bekommen dabei `package.json` und `src/index.ts`; dann greifen die Importregeln auch über Paketnamen (`@shop/<modul>`) – das im ersten Modul mit einem Test belegen.
+3. **E5 Outbox und Hintergrundjobs.**
 
 ## Nachzutragen
 
