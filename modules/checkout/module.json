@@ -1,0 +1,21 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "checkout",
+  "kind": "module",
+  "schema": "checkout",
+  "wave": "1",
+  "description": "Ablauf vom Warenkorb zur Bestellung (Workflow „Bestellung aufgeben“ mit Kompensation): Adresse, Versand, Zahlart, Rechtstexte, Bestellknopf.",
+  "dependsOn": [
+    "cart",
+    "catalog",
+    "content",
+    "customers",
+    "inventory",
+    "orders",
+    "payments",
+    "pricing",
+    "shipping",
+    "shop-settings",
+    "tax"
+  ]
+}

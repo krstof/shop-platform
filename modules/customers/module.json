@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "customers",
+  "kind": "module",
+  "schema": "customers",
+  "wave": "1 (Kundenkonto ab 2, Firmen ab 3)",
+  "description": "Kunden und Gastkunden, Adressen, Kundengruppen (Standard „Endkunden“), vorbereitete Firmenkonten, Einwilligungen.",
+  "dependsOn": []
+}

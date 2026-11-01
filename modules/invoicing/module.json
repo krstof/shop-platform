@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "invoicing",
+  "kind": "module",
+  "schema": "invoicing",
+  "wave": "2 (Tabellen schon in Welle 1)",
+  "description": "Rechnungen, Gutschriften und Stornos als unveränderliche Belege (Tabellen ab Welle 1, Funktion ab Welle 2).",
+  "dependsOn": ["orders", "shop-settings"]
+}

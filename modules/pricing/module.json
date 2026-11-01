@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "pricing",
+  "kind": "module",
+  "schema": "pricing",
+  "wave": "1",
+  "description": "Preise je Variante, Währung, Kanal und Kundengruppe, Preisverlauf für den 30-Tage-Tiefstpreis.",
+  "dependsOn": []
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "kernel",
+  "kind": "kernel",
+  "schema": "kernel",
+  "wave": "1",
+  "description": "Gemeinsamer Werkzeugkasten aller Module. Kennt selbst kein Fachmodul.",
+  "dependsOn": []
+}

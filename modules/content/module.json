@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "content",
+  "kind": "module",
+  "schema": "content",
+  "wave": "1",
+  "description": "Inhaltsseiten und Rechtstexte mit Versionen, Menüs, Weiterleitungen, Pflichtseiten-Prüfung. Das Impressum braucht die Firmendaten: content holt sie nicht selbst (sonst Kreis mit shop-settings), sondern bekommt sie über das Ereignis shop_settings.profile.updated.v1 oder vom Aufrufer.",
+  "dependsOn": []
+}

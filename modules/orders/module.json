@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "orders",
+  "kind": "module",
+  "schema": "orders",
+  "wave": "1",
+  "description": "Bestellungen als unveränderliche Momentaufnahme, Status für Bestellung, Zahlung und Versand, Zeitleiste, Widerruf.",
+  "dependsOn": ["shop-settings"]
+}

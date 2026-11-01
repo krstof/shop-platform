@@ -20,6 +20,10 @@ ADMIN_PSQL="${ADMIN_PSQL:-runuser -u postgres -- psql}"
 A="0192f000-0000-7000-8000-00000000000a"
 B="0192f000-0000-7000-8000-00000000000b"
 
+# Liste der Tabellen ohne Mandant aus db/global-tables.yaml (übergeben von tools/db-test.sh)
+: "${GLOBAL_SCHEMAS:?GLOBAL_SCHEMAS fehlt (aus db/global-tables.yaml, siehe tools/db-test.sh)}"
+: "${GLOBAL_TABLES:?GLOBAL_TABLES fehlt (aus db/global-tables.yaml, siehe tools/db-test.sh)}"
+
 admin() { $ADMIN_PSQL -p "$PGPORT" -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 echo "== PostgreSQL-Version"
@@ -68,7 +72,8 @@ APP_CONN="host=127.0.0.1 port=$PGPORT dbname=$TEST_DB user=shop_app"
 
 echo "== Isolationstest als shop_app"
 PGPASSWORD="$APP_PW" PGOPTIONS="-c test.a=$A -c test.b=$B" \
-  psql "$APP_CONN" -X -v A="$A" -v B="$B" -f "$HERE/test_isolation.sql" 2>&1 \
+  psql "$APP_CONN" -X -v A="$A" -v B="$B" -v global_schemas="$GLOBAL_SCHEMAS" -v global_tables="$GLOBAL_TABLES" \
+  -f "$HERE/test_isolation.sql" 2>&1 \
   | sed -e 's/^psql:[^ ]* NOTICE:  //' -e 's/^NOTICE:  //'
 
 echo "== Rechte der Datenbankrollen"

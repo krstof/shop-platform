@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "storefront",
+  "kind": "module",
+  "schema": "storefront",
+  "wave": "1 (Grundgerüst), Editor ab 2",
+  "description": "Themes, Vorlagen und Seitenaufbau aus Abschnitten und Bausteinen, Entwurf und Veröffentlichung, Grundlage für den Shop-Editor.",
+  "dependsOn": ["catalog", "content", "media", "pricing", "shop-settings", "tax"]
+}

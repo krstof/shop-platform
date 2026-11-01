@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "shop-settings",
+  "kind": "module",
+  "schema": "shop_settings",
+  "wave": "1",
+  "description": "Firmendaten und Pflichtangaben, Verkaufskanäle, Länder und Zonen, Nummernkreise, Cookie-Einstellungen, Shop online/offline mit Prüfliste.",
+  "dependsOn": ["content", "payments", "shipping"]
+}

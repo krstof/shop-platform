@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(Keine offenen Fragen.)
+1. **Testcontainers jetzt oder mit E4?** Der Plan sah vor, die Datenbanktests auf das Werkzeug Testcontainers umzustellen. Die heutigen Skripte prüfen schon genau dasselbe (Wegwerf-Datenbank, alle Tests grün); Testcontainers lohnt sich erst, wenn mit E4 die ersten Module eigene Datenbanktests bekommen. Mein Vorschlag: mit E4 nebenbei, das spart einen eigenen Lauf. Antwort: **jetzt** oder **E4**.
 
 ## Beantwortet
 

@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "cart",
+  "kind": "module",
+  "schema": "cart",
+  "wave": "1",
+  "description": "Warenkorb für Gäste, Mengen, serverseitige Neuberechnung von Preisen und Steuern.",
+  "dependsOn": ["catalog", "inventory", "pricing", "shop-settings", "tax"]
+}

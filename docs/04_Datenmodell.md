@@ -315,7 +315,7 @@ So wirkt die Vorlage:
 | `audit.audit_entry` | Zeile gehört zum aktuellen Shop. Für `shop_platform` zusätzlich Zeilen ohne Shop | Aktionen in der Plattform-Verwaltung haben keinen Shop. |
 | `kernel.outbox` | Zeile gehört zum aktuellen Shop. `shop_platform` sieht Zeilen ohne Shop, `shop_relay` sieht alles | Das Relay muss Ereignisse aller Shops weiterleiten. |
 
-**Globale Tabellen** ohne `tenant_id` und ohne RLS. Diese Liste kommt später in `db/global-tables.yaml` (Architektur 5.6). Der Strukturtest kennt sie bereits und schlägt bei jeder weiteren Tabelle ohne `tenant_id` Alarm.
+**Globale Tabellen** ohne `tenant_id` und ohne RLS. Die Liste steht seit 01.11.2026 mit Begründungen in `db/global-tables.yaml` (Architektur 5.6). Der Strukturtest liest sie und schlägt bei jeder weiteren Tabelle ohne `tenant_id` und bei veralteten Einträgen Alarm.
 
 | Tabelle | Warum global | Rechte von `shop_app` |
 |---|---|---|

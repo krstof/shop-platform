@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "media",
+  "kind": "module",
+  "schema": "media",
+  "wave": "1",
+  "description": "Hochladen, Prüfen, Umrechnen und Ausliefern von Bildern über signierte Adressen, kein SVG.",
+  "dependsOn": []
+}

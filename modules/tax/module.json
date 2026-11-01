@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "tax",
+  "kind": "module",
+  "schema": "tax",
+  "wave": "1",
+  "description": "Steuerklassen, gesetzliche Steuersätze (globale Referenzdaten), Steuer-Einstellungen je Shop, Steuerberechnung.",
+  "dependsOn": []
+}

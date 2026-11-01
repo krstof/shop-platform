@@ -2,7 +2,8 @@
 -- test_isolation.sql
 -- Prüft die Mandantentrennung. Läuft angemeldet als Anwendungsrolle shop_app
 -- (ohne SUPERUSER, ohne BYPASSRLS). Aufruf über db/test_isolation.sh, das die
--- Datenbank vorbereitet und die Variablen A und B (Shop-IDs) übergibt.
+-- Datenbank vorbereitet und die Variablen A und B (Shop-IDs) sowie global_schemas und
+-- global_tables (aus db/global-tables.yaml, kommagetrennt) übergibt.
 -- Jeder Fehler bricht sofort ab (ON_ERROR_STOP), jede bestandene Prüfung meldet "OK".
 -- =============================================================================
 \set ON_ERROR_STOP on
@@ -244,13 +245,31 @@ SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname IN ('shop_app
                                                        AND (rolsuper OR rolbypassrls)),
                   'Keine Betriebsrolle (app, auth, platform, relay, owner) hat SUPERUSER oder BYPASSRLS');
 
--- Jede Tabelle mit tenant_id außerhalb von platform hat RLS, FORCE und eine Policy
+-- Listen globaler Schemas und Tabellen aus db/global-tables.yaml (Variablen global_schemas, global_tables)
+CREATE TEMP TABLE global_schema AS SELECT unnest(string_to_array(:'global_schemas', ',')) AS name;
+CREATE TEMP TABLE global_table AS SELECT unnest(string_to_array(:'global_tables', ',')) AS name;
+SELECT pg_temp.ok((SELECT count(*) FROM global_schema) >= 1 AND (SELECT count(*) FROM global_table) >= 1,
+                  'Liste globaler Tabellen aus db/global-tables.yaml geladen ('
+                  || (SELECT count(*) FROM global_schema) || ' Schemas, ' || (SELECT count(*) FROM global_table) || ' Tabellen)');
+
+-- Keine veralteten Einträge: Jedes Schema und jede Tabelle der Liste gibt es, und keine dieser Tabellen hat tenant_id
+SELECT pg_temp.ok(count(*) = 0, 'Jedes Schema aus db/global-tables.yaml existiert (fehlend: '
+                  || coalesce(string_agg(name, ', '), 'keine') || ')')
+FROM global_schema WHERE NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = name);
+SELECT pg_temp.ok(count(*) = 0, 'Jede Tabelle aus db/global-tables.yaml existiert und hat keine tenant_id (Abweichungen: '
+                  || coalesce(string_agg(name, ', '), 'keine') || ')')
+FROM global_table g
+WHERE to_regclass(g.name) IS NULL
+   OR EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = to_regclass(g.name) AND a.attname = 'tenant_id' AND NOT a.attisdropped);
+
+-- Jede Tabelle mit tenant_id außerhalb der globalen Schemas hat RLS, FORCE und eine Policy
 SELECT pg_temp.ok(count(*) = 0, 'Jede Tabelle mit tenant_id hat RLS ENABLE + FORCE + Policy (Verstöße: '
                   || coalesce(string_agg(t, ', '), 'keine') || ')')
 FROM (
   SELECT c.oid::regclass::text AS t
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-   WHERE c.relkind = 'r' AND n.nspname NOT IN ('platform','pg_catalog','information_schema','public')
+   WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema','public')
+     AND n.nspname NOT IN (SELECT name FROM global_schema)
      AND n.nspname NOT LIKE 'pg_%'
      AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped)
      AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
@@ -263,12 +282,11 @@ SELECT pg_temp.ok(count(*) = 0, 'Tabellen ohne tenant_id stehen alle auf der Lis
 FROM (
   SELECT c.oid::regclass::text AS t
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-   WHERE c.relkind = 'r' AND n.nspname NOT IN ('platform','pg_catalog','information_schema','public','shop_migration')
+   WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema','public')
+     AND n.nspname NOT IN (SELECT name FROM global_schema)
      AND n.nspname NOT LIKE 'pg_%'
      AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped)
-     AND c.oid::regclass::text NOT IN ('kernel.currency','kernel.country','identity."user"','identity.account',
-           'identity.session','identity.verification','identity.two_factor','identity.passkey',
-           'tax.tax_class','tax.tax_rate','storefront.theme')
+     AND c.oid NOT IN (SELECT to_regclass(name) FROM global_table WHERE to_regclass(name) IS NOT NULL)
 ) v;
 
 -- Buchführung des Migrationslaufs ist für die Anwendung unerreichbar

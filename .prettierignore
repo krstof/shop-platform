@@ -6,3 +6,5 @@ node_modules
 docs/
 db/
 *.md
+# Von kysely-codegen erzeugt (pnpm db:types), Prüfung mit --verify vergleicht wörtlich
+**/db.generated.ts

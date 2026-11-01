@@ -15,6 +15,7 @@
     "env:init": "node tools/setup-env.mjs",
     "check": "node tools/check.mjs",
     "lint": "eslint .",
+    "lint:deps": "depcruise apps modules packages --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit && turbo run typecheck",
@@ -23,6 +24,7 @@
     "test:with-db": "bash tools/test-with-db.sh",
     "test:tools": "node --test \"tools/test/*.test.mjs\"",
     "test:db": "bash tools/db-test.sh",
+    "db:types": "bash tools/db-types.sh",
     "scan:secrets": "bash tools/scan-secrets.sh",
     "scan:deps": "bash tools/scan-deps.sh",
     "test:infra": "bash tools/smoke-infra.sh"
@@ -31,11 +33,16 @@
     "@eslint/js": "^10.0.1",
     "@shop/config": "workspace:*",
     "@types/node": "^24.19.2",
+    "dependency-cruiser": "^18.7.0",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
+    "kysely": "0.29.7",
+    "kysely-codegen": "0.20.0",
+    "pg": "8.23.1",
     "prettier": "^3.9.10",
     "turbo": "^2.11.10",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.0",
+    "yaml": "^2.9.1"
   }
 }

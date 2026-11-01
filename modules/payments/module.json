@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "payments",
+  "kind": "module",
+  "schema": "payments",
+  "wave": "1",
+  "description": "Anbieterneutrale Zahlungsabwicklung über Adapter, zuerst der eigene Test-Zahlungsanbieter, Prüfung signierter Rückmeldungen.",
+  "dependsOn": []
+}

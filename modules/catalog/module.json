@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "catalog",
+  "kind": "module",
+  "schema": "catalog",
+  "wave": "1",
+  "description": "Produkte mit Standard-Variante, Merkmale, Produkttypen, Kategorien, Hersteller mit GPSR-Angaben, Lieferzeit, Grundpreis-Angaben.",
+  "dependsOn": ["media"]
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "shipping",
+  "kind": "module",
+  "schema": "shipping",
+  "wave": "1",
+  "description": "Versandarten, Versandkosten (pauschal), Sendungen. Bekommt Land und Zone vom Aufrufer, damit es nicht von shop-settings abhängt.",
+  "dependsOn": []
+}

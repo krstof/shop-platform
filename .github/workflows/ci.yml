@@ -32,6 +32,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
+      - run: pnpm lint:deps
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm test:tools
@@ -63,7 +64,7 @@ jobs:
       - run: bash tools/scan-deps.sh
 
   database:
-    name: Datenbank (Migrationen, Isolation und Rechte T-01 bis T-05, Pakettests mit Datenbank)
+    name: Datenbank (Migrationen, Isolation und Rechte T-01 bis T-05, Datenbanktypen, Pakettests mit Datenbank)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -79,6 +80,8 @@ jobs:
       - run: pnpm build
       # Migrationen mit dem Dienst migrate, danach Isolations- und Rechtetest
       - run: bash tools/db-test.sh
+      # Datenbanktypen je Modul müssen zu den Migrationen passen
+      - run: pnpm db:types --check
       - run: pnpm test:with-db
 
   infrastructure:

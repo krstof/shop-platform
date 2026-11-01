@@ -517,7 +517,14 @@ Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen
 - Ausgeführte Migrationen sind unveränderlich: Der Dienst speichert eine Prüfsumme (SHA-256) und bricht ab, wenn sich eine Datei nachträglich ändert. Es gibt nur Vorwärts-Migrationen.
 - Buchführung im Schema `shop_migration`, für keine Anwendungsrolle erreichbar.
 - Achtung für spätere Migrationen: `GRANT ... ON ALL TABLES IN SCHEMA` gilt nur für Tabellen, die es schon gibt. Neue Tabellen brauchen ihre eigenen Rechte in derselben Migration.
-- Offen für Teil 2: `module.json` je Modul, dependency-cruiser, kysely-codegen je Modul, Testcontainers statt `tools/db-test.sh`, eigenes Container-Abbild für `migrate`.
+**Stand Etappe E3, Teil 2 (01.11.2026):**
+
+- Jedes Modul (und der Kernel) hat eine `module.json` mit `name`, `kind`, `schema`, `wave`, `description` und `dependsOn` sowie eine `MODULE.md` als Landkarte. `tools/lib/modules.mjs` prüft beim Laden: Name gleich Ordner, Schema wird in den eigenen Migrationen angelegt, jedes Schema gehört genau einem Modul, nur bekannte Module in `dependsOn`, Kernel ohne Abhängigkeiten, **keine Kreise**.
+- Erster Entwurf der erlaubten Aufrufe (wird mit dem Bau der Module geschärft): `platform` → `identity`; `shop-settings` → `content`, `shipping`, `payments` (Prüfliste „online schalten“); `catalog` → `media`; `cart` → `catalog`, `pricing`, `tax`, `inventory`, `shop-settings`; `checkout` → alle Kaufmodule; `orders` → `shop-settings`; `invoicing` → `orders`, `shop-settings`; `notifications` → `orders`, `shop-settings`, `content`; `storefront` → `catalog`, `pricing`, `tax`, `content`, `media`, `shop-settings`. Alle anderen Module rufen niemanden auf. Zwei Kreise wurden dabei bewusst vermieden: `shipping` bekommt Land und Zone vom Aufrufer, und `content` holt die Firmendaten fürs Impressum nicht selbst, sondern über das Ereignis `shop_settings.profile.updated.v1`.
+- `.dependency-cruiser.mjs` baut die Importregeln aus allen `module.json` (`pnpm lint:deps`, in `pnpm check` und CI): keine Kreise, Kernel und `packages/` kennen keine Module, Module kennen keine Programme, fremde Module nur über `src/index.ts`, nur erklärte Abhängigkeiten. Jede Regel hat eine Gegenprobe mit Beispielmodulen (`tools/test/module-boundaries.test.mjs`).
+- `pnpm db:types` erzeugt mit kysely-codegen je Modul `src/db.generated.ts` nur mit dem eigenen Schema (aus einer frisch migrierten Wegwerf-Datenbank). `pnpm db:types --check` läuft in der CI und schlägt fehl, wenn eine Migration ohne neue Typen eingecheckt wird. Gegenprobe mit dem echten Compiler: Eine Abfrage auf eine fremde Tabelle lässt sich nicht übersetzen.
+- `db/global-tables.yaml` listet Schemas und Tabellen ohne Mandant mit Begründung. Der Isolationstest liest die Datei und meldet sowohl nicht gelistete Tabellen ohne `tenant_id` als auch veraltete Einträge.
+- Offen: Testcontainers statt `tools/db-test.sh` (siehe `FRAGEN.md`), eigenes Container-Abbild für `migrate`.
 
 ### 6.2 Benennungsregeln
 

@@ -6,7 +6,15 @@ import globals from "globals";
 
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/.turbo/**", "**/coverage/**", "openapi/**"],
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.turbo/**",
+      "**/coverage/**",
+      "openapi/**",
+      // Von kysely-codegen erzeugt (pnpm db:types)
+      "**/db.generated.ts",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.strict,

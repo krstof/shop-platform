@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "audit",
+  "kind": "module",
+  "schema": "audit",
+  "wave": "1",
+  "description": "Unveränderliches Änderungsprotokoll: wer hat was wann getan (Mensch, Token, System).",
+  "dependsOn": []
+}

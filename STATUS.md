@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 31.10.2026
+Stand: 01.11.2026
 
 ## Erledigt
 
@@ -21,13 +21,15 @@ Stand: 31.10.2026
 
 - **Etappe E3 Migrationen, Teil 1 (31.10.2026):** `db/schema_welle1.sql` aufgeteilt in `db/roles.sql` (Rollen, Erweiterung, Datenbankrechte) und 20 Migrationen, je eine pro Modul (`packages/kernel/migrations`, `modules/<modul>/migrations`), jeweils mit eigenen Referenzdaten und Rechten. Die alte Datei ist gelöscht. Gegenprobe mit `pg_dump`: Struktur, Rechte und Referenzdaten sind Zeile für Zeile identisch mit der alten Datei. Neuer Migrationslauf im Kernel (`@shop/kernel/migrate`) und neuer Dienst `apps/migrate`: alle neuen Migrationen in einer Transaktion als `shop_owner`, Sperre gegen gleichzeitige Läufe, Prüfsumme gegen nachträglich geänderte Migrationen, Prüfregeln für Dateien (keine psql-Befehle, kein `SET ROLE`, keine Transaktionsbefehle, keine Rollen oder Passwörter), Passwörter der Anmelderollen aus der `.env` als SCRAM-Prüfwert. `pnpm dev` legt jetzt auch die Datenbank `shop` an und migriert sie; fünf neue Rollen-Passwörter in `.env.example`. `tools/db-test.sh` richtet die Testdatenbank mit dem echten Dienst ein, statt die SQL-Datei einzuspielen. Kernel-Test läuft jetzt auf dem echten Schema (`catalog.manufacturer`) statt auf einer Demo-Tabelle. Getestet: 122 Pakettests grün (davon 28 neu für den Migrationslauf: Fehler rollt alles zurück, geänderte oder fehlende Migration bricht ab, drei gleichzeitige Läufe führen jede Migration genau einmal aus, 20 Schemas / 112 Tabellen / 93 mit RLS, alle Objekte gehören `shop_owner`, Anmeldung mit gesetztem Passwort), Isolations- und Rechtetest mit 23 Prüfungen grün (neu: `shop_app` erreicht die Buchführung der Migrationen nicht), `pnpm dev` zweimal hintereinander (zweiter Lauf ändert nichts), Infrastruktur-Rauchtest mit 3 neuen Prüfungen grün. Gegenprobe: Nimmt man einer Tabelle die Mandantentrennung weg, schlagen 9 Tests fehl. Diesmal lief Docker auch in der Cloud-Sitzung, alle Datenbanktests also auf PostgreSQL 18.6. Unterwegs gefunden: neue mittlere Sicherheitsmeldung für `minimatch` (nur im Prüfwerkzeug ESLint, nicht im Programm); die Korrektur ist erst 4 Tage alt, daher bis 07.11.2026 befristet ausgenommen (`osv-scanner.toml`). CI-Lauf auf GitHub: alle fünf Jobs grün, inklusive Migrationen und Isolationstest.
 
+- **Etappe E3 Migrationen, Teil 2 (01.11.2026):** Jedes der 19 Module und der Kernel hat jetzt eine `module.json` (Name, Schema, Welle, Beschreibung, erlaubte Abhängigkeiten) und eine `MODULE.md` (Aufgabe, Tabellen, geplante Fassade und Ereignisse). Erster Entwurf der erlaubten Aufrufe, kreisfrei, in Architektur 6.1 beschrieben. **Modulgrenzen werden geprüft:** `pnpm lint:deps` (dependency-cruiser) baut seine Regeln aus den `module.json`, läuft in `pnpm check` und in der CI. **Datenbanktypen je Modul:** `pnpm db:types` erzeugt mit kysely-codegen für jedes Modul `src/db.generated.ts` nur mit dem eigenen Schema (112 Tabellen, jede genau einem Modul zugeordnet); `pnpm db:types --check` in der CI meldet veraltete Typen. **`db/global-tables.yaml`** mit 2 Schemas und 11 Tabellen ohne Mandant, jeweils begründet; der Isolationstest liest die Datei statt einer festen Liste. Gemeinsamer Baustein `tools/lib/pg-container.sh` für alle Wegwerf-Datenbanken. Getestet: 44 Werkzeug-Tests grün (32 neu), 122 Pakettests grün, Isolations- und Rechtetest mit 68 Prüfungen grün (3 neu), alles auf PostgreSQL 18.6 in Docker. Gegenproben: 9 eingeschleuste Importverstöße und 8 kaputte `module.json` werden erkannt; eine Abfrage auf eine fremde Tabelle lässt sich nicht übersetzen; eine geänderte oder fehlende Typdatei lässt `--check` scheitern; eine aus der Liste gestrichene globale Tabelle und ein falscher Eintrag lassen den Isolationstest scheitern. Neue Werkzeuge: dependency-cruiser 18.7.0, kysely-codegen 0.20.0, yaml 2.9.1. Offen geblieben: Testcontainers (Frage 1).
+
 ## Nächste Schritte (in dieser Reihenfolge)
 
 Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anforderungen.md` Kapitel 5. Jeder Lauf nimmt die nächste offene Etappe.
 
-1. **E3 Migrationen, Teil 2:** `module.json` und `MODULE.md` je Modul, dependency-cruiser-Regeln aus den `module.json`, kysely-codegen je Modul (`db.generated.ts`), Isolations- und Rechtetest in Testcontainers (ersetzt `tools/db-test.sh` und `tools/test-with-db.sh`), `db/global-tables.yaml` statt der Liste im Test.
-2. **E4 API-Gerüst** (siehe `docs/06_Welle1_Anforderungen.md` Kapitel 5). Nutzt `toProblemDetails`, `runWithContext` und `createLogger` aus dem Kernel.
-3. **E5 Outbox und Hintergrundjobs.**
+1. **E4 API-Gerüst** (siehe `docs/06_Welle1_Anforderungen.md` Kapitel 5). Nutzt `toProblemDetails`, `runWithContext` und `createLogger` aus dem Kernel. Erste Module bekommen dabei `package.json` und `src/index.ts`; dann greifen die Importregeln auch über Paketnamen (`@shop/<modul>`) – das im ersten Modul mit einem Test belegen. Je nach Antwort auf Frage 1 zuerst oder nebenbei: Datenbanktests auf Testcontainers umstellen.
+2. **E5 Outbox und Hintergrundjobs.**
+3. **E6 Modul `identity`.**
 
 ## Nachzutragen
 
@@ -36,6 +38,7 @@ Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anford
 - Ab 03.11.2026: `minimatch` über ESLint-Update oder Override auf 11.0.1 oder neuer heben, dann die Ausnahme in `osv-scanner.toml` löschen (läuft am 07.11.2026 ab, danach wird die CI rot).
 - Mit E4 oder E25: eigenes Container-Abbild für den Dienst `migrate` in Docker Compose (jetzt läuft er bei `pnpm dev` direkt auf dem Rechner).
 - Hinweis: `turbo` startet in der Cloud-Sitzung keine Unterprozesse („Exec format error“); lokal deshalb `pnpm -r run …` benutzt. In der CI läuft `turbo` normal.
+- Mit E4: ESLint-Regel gegen rohes SQL außerhalb von Migrationen und Kernel (Architektur 3.4), sobald es Modulcode gibt.
 - Mit E4: Fehlertexte auf Deutsch und Englisch (Entscheidung Kristof 30.10.2026). Schlank umsetzen: eine Texttabelle je Fehlercode im Kernel, Auswahl über die Kopfzeile `Accept-Language`, Deutsch als Standard.
 - Vor E6: vollständige Liste der Better-Auth-Sicherheitsmeldungen auf GitHub lesen (bei der Recherche nicht erreichbar) und Mindestversion 1.6.11 oder neuer fest eintragen.
 - Vor E15/E23: Angaben zur Button-Lösung (§ 312j BGB) gegen eine Quelle prüfen (Anforderungen 6.2).

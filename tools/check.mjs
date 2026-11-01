@@ -10,6 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const steps = [
   ["Formatierung (Prettier)", ["pnpm", "-s", "format:check"]],
   ["Lint (ESLint)", ["pnpm", "-s", "lint"]],
+  ["Modulgrenzen (dependency-cruiser, module.json)", ["pnpm", "-s", "lint:deps"]],
   ["Typprüfung (TypeScript)", ["pnpm", "-s", "typecheck"]],
   ["Bauen der Pakete", ["pnpm", "-s", "build"]],
   ["Tests der Werkzeuge", ["pnpm", "-s", "test:tools"]],
@@ -19,6 +20,7 @@ const steps = [
 const docker = spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
 if (docker) {
   steps.push(["Datenbank: Isolation und Rechte (T-01 bis T-05)", ["pnpm", "-s", "test:db"]]);
+  steps.push(["Datenbanktypen je Modul aktuell (kysely-codegen)", ["pnpm", "-s", "db:types", "--check"]]);
   steps.push(["Tests der Pakete mit Datenbank (u. a. T-19)", ["pnpm", "-s", "test:with-db"]]);
 } else {
   steps.push(["Tests der Pakete ohne Datenbank (u. a. T-19)", ["pnpm", "-s", "test"]]);

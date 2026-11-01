@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "identity",
+  "kind": "module",
+  "schema": "identity",
+  "wave": "1",
+  "description": "Anmeldung, Sitzungen, Zwei-Faktor, Mitgliedschaften und Rollen, API-Token. Anmeldedaten nur über die Rolle shop_auth (ADR-008).",
+  "dependsOn": []
+}

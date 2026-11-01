@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "notifications",
+  "kind": "module",
+  "schema": "notifications",
+  "wave": "1",
+  "description": "E-Mails an Kunden und Händler im Hintergrund, Meldungen im Backoffice.",
+  "dependsOn": ["content", "orders", "shop-settings"]
+}

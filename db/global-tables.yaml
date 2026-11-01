@@ -1,0 +1,43 @@
+# Tabellen OHNE Mandant (ohne tenant_id und ohne RLS), jeweils mit Begründung
+# (Architektur 5.6, Datenmodell Kapitel 6, ADR-003).
+#
+# Jede Tabelle, die hier NICHT steht, muss tenant_id, eingeschaltete und erzwungene RLS
+# und mindestens eine Policy haben. Der Isolationstest (db/test_isolation.sql) liest diese
+# Datei und schlägt Alarm bei jeder anderen Tabelle ohne tenant_id und bei Einträgen hier,
+# die es in der Datenbank gar nicht gibt. Neue Einträge nur mit guter Begründung.
+
+# Ganze Schemas ohne RLS. Sie gehören dem Betreiber, Shops erreichen sie nie.
+schemas:
+  - name: platform
+    reason: >-
+      Verwaltung der Plattform durch den Betreiber (Händler, Shops, Tarife, Domains).
+      Nur die Rolle shop_platform schreibt hier; shop_app liest höchstens einzelne Spalten,
+      die für die Zuordnung von Hostname zu Shop nötig sind.
+  - name: shop_migration
+    reason: >-
+      Buchführung des Dienstes migrate (ausgeführte Migrationen, Prüfsummen).
+      Für keine Anwendungsrolle erreichbar.
+
+tables:
+  - name: kernel.currency
+    reason: Referenzdaten nach ISO 4217, für alle Shops gleich, für shop_app nur lesbar.
+  - name: kernel.country
+    reason: Referenzdaten nach ISO 3166, für alle Shops gleich, für shop_app nur lesbar.
+  - name: identity."user"
+    reason: Eine Person kann mehrere Shops betreiben; die Zuordnung steht in identity.membership (mit RLS). Nur shop_auth (ADR-008).
+  - name: identity.account
+    reason: Anmeldedaten (Passwort-Hash) gehören zur Person, nicht zum Shop. Nur shop_auth (ADR-008).
+  - name: identity.session
+    reason: Sitzung gehört zur Person und gilt für alle ihre Shops. Nur shop_auth (ADR-008).
+  - name: identity.verification
+    reason: Einmalcodes (E-Mail bestätigen, Passwort vergessen) gehören zur Person. Nur shop_auth (ADR-008).
+  - name: identity.two_factor
+    reason: Zwei-Faktor-Geheimnis gehört zur Person. Nur shop_auth (ADR-008).
+  - name: identity.passkey
+    reason: Passkeys gehören zur Person. Nur shop_auth (ADR-008).
+  - name: tax.tax_class
+    reason: Gesetzliche Steuerklassen (normal, ermäßigt), für alle Shops gleich, für shop_app nur lesbar.
+  - name: tax.tax_rate
+    reason: Gesetzliche Steuersätze je Land und Zeitraum, für alle Shops gleich, für shop_app nur lesbar.
+  - name: storefront.theme
+    reason: Mitgelieferte Themes der Plattform; welcher Shop welches nutzt, steht in storefront.theme_installation (mit RLS).

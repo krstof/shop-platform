@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "platform",
+  "kind": "module",
+  "schema": "platform",
+  "wave": "1",
+  "description": "Händlerkonten, Shops (Mandanten), Tarife und Funktionsschalter, Domains, Plattform-Einstellungen. Nur für den Betreiber; das Schema hat keine RLS (db/global-tables.yaml).",
+  "dependsOn": ["identity"]
+}

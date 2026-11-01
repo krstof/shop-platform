@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "inventory",
+  "kind": "module",
+  "schema": "inventory",
+  "wave": "1",
+  "description": "Bestand je Variante und Lager, Reservierung bei Bestellung, Abbuchung, Freigabe, Bewegungsprotokoll, kein Überverkauf.",
+  "dependsOn": []
+}
