@@ -6,3 +6,11 @@ ignoreUntil = 2026-11-07T00:00:00Z
 reason = """minimatch 10.2.6 steckt nur im Prüfwerkzeug ESLint (nicht im laufenden Programm) und
 verarbeitet nur unsere eigenen Dateimuster. Die Korrektur gibt es erst in 11.0.1 vom 27.10.2026;
 die Lieferkettenregel erlaubt neue Versionen erst nach 7 Tagen. Ab 03.11.2026 aktualisieren."""
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+ignoreUntil = 2026-11-10T00:00:00Z
+reason = """glob 10.5.0 steckt nur in der Testhilfe Testcontainers (über archiver, nicht im laufenden
+Programm). Die Lücke betrifft nur das Abbrechen einer Suche per AbortSignal, das archiver nicht nutzt.
+Die Korrektur gibt es erst in 14.0.2 vom 27.10.2026; die Lieferkettenregel erlaubt neue Versionen erst
+nach 7 Tagen. Ab 04.11.2026 per Override auf 14.0.2 oder neuer heben oder auf ein archiver-Update warten."""

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- test_isolation.sql
 -- Prüft die Mandantentrennung. Läuft angemeldet als Anwendungsrolle shop_app
--- (ohne SUPERUSER, ohne BYPASSRLS). Aufruf über db/test_isolation.sh, das die
+-- (ohne SUPERUSER, ohne BYPASSRLS). Aufruf über packages/testing/src/isolation.db.test.ts (pnpm test:db), das die
 -- Datenbank vorbereitet und die Variablen A und B (Shop-IDs) sowie global_schemas und
 -- global_tables (aus db/global-tables.yaml, kommagetrennt) übergibt.
 -- Jeder Fehler bricht sofort ab (ON_ERROR_STOP), jede bestandene Prüfung meldet "OK".
@@ -213,7 +213,7 @@ BEGIN
   INSERT INTO notifications.processed_event (tenant_id, event_id, subscriber) VALUES (t, uuidv7(), 'test');
 
   -- identity (Mitgliedschaft, eigene Rolle, API-Token)
-  -- Nutzer legt das Anmeldemodul (shop_auth) an, siehe test_isolation.sh. shop_app findet ihn nur per E-Mail.
+  -- Nutzer legt das Anmeldemodul (shop_auth) an, siehe isolation.db.test.ts. shop_app findet ihn nur per E-Mail.
   SELECT id INTO STRICT v_user FROM identity."user" WHERE email = label || '@haendler.test';
   INSERT INTO identity.membership (tenant_id, user_id, role_key) VALUES (t, v_user, 'owner');
   INSERT INTO identity.role (tenant_id, key, name) VALUES (t, 'packer', 'Packer') RETURNING id INTO v_role;

@@ -3,7 +3,7 @@
 -- Prüft die Rechte der Datenbankrollen nach dem Grundsatz "so wenig wie nötig"
 -- (Sicherheitskonzept docs/05_Sicherheit.md, Kapitel 4 und 7, ADR-008).
 -- Läuft als Datenbank-Verwalter und fragt die Rechte jeder Rolle ab, ohne sie zu benutzen.
--- Aufruf über db/test_isolation.sh. Jeder Fehler bricht sofort ab.
+-- Aufruf über packages/testing/src/isolation.db.test.ts (pnpm test:db). Jeder Fehler bricht sofort ab.
 -- =============================================================================
 \set ON_ERROR_STOP on
 \set QUIET on

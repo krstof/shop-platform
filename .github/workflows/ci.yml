@@ -78,8 +78,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      # Migrationen mit dem Dienst migrate, danach Isolations- und Rechtetest
-      - run: bash tools/db-test.sh
+      # Jeder Schritt startet per Testcontainers (@shop/testing) eine eigene Wegwerf-Datenbank
+      # PostgreSQL 18.6 und richtet sie mit dem Dienst migrate ein.
+      # Isolations- und Rechtetest (T-01 bis T-05)
+      - run: pnpm test:db
       # Datenbanktypen je Modul müssen zu den Migrationen passen
       - run: pnpm db:types --check
       - run: pnpm test:with-db

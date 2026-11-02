@@ -524,7 +524,8 @@ Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen
 - `.dependency-cruiser.mjs` baut die Importregeln aus allen `module.json` (`pnpm lint:deps`, in `pnpm check` und CI): keine Kreise, Kernel und `packages/` kennen keine Module, Module kennen keine Programme, fremde Module nur über `src/index.ts`, nur erklärte Abhängigkeiten. Jede Regel hat eine Gegenprobe mit Beispielmodulen (`tools/test/module-boundaries.test.mjs`).
 - `pnpm db:types` erzeugt mit kysely-codegen je Modul `src/db.generated.ts` nur mit dem eigenen Schema (aus einer frisch migrierten Wegwerf-Datenbank). `pnpm db:types --check` läuft in der CI und schlägt fehl, wenn eine Migration ohne neue Typen eingecheckt wird. Gegenprobe mit dem echten Compiler: Eine Abfrage auf eine fremde Tabelle lässt sich nicht übersetzen.
 - `db/global-tables.yaml` listet Schemas und Tabellen ohne Mandant mit Begründung. Der Isolationstest liest die Datei und meldet sowohl nicht gelistete Tabellen ohne `tenant_id` als auch veraltete Einträge.
-- Offen: Testcontainers statt `tools/db-test.sh` (siehe `FRAGEN.md`), eigenes Container-Abbild für `migrate`.
+- Seit E3 Teil 3: Alle Datenbanktests laufen mit Testcontainers über das Paket `@shop/testing` (`pnpm test:db`, `pnpm test:with-db`, `pnpm db:types`). Der Aufräum-Hilfscontainer „Ryuk“ ist abgeschaltet, weil er vollen Zugriff auf Docker bräuchte; die Hilfe löscht ihre Container selbst.
+- Offen: eigenes Container-Abbild für `migrate`.
 
 ### 6.2 Benennungsregeln
 

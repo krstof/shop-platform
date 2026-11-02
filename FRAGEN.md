@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(Keine offenen Fragen.)
+1. **E4 auf zwei Läufe aufteilen?** Die nächste Etappe, das API-Gerüst, ist eine der größten in Welle 1 (Grundgerüst plus viele Schutzmechanismen wie Anfragebremse und Rechteprüfung). Vorschlag: Lauf 1 baut das Gerüst mit einem Beispiel-Endpunkt, Lauf 2 die Schutzmechanismen und deren Tests. Antwort: **Ja** (aufteilen) oder **Nein** (alles in einem Lauf). (02.11.2026)
 
 ## Beantwortet
 

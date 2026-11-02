@@ -21,10 +21,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && turbo run typecheck",
     "build": "turbo run build",
     "test": "turbo run test",
-    "test:with-db": "bash tools/test-with-db.sh",
+    "test:with-db": "node tools/testdb.mjs run -- pnpm -s test",
     "test:tools": "node --test \"tools/test/*.test.mjs\"",
-    "test:db": "bash tools/db-test.sh",
-    "db:types": "bash tools/db-types.sh",
+    "test:db": "pnpm -s --filter @shop/testing test:db",
+    "db:types": "node tools/testdb.mjs migrated shop_codegen SHOP_CODEGEN_URL -- node tools/db-types.mjs",
     "scan:secrets": "bash tools/scan-secrets.sh",
     "scan:deps": "bash tools/scan-deps.sh",
     "test:infra": "bash tools/smoke-infra.sh"
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@shop/config": "workspace:*",
+    "@shop/testing": "workspace:*",
     "@types/node": "^24.19.2",
     "dependency-cruiser": "^18.7.0",
     "eslint": "^10.13.0",

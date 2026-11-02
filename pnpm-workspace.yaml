@@ -15,4 +15,9 @@ trustPolicy: no-downgrade
 blockExoticSubdeps: true
 # Installationsskripte fremder Pakete nur nach ausdrücklicher Freigabe.
 strictDepBuilds: true
-allowBuilds: {}
+# Abgelehnt (Testcontainers): ssh2 und cpu-features bauen nur optionale Beschleuniger,
+# protobufjs prüft nur Versionen. Ohne die Skripte funktioniert alles.
+allowBuilds:
+  cpu-features: false
+  protobufjs: false
+  ssh2: false

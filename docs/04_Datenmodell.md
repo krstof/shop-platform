@@ -1,6 +1,6 @@
 # Datenmodell der Shop-Plattform
 
-Stand: 27.10.2026. Zweck: Dieses Dokument legt fest, welche Daten die Plattform speichert, in welchen Tabellen sie liegen und nach welchen Regeln. Es setzt die verbindlichen Entscheidungen aus `docs/03_Architektur.md` und den ADRs in `docs/entscheidungen/` um und berücksichtigt alle Architektur-Hinweise A-01 bis A-28 aus `docs/02_Featurekatalog.md`, Kapitel 4. Die passende, getestete Datenbankdatei liegt in `db/schema_welle1.sql`, der Test in `db/test_isolation.sh` und `db/test_isolation.sql`.
+Stand: 27.10.2026. Zweck: Dieses Dokument legt fest, welche Daten die Plattform speichert, in welchen Tabellen sie liegen und nach welchen Regeln. Es setzt die verbindlichen Entscheidungen aus `docs/03_Architektur.md` und den ADRs in `docs/entscheidungen/` um und berücksichtigt alle Architektur-Hinweise A-01 bis A-28 aus `docs/02_Featurekatalog.md`, Kapitel 4. Die passende, getestete Datenbankdatei liegt in `db/schema_welle1.sql`, der Test in `db/test_isolation.sql` (seit E3 Teil 3 gestartet von `packages/testing/src/isolation.db.test.ts`).
 
 **Bewertungsskala in diesem Dokument:** 1 = beste Eignung, 9 = schlechteste Eignung.
 
@@ -1969,9 +1969,9 @@ Die Lösung ist: Die Datenbank trennt Belegdaten von reinen Personendaten. Perso
 |---|---|
 | ~~`db/schema_welle1.sql`~~ (seit 31.10.2026 aufgeteilt in `db/roles.sql` und je eine Migration pro Modul, siehe Architektur 6.1; Ergebnis mit `pg_dump` geprüft: identische Struktur, Rechte und Referenzdaten) | Rollen, 20 Schemas, 112 Tabellen mit allen Prüfregeln, Schlüsseln und Indizes, RLS mit `ENABLE` und `FORCE` für 93 Tabellen, Trigger, die Funktionen `next_number` und `lowest_price`, Referenzdaten (Währungen, Länder, Steuerklassen, deutsche Steuersätze, Standarddesign, Standardtarif) und alle Rechte. Die Datei enthält keine Passwörter. |
 | `db/test_isolation.sql` | der eigentliche Test, läuft angemeldet als `shop_app` |
-| `db/test_isolation.sh` | prüft eine frisch migrierte Datenbank (seit E3 eingerichtet vom Dienst migrate über `tools/db-test.sh`), legt als `shop_platform` zwei Shops an, startet den Test und prüft danach die lückenlosen Nummern mit gleichzeitigen Verbindungen |
+| `packages/testing/src/isolation.db.test.ts` | startet per Testcontainers eine Wegwerf-Datenbank PostgreSQL 18.6, richtet sie mit dem Dienst migrate ein, legt als `shop_platform` zwei Shops an, startet beide SQL-Tests und prüft danach die lückenlosen Nummern mit gleichzeitigen Verbindungen (`pnpm test:db`, ersetzt seit E3 Teil 3 `db/test_isolation.sh`) |
 
-Claude führt den Test aus. Kristof muss dafür nichts tun. In Welle 1 wird der Test in die automatischen Tests mit Testcontainers übernommen (Architektur 8.1).
+Claude führt den Test aus. Kristof muss dafür nichts tun. Seit E3 Teil 3 läuft der Test mit Testcontainers in den automatischen Tests (Architektur 8.1).
 
 ### 6.2 Testumgebung
 

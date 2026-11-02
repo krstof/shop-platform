@@ -1,5 +1,6 @@
 // Erzeugt oder prüft src/db.generated.ts je Modul mit kysely-codegen (Architektur 3.4).
-// Wird von tools/db-types.sh mit einer frisch migrierten Datenbank in SHOP_CODEGEN_URL aufgerufen.
+// Wird von pnpm db:types (tools/testdb.mjs, @shop/testing) mit einer frisch migrierten
+// Wegwerf-Datenbank in SHOP_CODEGEN_URL aufgerufen.
 // Aufruf: node tools/db-types.mjs write|--check
 import { spawnSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
