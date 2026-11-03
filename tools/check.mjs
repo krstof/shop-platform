@@ -13,6 +13,7 @@ const steps = [
   ["Modulgrenzen (dependency-cruiser, module.json)", ["pnpm", "-s", "lint:deps"]],
   ["Typprüfung (TypeScript)", ["pnpm", "-s", "typecheck"]],
   ["Bauen der Pakete", ["pnpm", "-s", "build"]],
+  ["OpenAPI aktuell, jede Operation mit Berechtigung (API-03, T-09)", ["pnpm", "-s", "openapi", "--check"]],
   ["Tests der Werkzeuge", ["pnpm", "-s", "test:tools"]],
   ["Geheimnisse (gitleaks, T-06)", ["pnpm", "-s", "scan:secrets"]],
   ["Abhängigkeiten (OSV-Scanner, pnpm audit, T-07)", ["pnpm", "-s", "scan:deps"]],

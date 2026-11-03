@@ -1,0 +1,46 @@
+// Texttabelle der Fehler in zwei Sprachen (Architektur 4.9, Entscheidung Kristof 30.10.2026).
+// `code` ist fest, die Texte dürfen sich ändern. Neue Fehlercodes brauchen hier einen Eintrag,
+// der Test in problem.test.ts prüft das für alle Fehlerklassen des Kernels.
+import type { Locale } from "./locale.js";
+
+type Texts = Readonly<Record<Locale, string>>;
+
+export const PROBLEM_TITLES: Readonly<Record<string, Texts>> = {
+  validation_failed: { de: "Die Eingabe ist ungültig.", en: "The input is invalid." },
+  bad_request: { de: "Die Anfrage ist fehlerhaft.", en: "The request is malformed." },
+  unauthenticated: { de: "Bitte melde dich an.", en: "Please sign in." },
+  forbidden: { de: "Dafür fehlt die Berechtigung.", en: "You are not allowed to do this." },
+  not_found: { de: "Nicht gefunden.", en: "Not found." },
+  method_not_allowed: {
+    de: "Diese Methode ist hier nicht erlaubt.",
+    en: "This method is not allowed here.",
+  },
+  conflict: {
+    de: "Die Aktion passt nicht zum aktuellen Zustand.",
+    en: "The action does not match the current state.",
+  },
+  precondition_failed: {
+    de: "Der Datensatz wurde inzwischen geändert.",
+    en: "The record has been changed in the meantime.",
+  },
+  payload_too_large: { de: "Die Anfrage ist zu groß.", en: "The request is too large." },
+  unsupported_media_type: {
+    de: "Dieses Datenformat wird nicht unterstützt. Bitte JSON senden.",
+    en: "This content type is not supported. Please send JSON.",
+  },
+  rate_limited: {
+    de: "Zu viele Anfragen. Bitte warte kurz.",
+    en: "Too many requests. Please wait a moment.",
+  },
+  internal_error: { de: "Ein unerwarteter Fehler ist aufgetreten.", en: "An unexpected error occurred." },
+  service_unavailable: {
+    de: "Der Dienst ist gerade nicht erreichbar.",
+    en: "The service is currently unavailable.",
+  },
+};
+
+/** Zusammenfassung bei Eingabefehlern, abhängig von der Zahl der fehlerhaften Felder. */
+export function validationDetail(count: number, locale: Locale): string {
+  if (locale === "en") return count === 1 ? "One field is invalid." : `${count} fields are invalid.`;
+  return count === 1 ? "Ein Feld ist fehlerhaft." : `${count} Felder sind fehlerhaft.`;
+}

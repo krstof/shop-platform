@@ -3,7 +3,7 @@
 // bleiben grün, jeder eingeschleuste Verstoß wird gefunden.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { cruise } from "dependency-cruiser";
@@ -245,3 +245,65 @@ for (const [name, mutate, expected] of badJson) {
     assert.throws(() => loadModules(dir), expected);
   });
 }
+
+// Seit E4: Module sind pnpm-Pakete (@shop/<modul>). pnpm verlinkt sie unter node_modules.
+// Die Regeln müssen auch über den Paketnamen greifen, ohne dass vorher gebaut wurde.
+
+/** Wie baseFiles, zusätzlich ist Modul b als Paket @shop/b verlinkt (wie pnpm es tut). */
+function packageFixture(/** @type {Record<string,string>} */ extra) {
+  const dir = fixture({
+    ...baseFiles(),
+    "modules/b/package.json": {
+      name: "@shop/b",
+      type: "module",
+      exports: { ".": { source: "./src/index.ts", types: "./dist/index.d.ts", default: "./dist/index.js" } },
+    },
+    ...extra,
+  });
+  mkdirSync(join(dir, "node_modules/@shop"), { recursive: true });
+  symlinkSync("../../modules/b", join(dir, "node_modules/@shop/b"), "dir");
+  return dir;
+}
+
+/** @type {Array<[string, Record<string,string>, string]>} */
+const packageCases = [
+  [
+    "erlaubter Import über den Paketnamen",
+    { "modules/a/src/internal/pkg.ts": 'import { b } from "@shop/b";\nexport const p = b;\n' },
+    "",
+  ],
+  [
+    "nicht erklärte Abhängigkeit über den Paketnamen (c → @shop/b)",
+    { "modules/c/src/pkg.ts": 'import { b } from "@shop/b";\nexport const p = b;\n' },
+    "nicht-erklaerte-abhaengigkeit:c",
+  ],
+  [
+    "Griff ins Innere über den Paketnamen (@shop/b/src/internal/b.js)",
+    {
+      "modules/a/src/internal/pkg.ts":
+        'import { b } from "@shop/b/src/internal/b.js";\nexport const p = b;\n',
+    },
+    "kein-unaufloesbarer-import",
+  ],
+  [
+    "Kernel importiert ein Modul über den Paketnamen",
+    { "packages/kernel/src/bad.ts": 'import { b } from "@shop/b";\nexport const p = b;\n' },
+    "kernel-kennt-keine-module,pakete-kennen-keine-module",
+  ],
+];
+for (const [name, extra, expected] of packageCases) {
+  test(`Paketname: ${name}`, async (t) => {
+    const dir = packageFixture(extra);
+    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    assert.equal([...new Set(await violations(dir))].join(","), expected);
+  });
+}
+
+test("im echten Projekt löst @shop/catalog auf die öffentliche Quelldatei des Moduls auf", async () => {
+  const result = await cruise(["apps/api/src/endpoints.ts"], { ...cruiseOptions(), validate: false });
+  const out = /** @type {import("dependency-cruiser").ICruiseResult} */ (result.output);
+  const deps = out.modules.find((m) => m.source === "apps/api/src/endpoints.ts")?.dependencies ?? [];
+  const catalog = deps.find((d) => d.module === "@shop/catalog");
+  assert.equal(catalog?.resolved, "modules/catalog/src/index.ts");
+  assert.equal(catalog?.couldNotResolve, false);
+});

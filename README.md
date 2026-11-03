@@ -17,6 +17,7 @@ Kristof muss keinen dieser Befehle selbst ausführen.
 | `pnpm dev:down` | stoppt die Container (Daten bleiben) |
 | `pnpm check` | alle Prüfungen vor einem Commit: Format, Lint, Typen, Tests, Geheimnisse, Abhängigkeiten, Datenbank |
 | `pnpm test:infra` | Rauchtest der laufenden Container (HTTPS, Header, Speicher, Härtung) |
+| `pnpm openapi` | schreibt die OpenAPI-Dateien unter `openapi/` neu (`--check` prüft nur, wie in der CI) |
 | `pnpm test:db` | Wegwerf-Datenbank mit dem Dienst migrate einrichten, dann Isolations- und Rechtetest |
 
 Voraussetzungen: Node.js 24.22.1, pnpm 12.15.0, Docker mit Compose.

@@ -527,6 +527,18 @@ Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen
 - Seit E3 Teil 3: Alle Datenbanktests laufen mit Testcontainers über das Paket `@shop/testing` (`pnpm test:db`, `pnpm test:with-db`, `pnpm db:types`). Der Aufräum-Hilfscontainer „Ryuk“ ist abgeschaltet, weil er vollen Zugriff auf Docker bräuchte; die Hilfe löscht ihre Container selbst.
 - Offen: eigenes Container-Abbild für `migrate`.
 
+**Stand Etappe E4, Teil 1 (03.11.2026):** API-Gerüst, Entscheidung in ADR-009.
+
+- Neues Paket `packages/http` (`@shop/http`): Endpunkte sind Verträge (`defineEndpoint`) mit Berechtigung, strengen Zod-Schemas und Bearbeitungsfunktion. Admin- und Platform-API ohne Berechtigung, lockere Eingabeschemas oder unpassende Platzhalter verhindern den Start.
+- Neues Programm `apps/api`: NestJS 12 mit Fastify 5. `router.ts` registriert alle Verträge; Reihenfolge je Anfrage: Wächter (401/403), Eingabeprüfung (422), Ausführung im Anfrage-Kontext, Ausgabe nur durch das Antwort-Schema. Fehler immer als Problem Details mit `requestId`, auch für unbekannte Adressen, kaputtes JSON (400), zu große Anfragen über 1 MB (413) und andere Datenformate als JSON (415). Eigene requestId (UUIDv7) je Anfrage in der Kopfzeile `X-Request-Id`, `Cache-Control: no-store`.
+- Sprache der Fehler nach `Accept-Language` (Deutsch Standard, Englisch), Texttabelle im Kernel.
+- Anmeldung: Bis E6 meldet die API niemanden an (`nobodyResolver`), jede geschützte Anfrage ergibt 401. Tests setzen eine eigene Auflösung ein.
+- OpenAPI 3.1 aus den Verträgen: `pnpm openapi` schreibt `openapi/admin.json`, `store.json`, `platform.json`; `pnpm openapi --check` (in `pnpm check` und CI) meldet veraltete Dateien und Operationen ohne `x-required-scopes`.
+- Erstes Modul als pnpm-Paket: `@shop/catalog` mit `GET /admin/v1/manufacturers` und `GET /admin/v1/manufacturers/{manufacturerId}`. Die package.json unserer Pakete haben eine Bedingung `source` auf `src/`; dependency-cruiser prüft damit Importe über Paketnamen auch vor dem Bauen. Neue Regel `kein-unaufloesbarer-import`.
+- ESLint: In Modulen kein rohes SQL (`sql`, `CompiledQuery` aus Kysely, auch nicht über Namensraum- oder dynamischen Import) und kein Datenbanktreiber (außer `identity`).
+- Datenbanktests verschiedener Pakete laufen gleichzeitig auf einem Server. Rollen-Passwörter gelten serverweit, deshalb melden sich neue Tests per `roleUrl` aus `@shop/testing` als Superuser an und wechseln sofort in die Rolle, statt Passwörter zu setzen.
+- Offen für E4 Teil 2: Idempotenz-Schlüssel, ETag und If-Match, Anfragebremse (T-18), Sicherheits-Header in der API, Scalar unter `/docs`, oasdiff, Generatoren für T-08 und T-09 aus OpenAPI, Schemathesis kurz (T-12), API in Docker Compose und Caddy.
+
 ### 6.2 Benennungsregeln
 
 | Bereich | Regel | Beispiel |

@@ -8,3 +8,4 @@ export {
   type TestDatabase,
 } from "./postgres.js";
 export { parseArgs, type CliCommand } from "./cli-args.js";
+export { roleUrl } from "./role-url.js";

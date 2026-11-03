@@ -4,9 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **E4 auf zwei Läufe aufteilen?** Die nächste Etappe, das API-Gerüst, ist eine der größten in Welle 1 (Grundgerüst plus viele Schutzmechanismen wie Anfragebremse und Rechteprüfung). Vorschlag: Lauf 1 baut das Gerüst mit einem Beispiel-Endpunkt, Lauf 2 die Schutzmechanismen und deren Tests. Antwort: **Ja** (aufteilen) oder **Nein** (alles in einem Lauf). (02.11.2026)
+Zurzeit keine offenen Fragen.
 
 ## Beantwortet
+
+- **E4 auf zwei Läufe aufteilen?** Bis zum Lauf am 03.11.2026 keine Antwort. Gebaut wurde Teil 1 (Gerüst mit Beispiel-Endpunkten), weil er bei beiden Antworten der erste Schritt ist; Teil 2 (restliche Schutzmechanismen) folgt im nächsten Lauf. Will Kristof es anders, genügt ein Satz im Chat. (03.11.2026)
 
 - **Testcontainers jetzt oder mit E4?** Jetzt, als eigene Etappe vor E4. (01.11.2026)
 - **Sprache der Fehlermeldungen in der API?** Beide: Deutsch und Englisch schon ab Welle 1, die Sprache richtet sich nach der Anfrage. Bedingung: Es darf nicht viele Credits kosten. Umsetzung daher schlank: eine Texttabelle je Fehlercode in zwei Sprachen, Deutsch als Standard. (30.10.2026)

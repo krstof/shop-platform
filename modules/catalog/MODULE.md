@@ -1,6 +1,6 @@
 # Modul `catalog`
 
-> Landkarte für spätere Läufe (Architektur 8.4). Fassade und Ereignisse sind geplant, Code entsteht ab Etappe E4.
+> Landkarte für spätere Läufe (Architektur 8.4). Erstes Modul mit Code (E4 Teil 1): Paket `@shop/catalog`, Beispiel-Endpunkte für Hersteller. Der Rest folgt mit E10.
 
 **Aufgabe:** Produkte mit Standard-Variante, Merkmale, Produkttypen, Kategorien, Hersteller mit GPSR-Angaben, Lieferzeit, Grundpreis-Angaben.
 
@@ -14,3 +14,9 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 **Fassade (geplant):** getVariantsForCart(ids), getPublishedProduct(slug), listProducts(filter)
 
 **Ereignisse (geplant):** catalog.product.created.v1, catalog.product.published.v1, catalog.product.updated.v1, catalog.product.archived.v1
+
+**Stand Code (03.11.2026):**
+
+- `src/index.ts` (einzige öffentliche Datei): `catalogEndpoints({ database })`, Typ `Manufacturer`.
+- `src/http/admin/manufacturers.ts`: `GET /admin/v1/manufacturers` (`listManufacturers`, Cursor-Liste ohne archivierte) und `GET /admin/v1/manufacturers/{manufacturerId}` (`getManufacturer`), beide mit `products:read`.
+- `src/internal/manufacturer-repository.ts`: Abfragen mit Kysely, nur in `withTenantTransaction`.

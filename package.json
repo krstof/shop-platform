@@ -25,6 +25,7 @@
     "test:tools": "node --test \"tools/test/*.test.mjs\"",
     "test:db": "pnpm -s --filter @shop/testing test:db",
     "db:types": "node tools/testdb.mjs migrated shop_codegen SHOP_CODEGEN_URL -- node tools/db-types.mjs",
+    "openapi": "pnpm -s --filter @shop/api run openapi",
     "scan:secrets": "bash tools/scan-secrets.sh",
     "scan:deps": "bash tools/scan-deps.sh",
     "test:infra": "bash tools/smoke-infra.sh"

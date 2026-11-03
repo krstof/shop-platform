@@ -55,6 +55,15 @@ export function buildRules(mods) {
       to: { path: "^modules/[^/]+/", pathNot: ["^modules/$1/", PUBLIC_ENTRY] },
     },
     {
+      name: "kein-unaufloesbarer-import",
+      comment:
+        "Jeder Import muss sich auflösen lassen. Sonst könnte ein Import über einen Paketnamen " +
+        "(@shop/<modul>/intern) unbemerkt an den Regeln vorbeigehen.",
+      severity: "error",
+      from: {},
+      to: { couldNotResolve: true },
+    },
+    {
       name: "programme-nur-ueber-oeffentliche-datei",
       comment: "Programme unter apps/ benutzen Module nur über deren src/index.ts.",
       severity: "error",
@@ -91,7 +100,9 @@ export function cruiseOptions() {
     enhancedResolveOptions: {
       extensions: [".ts", ".tsx", ".mjs", ".js", ".json"],
       exportsFields: ["exports"],
-      conditionNames: ["types", "import", "default"],
+      // „source“ zeigt in den package.json unserer Pakete auf src/: So prüft die Regel Importe über
+      // Paketnamen (@shop/<modul>) auch vor dem Bauen und immer gegen die echte Quelldatei.
+      conditionNames: ["source", "types", "import", "default"],
       mainFields: ["types", "module", "main"],
     },
   };

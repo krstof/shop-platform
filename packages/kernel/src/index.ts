@@ -4,6 +4,8 @@ export * from "./money.js";
 export * from "./tax.js";
 export * from "./id.js";
 export * from "./problem.js";
+export * from "./locale.js";
+export { PROBLEM_TITLES } from "./problem-texts.js";
 export * from "./context.js";
 export * from "./config.js";
 export * from "./ip.js";

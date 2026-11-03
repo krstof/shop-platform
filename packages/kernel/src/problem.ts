@@ -1,7 +1,9 @@
 // Fehler im Format „Problem Details“ nach RFC 9457 (Architektur 4.9, Q-05, Sicherheit 5.13).
 // Fachliche Fehler sind Unterklassen von AppError. Alles andere wird zu einem
 // allgemeinen 500er ohne Einzelheiten: keine SQL-Texte, Pfade oder Bibliotheksnamen.
-import type { z } from "zod";
+import { z } from "zod";
+import { DEFAULT_LOCALE, type Locale } from "./locale.js";
+import { PROBLEM_TITLES, validationDetail } from "./problem-texts.js";
 
 export const PROBLEM_TYPE_BASE = "https://docs.shop.localhost/errors/";
 export const PROBLEM_CONTENT_TYPE = "application/problem+json";
@@ -94,6 +96,24 @@ export class PreconditionFailedError extends AppError {
   readonly title = "Der Datensatz wurde inzwischen geändert.";
 }
 
+export class MethodNotAllowedError extends AppError {
+  readonly status = 405;
+  readonly code = "method_not_allowed";
+  readonly title = "Diese Methode ist hier nicht erlaubt.";
+}
+
+export class PayloadTooLargeError extends AppError {
+  readonly status = 413;
+  readonly code = "payload_too_large";
+  readonly title = "Die Anfrage ist zu groß.";
+}
+
+export class UnsupportedMediaTypeError extends AppError {
+  readonly status = 415;
+  readonly code = "unsupported_media_type";
+  readonly title = "Dieses Datenformat wird nicht unterstützt. Bitte JSON senden.";
+}
+
 export class RateLimitedError extends AppError {
   readonly status = 429;
   readonly code = "rate_limited";
@@ -116,15 +136,25 @@ function typeUrl(code: string): string {
   return PROBLEM_TYPE_BASE + code.replaceAll("_", "-");
 }
 
+/** Titel aus der Texttabelle in der gewünschten Sprache, sonst der deutsche Titel der Fehlerklasse. */
+export function problemTitle(code: string, fallback: string, locale: Locale): string {
+  return PROBLEM_TITLES[code]?.[locale] ?? fallback;
+}
+
 /**
  * Wandelt jeden Fehler in eine sichere Antwort. Nur AppError gibt Einzelheiten preis,
  * alle anderen Fehler ergeben einen allgemeinen 500er mit `requestId`.
+ * Der Titel kommt in der gewünschten Sprache (Standard Deutsch).
  */
-export function toProblemDetails(error: unknown, requestId: string): ProblemDetails {
+export function toProblemDetails(
+  error: unknown,
+  requestId: string,
+  locale: Locale = DEFAULT_LOCALE,
+): ProblemDetails {
   if (error instanceof AppError) {
     return {
       type: typeUrl(error.code),
-      title: error.title,
+      title: problemTitle(error.code, error.title, locale),
       status: error.status,
       code: error.code,
       ...(error.detail === undefined ? {} : { detail: error.detail }),
@@ -132,7 +162,12 @@ export function toProblemDetails(error: unknown, requestId: string): ProblemDeta
       requestId,
     };
   }
-  return { type: typeUrl(GENERIC_500.code), ...GENERIC_500, requestId };
+  return {
+    type: typeUrl(GENERIC_500.code),
+    ...GENERIC_500,
+    title: problemTitle(GENERIC_500.code, GENERIC_500.title, locale),
+    requestId,
+  };
 }
 
 /** Pfadteile als JSON Pointer: `["variants", 0, "price"]` → `/variants/0/price`. */
@@ -140,16 +175,42 @@ export function toJsonPointer(path: readonly PropertyKey[]): string {
   return path.map((p) => "/" + String(p).replaceAll("~", "~0").replaceAll("/", "~1")).join("");
 }
 
-/** Macht aus einem Zod-Fehler einen ValidationError mit einer Zeile je Feld. */
-export function validationErrorFromZod(error: z.ZodError): ValidationError {
-  const errors = error.issues.map((issue) => ({
-    path: toJsonPointer(issue.path),
-    code: issue.code,
-    message: issue.message,
-  }));
-  const n = errors.length;
-  return new ValidationError({
-    detail: n === 1 ? "Ein Feld ist fehlerhaft." : `${n} Felder sind fehlerhaft.`,
-    errors,
-  });
+/**
+ * Macht aus einem Zod-Fehler einen ValidationError mit einer Zeile je Feld.
+ * `prefix` stellt dem Pfad etwas voran, zum Beispiel `/query` für Abfrageparameter.
+ * Die Feldtexte kommen aus Zod; für die passende Sprache beim Prüfen `zodErrorMap(locale)` mitgeben.
+ */
+export function validationErrorFromZod(
+  error: z.ZodError,
+  locale: Locale = DEFAULT_LOCALE,
+  prefix = "",
+): ValidationError {
+  const errors: FieldError[] = [];
+  for (const issue of error.issues) {
+    // Unbekannte Felder meldet Zod gesammelt am Objekt; wir melden jedes Feld einzeln an seinem Pfad.
+    if (issue.code === "unrecognized_keys") {
+      for (const key of issue.keys) {
+        errors.push({
+          path: prefix + toJsonPointer([...issue.path, key]),
+          code: issue.code,
+          message: UNKNOWN_FIELD[locale],
+        });
+      }
+      continue;
+    }
+    errors.push({ path: prefix + toJsonPointer(issue.path), code: issue.code, message: issue.message });
+  }
+  return new ValidationError({ detail: validationDetail(errors.length, locale), errors });
+}
+
+const UNKNOWN_FIELD: Readonly<Record<Locale, string>> = {
+  de: "Dieses Feld ist nicht erlaubt.",
+  en: "This field is not allowed.",
+};
+
+const ZOD_LOCALES = { de: z.locales.de(), en: z.locales.en() } as const;
+
+/** Fehlertexte von Zod in der gewünschten Sprache, als Option beim Prüfen: `safeParse(x, { error })`. */
+export function zodErrorMap(locale: Locale): z.core.$ZodErrorMap {
+  return ZOD_LOCALES[locale].localeError;
 }

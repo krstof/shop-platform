@@ -1,8 +1,31 @@
 // Gemeinsame ESLint-Regeln (Architektur 3.4, Sicherheit 5.4 und 5.10).
-// Weitere Regeln (rohes SQL, set:html, Modulgrenzen) kommen mit den jeweiligen Etappen dazu.
+// Weitere Regeln (set:html) kommen mit den jeweiligen Etappen dazu.
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import globals from "globals";
+
+const DB_MESSAGE = "Datenbankzugriff nur über withTenantTransaction aus @shop/kernel.";
+const DRIVER_PATHS = [
+  { name: "pg", message: DB_MESSAGE },
+  { name: "postgres", message: DB_MESSAGE },
+];
+const RAW_SQL_MESSAGE =
+  "Rohes SQL nur in Migrationen und im Kernel (Architektur 3.4). Abfragen mit dem typisierten Kysely-Baukasten bauen.";
+const RAW_SQL_PATH = {
+  name: "kysely",
+  importNames: ["sql", "CompiledQuery", "RawNode"],
+  message: RAW_SQL_MESSAGE,
+};
+const RAW_SQL_SYNTAX = [
+  {
+    selector: "ImportDeclaration[source.value='kysely'] > ImportNamespaceSpecifier",
+    message: RAW_SQL_MESSAGE,
+  },
+  {
+    selector: "ImportExpression[source.value='kysely']",
+    message: RAW_SQL_MESSAGE,
+  },
+];
 
 export default tseslint.config(
   {
@@ -45,21 +68,33 @@ export default tseslint.config(
   // Den Treiber direkt benutzen dürfen nur der Kernel und das Anmeldemodul (ADR-008).
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs"],
-    // Der Test des Dienstes migrate legt seine Wegwerf-Datenbank selbst an.
-    ignores: ["packages/kernel/**", "modules/identity/**", "apps/migrate/src/**/*.test.ts"],
+    // Tests mit Datenbank (Dienst migrate, *.db.test.ts) legen ihre Wegwerf-Datenbank selbst an.
+    ignores: [
+      "packages/kernel/**",
+      "modules/**",
+      "apps/migrate/src/**/*.test.ts",
+      "apps/*/src/**/*.db.test.ts",
+    ],
     rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          paths: [
-            { name: "pg", message: "Datenbankzugriff nur über withTenantTransaction aus @shop/kernel." },
-            {
-              name: "postgres",
-              message: "Datenbankzugriff nur über withTenantTransaction aus @shop/kernel.",
-            },
-          ],
-        },
-      ],
+      "no-restricted-imports": ["error", { paths: DRIVER_PATHS }],
+    },
+  },
+  // Fachmodule: kein Treiber (außer identity) und kein rohes SQL (Architektur 3.4, Sicherheit 5.4).
+  // Rohes SQL umgeht die Typprüfung je Modul und könnte fremde Tabellen lesen; es gehört nur
+  // in Migrationen und den Kernel. Abfragen bauen Module mit dem typisierten Kysely-Baukasten.
+  {
+    files: ["modules/**/*.ts", "modules/**/*.tsx", "modules/**/*.js", "modules/**/*.mjs"],
+    ignores: ["modules/identity/**"],
+    rules: {
+      "no-restricted-imports": ["error", { paths: [...DRIVER_PATHS, RAW_SQL_PATH] }],
+      "no-restricted-syntax": ["error", ...RAW_SQL_SYNTAX],
+    },
+  },
+  {
+    files: ["modules/identity/**/*.ts", "modules/identity/**/*.js", "modules/identity/**/*.mjs"],
+    rules: {
+      "no-restricted-imports": ["error", { paths: [RAW_SQL_PATH] }],
+      "no-restricted-syntax": ["error", ...RAW_SQL_SYNTAX],
     },
   },
 );

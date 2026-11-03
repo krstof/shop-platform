@@ -1,0 +1,85 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Shop-Plattform Platform API",
+    "description": "API der Plattform-Verwaltung (Betreiber). Kein Zugriff auf Shopdaten.",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "code": {
+            "type": "string",
+            "description": "Feste, maschinenlesbare Kennung des Fehlers."
+          },
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "JSON Pointer auf das Feld, z. B. /body/name."
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId"
+        ],
+        "additionalProperties": false,
+        "description": "Fehler im Format Problem Details (RFC 9457)."
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "shop_session",
+        "description": "Sitzungs-Cookie nach der Anmeldung (HttpOnly, Secure, SameSite=Lax)."
+      },
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API-Token mit Präfix shp_at_, gebunden an einen Shop und eine Liste von Berechtigungen."
+      }
+    }
+  }
+}

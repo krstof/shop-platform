@@ -35,6 +35,8 @@ jobs:
       - run: pnpm lint:deps
       - run: pnpm typecheck
       - run: pnpm build
+      # OpenAPI-Dateien aktuell, jede Operation erklärt ihre Berechtigung (API-03, T-09)
+      - run: pnpm openapi --check
       - run: pnpm test:tools
       - run: pnpm test
 

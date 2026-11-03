@@ -7,10 +7,12 @@
   "type": "module",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./migrate": {
+      "source": "./src/db/migrate.ts",
       "types": "./dist/db/migrate.d.ts",
       "default": "./dist/db/migrate.js"
     }
