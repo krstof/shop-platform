@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { Database } from "@shop/kernel";
 import { catalogEndpoints } from "../../index.js";
 import type { ManufacturerRow } from "../../internal/manufacturer-repository.js";
-import { manufacturerSchema, toManufacturer } from "./manufacturer.schema.js";
+import {
+  createManufacturerInput,
+  manufacturerSchema,
+  toChanges,
+  toManufacturer,
+  updateManufacturerInput,
+} from "./manufacturer.schema.js";
 
 const row: ManufacturerRow = {
   id: "0192f1c4-7a1e-7c3b-8000-000000000001",
@@ -54,7 +60,54 @@ describe("Hersteller in der Admin-API", () => {
 
   it("alle Endpunkte des Moduls verlangen eine Berechtigung", () => {
     const endpoints = catalogEndpoints({ database: { destroy: async () => undefined } as Database<unknown> });
-    expect(endpoints.map((e) => e.operationId)).toEqual(["listManufacturers", "getManufacturer"]);
+    expect(endpoints.map((e) => e.operationId)).toEqual([
+      "listManufacturers",
+      "getManufacturer",
+      "createManufacturer",
+      "updateManufacturer",
+    ]);
     for (const e of endpoints) expect("scopes" in e.access && e.access.scopes.length > 0).toBe(true);
+  });
+});
+
+describe("Eingaben für Hersteller (Q-02)", () => {
+  it("lehnt Mass Assignment und unsichere Adressen ab", () => {
+    const bad = createManufacturerInput.safeParse({
+      name: "Teehaus",
+      tenantId: "x",
+      version: 3,
+      websiteUrl: "javascript:alert(1)",
+    });
+    expect(bad.success).toBe(false);
+    const paths = bad.error?.issues.map((i) =>
+      i.code === "unrecognized_keys" ? i.keys.join(",") : i.path.join("/"),
+    );
+    expect(paths).toEqual(expect.arrayContaining(["tenantId,version", "websiteUrl"]));
+  });
+
+  it("verlangt einen Namen, begrenzt Längen und Ländercode", () => {
+    expect(createManufacturerInput.safeParse({ name: "  " }).success).toBe(false);
+    expect(createManufacturerInput.safeParse({ name: "x".repeat(201) }).success).toBe(false);
+    expect(createManufacturerInput.safeParse({ name: "A", address: { countryCode: "de" } }).success).toBe(
+      false,
+    );
+    expect(createManufacturerInput.safeParse({ name: "A", address: { zip: "1" } }).success).toBe(false);
+  });
+
+  it("Änderung: mindestens ein Feld, null leert, fehlende Felder bleiben", () => {
+    expect(updateManufacturerInput.safeParse({}).success).toBe(false);
+    const input = updateManufacturerInput.parse({
+      email: null,
+      address: { city: "Bremen" },
+      euResponsiblePerson: null,
+    });
+    expect(toChanges(input)).toEqual({
+      email: null,
+      city: "Bremen",
+      eu_responsible_name: null,
+      eu_responsible_address: null,
+      eu_responsible_email: null,
+      eu_responsible_phone: null,
+    });
   });
 });

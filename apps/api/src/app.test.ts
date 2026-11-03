@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { ActorResolver } from "./actor.js";
 import { BODY_LIMIT_BYTES, createApi } from "./app.js";
+import { memoryIdempotencyStore } from "./idempotency-store.js";
 
 const TENANT = uuidv7();
 const USER = uuidv7();
@@ -61,6 +62,7 @@ const create = defineEndpoint({
     name: z.string().min(3).max(50),
     tags: z.array(z.string().max(10)).max(3).optional(),
   }),
+  bodyExample: { name: "Tee" },
   response: { status: 201, description: "Angelegt", schema: z.object({ name: z.string() }) },
   handler: async ({ body }) => {
     if (body.name === "Konflikt") throw new ConflictError({ detail: "Gibt es schon." });
@@ -88,7 +90,12 @@ const lines: string[] = [];
 const logger = createLogger({ level: "debug", destination: { write: (l: string) => void lines.push(l) } });
 
 beforeAll(async () => {
-  app = await createApi({ endpoints: [echo, create, platformOnly], resolveActor: testResolver, logger });
+  app = await createApi({
+    endpoints: [echo, create, platformOnly],
+    resolveActor: testResolver,
+    logger,
+    idempotency: memoryIdempotencyStore(),
+  });
 });
 afterAll(async () => {
   await app?.close();
@@ -348,8 +355,43 @@ describe("Fehlerformat (Q-05) und Sprache", () => {
 
 describe("Liste der Endpunkte", () => {
   it("doppelte operationId oder Route lässt den Start scheitern", async () => {
-    await expect(createApi({ endpoints: [echo, echo], resolveActor: testResolver, logger })).rejects.toThrow(
-      /operationId doppelt: getThing/,
-    );
+    await expect(
+      createApi({
+        endpoints: [echo, echo],
+        resolveActor: testResolver,
+        logger,
+        idempotency: memoryIdempotencyStore(),
+      }),
+    ).rejects.toThrow(/operationId doppelt: getThing/);
+  });
+});
+
+describe("Funde von Schemathesis (T-12) als feste Tests", () => {
+  const auth = { "x-test-scopes": "products:read,products:write" };
+
+  it("NUL-Zeichen und einzelne Ersatzzeichen im Inhalt ergeben 422 statt 500", async () => {
+    for (const payload of [
+      '{"name":"Te\\u0000e"}',
+      '{"name":"Te\\udbe7e"}',
+      '{"name":"Tee","tags":["a\\u0000"]}',
+    ]) {
+      const r = await fastify().inject({
+        method: "POST",
+        url: "/admin/v1/things",
+        headers: { ...auth, "content-type": "application/json" },
+        payload,
+      });
+      expect(r.statusCode).toBe(422);
+      expect(r.json().errors[0].code).toBe("invalid_characters");
+    }
+  });
+
+  it("bekannte Adresse mit falscher Methode ergibt 405 mit Allow, auch QUERY und TRACE", async () => {
+    for (const method of ["DELETE", "PUT", "TRACE", "QUERY", "OPTIONS"] as const) {
+      const r = await fastify().inject({ method, url: `/admin/v1/things/${ID}`, headers: auth });
+      expect(r.statusCode, method).toBe(405);
+      expect(r.headers["allow"]).toBe("GET, HEAD");
+      expect(r.json().code).toBe("method_not_allowed");
+    }
   });
 });

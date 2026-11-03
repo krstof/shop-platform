@@ -14,3 +14,4 @@ coverage/
 infra/.data/
 *.log
 .DS_Store
+.venv-fuzz/

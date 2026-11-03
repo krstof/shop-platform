@@ -102,6 +102,13 @@ export class MethodNotAllowedError extends AppError {
   readonly title = "Diese Methode ist hier nicht erlaubt.";
 }
 
+/** If-Match fehlt bei einer Änderung, die ihn verlangt (RFC 6585). */
+export class PreconditionRequiredError extends AppError {
+  readonly status = 428;
+  readonly code = "precondition_required";
+  readonly title = "Bitte die Version mitschicken (If-Match).";
+}
+
 export class PayloadTooLargeError extends AppError {
   readonly status = 413;
   readonly code = "payload_too_large";

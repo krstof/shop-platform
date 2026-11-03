@@ -31,10 +31,11 @@ const PROBLEM_DESCRIPTIONS: Readonly<Record<number, string>> = {
   401: "Nicht angemeldet.",
   403: "Berechtigung fehlt.",
   404: "Nicht gefunden, auch bei Datensätzen anderer Shops.",
-  409: "Die Aktion passt nicht zum aktuellen Zustand.",
+  409: "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
   412: "Der Datensatz wurde inzwischen geändert (If-Match).",
   413: "Die Anfrage ist größer als 1 MB.",
   415: "Nur application/json wird angenommen.",
+  428: "If-Match fehlt.",
   422: "Die Eingabe ist ungültig. Die Felder stehen in errors.",
   429: "Zu viele Anfragen.",
   500: "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
@@ -122,18 +123,68 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
     statuses.add(413);
     statuses.add(415);
   }
+  statuses.add(429);
+  if (endpoint.idempotency !== "none") {
+    statuses.add(400);
+    statuses.add(409);
+    statuses.add(422);
+  }
+  if (endpoint.ifMatch === "required") {
+    statuses.add(400);
+    statuses.add(412);
+    statuses.add(428);
+  }
+  const shape = (endpoint.response.schema as { shape?: Record<string, unknown> }).shape;
+  const hasVersion = shape !== undefined && "version" in shape;
   const responses: JsonObject = {
     [String(endpoint.response.status)]: {
       description: endpoint.response.description,
+      ...(hasVersion
+        ? {
+            headers: {
+              ETag: {
+                description:
+                  'Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. "3".',
+                schema: { type: "string" },
+              },
+            },
+          }
+        : {}),
       content: { "application/json": { schema: collector.convert(endpoint.response.schema, "output") } },
     },
   };
-  for (const s of [...statuses].sort((a, b) => a - b)) responses[String(s)] = problemResponse(s);
+  for (const s of [...statuses].sort((a, b) => a - b)) {
+    const r = problemResponse(s);
+    if (s === 429)
+      r["headers"] = {
+        "Retry-After": { description: "Sekunden bis zum nächsten Versuch.", schema: { type: "integer" } },
+      };
+    responses[String(s)] = r;
+  }
 
-  const params = [
+  const params: JsonObject[] = [
     ...parameters(endpoint.params, "path", collector),
     ...parameters(endpoint.query, "query", collector),
   ];
+  if (endpoint.idempotency !== "none") {
+    params.push({
+      name: "Idempotency-Key",
+      in: "header",
+      required: endpoint.idempotency === "required",
+      description:
+        "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+      schema: { type: "string", pattern: "^[A-Za-z0-9_-]{8,255}$" },
+    });
+  }
+  if (endpoint.ifMatch === "required") {
+    params.push({
+      name: "If-Match",
+      in: "header",
+      required: true,
+      description: 'Version aus dem ETag der letzten Antwort, z. B. "3".',
+      schema: { type: "string", pattern: '^"\\d{1,9}"$' },
+    });
+  }
   return {
     operationId: endpoint.operationId,
     summary: endpoint.summary,
@@ -145,7 +196,12 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
       : {
           requestBody: {
             required: true,
-            content: { "application/json": { schema: collector.convert(endpoint.body, "input") } },
+            content: {
+              "application/json": {
+                schema: collector.convert(endpoint.body, "input"),
+                example: endpoint.bodyExample as Json,
+              },
+            },
           },
         }),
     responses,
@@ -156,6 +212,10 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
         }
       : { security: [], "x-public": true, "x-public-reason": endpoint.access.reason }),
   };
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Baut die OpenAPI-Beschreibung einer API. Reihenfolge ist fest, damit die Datei stabil bleibt. */
@@ -169,6 +229,22 @@ export function buildOpenApi(api: ApiName, endpoints: readonly Endpoint[]): Json
   for (const e of mine) {
     const item = (paths[e.fullPath] ??= {});
     item[e.method.toLowerCase()] = operation(e, collector);
+  }
+  // Verknüpfungen (OpenAPI links): Die ID aus „anlegen“ führt zu „lesen“ und „ändern“.
+  // Hilft Menschen, der KI und Schemathesis (zustandsbehaftete Tests) beim Verstehen der Abläufe.
+  for (const e of mine) {
+    if (e.method !== "POST" || e.response.status !== 201) continue;
+    const children = mine.filter((c) =>
+      new RegExp(`^${escapeRe(e.fullPath)}/\\{([a-zA-Z0-9]+)\\}$`).test(c.fullPath),
+    );
+    if (children.length === 0) continue;
+    const links: JsonObject = {};
+    for (const c of children) {
+      const param = /\{([a-zA-Z0-9]+)\}$/.exec(c.fullPath)?.[1] ?? "";
+      links[c.operationId] = { operationId: c.operationId, parameters: { [param]: "$response.body#/id" } };
+    }
+    const response = (paths[e.fullPath]?.["post"] as JsonObject)["responses"] as JsonObject;
+    (response["201"] as JsonObject)["links"] = links;
   }
   const schemas = Object.fromEntries(
     Object.entries(collector.components).sort(([a], [b]) => a.localeCompare(b)),

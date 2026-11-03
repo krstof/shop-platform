@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-Zurzeit keine offenen Fragen.
+1. **Dokumentationsseite der API jetzt oder später?** Geplant war eine schöne Seite zum Durchklicken der API (Scalar). Das Paket dafür bringt aber über 50 MB fremden Code mit (unter anderem ein zweites Oberflächen-Framework), nur für eine Seite. Ich habe sie deshalb zurückgestellt; die API-Beschreibung liegt trotzdem vollständig vor. Antwort: **Später** (eigener kleiner Dienst nur für die Entwicklung, mein Vorschlag) oder **Jetzt** (Paket trotzdem einbauen). (03.11.2026)
 
 ## Beantwortet
 

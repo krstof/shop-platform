@@ -5,6 +5,6 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OSV="$("$ROOT/tools/ensure-tool.sh" osv-scanner)"
 cd "$ROOT"
 echo "== OSV-Scanner"
-"$OSV" scan source --lockfile pnpm-lock.yaml
+"$OSV" scan source --lockfile pnpm-lock.yaml --lockfile tools/fuzz/requirements.txt
 echo "== pnpm audit (ab Schweregrad hoch)"
 pnpm audit --audit-level high

@@ -20,3 +20,14 @@ export {
   type TenantTransactionOptions,
   type Transaction,
 } from "./db/database.js";
+export {
+  abandonIdempotent,
+  beginIdempotent,
+  completeIdempotent,
+  IDEMPOTENCY_KEY_PATTERN,
+  IdempotencyInProgressError,
+  IdempotencyKeyReusedError,
+  requestFingerprint,
+  type IdempotencyRequest,
+  type IdempotencyStart,
+} from "./db/idempotency.js";

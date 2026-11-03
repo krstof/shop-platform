@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ActorResolver } from "./actor.js";
 import { createApi } from "./app.js";
 import { allEndpoints } from "./endpoints.js";
+import { databaseIdempotencyStore } from "./idempotency-store.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const adminUrl = process.env["SHOP_TEST_DATABASE_URL"];
@@ -25,15 +26,17 @@ if (process.env["SHOP_REQUIRE_DB_TESTS"] === "true" && adminUrl === undefined) {
 const TENANT_A = uuidv7();
 const TENANT_B = uuidv7();
 const COUNT_A = 7;
+const USER_A = uuidv7();
+const USER_B = uuidv7();
 
-/** Anmeldung im Test: Kopfzeile x-test-shop wählt den Shop, immer mit products:read. */
+/** Anmeldung im Test: Kopfzeile x-test-shop wählt den Shop, mit products:read und products:write. */
 const resolver: ActorResolver = async ({ headers }) => {
   const shop = headers["x-test-shop"];
   if (shop !== "a" && shop !== "b") return undefined;
   const auth: AuthenticatedActor = {
-    actor: { type: "user", id: uuidv7() },
+    actor: { type: "user", id: shop === "a" ? USER_A : USER_B },
     tenantId: shop === "a" ? TENANT_A : TENANT_B,
-    scopes: new Set(["products:read"]),
+    scopes: new Set(["products:read", "products:write"]),
   };
   return auth;
 };
@@ -103,6 +106,7 @@ describe.skipIf(adminUrl === undefined)("Hersteller-Endpunkte (echte Datenbank)"
       endpoints: allEndpoints({ database }),
       resolveActor: resolver,
       logger: createLogger({ level: "silent" }),
+      idempotency: databaseIdempotencyStore(database),
     });
   }, 60_000);
 
@@ -202,5 +206,131 @@ describe.skipIf(adminUrl === undefined)("Hersteller-Endpunkte (echte Datenbank)"
   it("ungültige ID ergibt 422 ohne Datenbankfehler", async () => {
     const r = await get("/admin/v1/manufacturers/1;DROP TABLE x", "a");
     expect(r.statusCode).toBe(422);
+  });
+
+  const send = (
+    method: "POST" | "PATCH",
+    url: string,
+    shop: "a" | "b",
+    payload: object,
+    headers: Record<string, string> = {},
+  ) =>
+    app
+      .getHttpAdapter()
+      .getInstance()
+      .inject({ method, url, headers: { "x-test-shop": shop, ...headers }, payload });
+
+  it("Anlegen ergibt 201 mit ETag, der Hersteller landet im eigenen Shop", async () => {
+    const r = await send("POST", "/admin/v1/manufacturers", "a", {
+      name: "Neu A",
+      address: { countryCode: "DE" },
+    });
+    expect(r.statusCode).toBe(201);
+    expect(r.headers["etag"]).toBe('"1"');
+    expect(r.json()).toMatchObject({ name: "Neu A", version: 1, address: { countryCode: "DE" } });
+    expect((await get(`/admin/v1/manufacturers/${r.json().id}`, "a")).statusCode).toBe(200);
+    expect((await get(`/admin/v1/manufacturers/${r.json().id}`, "b")).statusCode).toBe(404);
+  });
+
+  it("Idempotenz: Wiederholung liefert dieselbe Antwort, andere Anfrage mit demselben Schlüssel 422", async () => {
+    const key = `test-${uuidv7()}`;
+    const first = await send(
+      "POST",
+      "/admin/v1/manufacturers",
+      "a",
+      { name: "Einmalig" },
+      { "idempotency-key": key },
+    );
+    const again = await send(
+      "POST",
+      "/admin/v1/manufacturers",
+      "a",
+      { name: "Einmalig" },
+      { "idempotency-key": key },
+    );
+    expect(first.statusCode).toBe(201);
+    expect(again.statusCode).toBe(201);
+    expect(again.headers["idempotent-replayed"]).toBe("true");
+    expect(again.json().id).toBe(first.json().id);
+    const other = await send(
+      "POST",
+      "/admin/v1/manufacturers",
+      "a",
+      { name: "Anders" },
+      { "idempotency-key": key },
+    );
+    expect(other.statusCode).toBe(422);
+    expect(other.json().code).toBe("idempotency_key_reused");
+    // Derselbe Schlüssel in einem anderen Shop ist ein eigener Schlüssel.
+    const shopB = await send(
+      "POST",
+      "/admin/v1/manufacturers",
+      "b",
+      { name: "Einmalig" },
+      { "idempotency-key": key },
+    );
+    expect(shopB.statusCode).toBe(201);
+    expect(shopB.headers["idempotent-replayed"]).toBeUndefined();
+    const list = await get("/admin/v1/manufacturers?limit=100", "a");
+    expect(list.json().data.filter((m: { name: string }) => m.name === "Einmalig")).toHaveLength(1);
+  });
+
+  it("Idempotenz: fünf gleichzeitige Wiederholungen legen genau einen Hersteller an", async () => {
+    const key = `parallel-${uuidv7()}`;
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        send("POST", "/admin/v1/manufacturers", "a", { name: "Gleichzeitig" }, { "idempotency-key": key }),
+      ),
+    );
+    const statuses = results.map((r) => r.statusCode);
+    expect(statuses.every((s) => s === 201 || s === 409)).toBe(true);
+    expect(statuses.filter((s) => s === 201).length).toBeGreaterThanOrEqual(1);
+    const list = await get("/admin/v1/manufacturers?limit=100", "a");
+    expect(list.json().data.filter((m: { name: string }) => m.name === "Gleichzeitig")).toHaveLength(1);
+  });
+
+  it("Idempotency-Key mit falschem Format ergibt 400", async () => {
+    const r = await send(
+      "POST",
+      "/admin/v1/manufacturers",
+      "a",
+      { name: "X" },
+      { "idempotency-key": "kurz" },
+    );
+    expect(r.statusCode).toBe(400);
+    expect(r.json().errors[0].path).toBe("/headers/idempotency-key");
+  });
+
+  it("Ändern: ohne If-Match 428, alte Version 412, passende Version 200 mit neuem ETag", async () => {
+    const created = await send("POST", "/admin/v1/manufacturers", "a", { name: "Versioniert" });
+    const url = `/admin/v1/manufacturers/${created.json().id}`;
+    expect((await send("PATCH", url, "a", { city: "x" })).statusCode).toBe(422);
+    const noMatch = await send("PATCH", url, "a", { email: "a@example.org" });
+    expect(noMatch.statusCode).toBe(428);
+    const ok = await send("PATCH", url, "a", { email: "a@example.org" }, { "if-match": '"1"' });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.headers["etag"]).toBe('"2"');
+    expect(ok.json()).toMatchObject({ email: "a@example.org", name: "Versioniert", version: 2 });
+    // Zweiter Bearbeiter mit veraltetem Stand überschreibt nicht unbemerkt.
+    const stale = await send("PATCH", url, "a", { email: "b@example.org" }, { "if-match": '"1"' });
+    expect(stale.statusCode).toBe(412);
+    expect((await get(url, "a")).json().email).toBe("a@example.org");
+    expect((await send("PATCH", url, "a", { email: null }, { "if-match": "2" })).statusCode).toBe(400);
+    // Fund von Schemathesis: leeres address-Objekt ändert nichts, war vorher ein 500er.
+    const empty = await send("PATCH", url, "a", { address: {} }, { "if-match": '"2"' });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.headers["etag"]).toBe('"2"');
+  });
+
+  it("T-08: Ändern eines Herstellers aus Shop B ergibt in Shop A 404, B bleibt unverändert", async () => {
+    const r = await send(
+      "PATCH",
+      `/admin/v1/manufacturers/${idsB[1]}`,
+      "a",
+      { name: "Gekapert" },
+      { "if-match": '"1"' },
+    );
+    expect(r.statusCode).toBe(404);
+    expect((await get(`/admin/v1/manufacturers/${idsB[1]}`, "b")).json().name).toBe("Hosenbau");
   });
 });

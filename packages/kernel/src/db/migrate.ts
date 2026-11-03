@@ -211,6 +211,26 @@ export async function ensureDatabase(connectionString: string): Promise<boolean>
 }
 
 /** Führt Grundlage und alle neuen Migrationen aus. Darf beliebig oft und gleichzeitig laufen. */
+/**
+ * Rollen gelten für den ganzen Server, die Sperre oben nur für eine Datenbank. Richten zwei
+ * Datenbanken auf demselben Server gleichzeitig ein (parallele Tests, mehrere Umgebungen), kann
+ * eine Rolle zwischen Prüfung und Anlegen entstehen; PostgreSQL meldet dann eine doppelte Rolle.
+ * roles.sql ist wiederholbar, also einfach noch einmal versuchen (am 03.11.2026 so gesehen).
+ */
+async function runRolesSql(run: () => Promise<unknown>, attempts = 5): Promise<void> {
+  for (let i = 1; ; i++) {
+    try {
+      await run();
+      return;
+    } catch (error) {
+      const code = (error as { code?: unknown }).code;
+      const race = code === "23505" || code === "42710" || code === "XX000" || code === "40001";
+      if (!race || i >= attempts) throw error;
+      await new Promise((r) => setTimeout(r, 50 * i));
+    }
+  }
+}
+
 export async function runMigrations(options: RunMigrationsOptions): Promise<RunMigrationsResult> {
   const log = options.log ?? (() => undefined);
   const files = loadMigrations(findMigrationDirs(options.rootDir));
@@ -230,7 +250,7 @@ export async function runMigrations(options: RunMigrationsOptions): Promise<RunM
       await sql`SELECT pg_advisory_lock(${LOCK_KEY})`.execute(conn);
       try {
         await sql.raw("SET client_min_messages = warning").execute(conn);
-        await sql.raw(rolesSql).execute(conn);
+        await runRolesSql(() => sql.raw(rolesSql).execute(conn));
         log("Rollen und Grundrechte geprüft");
 
         for (const role of LOGIN_ROLES) {

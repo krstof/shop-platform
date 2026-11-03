@@ -3,11 +3,28 @@
 // Berechtigung erklärt, strenge Eingaben, Datenzugriff nur über withTenantTransaction,
 // fremde IDs ergeben 404.
 import { decodeCursor, defineEndpoint, idParam, listQuery, pageOf, toPage, type Endpoint } from "@shop/http";
-import { NotFoundError, withTenantTransaction, type Database } from "@shop/kernel";
+import {
+  getContext,
+  NotFoundError,
+  PreconditionFailedError,
+  withTenantTransaction,
+  type Database,
+} from "@shop/kernel";
 import { z } from "zod";
 import type { DB } from "../../db.generated.js";
-import { findManufacturerById, findManufacturers } from "../../internal/manufacturer-repository.js";
-import { manufacturerSchema, toManufacturer } from "./manufacturer.schema.js";
+import {
+  findManufacturerById,
+  findManufacturers,
+  insertManufacturer,
+  updateManufacturer,
+} from "../../internal/manufacturer-repository.js";
+import {
+  createManufacturerInput,
+  manufacturerSchema,
+  toChanges,
+  toManufacturer,
+  updateManufacturerInput,
+} from "./manufacturer.schema.js";
 
 const cursorKey = z.strictObject({ id: z.uuid() });
 
@@ -52,5 +69,60 @@ export function manufacturerEndpoints(db: Database<DB>): Endpoint[] {
     },
   });
 
-  return [list, get];
+  const create = defineEndpoint({
+    api: "admin",
+    method: "POST",
+    path: "/manufacturers",
+    operationId: "createManufacturer",
+    summary: "Hersteller anlegen",
+    description:
+      "Legt einen Hersteller mit Angaben zur Produktsicherheit (GPSR) an. Mit Idempotency-Key wird eine " +
+      "wiederholte Anfrage nicht doppelt ausgeführt.",
+    tags: ["Hersteller"],
+    access: { scopes: ["products:write"] },
+    body: createManufacturerInput,
+    bodyExample: {
+      name: "Teehaus Hamburg GmbH",
+      address: { line1: "Hafenstraße 1", postalCode: "20457", city: "Hamburg", countryCode: "DE" },
+      email: "info@teehaus.example",
+      websiteUrl: "https://teehaus.example",
+    },
+    response: { status: 201, description: "Der angelegte Hersteller.", schema: manufacturerSchema },
+    handler: async ({ body }) => {
+      const tenantId = getContext()?.tenantId ?? "";
+      const row = await withTenantTransaction(db, (trx) =>
+        insertManufacturer(trx, tenantId, { ...toChanges(body), name: body.name }),
+      );
+      return toManufacturer(row);
+    },
+  });
+
+  const update = defineEndpoint({
+    api: "admin",
+    method: "PATCH",
+    path: "/manufacturers/{manufacturerId}",
+    operationId: "updateManufacturer",
+    summary: "Hersteller ändern",
+    description:
+      "Ändert die mitgeschickten Felder eines Herstellers, null leert ein Feld. Verlangt die aktuelle " +
+      "Version als If-Match aus dem ETag; hat inzwischen jemand anders geändert, kommt 412.",
+    tags: ["Hersteller"],
+    access: { scopes: ["products:write"] },
+    params: z.strictObject({ manufacturerId: idParam }),
+    body: updateManufacturerInput,
+    bodyExample: { websiteUrl: "https://teehaus.example/hersteller" },
+    ifMatch: "required",
+    response: { status: 200, description: "Der geänderte Hersteller.", schema: manufacturerSchema },
+    problems: [404, 412, 428],
+    handler: async ({ params, body, ifMatch }) => {
+      const result = await withTenantTransaction(db, (trx) =>
+        updateManufacturer(trx, params.manufacturerId, ifMatch ?? 0, toChanges(body)),
+      );
+      if (result.kind === "not_found") throw new NotFoundError();
+      if (result.kind === "version_mismatch") throw new PreconditionFailedError();
+      return toManufacturer(result.row);
+    },
+  });
+
+  return [list, get, create, update];
 }

@@ -46,10 +46,26 @@ export interface HandlerContext<P, Q, B> {
   readonly locale: Locale;
   /** Bei öffentlichen Endpunkten leer. Der Mandant steht zusätzlich im Anfrage-Kontext des Kernels. */
   readonly auth: AuthenticatedActor | undefined;
+  /** Version aus `If-Match` (Architektur 4.6). Bei `ifMatch: "required"` immer gesetzt. */
+  readonly ifMatch: number | undefined;
 }
 
+/**
+ * Bereiche der Anfragebremse (Sicherheit 5.8). Ohne Angabe gilt der Bereich der API:
+ * admin, platform, bei der Storefront-API store-read für GET und store-write sonst.
+ */
+export const RATE_LIMIT_CATEGORIES = [
+  "admin",
+  "platform",
+  "store-read",
+  "store-write",
+  "login",
+  "coupon",
+] as const;
+export type RateLimitCategory = (typeof RATE_LIMIT_CATEGORIES)[number];
+
 /** Fehler-Statuscodes, die ein Endpunkt in OpenAPI dokumentiert (401, 403, 422, 500 kommen immer dazu). */
-export type DocumentedProblem = 400 | 404 | 409 | 412 | 413 | 415 | 429;
+export type DocumentedProblem = 400 | 404 | 409 | 412 | 413 | 415 | 428 | 429;
 
 type AnyObject = z.ZodObject;
 
@@ -72,6 +88,16 @@ export interface EndpointSpec<
   readonly params?: P;
   readonly query?: Q;
   readonly body?: B;
+  /** Pflicht, wenn es einen body gibt: gültiges Beispiel für Dokumentation, KI und Tests (T-08). */
+  readonly bodyExample?: B extends z.ZodType ? z.input<B> : never;
+  /**
+   * Nur bei POST: `Idempotency-Key` erlaubt (Standard) oder Pflicht (Checkout, Zahlung, Erstattung).
+   * „none“ nur mit gutem Grund, zum Beispiel bei rein lesenden POST-Suchen.
+   */
+  readonly idempotency?: "optional" | "required" | "none";
+  /** Nur bei PATCH, PUT und DELETE: Änderung nur mit passender Version (`If-Match`, Architektur 4.6). */
+  readonly ifMatch?: "required";
+  readonly rateLimit?: RateLimitCategory;
   readonly response: { readonly status: 200 | 201; readonly description: string; readonly schema: R };
   readonly problems?: readonly DocumentedProblem[];
   readonly handler: (ctx: HandlerContext<Infer<P>, Infer<Q>, Infer<B>>) => Promise<z.input<R>>;
@@ -94,9 +120,18 @@ export interface Endpoint {
   readonly params: AnyObject | undefined;
   readonly query: AnyObject | undefined;
   readonly body: z.ZodType | undefined;
+  readonly bodyExample: unknown;
+  readonly idempotency: "optional" | "required" | "none";
+  readonly ifMatch: "required" | undefined;
+  readonly rateLimit: RateLimitCategory;
   readonly response: { readonly status: 200 | 201; readonly description: string; readonly schema: z.ZodType };
   readonly problems: readonly DocumentedProblem[];
   readonly handler: (ctx: HandlerContext<unknown, unknown, unknown>) => Promise<unknown>;
+}
+
+function defaultRateLimit(api: ApiName, method: HttpMethod): RateLimitCategory {
+  if (api === "store") return method === "GET" ? "store-read" : "store-write";
+  return api;
 }
 
 export class EndpointDefinitionError extends Error {
@@ -130,6 +165,10 @@ export function defineEndpoint<
     params: spec.params,
     query: spec.query,
     body: spec.body,
+    bodyExample: spec.bodyExample,
+    idempotency: spec.method === "POST" ? (spec.idempotency ?? "optional") : "none",
+    ifMatch: spec.ifMatch,
+    rateLimit: spec.rateLimit ?? defaultRateLimit(spec.api, spec.method),
     response: spec.response,
     problems: Object.freeze([...(spec.problems ?? [])]),
     handler: spec.handler as Endpoint["handler"],
@@ -187,6 +226,18 @@ function validateSpec(spec: EndpointSpec<AnyObject, AnyObject, z.ZodType, z.ZodT
     if (part !== "body" && defOf(schema).type !== "object") p.push(`${part} muss ein Objekt-Schema sein`);
     p.push(...findLooseObjects(schema, `/${part}`));
   }
+  if (spec.body !== undefined) {
+    if (spec.bodyExample === undefined) p.push("bodyExample fehlt (Pflicht bei body)");
+    else {
+      const r = spec.body.safeParse(spec.bodyExample);
+      if (!r.success) p.push("bodyExample passt nicht zum body-Schema");
+    }
+  } else if (spec.bodyExample !== undefined) p.push("bodyExample ohne body");
+  if (spec.idempotency !== undefined && spec.method !== "POST") p.push("idempotency gibt es nur bei POST");
+  if (spec.ifMatch !== undefined && !["PATCH", "PUT", "DELETE"].includes(spec.method))
+    p.push("ifMatch gibt es nur bei PATCH, PUT und DELETE");
+  if (spec.rateLimit !== undefined && !(RATE_LIMIT_CATEGORIES as readonly string[]).includes(spec.rateLimit))
+    p.push(`unbekannter Bereich der Anfragebremse „${spec.rateLimit}“`);
   if (spec.response.status !== 200 && spec.response.status !== 201)
     p.push("response.status muss 200 oder 201 sein");
   return p;

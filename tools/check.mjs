@@ -20,9 +20,13 @@ const steps = [
 ];
 const docker = spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
 if (docker) {
+  steps.push(["Bruchprüfung der API gegen origin/main (oasdiff)", ["bash", "tools/oasdiff.sh"]]);
   steps.push(["Datenbank: Isolation und Rechte (T-01 bis T-05)", ["pnpm", "-s", "test:db"]]);
   steps.push(["Datenbanktypen je Modul aktuell (kysely-codegen)", ["pnpm", "-s", "db:types", "--check"]]);
-  steps.push(["Tests der Pakete mit Datenbank (u. a. T-19)", ["pnpm", "-s", "test:with-db"]]);
+  steps.push(["Tests der Pakete mit Datenbank (u. a. T-08, T-19)", ["pnpm", "-s", "test:with-db"]]);
+  if (process.env["SHOP_SCHEMATHESIS"] !== undefined)
+    steps.push(["Zufallstests der API (Schemathesis, T-12)", ["pnpm", "-s", "test:fuzz"]]);
+  else console.log("ℹ SHOP_SCHEMATHESIS nicht gesetzt: Schemathesis (T-12) läuft nur in der CI.");
 } else {
   steps.push(["Tests der Pakete ohne Datenbank (u. a. T-19)", ["pnpm", "-s", "test"]]);
 }

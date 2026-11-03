@@ -70,11 +70,52 @@ describe("defineEndpoint", () => {
         path: "/things",
         params: undefined,
         body: z.strictObject({ items: z.array(z.object({ name: z.string() })).optional() }),
+        bodyExample: {},
       },
       "/body/items/0: Objekt ist nicht streng",
     ],
+    [
+      "body ohne Beispiel",
+      { method: "POST", path: "/things", params: undefined, body: z.strictObject({ name: z.string() }) },
+      "bodyExample fehlt",
+    ],
+    [
+      "Beispiel passt nicht zum body",
+      {
+        method: "POST",
+        path: "/things",
+        params: undefined,
+        body: z.strictObject({ name: z.string() }),
+        bodyExample: { name: 1 },
+      },
+      "bodyExample passt nicht",
+    ],
+    ["Idempotenz bei GET", { idempotency: "required" }, "idempotency gibt es nur bei POST"],
+    ["If-Match bei GET", { ifMatch: "required" }, "ifMatch gibt es nur bei PATCH"],
+    ["unbekannter Bremsbereich", { rateLimit: "turbo" }, "unbekannter Bereich der Anfragebremse"],
   ])("lehnt ab: %s", (_name, overrides, message) => {
     expect(problems(overrides)).toContain(message);
+  });
+
+  it("setzt Voreinstellungen: Idempotenz bei POST erlaubt, Bremsbereich nach API", () => {
+    const get = defineEndpoint(base);
+    expect([get.idempotency, get.rateLimit, get.ifMatch]).toEqual(["none", "admin", undefined]);
+    const post = defineEndpoint({
+      ...base,
+      method: "POST",
+      path: "/things",
+      operationId: "createThing",
+      params: undefined,
+      body: z.strictObject({ name: z.string() }),
+      bodyExample: { name: "Tee" },
+    } as AnySpec);
+    expect([post.idempotency, post.rateLimit]).toEqual(["optional", "admin"]);
+    const store = defineEndpoint({
+      ...base,
+      api: "store",
+      access: { public: true, reason: "Für alle sichtbar." },
+    } as AnySpec);
+    expect(store.rateLimit).toBe("store-read");
   });
 
   it("erlaubt öffentliche Endpunkte nur in der Storefront-API mit Begründung", () => {

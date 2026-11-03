@@ -74,6 +74,9 @@ export default tseslint.config(
       "modules/**",
       "apps/migrate/src/**/*.test.ts",
       "apps/*/src/**/*.db.test.ts",
+      // Testhilfen (nicht im gebauten Programm) und das Skript für Schemathesis
+      "apps/*/src/testing/**",
+      "apps/api/scripts/**",
     ],
     rules: {
       "no-restricted-imports": ["error", { paths: DRIVER_PATHS }],

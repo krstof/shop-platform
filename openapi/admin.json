@@ -114,6 +114,24 @@
               }
             }
           },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
             "content": {
@@ -135,6 +153,365 @@
         ],
         "x-required-scopes": [
           "products:read"
+        ]
+      },
+      "post": {
+        "operationId": "createManufacturer",
+        "summary": "Hersteller anlegen",
+        "description": "Legt einen Hersteller mit Angaben zur Produktsicherheit (GPSR) an. Mit Idempotency-Key wird eine wiederholte Anfrage nicht doppelt ausgeführt.",
+        "tags": [
+          "Hersteller"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "tradeName": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "line1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "line2": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "postalCode": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "city": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "countryCode": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Z]{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "websiteUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500,
+                        "format": "uri"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "euResponsiblePerson": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "address": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "email": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 254,
+                                "format": "email",
+                                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "phone": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "name": "Teehaus Hamburg GmbH",
+                "address": {
+                  "line1": "Hafenstraße 1",
+                  "postalCode": "20457",
+                  "city": "Hamburg",
+                  "countryCode": "DE"
+                },
+                "email": "info@teehaus.example",
+                "websiteUrl": "https://teehaus.example"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Der angelegte Hersteller.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Manufacturer"
+                }
+              }
+            },
+            "links": {
+              "getManufacturer": {
+                "operationId": "getManufacturer",
+                "parameters": {
+                  "manufacturerId": "$response.body#/id"
+                }
+              },
+              "updateManufacturer": {
+                "operationId": "updateManufacturer",
+                "parameters": {
+                  "manufacturerId": "$response.body#/id"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "products:write"
         ]
       }
     },
@@ -162,6 +539,14 @@
         "responses": {
           "200": {
             "description": "Der Hersteller.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -210,6 +595,24 @@
               }
             }
           },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
             "content": {
@@ -231,6 +634,372 @@
         ],
         "x-required-scopes": [
           "products:read"
+        ]
+      },
+      "patch": {
+        "operationId": "updateManufacturer",
+        "summary": "Hersteller ändern",
+        "description": "Ändert die mitgeschickten Felder eines Herstellers, null leert ein Feld. Verlangt die aktuelle Version als If-Match aus dem ETag; hat inzwischen jemand anders geändert, kommt 412.",
+        "tags": [
+          "Hersteller"
+        ],
+        "parameters": [
+          {
+            "name": "manufacturerId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Version aus dem ETag der letzten Antwort, z. B. \"3\".",
+            "schema": {
+              "type": "string",
+              "pattern": "^\"\\d{1,9}\"$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "tradeName": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "line1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "line2": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "postalCode": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "city": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "countryCode": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Z]{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "websiteUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500,
+                        "format": "uri"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "euResponsiblePerson": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "address": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "email": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 254,
+                                "format": "email",
+                                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "phone": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "minProperties": 1
+              },
+              "example": {
+                "websiteUrl": "https://teehaus.example/hersteller"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Der geänderte Hersteller.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Manufacturer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Der Datensatz wurde inzwischen geändert (If-Match).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "If-Match fehlt.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "products:write"
         ]
       }
     }

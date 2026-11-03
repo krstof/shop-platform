@@ -23,6 +23,18 @@ export const PROBLEM_TITLES: Readonly<Record<string, Texts>> = {
     de: "Der Datensatz wurde inzwischen geändert.",
     en: "The record has been changed in the meantime.",
   },
+  precondition_required: {
+    de: "Bitte die Version mitschicken (If-Match).",
+    en: "Please send the version (If-Match).",
+  },
+  idempotency_key_reused: {
+    de: "Der Idempotency-Key gehört zu einer anderen Anfrage.",
+    en: "The idempotency key belongs to a different request.",
+  },
+  idempotency_in_progress: {
+    de: "Die Anfrage wird noch bearbeitet.",
+    en: "The request is still being processed.",
+  },
   payload_too_large: { de: "Die Anfrage ist zu groß.", en: "The request is too large." },
   unsupported_media_type: {
     de: "Dieses Datenformat wird nicht unterstützt. Bitte JSON senden.",

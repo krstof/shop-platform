@@ -18,7 +18,15 @@ describe("OpenAPI (API-03)", () => {
     const get = paths["/admin/v1/manufacturers/{manufacturerId}"]?.["get"];
     expect(get?.["operationId"]).toBe("getManufacturer");
     expect(get?.["x-required-scopes"]).toEqual(["products:read"]);
-    expect(Object.keys(get?.["responses"] as object)).toEqual(["200", "401", "403", "404", "422", "500"]);
+    expect(Object.keys(get?.["responses"] as object)).toEqual([
+      "200",
+      "401",
+      "403",
+      "404",
+      "422",
+      "429",
+      "500",
+    ]);
     expect(lintOpenApi(doc)).toEqual([]);
   });
 

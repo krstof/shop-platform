@@ -221,6 +221,12 @@ describe.skipIf(adminUrl === undefined)("Migrationslauf mit echter Datenbank", (
     });
   });
 
+  it("mehrere Datenbanken auf demselben Server lassen sich gleichzeitig einrichten (Rollen sind serverweit)", async () => {
+    const urls = await Promise.all([freshDatabase(), freshDatabase(), freshDatabase(), freshDatabase()]);
+    const results = await Promise.all(urls.map((u) => runMigrations({ connectionString: u, rootDir: repoRoot })));
+    for (const r of results) expect(r.applied.length).toBeGreaterThanOrEqual(20);
+  }, 120_000);
+
   it("übernimmt nichts, wenn eine Migration scheitert", async () => {
     const url = await freshDatabase();
     const root = fixture({

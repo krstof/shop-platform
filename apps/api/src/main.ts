@@ -5,6 +5,7 @@ import { ConfigError, connectDatabase, createLogger } from "@shop/kernel";
 import { nobodyResolver } from "./actor.js";
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
+import { databaseIdempotencyStore } from "./idempotency-store.js";
 import { allEndpoints } from "./endpoints.js";
 
 async function main(): Promise<void> {
@@ -20,6 +21,7 @@ async function main(): Promise<void> {
     endpoints: allEndpoints({ database }),
     resolveActor: nobodyResolver,
     logger,
+    idempotency: databaseIdempotencyStore(database),
     ...(config.SHOP_TRUSTED_PROXY === undefined ? {} : { trustedProxy: config.SHOP_TRUSTED_PROXY }),
   });
   app.enableShutdownHooks();

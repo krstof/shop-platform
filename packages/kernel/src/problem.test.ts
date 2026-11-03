@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { IdempotencyInProgressError, IdempotencyKeyReusedError } from "./db/idempotency.js";
 import { PROBLEM_TITLES } from "./problem-texts.js";
 import {
   BadRequestError,
@@ -9,6 +10,7 @@ import {
   NotFoundError,
   PayloadTooLargeError,
   PreconditionFailedError,
+  PreconditionRequiredError,
   PROBLEM_TYPE_BASE,
   RateLimitedError,
   ServiceUnavailableError,
@@ -104,6 +106,9 @@ describe("Fehlertexte in zwei Sprachen", () => {
     new MethodNotAllowedError(),
     new ConflictError(),
     new PreconditionFailedError(),
+    new PreconditionRequiredError(),
+    new IdempotencyKeyReusedError(),
+    new IdempotencyInProgressError(),
     new PayloadTooLargeError(),
     new UnsupportedMediaTypeError(),
     new RateLimitedError(),

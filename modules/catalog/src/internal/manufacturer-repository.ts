@@ -72,3 +72,68 @@ export async function findManufacturerById(
 ): Promise<ManufacturerRow | undefined> {
   return trx.selectFrom(TABLE).select(COLUMNS).where("id", "=", id).executeTakeFirst();
 }
+
+/** Spalten, die beim Anlegen und Ändern gesetzt werden dürfen. Mandant, ID und Version nie. */
+export interface ManufacturerChanges {
+  name?: string;
+  trade_name?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  country_code?: string | null;
+  email?: string | null;
+  website_url?: string | null;
+  eu_responsible_name?: string | null;
+  eu_responsible_address?: string | null;
+  eu_responsible_email?: string | null;
+  eu_responsible_phone?: string | null;
+}
+
+export async function insertManufacturer(
+  trx: Transaction<DB>,
+  tenantId: string,
+  values: ManufacturerChanges & { name: string },
+): Promise<ManufacturerRow> {
+  return trx
+    .insertInto(TABLE)
+    .values({ ...values, tenant_id: tenantId })
+    .returning(COLUMNS)
+    .executeTakeFirstOrThrow();
+}
+
+export type UpdateResult =
+  | { readonly kind: "updated"; readonly row: ManufacturerRow }
+  | { readonly kind: "not_found" }
+  | { readonly kind: "version_mismatch" };
+
+/**
+ * Ändert nur, wenn die Version noch stimmt (Architektur 4.6). Die Version zählt der Trigger
+ * kernel.tg_touch_row hoch. Fremde IDs sind wegen der RLS „nicht gefunden“.
+ */
+export async function updateManufacturer(
+  trx: Transaction<DB>,
+  id: string,
+  expectedVersion: number,
+  changes: ManufacturerChanges,
+): Promise<UpdateResult> {
+  // Nichts zu ändern (zum Beispiel nur ein leeres address-Objekt): Version trotzdem prüfen.
+  const row =
+    Object.keys(changes).length === 0
+      ? await trx
+          .selectFrom(TABLE)
+          .select(COLUMNS)
+          .where("id", "=", id)
+          .where("version", "=", expectedVersion)
+          .executeTakeFirst()
+      : await trx
+          .updateTable(TABLE)
+          .set(changes)
+          .where("id", "=", id)
+          .where("version", "=", expectedVersion)
+          .returning(COLUMNS)
+          .executeTakeFirst();
+  if (row !== undefined) return { kind: "updated", row };
+  const exists = await trx.selectFrom(TABLE).select("id").where("id", "=", id).executeTakeFirst();
+  return exists === undefined ? { kind: "not_found" } : { kind: "version_mismatch" };
+}

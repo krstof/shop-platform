@@ -7,9 +7,16 @@
 //   3. Ausführung im Anfrage-Kontext des Kernels (requestId, Mandant, Akteur), sodass
 //      withTenantTransaction den Shop kennt, ohne dass ein Endpunkt ihn weiterreichen muss.
 //   4. Ausgabe durch das Antwort-Schema: Felder, die dort nicht stehen, gehen nie hinaus.
-import type { Endpoint } from "@shop/http";
+import type { AuthenticatedActor, Endpoint } from "@shop/http";
 import {
+  BadRequestError,
   ForbiddenError,
+  MethodNotAllowedError,
+  IDEMPOTENCY_KEY_PATTERN,
+  PreconditionRequiredError,
+  RateLimitedError,
+  requestFingerprint,
+  type IdempotencyRequest,
   isUuid,
   pickLocale,
   runWithContext,
@@ -23,6 +30,8 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { ActorResolver } from "./actor.js";
+import type { IdempotencyStore } from "./idempotency-store.js";
+import { clientNetwork, type RateLimiter } from "./rate-limit.js";
 import { sendProblem } from "./problem-reply.js";
 
 const NO_QUERY = z.strictObject({});
@@ -37,6 +46,9 @@ export interface RouterOptions {
   readonly endpoints: readonly Endpoint[];
   readonly resolveActor: ActorResolver;
   readonly logger: Logger;
+  readonly idempotency: IdempotencyStore;
+  /** Ohne Bremse nur in Tests, die sie nicht prüfen. */
+  readonly rateLimiter?: RateLimiter | undefined;
 }
 
 /** Pfad aus OpenAPI-Form (`{id}`) in Fastify-Form (`:id`). */
@@ -69,8 +81,70 @@ function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** Sucht Zeichen, die PostgreSQL in Text nicht speichern kann (NUL) oder die nie gültig sind (einzelne Ersatzzeichen). */
+export function findUnsafeStrings(value: unknown, path = ""): string[] {
+  // eslint-disable-next-line no-control-regex -- genau dieses Steuerzeichen soll gefunden werden
+  if (typeof value === "string") return /\u0000|\p{Cs}/u.test(value) ? [path || "/"] : [];
+  if (Array.isArray(value)) return value.flatMap((v, i) => findUnsafeStrings(v, `${path}/${i}`));
+  if (value !== null && typeof value === "object")
+    return Object.entries(value).flatMap(([k, v]) => [
+      ...findUnsafeStrings(k, `${path}/${k}`),
+      ...findUnsafeStrings(v, `${path}/${k}`),
+    ]);
+  return [];
+}
+
+const UNSAFE_TEXT: Readonly<Record<Locale, string>> = {
+  de: "Der Text enthält ein unzulässiges Steuerzeichen.",
+  en: "The text contains a forbidden control character.",
+};
+
+function rejectUnsafe(value: unknown, prefix: string, locale: Locale): void {
+  const found = [...new Set(findUnsafeStrings(value))];
+  if (found.length === 0) return;
+  throw new ValidationError({
+    detail: UNSAFE_TEXT[locale],
+    errors: found.map((p) => ({
+      path: prefix + (p === "/" ? "" : p),
+      code: "invalid_characters",
+      message: UNSAFE_TEXT[locale],
+    })),
+  });
+}
+
 export function registerEndpoints(fastify: FastifyInstance, options: RouterOptions): void {
   assertUniqueEndpoints(options.endpoints);
+  // Bekannte Adresse, aber falsche Methode: 405 mit Allow, statt 404 oder 500 (gefunden von Schemathesis).
+  const byPath = new Map<string, Set<string>>();
+  for (const e of options.endpoints) {
+    const path = toFastifyPath(e.fullPath);
+    const methods = byPath.get(path) ?? new Set<string>();
+    methods.add(e.method);
+    if (e.method === "GET") methods.add("HEAD");
+    byPath.set(path, methods);
+  }
+  for (const [path, methods] of byPath) {
+    const others = fastify.supportedMethods.filter((m) => !methods.has(m));
+    if (others.length === 0) continue;
+    const allow = [...methods].sort().join(", ");
+    const notAllowed = (request: FastifyRequest, reply: FastifyReply) => {
+      reply.header("allow", allow);
+      return sendProblem(
+        reply,
+        new MethodNotAllowedError(),
+        request.id,
+        pickLocale(request.headers["accept-language"]),
+        options.logger,
+      );
+    };
+    fastify.route({
+      method: others,
+      url: path,
+      // Auch wenn der Inhalt schon nicht lesbar ist: Die Methode ist der eigentliche Fehler.
+      errorHandler: (_error, request, reply) => notAllowed(request, reply),
+      handler: notAllowed,
+    });
+  }
   for (const endpoint of options.endpoints) {
     fastify.route({
       method: endpoint.method,
@@ -83,6 +157,59 @@ export function registerEndpoints(fastify: FastifyInstance, options: RouterOptio
   }
 }
 
+interface RequestState {
+  readonly endpoint: Endpoint;
+  readonly request: FastifyRequest;
+  readonly reply: FastifyReply;
+  readonly options: RouterOptions;
+  readonly locale: Locale;
+}
+
+const IF_MATCH = /^"(\d{1,9})"$/;
+
+/** Version aus `If-Match` (nur starke ETags in der Form "3"). */
+function readIfMatch({ endpoint, request, locale }: RequestState): number | undefined {
+  const raw = headerValue(request.headers["if-match"]);
+  if (endpoint.ifMatch !== "required") return undefined;
+  if (raw === undefined) throw new PreconditionRequiredError();
+  const m = IF_MATCH.exec(raw.trim());
+  if (m?.[1] === undefined) {
+    throw new BadRequestError({
+      detail: IF_MATCH_INVALID[locale],
+      errors: [{ path: "/headers/if-match", code: "invalid_format", message: IF_MATCH_INVALID[locale] }],
+    });
+  }
+  return Number(m[1]);
+}
+
+/** Bremse nach der Anmeldung: je Akteur (Token oder Sitzung), sonst je Netz. */
+function limitActor(
+  { endpoint, request, reply, options }: RequestState,
+  auth: AuthenticatedActor | undefined,
+): void {
+  if (options.rateLimiter === undefined) return;
+  const byActor = endpoint.rateLimit === "admin" || endpoint.rateLimit === "platform";
+  const key =
+    byActor && auth !== undefined
+      ? `${auth.actor.type}:${auth.actor.id ?? "-"}`
+      : `${clientNetwork(request.ip)}|${auth?.tenantId ?? "-"}`;
+  const r = options.rateLimiter.take(endpoint.rateLimit, key);
+  if (!r.allowed) {
+    reply.header("retry-after", String(r.retryAfterSeconds));
+    throw new RateLimitedError();
+  }
+}
+
+function sendJson(reply: FastifyReply, status: number, data: unknown): FastifyReply {
+  const version = (data as { version?: unknown } | null)?.version;
+  if (Number.isInteger(version)) reply.header("etag", `"${String(version)}"`);
+  return reply
+    .code(status)
+    .header("content-type", "application/json; charset=utf-8")
+    .header("cache-control", "no-store")
+    .send(JSON.stringify(data));
+}
+
 async function handle(
   endpoint: Endpoint,
   request: FastifyRequest,
@@ -91,9 +218,10 @@ async function handle(
 ): Promise<FastifyReply> {
   const requestId = request.id;
   const locale = pickLocale(request.headers["accept-language"]);
+  const state: RequestState = { endpoint, request, reply, options, locale };
   try {
-    // 1. Anmeldung und Berechtigung
-    let auth: Awaited<ReturnType<ActorResolver>>;
+    // 1. Anmeldung, Berechtigung und Bremse je Akteur
+    let auth: AuthenticatedActor | undefined;
     if ("scopes" in endpoint.access) {
       auth = await options.resolveActor({ headers: request.headers });
       if (auth === undefined) throw new UnauthorizedError();
@@ -104,8 +232,12 @@ async function handle(
         throw new ForbiddenError();
       if (endpoint.api === "platform" && auth.tenantId !== undefined) throw new ForbiddenError();
     }
+    limitActor(state, auth);
 
     // 2. Eingaben
+    rejectUnsafe(request.params, "/params", locale);
+    rejectUnsafe(request.query, "/query", locale);
+    rejectUnsafe(request.body, "/body", locale);
     const params = parse(endpoint.params ?? NO_PARAMS, request.params, "/params", locale);
     const query = parse(endpoint.query ?? NO_QUERY, request.query, "/query", locale);
     let body: unknown;
@@ -117,32 +249,107 @@ async function handle(
         errors: [{ path: "/body", code: "not_allowed", message: BODY_NOT_ALLOWED[locale] }],
       });
     }
+    const ifMatch = readIfMatch(state);
 
-    // 3. Ausführung im Anfrage-Kontext
-    const correlation = headerValue(request.headers["x-correlation-id"]);
-    const result = await runWithContext(
-      {
-        requestId,
-        correlationId: correlation !== undefined && isUuid(correlation) ? correlation : requestId,
-        ...(auth?.tenantId === undefined ? {} : { tenantId: auth.tenantId }),
-        ...(auth === undefined ? {} : { actor: auth.actor }),
-      },
-      () => endpoint.handler({ params, query, body, requestId, locale, auth }),
-    );
-
-    // 4. Ausgabe nur über das Antwort-Schema
-    const output = endpoint.response.schema.safeParse(result);
-    if (!output.success) {
-      throw new Error(`Antwort von ${endpoint.operationId} passt nicht zum Antwort-Schema`, {
-        cause: output.error,
-      });
+    // 3. Idempotenz (Architektur 4.5)
+    const idem = idempotencyFor(state, auth, body);
+    if (idem !== undefined) {
+      const start = await options.idempotency.begin(idem);
+      if (start.kind === "replay") {
+        reply.header("idempotent-replayed", "true");
+        return sendJson(reply, start.status, start.body);
+      }
     }
-    return reply
-      .code(endpoint.response.status)
-      .header("content-type", "application/json; charset=utf-8")
-      .header("cache-control", "no-store")
-      .send(JSON.stringify(output.data));
+
+    // 4. Ausführung im Anfrage-Kontext, Ausgabe nur über das Antwort-Schema
+    const correlation = headerValue(request.headers["x-correlation-id"]);
+    let data: unknown;
+    try {
+      const result = await runWithContext(
+        {
+          requestId,
+          correlationId: correlation !== undefined && isUuid(correlation) ? correlation : requestId,
+          ...(auth?.tenantId === undefined ? {} : { tenantId: auth.tenantId }),
+          ...(auth === undefined ? {} : { actor: auth.actor }),
+        },
+        () => endpoint.handler({ params, query, body, requestId, locale, auth, ifMatch }),
+      );
+      const output = endpoint.response.schema.safeParse(result);
+      if (!output.success) {
+        throw new Error(`Antwort von ${endpoint.operationId} passt nicht zum Antwort-Schema`, {
+          cause: output.error,
+        });
+      }
+      data = output.data;
+    } catch (error) {
+      // Nach einem Fehler darf der Aufrufer es mit demselben Schlüssel erneut versuchen.
+      if (idem !== undefined) {
+        await options.idempotency
+          .abandon(idem)
+          .catch((e: unknown) =>
+            options.logger.error(
+              { err: e, requestId },
+              "Idempotenz-Schlüssel konnte nicht freigegeben werden",
+            ),
+          );
+      }
+      throw error;
+    }
+    if (idem !== undefined)
+      await options.idempotency.complete(idem, { status: endpoint.response.status, body: data });
+    return sendJson(reply, endpoint.response.status, data);
   } catch (error) {
     return sendProblem(reply, error, requestId, locale, options.logger);
   }
 }
+
+function idempotencyFor(
+  { endpoint, request, locale }: RequestState,
+  auth: AuthenticatedActor | undefined,
+  body: unknown,
+): IdempotencyRequest | undefined {
+  if (endpoint.idempotency === "none") return undefined;
+  const key = headerValue(request.headers["idempotency-key"]);
+  const field = (message: string) =>
+    new BadRequestError({
+      detail: message,
+      errors: [{ path: "/headers/idempotency-key", code: "invalid", message }],
+    });
+  if (key === undefined) {
+    if (endpoint.idempotency === "required") throw field(IDEMPOTENCY_TEXTS.missing[locale]);
+    return undefined;
+  }
+  if (!IDEMPOTENCY_KEY_PATTERN.test(key)) throw field(IDEMPOTENCY_TEXTS.format[locale]);
+  if (auth?.tenantId === undefined) throw field(IDEMPOTENCY_TEXTS.unsupported[locale]);
+  return {
+    tenantId: auth.tenantId,
+    scope: `${endpoint.api}:${endpoint.operationId}`,
+    key,
+    requestHash: requestFingerprint({
+      actorId: `${auth.actor.type}:${auth.actor.id ?? "-"}`,
+      method: endpoint.method,
+      path: request.url.split("?")[0] ?? "",
+      body,
+    }),
+  };
+}
+
+const IF_MATCH_INVALID: Readonly<Record<Locale, string>> = {
+  de: 'If-Match muss die Version aus dem ETag enthalten, zum Beispiel "3".',
+  en: 'If-Match must contain the version from the ETag, for example "3".',
+};
+
+const IDEMPOTENCY_TEXTS = {
+  missing: {
+    de: "Für diese Aktion ist die Kopfzeile Idempotency-Key Pflicht.",
+    en: "The Idempotency-Key header is required for this action.",
+  },
+  format: {
+    de: "Idempotency-Key: 8 bis 255 Zeichen aus Buchstaben, Ziffern, - und _.",
+    en: "Idempotency-Key: 8 to 255 characters from letters, digits, - and _.",
+  },
+  unsupported: {
+    de: "Idempotency-Key wird hier nicht unterstützt.",
+    en: "Idempotency-Key is not supported here.",
+  },
+} as const;

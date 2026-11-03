@@ -18,5 +18,5 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 **Stand Code (03.11.2026):**
 
 - `src/index.ts` (einzige öffentliche Datei): `catalogEndpoints({ database })`, Typ `Manufacturer`.
-- `src/http/admin/manufacturers.ts`: `GET /admin/v1/manufacturers` (`listManufacturers`, Cursor-Liste ohne archivierte) und `GET /admin/v1/manufacturers/{manufacturerId}` (`getManufacturer`), beide mit `products:read`.
+- `src/http/admin/manufacturers.ts`: `GET /admin/v1/manufacturers` (`listManufacturers`, Cursor-Liste ohne archivierte) und `GET /admin/v1/manufacturers/{manufacturerId}` (`getManufacturer`) mit `products:read`; `POST /admin/v1/manufacturers` (`createManufacturer`, Idempotency-Key möglich) und `PATCH /admin/v1/manufacturers/{manufacturerId}` (`updateManufacturer`, If-Match Pflicht) mit `products:write`.
 - `src/internal/manufacturer-repository.ts`: Abfragen mit Kysely, nur in `withTenantTransaction`.
