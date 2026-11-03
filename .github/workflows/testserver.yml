@@ -1,0 +1,130 @@
+# Richtet den öffentlichen Testserver ein und aktualisiert ihn (docs/07_Testserver.md).
+# Läuft von Hand (Actions → Testserver → Run workflow) und bei Änderungen an
+# infra/testserver. Der Server liegt bei Oracle Cloud (Always Free).
+#
+# Braucht in den Repository-Einstellungen:
+#   Secret   TESTSERVER_SSH_KEY   privater SSH-Schlüssel (Benutzer ubuntu)
+#   Secret   TESTSERVER_PASSWORD  Passwort für die Seite (Benutzer: team)
+#   Variable TESTSERVER_HOST      öffentliche IP-Adresse
+#   Variable TESTSERVER_DOMAIN    optional; sonst <ip-mit-bindestrichen>.sslip.io
+name: Testserver
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - infra/testserver/**
+      - .github/workflows/testserver.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testserver
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    name: Einrichten und prüfen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      HOST: ${{ vars.TESTSERVER_HOST }}
+      DOMAIN_OVERRIDE: ${{ vars.TESTSERVER_DOMAIN }}
+      CADDY_IMAGE: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+      SITE_USER: team
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Einstellungen prüfen
+        env:
+          SSH_KEY: ${{ secrets.TESTSERVER_SSH_KEY }}
+          SITE_PASSWORD: ${{ secrets.TESTSERVER_PASSWORD }}
+        run: |
+          ok=1
+          [ -n "$HOST" ] || { echo "::error::Variable TESTSERVER_HOST fehlt."; ok=0; }
+          [ -n "$SSH_KEY" ] || { echo "::error::Secret TESTSERVER_SSH_KEY fehlt."; ok=0; }
+          [ -n "$SITE_PASSWORD" ] || { echo "::error::Secret TESTSERVER_PASSWORD fehlt."; ok=0; }
+          if [ -n "$SITE_PASSWORD" ] && [ "${#SITE_PASSWORD}" -lt 16 ]; then
+            echo "::error::TESTSERVER_PASSWORD ist kürzer als 16 Zeichen."; ok=0
+          fi
+          [ "$ok" = 1 ]
+          if [ -n "$DOMAIN_OVERRIDE" ]; then domain="$DOMAIN_OVERRIDE"; else domain="${HOST//./-}.sslip.io"; fi
+          echo "DOMAIN=$domain" >> "$GITHUB_ENV"
+          echo "Adresse: https://$domain"
+
+      - name: SSH vorbereiten
+        env:
+          SSH_KEY: ${{ secrets.TESTSERVER_SSH_KEY }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/testserver
+          if [ -s infra/testserver/known_hosts ]; then
+            cp infra/testserver/known_hosts ~/.ssh/known_hosts
+          else
+            # Erster Lauf: Schlüssel des Servers einmal abholen und anzeigen.
+            # Danach gehört er nach infra/testserver/known_hosts (feste Prüfung).
+            echo "::warning::infra/testserver/known_hosts ist leer, Serverschlüssel wird ungeprüft übernommen."
+            ssh-keyscan -T 15 -t ed25519 "$HOST" > ~/.ssh/known_hosts
+            echo "Serverschlüssel für infra/testserver/known_hosts:"
+            cat ~/.ssh/known_hosts
+          fi
+          cat >> ~/.ssh/config <<EOF
+          Host testserver
+            HostName $HOST
+            User ubuntu
+            IdentityFile ~/.ssh/testserver
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ConnectTimeout 20
+            ServerAliveInterval 15
+          EOF
+          ssh testserver 'echo "Verbunden mit $(hostname)"'
+
+      - name: Zugangsdaten für die Seite erzeugen
+        env:
+          SITE_PASSWORD: ${{ secrets.TESTSERVER_PASSWORD }}
+        run: |
+          umask 077
+          hash="$(docker run --rm --network none "$CADDY_IMAGE" caddy hash-password --plaintext "$SITE_PASSWORD")"
+          echo "::add-mask::$hash"
+          {
+            echo "TESTSERVER_DOMAIN='$DOMAIN'"
+            echo "TESTSERVER_USER='$SITE_USER'"
+            echo "TESTSERVER_PASSWORD_HASH='$hash'"
+          } > "$RUNNER_TEMP/secrets.env"
+
+      - name: Server einrichten
+        run: |
+          upload=/tmp/shop-testserver-upload
+          ssh testserver "rm -rf $upload && mkdir -m 700 $upload"
+          scp -q infra/testserver/compose.yaml infra/testserver/Caddyfile infra/testserver/setup.sh \
+            "$RUNNER_TEMP/secrets.env" "testserver:$upload/"
+          ssh testserver "sudo bash $upload/setup.sh; rc=\$?; rm -rf $upload; exit \$rc"
+          rm -f "$RUNNER_TEMP/secrets.env"
+
+      - name: Rauchtest
+        env:
+          SITE_PASSWORD: ${{ secrets.TESTSERVER_PASSWORD }}
+        run: |
+          url="https://$DOMAIN/"
+          # Das Zertifikat kann beim ersten Start ein bis zwei Minuten brauchen.
+          for i in $(seq 1 30); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+            [ "$code" = 401 ] && break
+            echo "Versuch $i: $code"; sleep 10
+          done
+          [ "$code" = 401 ] || { echo "::error::Ohne Passwort erwartet 401, bekommen $code"; exit 1; }
+          code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -u "$SITE_USER:$SITE_PASSWORD" "$url")"
+          [ "$code" = 200 ] || { echo "::error::Mit Passwort erwartet 200, bekommen $code"; exit 1; }
+          code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$DOMAIN/")"
+          case "$code" in 301|308) ;; *) echo "::error::HTTP sollte auf HTTPS umleiten, bekommen $code"; exit 1 ;; esac
+          curl -sI --max-time 10 "$url" | grep -qi '^strict-transport-security:' \
+            || { echo "::error::HSTS-Header fehlt"; exit 1; }
+          ssh testserver 'sudo sshd -T' | grep -qx 'passwordauthentication no' \
+            || { echo "::error::SSH nimmt Passwörter an"; exit 1; }
+          echo "Alles in Ordnung: $url (Benutzer $SITE_USER)"

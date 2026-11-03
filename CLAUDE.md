@@ -4,7 +4,7 @@ Diese Datei steuert jede Arbeitssitzung in diesem Repository, auch die tägliche
 
 ## 1. Worum es geht
 
-Kristof (kein Entwickler, arbeitet bei ePages im Marketing) lässt Claude eine Shop-Plattform im Stil von ePages oder Shopify bauen. Es ist ein **rein privates Experiment**: Es wird nie echte Händler, echte Kunden oder echtes Geld geben, und niemand außer Kristof sieht es. Trotzdem wird so gebaut, als wäre es ernst, weil Qualität und Sicherheit Teil des Lernziels sind.
+Kristof (kein Entwickler, arbeitet bei ePages im Marketing) lässt Claude eine Shop-Plattform im Stil von ePages oder Shopify bauen. Es ist ein **rein privates Experiment**: Es wird nie echte Händler, echte Kunden oder echtes Geld geben, und außer Kristof sehen es nur Kollegen, denen er den Link zum passwortgeschützten Testserver schickt (docs/07_Testserver.md). Trotzdem wird so gebaut, als wäre es ernst, weil Qualität und Sicherheit Teil des Lernziels sind.
 
 Drei Ebenen:
 1. **Plattform-Verwaltung** (Rolle des Anbieters): Händler und Shops anlegen, sperren, Tarife.

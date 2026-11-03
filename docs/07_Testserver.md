@@ -1,5 +1,24 @@
 # Testserver auf Oracle Cloud
 
+## Stand (03.11.2026)
+
+| Was | Wert |
+|---|---|
+| Server | `shop-testserver`, Oracle Cloud Frankfurt, AD-1 (AD-3 war voll), angelegt 03.11.2026 |
+| Größe | `VM.Standard.A1.Flex`, 2 OCPU, 12 GB, Ubuntu 24.04 (aarch64), Benutzer `ubuntu` |
+| Öffentliche IP | `130.61.18.46` (ephemeral, nachträglich an der VNIC zugewiesen, weil beim Anlegen keine vergeben wurde) |
+| Adresse | `https://130-61-18-46.sslip.io` (sslip.io löst die IP auf; eigene Domain später über Variable `TESTSERVER_DOMAIN`) |
+| Seitenschutz | Basic Auth, Benutzer `team`, Passwort im Secret `TESTSERVER_PASSWORD` |
+| Oracle-Firewall | Default Security List: Ingress 22, 80, 443 (TCP, 0.0.0.0/0) |
+| GitHub | Secrets `TESTSERVER_SSH_KEY`, `TESTSERVER_PASSWORD`, Variable `TESTSERVER_HOST` |
+| Einrichtung | `.github/workflows/testserver.yml` mit `infra/testserver/` (setup.sh, compose.yaml, Caddyfile) |
+
+Was der Ablauf macht: Pakete aktualisieren, automatische Sicherheitsupdates inkl. Docker mit nächtlichem Neustart bei Bedarf (04:30), SSH nur mit Schlüssel, iptables zusätzlich 80/443 (Oracle-Regeln bleiben, kein ufw), Docker aus der offiziellen Quelle, Caddy gehärtet wie lokal mit echtem Zertifikat, HSTS und `noindex`. Danach Rauchtest: ohne Passwort 401, mit Passwort 200, HTTP leitet auf HTTPS um, SSH ohne Passwortanmeldung.
+
+Serverschlüssel: Der erste Lauf übernimmt den SSH-Schlüssel des Servers ungeprüft und zeigt ihn im Protokoll; danach steht er in `infra/testserver/known_hosts` und wird fest geprüft.
+
+Offen: Budget-Warnung bei 1 €; Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); Anwendung selbst kommt mit E18.
+
 Entscheidung Kristof 03.11.2026: öffentlicher Testserver, damit Kollegen per Link zuschauen können. Anbieter: Oracle Cloud, Gratisangebot („Always Free“). Das Konto hat Kristof selbst angelegt.
 
 ## Wer macht was
