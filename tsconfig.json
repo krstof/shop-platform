@@ -3,7 +3,8 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
-    "noEmit": true
+    "noEmit": true,
+    "customConditions": ["source"]
   },
   "include": ["tools/**/*.mjs", "*.js", "*.mjs", "packages/config/*.js", "modules/*/src/**/*.ts"]
 }
