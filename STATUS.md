@@ -39,6 +39,8 @@ Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anford
 
 ## Nachzutragen
 
+- **Testserver auf Oracle Cloud (Entscheidung Kristof 03.11.2026), mit E18 einplanen:** Konto ist angelegt, Server noch nicht. Plan: (1) Kristof legt per Klick eine VM an: Ampere `VM.Standard.A1.Flex`, 2 OCPU, 12 GB (Grenze des Gratisangebots: 1.500 OCPU- und 9.000 GB-Stunden im Monat, 200 GB Speicher), Ubuntu 24.04, öffentliche IPv4, „Schlüsselpaar erzeugen“ und privaten Schlüssel herunterladen. (2) Kristof trägt den privaten Schlüssel als GitHub-Secret `TESTSERVER_SSH_KEY` und die IP als Variable `TESTSERVER_HOST` ein; der Schlüssel geht nie durch den Chat. (3) Claude baut einen Deploy-Ablauf in GitHub Actions (nur manuell oder nach grüner CI), Caddy mit echtem Zertifikat, ganzer Testserver hinter Passwort, nur Testdaten, automatische Sicherheitsupdates, Firewall nur 80/443 und SSH nur mit Schlüssel. Risiko: Oracle darf Gratis-Server abschalten, wenn 7 Tage lang CPU, Netz und Speicher unter 20 % liegen; vor dem Anlegen klären (Upgrade auf Pay-as-you-go mit Budgetwarnung bei 1 €, Doku sagt nicht sicher, dass das hilft). CLAUDE.md Grundsatz „niemand außer Kristof sieht es“ dann anpassen: Kollegen sehen den Testserver.
+
 - Wöchentlicher Container-Scan mit Trivy und SBOM (Sicherheit 5.11, Architektur 8.2): eigener geplanter CI-Ablauf, mit E4 Teil 3, sobald es das erste eigene Container-Abbild gibt.
 - Später (Entscheidung Kristof 03.11.2026): API-Dokumentationsseite (Scalar o. ä.) als eigener kleiner Dienst nur für die lokale Entwicklung, nicht im Programm `api`.
 - Schemathesis lang (T-12 nachts) als geplanter CI-Ablauf mit mehr Beispielen (`SHOP_FUZZ_EXAMPLES`), spätestens wenn es mehr Endpunkte gibt.
