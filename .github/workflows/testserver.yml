@@ -123,7 +123,7 @@ jobs:
           [ "$code" = 200 ] || { echo "::error::Mit Passwort erwartet 200, bekommen $code"; exit 1; }
           code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$DOMAIN/")"
           case "$code" in 301|308) ;; *) echo "::error::HTTP sollte auf HTTPS umleiten, bekommen $code"; exit 1 ;; esac
-          curl -sI --max-time 10 "$url" | grep -qi '^strict-transport-security:' \
+          curl -sI --max-time 10 -u "$SITE_USER:$SITE_PASSWORD" "$url" | grep -qi '^strict-transport-security:' \
             || { echo "::error::HSTS-Header fehlt"; exit 1; }
           ssh testserver 'sudo sshd -T' | grep -qx 'passwordauthentication no' \
             || { echo "::error::SSH nimmt Passwörter an"; exit 1; }

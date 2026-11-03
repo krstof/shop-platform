@@ -15,7 +15,7 @@
 
 Was der Ablauf macht: Pakete aktualisieren, automatische Sicherheitsupdates inkl. Docker mit nächtlichem Neustart bei Bedarf (04:30), SSH nur mit Schlüssel, iptables zusätzlich 80/443 (Oracle-Regeln bleiben, kein ufw), Docker aus der offiziellen Quelle, Caddy gehärtet wie lokal mit echtem Zertifikat, HSTS und `noindex`. Danach Rauchtest: ohne Passwort 401, mit Passwort 200, HTTP leitet auf HTTPS um, SSH ohne Passwortanmeldung.
 
-Serverschlüssel: Der erste Lauf übernimmt den SSH-Schlüssel des Servers ungeprüft und zeigt ihn im Protokoll; danach steht er in `infra/testserver/known_hosts` und wird fest geprüft.
+Serverschlüssel: Der erste Lauf (03.11.2026) hat den SSH-Schlüssel des Servers übernommen; er steht jetzt in `infra/testserver/known_hosts` und wird fest geprüft. Ändert er sich (Server neu angelegt), Datei leeren, einmal laufen lassen, neuen Schlüssel eintragen.
 
 Offen: Budget-Warnung bei 1 €; Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); Anwendung selbst kommt mit E18.
 
