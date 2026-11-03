@@ -10,6 +10,7 @@
 | Adresse | `https://130-61-18-46.sslip.io` (sslip.io löst die IP auf; eigene Domain später über Variable `TESTSERVER_DOMAIN`) |
 | Seitenschutz | Basic Auth, Benutzer `team`, Passwort im Secret `TESTSERVER_PASSWORD` |
 | Oracle-Firewall | Default Security List: Ingress 22, 80, 443 (TCP, 0.0.0.0/0) |
+| Kostenwarnung | Budget `Kostenwarnung_1_Euro`, Mail bei 1 € tatsächlichen Kosten |
 | GitHub | Secrets `TESTSERVER_SSH_KEY`, `TESTSERVER_PASSWORD`, Variable `TESTSERVER_HOST` |
 | Einrichtung | `.github/workflows/testserver.yml` mit `infra/testserver/` (setup.sh, compose.yaml, Caddyfile) |
 
@@ -17,7 +18,9 @@ Was der Ablauf macht: Pakete aktualisieren, automatische Sicherheitsupdates inkl
 
 Serverschlüssel: Der erste Lauf (03.11.2026) hat den SSH-Schlüssel des Servers übernommen; er steht jetzt in `infra/testserver/known_hosts` und wird fest geprüft. Ändert er sich (Server neu angelegt), Datei leeren, einmal laufen lassen, neuen Schlüssel eintragen.
 
-Offen: Budget-Warnung bei 1 €; Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); Anwendung selbst kommt mit E18.
+Budget: `Kostenwarnung_1_Euro` (ganzes Konto, monatlich 1 €, Warnung bei 100 % tatsächlicher Kosten per E-Mail an Kristof), angelegt 03.11.2026.
+
+Offen: Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); Anwendung selbst kommt mit E18.
 
 Entscheidung Kristof 03.11.2026: öffentlicher Testserver, damit Kollegen per Link zuschauen können. Anbieter: Oracle Cloud, Gratisangebot („Always Free“). Das Konto hat Kristof selbst angelegt.
 
