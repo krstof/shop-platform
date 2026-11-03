@@ -15,3 +15,6 @@ infra/.data/
 *.log
 .DS_Store
 .venv-fuzz/
+
+# Zwischenspeicher von Schemathesis (pnpm test:fuzz)
+.schemathesis/
