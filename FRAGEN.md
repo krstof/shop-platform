@@ -4,9 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Dokumentationsseite der API jetzt oder später?** Geplant war eine schöne Seite zum Durchklicken der API (Scalar). Das Paket dafür bringt aber über 50 MB fremden Code mit (unter anderem ein zweites Oberflächen-Framework), nur für eine Seite. Ich habe sie deshalb zurückgestellt; die API-Beschreibung liegt trotzdem vollständig vor. Antwort: **Später** (eigener kleiner Dienst nur für die Entwicklung, mein Vorschlag) oder **Jetzt** (Paket trotzdem einbauen). (03.11.2026)
+Zurzeit keine offenen Fragen.
 
 ## Beantwortet
+
+- **Dokumentationsseite der API jetzt oder später?** Später, als eigener kleiner Dienst nur für die Entwicklung. (03.11.2026)
 
 - **E4 auf zwei Läufe aufteilen?** Bis zum Lauf am 03.11.2026 keine Antwort. Gebaut wurde Teil 1 (Gerüst mit Beispiel-Endpunkten), weil er bei beiden Antworten der erste Schritt ist; Teil 2 (restliche Schutzmechanismen) folgt im nächsten Lauf. Will Kristof es anders, genügt ein Satz im Chat. (03.11.2026)
 
