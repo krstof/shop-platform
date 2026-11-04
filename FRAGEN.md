@@ -4,9 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Container-Scan auch bei fremden Bausteinen streng?** Der neue wöchentliche Scan bricht nur ab, wenn unsere eigenen Programme eine kritische Lücke haben; bei fremden Bausteinen (Datenbank, Webserver) meldet er sie nur, weil die Korrektur vom Hersteller kommen muss. Gerade haben Datenbank und Webserver je eine solche Lücke, die nur lokal und auf dem Testserver eine Rolle spielt. Antwort: **so** (nur melden, Empfehlung) oder **streng** (auch dann rot).
+Zurzeit keine offenen Fragen.
 
 ## Beantwortet
+
+- **Container-Scan auch bei fremden Bausteinen streng?** So lassen: Nur kritische Lücken mit Korrektur in den eigenen Abbildern (api, migrate) lassen den Scan scheitern, fremde Abbilder werden nur berichtet und über Dependabot aktualisiert. (04.11.2026)
 
 - **Wann kann ich etwas sehen?** Früher als geplant: eine Vorschau der Storefront mit Beispieldaten (Teeladen) auf dem Testserver, noch ohne Kaufen. Das Fundament verschiebt sich dadurch um etwa einen Lauf. (04.11.2026)
 
