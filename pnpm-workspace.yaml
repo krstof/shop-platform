@@ -21,3 +21,13 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+
+# --- Sicherheits-Overrides (befristet, Sicherheit 5.11) ---
+# Erzwingen korrigierte Versionen, bis die Pakete darüber selbst nachziehen. Nur Versionen unterhalb der
+# Korrektur werden ersetzt, damit ein späteres Update der oberen Pakete den Override von allein überflüssig
+# macht. Prüfen bei jedem Update von ESLint oder Testcontainers: `pnpm why minimatch glob`.
+overrides:
+  # GHSA-g3hv-75wg-m249, behoben in 11.0.1: ESLint (10.x), readdir-glob (5.x) und glob (9.x).
+  "minimatch@<11.0.1": "^11.0.2"
+  # GHSA-3g3m-2fjr-6pw4, behoben in 14.0.2: archiver-utils (Testcontainers).
+  "glob@<14.0.2": "^14.0.3"
