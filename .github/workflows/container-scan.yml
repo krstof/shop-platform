@@ -1,0 +1,91 @@
+# Wöchentlicher Container-Scan mit Trivy und Stückliste (SBOM), T-07 (Sicherheit 5.11, Architektur 8.2).
+# - Eigene Abbilder (api, migrate): eine kritische Lücke mit verfügbarer Korrektur lässt den Lauf scheitern.
+# - Fremde Abbilder aus infra/compose.yaml: nur Bericht in der Zusammenfassung, weil die Korrektur vom
+#   Hersteller kommen muss (Dependabot schlägt neue Versionen vor).
+# - Stückliste je eigenem Abbild im Format CycloneDX als Anhang des Laufs (90 Tage).
+# Trivy läuft als Container mit fester Prüfsumme. Version 0.76.1 (21.10.2026). Nicht verwenden: 0.69.4 bis
+# 0.69.6 und die alten Tags von trivy-action (Lieferketten-Angriff März 2026, CVE-2026-33634).
+name: Container-Scan
+
+on:
+  schedule:
+    # Montags 04:23 UTC, vor dem ersten täglichen Lauf (05:47 Uhr deutscher Zeit).
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - infra/docker/**
+      - infra/compose.yaml
+      - pnpm-lock.yaml
+      - .github/workflows/container-scan.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-scan
+  cancel-in-progress: false
+
+env:
+  TRIVY_IMAGE: ghcr.io/aquasecurity/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+
+jobs:
+  scan:
+    name: Trivy und SBOM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Eigene Abbilder bauen
+        run: |
+          for t in api migrate; do
+            docker build -f infra/docker/Dockerfile --target "$t" -t "shop-platform/$t:scan" .
+          done
+      - name: Trivy vorbereiten
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy-cache" out
+          docker pull -q "$TRIVY_IMAGE"
+          # Datenbank der Lücken einmal laden, danach arbeiten alle Scans mit demselben Stand.
+          docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache" "$TRIVY_IMAGE" image --download-db-only --no-progress
+      - name: Eigene Abbilder prüfen (kritisch mit Korrektur = Abbruch)
+        run: |
+          status=0
+          for t in api migrate; do
+            echo "### shop-platform/$t" >> "$GITHUB_STEP_SUMMARY"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$RUNNER_TEMP/trivy-cache:/root/.cache" \
+              "$TRIVY_IMAGE" image --skip-db-update --no-progress --scanners vuln \
+              --severity HIGH,CRITICAL --format table "shop-platform/$t:scan" | tee -a "$GITHUB_STEP_SUMMARY"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$RUNNER_TEMP/trivy-cache:/root/.cache" \
+              "$TRIVY_IMAGE" image --skip-db-update --no-progress --scanners vuln \
+              --severity CRITICAL --ignore-unfixed --exit-code 1 --quiet "shop-platform/$t:scan" || status=1
+          done
+          exit $status
+      - name: Fremde Abbilder prüfen (nur Bericht)
+        if: always()
+        run: |
+          echo "## Fremde Abbilder (hoch und kritisch, mit Korrektur)" >> "$GITHUB_STEP_SUMMARY"
+          for img in $(grep -hoE 'image: [^ ]+@sha256:[0-9a-f]{64}' infra/compose.yaml | awk '{print $2}' | sort -u); do
+            echo "### ${img%%@*}" >> "$GITHUB_STEP_SUMMARY"
+            docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache" "$TRIVY_IMAGE" image --skip-db-update \
+              --no-progress --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --format table "$img" \
+              >> "$GITHUB_STEP_SUMMARY" || echo "Scan nicht möglich" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Stücklisten erzeugen (CycloneDX)
+        if: always()
+        run: |
+          for t in api migrate; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$RUNNER_TEMP/trivy-cache:/root/.cache" \
+              -v "$PWD/out:/out" "$TRIVY_IMAGE" image --skip-db-update --no-progress \
+              --format cyclonedx --output "/out/sbom-$t.cdx.json" "shop-platform/$t:scan"
+          done
+          ls -l out
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: sbom
+          path: out/sbom-*.cdx.json
+          retention-days: 90
+          if-no-files-found: error

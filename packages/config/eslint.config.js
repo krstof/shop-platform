@@ -36,6 +36,8 @@ export default tseslint.config(
       "**/coverage/**",
       "**/.astro/**",
       "openapi/**",
+      // Lokale Python-Umgebung für Schemathesis (pnpm test:fuzz)
+      ".venv-fuzz/**",
       // Von kysely-codegen erzeugt (pnpm db:types)
       "**/db.generated.ts",
     ],

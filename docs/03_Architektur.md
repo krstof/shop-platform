@@ -551,7 +551,7 @@ Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen
 - **oasdiff** (4.3, `pnpm openapi:diff`): v1.34.1 als Container mit fester Prüfsumme, in der CI gegen den vorigen Stand; ein entfernter Endpunkt oder ein entferntes Antwortfeld lässt die CI scheitern.
 - **Scalar zurückgestellt:** Das Paket für die Dokumentationsseite zieht mehrere Dutzend weitere Bausteine nach sich (rund 56 MB, darunter Vue), nur um eine Seite anzuzeigen. Das widerspricht der Regel „so wenig fremde Bausteine wie möglich im Programm“ (Sicherheit 5.11). Die Seite kommt später als eigener kleiner Dienst nur für die lokale Entwicklung; bis dahin sind die OpenAPI-Dateien unter `openapi/` die Dokumentation.
 - **Migrationslauf:** Rollen sind serverweit; richten mehrere Datenbanken gleichzeitig ein, wiederholt `migrate` die Rollen-Einrichtung bei einer gemeldeten Doppelung (bis zu fünfmal).
-- Offen (E4 Teil 3): `api` in Docker Compose hinter Caddy (`api.localhost`) mit eigenem Container-Abbild, Container-Abbild für `migrate`, wöchentlicher Trivy-Scan mit SBOM.
+- **Betrieb (E4 Teil 3, 04.11.2026):** `api` und `migrate` haben eigene Container-Abbilder (Kapitel 7.1), `api` läuft in Docker Compose hinter Caddy unter `api.localhost`. Wöchentlicher Trivy-Scan mit SBOM (Kapitel 8.2).
 
 ### 6.2 Benennungsregeln
 
@@ -596,6 +596,8 @@ Die Migrationen liegen bei ihrem Modul. Der Migrationslauf sammelt sie aus allen
 | `migrate` | Führt beim Start Migrationen aus und beendet sich dann | intern |
 
 **Stand Etappe E1 (29.10.2026):** `caddy`, `postgres`, `garage` und `mailpit` laufen, die Programme kommen mit ihren Etappen dazu. Alle Container laufen ohne Administratorrechte, ohne Linux-Sonderrechte, mit schreibgeschütztem Dateisystem und `no-new-privileges` (geprüft durch `pnpm test:infra`). Weil `api`, `worker` und die Tests in der Entwicklung direkt auf dem Rechner laufen, gibt die Zusatzdatei `infra/compose.local.yaml` Datenbank und Objektspeicher **nur lokal** auf `127.0.0.1` frei. Auf einem Server wird sie nicht benutzt. Der Objektspeicher hat zwei Bereiche: `media-public` (wird über `media.localhost` ausgeliefert) und `media-private` (Uploads vor der Prüfung, nie öffentlich).
+
+**Stand Etappe E4 Teil 3 (04.11.2026):** `migrate` und `api` laufen als eigene Container aus `infra/docker/Dockerfile` (zweistufig: Bauen mit der Lockdatei und `pnpm deploy`, danach schlankes Node-Abbild ohne npm, ohne Quellcode und ohne Prüfwerkzeuge; Dateien gehören root und sind nur lesbar; Basisabbild mit fester Prüfsumme, Dependabot schlägt Updates vor). `pnpm dev` baut beide Abbilder bei jedem Start. `migrate` startet, sobald die Datenbank bereit ist, und beendet sich; erst nach seinem Erfolg startet `api`. `api` hängt nur im internen Netz (kein Internet), meldet sich als `shop_app` an und vertraut bei der Absenderadresse nur Caddy, der im internen Netz eine feste Adresse hat (`10.213.17.200`); Docker vergibt die übrigen Adressen aus der unteren Hälfte des Netzes. Caddy setzt `X-Forwarded-For` selbst neu, damit niemand die Anfragebremse mit einer gefälschten Adresse umgehen kann, lehnt Anfragen über 1 MB schon vorab mit 413 ab und sperrt das Lebenszeichen `/livez` (nur für den Gesundheitscheck von Docker). Für die Entwicklung mit automatischem Neuladen kann die API weiter direkt auf dem Rechner laufen.
 
 Adressen auf `.localhost` zeigen in modernen Browsern automatisch auf den eigenen Rechner, sodass keine Einstellungen am Rechner nötig sind. Bilder werden bewusst von einer eigenen Adresse (`media.localhost`) ausgeliefert, damit eine manipulierte Datei keinen Zugriff auf Cookies des Shops bekommt.
 
@@ -659,7 +661,7 @@ Alle Prüfungen laufen gebündelt mit dem Befehl `pnpm check`. Claude führt ihn
 6. OpenAPI neu erzeugen, auf Unterschiede zur eingecheckten Fassung prüfen und mit oasdiff auf brechende Änderungen prüfen. Außerdem muss jeder Endpunkt Berechtigungen erklären.
 7. Abhängigkeits-Scan mit OSV-Scanner und `pnpm audit`, Geheimnis-Scan mit gitleaks.
 8. Ende-zu-Ende- und Barrierefreiheitstests.
-9. Einmal pro Woche zusätzlich ein Container-Scan mit Trivy und eine Stückliste aller Bestandteile (SBOM, „Software Bill of Materials“).
+9. Einmal pro Woche zusätzlich ein Container-Scan mit Trivy und eine Stückliste aller Bestandteile (SBOM, „Software Bill of Materials“). Umgesetzt in `.github/workflows/container-scan.yml` (04.11.2026): eigene Abbilder scheitern bei einer kritischen Lücke mit verfügbarer Korrektur, fremde Abbilder werden nur berichtet, die Stücklisten (CycloneDX) hängen 90 Tage am Lauf. Läuft zusätzlich bei Änderungen an Dockerfile, Compose-Datei oder Lockdatei.
 
 ### 8.3 CI auf GitHub Actions
 

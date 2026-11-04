@@ -2,7 +2,7 @@
 # Caddy: einziger Eingang von außen (Sicherheit 3.2 „Grenze 1“, 5.5, 5.16).
 # Lokal mit selbst erzeugten Zertifikaten (SIC-01). Die Inhalts-Sicherheitsregel
 # (CSP) setzt jede Oberfläche selbst, weil sie Nonces braucht (Sicherheit 5.5).
-# Weitere Adressen (api, backoffice, platform, Shops, pay) kommen mit ihren Etappen.
+# Weitere Adressen (backoffice, platform, Shops, pay) kommen mit ihren Etappen.
 # =============================================================================
 {
 	# Keine Verwaltungsschnittstelle im Container (Härtung).
@@ -46,6 +46,37 @@
 		max_size 1MB
 	}
 	respond "Shop-Plattform läuft." 200
+}
+
+# Kern-Server: Admin-, Store- und Platform-API (Architektur 4). Sicherheits-Header, Fehler im Format
+# Problem Details und die Anfragebremse kommen von der API selbst (ihre Header sind strenger als die
+# gemeinsamen, etwa Referrer-Policy no-referrer). Caddy entfernt nur verräterische Header und setzt
+# X-Forwarded-For neu: Was ein Besucher selbst mitschickt, übernimmt Caddy nicht.
+api.{$SHOP_DOMAIN} {
+	header {
+		-Server
+		-Via
+	}
+	request_body {
+		max_size 1MB
+	}
+	# Zu große Anfragen schon hier ablehnen, sobald die Länge angekündigt ist. Sonst schneiden API und
+	# Caddy gleichzeitig ab, und der Besucher sieht manchmal 502 statt 413 (Rauchtest 04.11.2026).
+	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > 1048576`
+	handle @too_large {
+		header Content-Type "application/problem+json; charset=utf-8"
+		header Cache-Control "no-store"
+		header X-Content-Type-Options "nosniff"
+		respond `{"type":"https://docs.shop.localhost/errors/payload_too_large","title":"Die Anfrage ist zu groß.","status":413,"code":"payload_too_large"}` 413 {
+			close
+		}
+	}
+	# Das Lebenszeichen ist nur für Docker, nicht für Besucher.
+	@liveness path /livez
+	respond @liveness 404
+	reverse_proxy api:3000 {
+		header_down -X-Powered-By
+	}
 }
 
 # Test-Mails (Mailpit). Zusätzlich durch Mailpit selbst mit Passwort geschützt.

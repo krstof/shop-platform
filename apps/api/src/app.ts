@@ -29,6 +29,13 @@ export const API_SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
 };
 
+/**
+ * Lebenszeichen für den Gesundheitscheck des Containers. Prüft nur, dass der Prozess antwortet,
+ * nicht die Datenbank (sonst würde ein kurzer Datenbankausfall den Dienst neu starten lassen).
+ * Gehört nicht zur API, steht nicht in OpenAPI und wird von Caddy nach außen gesperrt.
+ */
+export const LIVENESS_PATH = "/livez";
+
 /** Höchstgröße einer Anfrage (Sicherheit 5.4). Bilder laufen getrennt über signierte Upload-Adressen. */
 export const BODY_LIMIT_BYTES = 1_048_576;
 
@@ -126,6 +133,7 @@ export async function createApi(options: ApiOptions): Promise<NestFastifyApplica
       "Anfrage beendet",
     );
   });
+  fastify.get(LIVENESS_PATH, async (_request, reply) => reply.send({ status: "ok" }));
   registerEndpoints(fastify, { ...options, rateLimiter });
   await app.init();
   return app;

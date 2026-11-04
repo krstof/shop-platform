@@ -1,11 +1,12 @@
 // Startet die lokale Plattform mit einem Befehl (BET-02, Architektur 7.2).
-//   pnpm dev       .env anlegen oder ergänzen, Container starten, Objektspeicher einrichten,
-//                  Datenbank anlegen und alle Migrationen ausführen (Dienst migrate)
+//   pnpm dev       .env anlegen oder ergänzen, eigene Abbilder bauen, Container starten
+//                  (darin legt der Dienst migrate die Datenbank an und führt alle Migrationen aus,
+//                  danach startet die API), Objektspeicher einrichten
 //   pnpm dev:down  Container stoppen (Daten bleiben erhalten)
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { setupEnv, parseEnv } from "./setup-env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -59,31 +60,24 @@ function initGarage(env) {
   garage(["bucket", "website", "--allow", env.get("SHOP_S3_BUCKET_PUBLIC") ?? ""]);
 }
 
-/** Baut den Dienst migrate (falls nötig) und führt ihn gegen die lokale Datenbank aus. @param {Map<string,string>} env */
-function migrate(env) {
-  if (!existsSync(resolve(root, "node_modules"))) {
-    execFileSync("pnpm", ["install", "--frozen-lockfile"], { cwd: root, stdio: "inherit" });
+/**
+ * Baut die eigenen Abbilder (infra/docker/Dockerfile). Hinter einem Proxy auf dem eigenen Rechner
+ * (zum Beispiel in einer Cloud-Sitzung) helfen zwei freiwillige Einstellungen aus der Umgebung:
+ * SHOP_BUILD_NETWORK=host und SHOP_BUILD_CA_FILE=<Zertifikat des Proxys>. Das Zertifikat wird nur
+ * beim Bauen eingebunden und landet nie im Abbild.
+ */
+function buildImages() {
+  for (const target of ["migrate", "api"]) {
+    const args = ["build", "-f", resolve(root, "infra/docker/Dockerfile"), "--target", target];
+    args.push("-t", `shop-platform/${target}:local`);
+    if (process.env.SHOP_BUILD_NETWORK) args.push("--network", process.env.SHOP_BUILD_NETWORK);
+    if (process.env.SHOP_BUILD_CA_FILE)
+      args.push("--secret", `id=extra_ca,src=${process.env.SHOP_BUILD_CA_FILE}`);
+    for (const name of ["HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"]) {
+      if (process.env[name]) args.push("--build-arg", name);
+    }
+    execFileSync("docker", [...args, root], { cwd: root, stdio: ["ignore", "inherit", "inherit"] });
   }
-  execFileSync("pnpm", ["-s", "--filter", "@shop/migrate...", "-r", "run", "build"], {
-    cwd: root,
-    stdio: "inherit",
-  });
-  const url = new URL(`postgres://127.0.0.1:${env.get("SHOP_DB_PORT") ?? "5432"}/`);
-  url.username = "postgres";
-  url.password = env.get("POSTGRES_SUPERUSER_PASSWORD") ?? "";
-  url.pathname = `/${env.get("SHOP_DB_NAME") ?? "shop"}`;
-  const vars = Object.fromEntries([...env].filter(([k]) => k.startsWith("SHOP_DB_PASSWORD_")));
-  execFileSync("node", [resolve(root, "apps/migrate/dist/main.js")], {
-    cwd: root,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      ...vars,
-      SHOP_ENV: env.get("SHOP_ENV") ?? "local",
-      SHOP_MIGRATE_DATABASE_URL: url.href,
-      SHOP_MIGRATE_CREATE_DATABASE: "true",
-    },
-  });
 }
 
 const command = process.argv[2] ?? "up";
@@ -93,18 +87,20 @@ if (command === "down") {
 } else {
   setupEnv(root);
   const env = parseEnv(readFileSync(resolve(root, ".env"), "utf8"));
-  console.log("Starte Container …");
-  docker(["up", "-d", "--wait", "--remove-orphans"]);
+  console.log("Baue Abbilder …");
+  // Abbilder bei jedem Start neu bauen (dank Zwischenspeicher meist in Sekunden), damit sie zum Code passen.
+  buildImages();
+  console.log("Starte Container (Datenbank wird eingerichtet) …");
+  docker(["up", "-d", "--no-build", "--wait", "--remove-orphans"]);
   // Caddy hat keine Verwaltungsschnittstelle, geänderte Regeln wirken erst nach Neustart.
   docker(["restart", "caddy"], { quiet: true });
   console.log("Richte Objektspeicher ein …");
   initGarage(env);
-  console.log("Richte Datenbank ein …");
-  migrate(env);
   const d = env.get("SHOP_DOMAIN") ?? "localhost";
   console.log(`
 Die Plattform läuft:
   Startseite   https://${d}
+  API          https://api.${d}   (Beschreibung in openapi/)
   Test-Mails   https://mail.${d}   (Anmeldung: ${env.get("MAILPIT_UI_USER")} / Passwort steht in .env)
   Bilder       https://media.${d}
 `);

@@ -1,0 +1,18 @@
+# Was nicht ins Container-Abbild gehört (Sicherheit 5.10, 5.16): Geheimnisse, Git,
+# lokale Builds und Zwischenspeicher. Gebaut wird im Container immer frisch.
+**/node_modules
+**/dist
+**/.turbo
+**/.astro
+**/coverage
+**/*.tsbuildinfo
+.git
+.github
+.env
+.env.*
+!.env.example
+.venv-fuzz
+.schemathesis
+infra/.data
+docs
+*.log

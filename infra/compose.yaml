@@ -8,7 +8,8 @@
 #   (cap_drop: ALL), no-new-privileges, Dateisystem wo möglich nur lesbar.
 # - Nur Caddy ist von außen erreichbar. Datenbank, Objektspeicher und Mailpit
 #   hängen in einem internen Netz ohne Internetzugang.
-# - Programme (api, worker, Oberflächen) kommen mit ihren Etappen dazu.
+# - Eigene Dienste (migrate, api) kommen aus infra/docker/Dockerfile. worker und
+#   Oberflächen kommen mit ihren Etappen dazu.
 # =============================================================================
 name: shop-platform
 
@@ -26,6 +27,17 @@ networks:
   edge: {}
   internal:
     internal: true
+    # Feste Adresse für Caddy, damit die API genau einer Absenderadresse vertraut. Docker vergibt
+    # die übrigen Adressen nur aus der unteren Hälfte, so kann es keinen Zusammenstoß geben.
+    ipam:
+      config:
+        - subnet: 10.213.17.0/24
+          ip_range: 10.213.17.0/25
+
+# Bauen der eigenen Abbilder. `pnpm dev` baut sie vorher selbst (tools/dev.mjs), auch hinter einem Proxy.
+x-build: &build
+  context: ..
+  dockerfile: infra/docker/Dockerfile
 
 volumes:
   postgres-data: {}
@@ -75,7 +87,9 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     tmpfs: [/tmp]
-    networks: [edge, internal]
+    networks:
+      edge: {}
+      internal: { ipv4_address: 10.213.17.200 }
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2020/"]
       interval: 5s
@@ -145,3 +159,49 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  # Einmaliger Dienst (BET-01): richtet Datenbank, Rollen und Passwörter ein, führt alle neuen
+  # Migrationen aus und beendet sich. Nur er kennt die Verwaltungsrolle der Datenbank.
+  migrate:
+    <<: *hardening
+    build: { <<: *build, target: migrate }
+    image: shop-platform/migrate:local
+    user: "1000:1000"
+    read_only: true
+    restart: "no"
+    environment:
+      SHOP_ENV: ${SHOP_ENV:?fehlt}
+      SHOP_MIGRATE_DATABASE_URL: postgres://postgres:${POSTGRES_SUPERUSER_PASSWORD:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
+      SHOP_MIGRATE_CREATE_DATABASE: "true"
+      SHOP_DB_PASSWORD_APP: ${SHOP_DB_PASSWORD_APP:?fehlt}
+      SHOP_DB_PASSWORD_PLATFORM: ${SHOP_DB_PASSWORD_PLATFORM:?fehlt}
+      SHOP_DB_PASSWORD_AUTH: ${SHOP_DB_PASSWORD_AUTH:?fehlt}
+      SHOP_DB_PASSWORD_RELAY: ${SHOP_DB_PASSWORD_RELAY:?fehlt}
+      SHOP_DB_PASSWORD_BACKUP: ${SHOP_DB_PASSWORD_BACKUP:?fehlt}
+    networks: [internal]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  # Kern-Server (Architektur 4). Nur über Caddy erreichbar (api.localhost), arbeitet als shop_app.
+  api:
+    <<: *hardening
+    build: { <<: *build, target: api }
+    image: shop-platform/api:local
+    user: "1000:1000"
+    read_only: true
+    environment:
+      SHOP_ENV: ${SHOP_ENV:?fehlt}
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?fehlt}
+      SHOP_APP_DATABASE_URL: postgres://shop_app:${SHOP_DB_PASSWORD_APP:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
+      SHOP_API_HOST: 0.0.0.0
+      SHOP_API_PORT: "3000"
+      # Nur Caddy darf die Absenderadresse weitergeben (wichtig für die Anfragebremse).
+      SHOP_TRUSTED_PROXY: 10.213.17.200
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/livez"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      migrate: { condition: service_completed_successfully }

@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-Zurzeit keine offenen Fragen.
+1. **Container-Scan auch bei fremden Bausteinen streng?** Der neue wöchentliche Scan bricht nur ab, wenn unsere eigenen Programme eine kritische Lücke haben; bei fremden Bausteinen (Datenbank, Webserver) meldet er sie nur, weil die Korrektur vom Hersteller kommen muss. Gerade haben Datenbank und Webserver je eine solche Lücke, die nur lokal und auf dem Testserver eine Rolle spielt. Antwort: **so** (nur melden, Empfehlung) oder **streng** (auch dann rot).
 
 ## Beantwortet
 

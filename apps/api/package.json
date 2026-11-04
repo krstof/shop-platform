@@ -5,6 +5,9 @@
   "description": "Kern-Server: setzt die Module zusammen, HTTP mit NestJS und Fastify, OpenAPI (Architektur 4)",
   "license": "UNLICENSED",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

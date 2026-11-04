@@ -5,6 +5,9 @@
   "description": "Dienst migrate: richtet Rollen ein, führt alle Migrationen aus und beendet sich",
   "license": "UNLICENSED",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

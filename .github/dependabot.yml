@@ -18,3 +18,8 @@ updates:
     directory: /infra
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 7 }
+  # Basisabbild der eigenen Dienste (infra/docker/Dockerfile).
+  - package-ecosystem: docker
+    directory: /infra/docker
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }

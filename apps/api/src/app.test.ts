@@ -5,7 +5,7 @@ import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { ActorResolver } from "./actor.js";
-import { BODY_LIMIT_BYTES, createApi } from "./app.js";
+import { BODY_LIMIT_BYTES, createApi, LIVENESS_PATH } from "./app.js";
 import { memoryIdempotencyStore } from "./idempotency-store.js";
 
 const TENANT = uuidv7();
@@ -350,6 +350,20 @@ describe("Fehlerformat (Q-05) und Sprache", () => {
     expect(a.headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
     expect(a.headers["x-request-id"]).not.toBe("boese");
     expect(a.headers["x-request-id"]).not.toBe(b.headers["x-request-id"]);
+  });
+});
+
+describe("Lebenszeichen für den Container", () => {
+  it("antwortet ohne Anmeldung mit 200 und den Sicherheits-Headern, nur für GET und HEAD", async () => {
+    const r = await fastify().inject({ method: "GET", url: LIVENESS_PATH });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ status: "ok" });
+    expect(r.headers["cache-control"]).toBe("no-store");
+    expect(r.headers["x-content-type-options"]).toBe("nosniff");
+    expect((await fastify().inject({ method: "HEAD", url: LIVENESS_PATH })).statusCode).toBe(200);
+    expect((await fastify().inject({ method: "POST", url: LIVENESS_PATH, payload: {} })).statusCode).toBe(
+      404,
+    );
   });
 });
 

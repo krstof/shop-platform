@@ -13,7 +13,7 @@ Kristof muss keinen dieser Befehle selbst ausführen.
 
 | Befehl | Wirkung |
 |---|---|
-| `pnpm dev` | legt `.env` mit Zufallspasswörtern an, startet alle Container, richtet den Objektspeicher ein, legt die Datenbank an und führt alle Migrationen aus |
+| `pnpm dev` | legt `.env` mit Zufallspasswörtern an, baut die Abbilder von `api` und `migrate`, startet alle Container (darin legt `migrate` die Datenbank an und führt alle Migrationen aus, danach startet die API unter `https://api.localhost`) und richtet den Objektspeicher ein |
 | `pnpm dev:down` | stoppt die Container (Daten bleiben) |
 | `pnpm check` | alle Prüfungen vor einem Commit: Format, Lint, Typen, Tests, Geheimnisse, Abhängigkeiten, Datenbank |
 | `pnpm test:infra` | Rauchtest der laufenden Container (HTTPS, Header, Speicher, Härtung) |
