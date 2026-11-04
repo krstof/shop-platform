@@ -1,0 +1,25 @@
+---
+import type { Produkt } from "../vorschau/daten.js";
+import { grundpreisText, mengeText, preisText } from "../vorschau/preis.js";
+import Teedose from "./Teedose.astro";
+
+interface Props {
+  produkt: Produkt;
+}
+const { produkt: p } = Astro.props;
+---
+
+<li class="karte">
+  <a href={`/produkt/${p.slug}/`} class="karte-link">
+    <Teedose farbe={p.farbe} name={p.name} />
+    <span class="karte-name">{p.name}</span>
+  </a>
+  <p class="karte-kurz">{p.kurz}</p>
+  <p class="karte-preis">
+    <strong>{preisText(p.preis)}</strong>
+    <span class="klein">
+      {mengeText(p.gramm)} · {grundpreisText(p.preis, p.gramm)}
+    </span>
+  </p>
+  {!p.verfuegbar && <p class="hinweis-aus">Zurzeit ausverkauft</p>}
+</li>

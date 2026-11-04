@@ -4,7 +4,7 @@
 # Server, aufgerufen vom GitHub-Ablauf `.github/workflows/testserver.yml`.
 # Darf beliebig oft laufen: Jeder Schritt prüft erst, ob er schon erledigt ist.
 #
-# Erwartet im selben Ordner: compose.yaml, Caddyfile, secrets.env
+# Erwartet im selben Ordner: compose.yaml, Caddyfile, secrets.env, site.tar.gz (gebaute Storefront)
 # =============================================================================
 set -euo pipefail
 
@@ -15,7 +15,7 @@ export DEBIAN_FRONTEND=noninteractive
 log() { printf '\n==> %s\n' "$*"; }
 
 [ "$(id -u)" -eq 0 ] || { echo "Muss als root laufen." >&2; exit 1; }
-for f in compose.yaml Caddyfile secrets.env; do
+for f in compose.yaml Caddyfile secrets.env site.tar.gz; do
   [ -s "$SRC/$f" ] || { echo "Datei fehlt: $f" >&2; exit 1; }
 done
 
@@ -105,12 +105,25 @@ else
   rm /etc/docker/daemon.json.new
 fi
 
-# --- 5. Anwendung (bisher nur Caddy) ------------------------------------------
+# --- 5. Anwendung (Caddy liefert die Vorschau der Storefront aus) -------------
 log "Dateien nach $APP_DIR"
 install -d -m 0750 "$APP_DIR"
 install -m 0644 "$SRC/compose.yaml" "$APP_DIR/compose.yaml"
 install -m 0644 "$SRC/Caddyfile" "$APP_DIR/Caddyfile"
 install -m 0600 "$SRC/secrets.env" "$APP_DIR/secrets.env"
+
+log "Storefront-Vorschau auspacken"
+# Erst in einen neuen Ordner auspacken und prüfen, dann den Inhalt austauschen. Der Ordner selbst
+# bleibt derselbe, weil Caddy ihn eingebunden hat (ein umbenannter Ordner wäre für Caddy unsichtbar).
+rm -rf "$APP_DIR/site.new"
+install -d -m 0755 "$APP_DIR/site.new" "$APP_DIR/site"
+tar -xzf "$SRC/site.tar.gz" -C "$APP_DIR/site.new" --no-same-owner --no-same-permissions
+[ -s "$APP_DIR/site.new/index.html" ] || { echo "index.html fehlt im Paket" >&2; exit 1; }
+chown -R root:root "$APP_DIR/site.new"
+chmod -R u=rwX,go=rX "$APP_DIR/site.new"
+find "$APP_DIR/site" -mindepth 1 -delete
+cp -a "$APP_DIR/site.new/." "$APP_DIR/site/"
+rm -rf "$APP_DIR/site.new"
 
 log "Container starten"
 docker compose -f "$APP_DIR/compose.yaml" --project-directory "$APP_DIR" up -d --wait --remove-orphans

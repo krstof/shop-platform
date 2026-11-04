@@ -5,8 +5,8 @@
 #
 # Härtung wie lokal (infra/compose.yaml): feste Abbilder mit Prüfsumme,
 # kein Dienst als Administrator, cap_drop ALL, no-new-privileges,
-# Dateisystem nur lesbar. Bisher läuft nur Caddy mit Passwortschutz und einer
-# Platzhalterseite; die Anwendung kommt mit Etappe E18 dazu.
+# Dateisystem nur lesbar. Zurzeit läuft nur Caddy mit Passwortschutz und liefert
+# die Vorschau der Storefront als fertige Seiten aus; API und Datenbank folgen.
 # =============================================================================
 name: shop-testserver
 
@@ -55,6 +55,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./site:/srv/site:ro
       - caddy-data:/data
       - caddy-config:/config
     tmpfs: [/tmp]

@@ -95,7 +95,7 @@ export function buildRules(mods) {
 export function cruiseOptions() {
   return {
     doNotFollow: { path: "node_modules" },
-    exclude: { path: "(^|/)(node_modules|dist|coverage|\\.turbo)/" },
+    exclude: { path: "(^|/)(node_modules|dist|coverage|\\.turbo|\\.astro)/" },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       extensions: [".ts", ".tsx", ".mjs", ".js", ".json"],

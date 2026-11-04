@@ -13,6 +13,7 @@
 | Kostenwarnung | Budget `Kostenwarnung_1_Euro`, Mail bei 1 € tatsächlichen Kosten |
 | GitHub | Secrets `TESTSERVER_SSH_KEY`, `TESTSERVER_PASSWORD`, Variable `TESTSERVER_HOST` |
 | Einrichtung | `.github/workflows/testserver.yml` mit `infra/testserver/` (setup.sh, compose.yaml, Caddyfile) |
+| Inhalt | seit 04.11.2026 die Vorschau der Storefront (`apps/storefront`, fertige Seiten mit Beispieldaten), bei jeder Änderung an Storefront oder Kernel neu gebaut und ausgeliefert |
 
 Was der Ablauf macht: Pakete aktualisieren, automatische Sicherheitsupdates inkl. Docker mit nächtlichem Neustart bei Bedarf (04:30), SSH nur mit Schlüssel, iptables zusätzlich 80/443 (Oracle-Regeln bleiben, kein ufw), Docker aus der offiziellen Quelle, Caddy gehärtet wie lokal mit echtem Zertifikat, HSTS und `noindex`. Danach Rauchtest: ohne Passwort 401, mit Passwort 200, HTTP leitet auf HTTPS um, SSH ohne Passwortanmeldung.
 
@@ -20,7 +21,7 @@ Serverschlüssel: Der erste Lauf (03.11.2026) hat den SSH-Schlüssel des Servers
 
 Budget: `Kostenwarnung_1_Euro` (ganzes Konto, monatlich 1 €, Warnung bei 100 % tatsächlicher Kosten per E-Mail an Kristof), angelegt 03.11.2026.
 
-Offen: Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); Anwendung selbst kommt mit E18.
+Offen: Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); API, Datenbank und Backoffice kommen mit E18.
 
 Entscheidung Kristof 03.11.2026: öffentlicher Testserver, damit Kollegen per Link zuschauen können. Anbieter: Oracle Cloud, Gratisangebot („Always Free“). Das Konto hat Kristof selbst angelegt.
 

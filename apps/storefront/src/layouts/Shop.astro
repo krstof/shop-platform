@@ -1,0 +1,93 @@
+---
+import "../styles/shop.css";
+import { KATEGORIEN, SHOP } from "../vorschau/daten.js";
+
+interface Props {
+  titel: string;
+  beschreibung?: string;
+}
+const { titel, beschreibung = SHOP.claim } = Astro.props;
+const pfad = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content={beschreibung} />
+    <title>{titel === SHOP.name ? titel : `${titel} – ${SHOP.name}`}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="sprung" href="#inhalt">
+      Zum Inhalt springen
+    </a>
+    <header class="kopf">
+      <p class="vorschau-band" role="note">
+        Vorschau mit erfundenen Beispieldaten. Hier kann noch nichts gekauft werden.
+      </p>
+      <div class="breite kopf-innen">
+        <a href="/" class="logo">
+          {SHOP.name}
+        </a>
+        <nav aria-label="Kategorien">
+          <ul class="nav">
+            {KATEGORIEN.map((k) => {
+              const ziel = `/kategorie/${k.slug}/`;
+              return (
+                <li>
+                  <a href={ziel} aria-current={pfad === ziel ? "page" : undefined}>
+                    {k.name}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        <span class="korb" title="Warenkorb folgt">
+          Warenkorb (0)
+        </span>
+      </div>
+    </header>
+    <main id="inhalt" class="breite" tabindex="-1">
+      <slot />
+    </main>
+    <footer class="fuss">
+      <div class="breite fuss-innen">
+        <div>
+          <p class="logo">{SHOP.name}</p>
+          <p class="klein">
+            {SHOP.firma}
+            <br />
+            {SHOP.ort}
+          </p>
+        </div>
+        <nav aria-label="Rechtliches">
+          <ul class="fuss-links">
+            <li>
+              <a href="/rechtliches/#impressum">Impressum</a>
+            </li>
+            <li>
+              <a href="/rechtliches/#datenschutz">Datenschutz</a>
+            </li>
+            <li>
+              <a href="/rechtliches/#agb">AGB</a>
+            </li>
+            <li>
+              <a href="/rechtliches/#widerruf">Widerrufsbelehrung</a>
+            </li>
+            <li>
+              <a href="/rechtliches/#versand">Versand und Zahlung</a>
+            </li>
+            <li>
+              <a href="/rechtliches/#barrierefreiheit">Barrierefreiheit</a>
+            </li>
+          </ul>
+        </nav>
+        <p class="klein">Alle Preise inkl. MwSt., zzgl. Versand.</p>
+      </div>
+    </footer>
+  </body>
+</html>

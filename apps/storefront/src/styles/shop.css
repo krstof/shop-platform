@@ -1,0 +1,323 @@
+/* Standard-Design „schlicht“ (Antwort Kristof 29.10.2026). Nur Systemschriften, keine Dienste von außen. */
+:root {
+  --text: #26221e;
+  --text-leise: #5e554c;
+  --grund: #fbf8f3;
+  --flaeche: #f1ebe1;
+  --linie: #e2d9cb;
+  --akzent: #3f6b4a;
+  --akzent-dunkel: #2f5238;
+  --fokus: #1f5fbf;
+  --breite: 72rem;
+  color-scheme: light;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+h1,
+h2,
+h3,
+.logo {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  line-height: 1.2;
+}
+h1 {
+  font-size: clamp(1.9rem, 4vw, 2.75rem);
+  margin: 0 0 0.5rem;
+}
+h2 {
+  font-size: 1.5rem;
+  margin: 2.5rem 0 1rem;
+}
+a {
+  color: var(--akzent-dunkel);
+}
+a:focus-visible,
+button:focus-visible,
+main:focus-visible {
+  outline: 3px solid var(--fokus);
+  outline-offset: 2px;
+}
+.breite {
+  max-width: var(--breite);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+.klein {
+  font-size: 0.9rem;
+  color: var(--text-leise);
+}
+.sprung {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--text);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 10;
+}
+.sprung:focus {
+  left: 0.5rem;
+}
+.vorschau-band {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  background: #2f3a33;
+  color: #f4efe6;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* Kopf */
+.kopf {
+  border-bottom: 1px solid var(--linie);
+  background: var(--grund);
+}
+.kopf-innen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 2rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.logo {
+  font-size: 1.4rem;
+  color: var(--text);
+  text-decoration: none;
+  margin: 0;
+}
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nav a {
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+.nav a:hover,
+.nav a[aria-current="page"] {
+  border-bottom-color: var(--akzent);
+}
+.korb {
+  margin-left: auto;
+  font-size: 0.95rem;
+  color: var(--text-leise);
+}
+
+/* Startseite */
+.buehne {
+  display: grid;
+  gap: 1.5rem;
+  padding: 3rem 0 1rem;
+}
+.buehne p {
+  max-width: 38rem;
+  color: var(--text-leise);
+  margin: 0;
+}
+.kategorien {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.kategorien a {
+  display: block;
+  padding: 1.25rem;
+  background: var(--flaeche);
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  height: 100%;
+}
+.kategorien a:hover {
+  background: var(--linie);
+}
+.kategorien strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 1.25rem;
+}
+
+/* Produktraster */
+.raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 2rem 1.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 3rem;
+}
+.karte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.karte-link {
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.karte-link:hover .karte-name {
+  text-decoration: underline;
+}
+.dose {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+}
+.karte-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+}
+.karte-kurz {
+  margin: 0;
+  color: var(--text-leise);
+  font-size: 0.95rem;
+}
+.karte-preis {
+  margin: 0.25rem 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.hinweis-aus {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #8a3b1e;
+}
+
+/* Produktseite */
+.pfadleiste ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+.pfadleiste li + li::before {
+  content: "›";
+  margin-right: 0.5rem;
+  color: var(--text-leise);
+}
+.produkt {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 3rem;
+}
+@media (min-width: 48rem) {
+  .produkt {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3rem;
+  }
+}
+.preis-gross {
+  font-size: 1.75rem;
+  margin: 1rem 0 0;
+}
+.kaufen {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  background: #fff;
+}
+.knopf {
+  font: inherit;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  border: 0;
+  background: var(--akzent);
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.merkmale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.merkmale li {
+  background: var(--flaeche);
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+.angaben {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  margin: 0;
+}
+.angaben dt {
+  color: var(--text-leise);
+}
+.angaben dd {
+  margin: 0;
+}
+
+/* Rechtliches */
+.text {
+  max-width: 44rem;
+  margin-bottom: 3rem;
+}
+
+/* Fuß */
+.fuss {
+  border-top: 1px solid var(--linie);
+  background: var(--flaeche);
+  margin-top: 2rem;
+}
+.fuss-innen {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+.fuss-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+}

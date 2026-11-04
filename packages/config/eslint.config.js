@@ -34,6 +34,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/.turbo/**",
       "**/coverage/**",
+      "**/.astro/**",
       "openapi/**",
       // Von kysely-codegen erzeugt (pnpm db:types)
       "**/db.generated.ts",

@@ -1,0 +1,34 @@
+---
+import Shop from "../layouts/Shop.astro";
+import Produktkarte from "../components/Produktkarte.astro";
+import { KATEGORIEN, PRODUKTE, SHOP } from "../vorschau/daten.js";
+---
+
+<Shop titel={SHOP.name}>
+  <section class="buehne" aria-labelledby="willkommen">
+    <h1 id="willkommen">{SHOP.claim}</h1>
+    <p>
+      Grüntee, Schwarztee und Kräuter aus kleinen Gärten. Frisch abgefüllt und mit einer Anleitung, wie jeder
+      Tee am besten gelingt.
+    </p>
+  </section>
+
+  <h2>Unsere Sorten</h2>
+  <ul class="kategorien">
+    {KATEGORIEN.map((k) => (
+      <li>
+        <a href={`/kategorie/${k.slug}/`}>
+          <strong>{k.name}</strong>
+          <span class="klein">{k.beschreibung}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <h2>Alle Tees</h2>
+  <ul class="raster">
+    {PRODUKTE.map((p) => (
+      <Produktkarte produkt={p} />
+    ))}
+  </ul>
+</Shop>

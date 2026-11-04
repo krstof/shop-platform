@@ -8,6 +8,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Astro (Storefront) schickt sonst Nutzungsdaten nach außen.
+env:
+  ASTRO_TELEMETRY_DISABLED: "1"
+
 permissions:
   contents: read
 

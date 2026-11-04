@@ -35,12 +35,24 @@
 	basic_auth {
 		{$TESTSERVER_USER} {$TESTSERVER_PASSWORD_HASH}
 	}
-	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
-	header Cache-Control "no-store"
+	# Vorschau der Storefront: nur eigene Stylesheets und Bilder, kein Skript, keine Formulare nach außen.
+	header Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 	request_body {
 		max_size 1MB
 	}
-	respond "Testserver der Shop-Plattform läuft. Die Anwendung folgt mit Etappe E18." 200
+	@nurLesen not method GET HEAD
+	respond @nurLesen 405
+	# Dateien mit Prüfsumme im Namen dürfen lange zwischengespeichert werden, Seiten nicht.
+	@assets path /_assets/*
+	header @assets Cache-Control "private, max-age=31536000, immutable"
+	@seiten not path /_assets/*
+	header @seiten Cache-Control "no-store"
+	root * /srv/site
+	file_server
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server
+	}
 }
 
 # Interner Gesundheitscheck für Docker, nicht nach außen veröffentlicht.

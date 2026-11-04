@@ -1,0 +1,29 @@
+---
+import Shop from "../../layouts/Shop.astro";
+
+const abschnitte = [
+  ["impressum", "Impressum"],
+  ["datenschutz", "Datenschutzerklärung"],
+  ["agb", "Allgemeine Geschäftsbedingungen"],
+  ["widerruf", "Widerrufsbelehrung"],
+  ["versand", "Versand und Zahlung"],
+  ["barrierefreiheit", "Erklärung zur Barrierefreiheit"],
+] as const;
+---
+
+<Shop titel="Rechtliches" beschreibung="Pflichtangaben des Shops">
+  <div class="text">
+    <h1>Rechtliches</h1>
+    <p>
+      Diese Vorschau zeigt einen erfundenen Shop. Die echten Pflichtseiten entstehen aus Vorlagen mit den
+      Firmendaten des Händlers (Etappe E12). Ohne vollständige Rechtstexte kann ein Shop später nicht online
+      gehen.
+    </p>
+    {abschnitte.map(([id, titel]) => (
+      <section id={id} aria-labelledby={`${id}-titel`}>
+        <h2 id={`${id}-titel`}>{titel}</h2>
+        <p class="klein">Folgt mit Etappe E12.</p>
+      </section>
+    ))}
+  </div>
+</Shop>

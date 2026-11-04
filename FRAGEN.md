@@ -8,6 +8,8 @@ Zurzeit keine offenen Fragen.
 
 ## Beantwortet
 
+- **Wann kann ich etwas sehen?** Früher als geplant: eine Vorschau der Storefront mit Beispieldaten (Teeladen) auf dem Testserver, noch ohne Kaufen. Das Fundament verschiebt sich dadurch um etwa einen Lauf. (04.11.2026)
+
 - **Öffentlicher Testserver?** Neu entschieden: Ja, damit Kristof einen Link an Kollegen schicken kann (vorher 27.10.2026: nein). Anbieter: Oracle Cloud, Gratisangebot („Always Free“). Kristof hat das Konto am 03.11.2026 angelegt. Den Server selbst legt er erst an, wenn es etwas zu sehen gibt (mit E18), weil Oracle ungenutzte Gratis-Server nach 7 Tagen abschalten darf. (03.11.2026)
 
 - **Rhythmus?** Ab 04.11.2026 zwei Läufe am Tag (05:47 und 13:47 Uhr), Ziel: MVP in rund sechs Wochen. (03.11.2026)
