@@ -17,6 +17,11 @@ schemas:
     reason: >-
       Buchführung des Dienstes migrate (ausgeführte Migrationen, Prüfsummen).
       Für keine Anwendungsrolle erreichbar.
+  - name: pgboss
+    reason: >-
+      Warteschlange pg-boss (Etappe E5). Aufgaben enthalten Ereignisse aller Shops und gehören
+      deshalb keinem Shop. Nur shop_relay (Dienst worker) erreicht das Schema, shop_app nicht;
+      verarbeitet wird danach als shop_app in einer Transaktion für genau den Shop des Ereignisses.
 
 tables:
   - name: kernel.currency

@@ -29,14 +29,14 @@ const COUNT_A = 7;
 const USER_A = uuidv7();
 const USER_B = uuidv7();
 
-/** Anmeldung im Test: Kopfzeile x-test-shop wählt den Shop, mit products:read und products:write. */
+/** Anmeldung im Test: Kopfzeile x-test-shop wählt den Shop, mit products:read/write und audit:read. */
 const resolver: ActorResolver = async ({ headers }) => {
   const shop = headers["x-test-shop"];
   if (shop !== "a" && shop !== "b") return undefined;
   const auth: AuthenticatedActor = {
     actor: { type: "user", id: shop === "a" ? USER_A : USER_B },
     tenantId: shop === "a" ? TENANT_A : TENANT_B,
-    scopes: new Set(["products:read", "products:write"]),
+    scopes: new Set(["products:read", "products:write", "audit:read"]),
   };
   return auth;
 };
@@ -47,6 +47,8 @@ describe.skipIf(adminUrl === undefined)("Hersteller-Endpunkte (echte Datenbank)"
   let database: Database<unknown>;
   let appUrl: string;
   let app: NestFastifyApplication;
+  /** Superuser auf der Testdatenbank, nur zum Nachsehen in Outbox und Protokoll. */
+  let inspect: pg.Client;
   const idsB: string[] = [];
   const archivedId = uuidv7();
 
@@ -95,6 +97,8 @@ describe.skipIf(adminUrl === undefined)("Hersteller-Endpunkte (echte Datenbank)"
       ]);
     }
     await setup.end();
+    inspect = new pg.Client({ connectionString: setupUrl.href });
+    await inspect.connect();
 
     appUrl = roleUrl(adminUrl ?? "", dbName, "shop_app");
     database = connectDatabase<unknown>({
@@ -113,6 +117,7 @@ describe.skipIf(adminUrl === undefined)("Hersteller-Endpunkte (echte Datenbank)"
   afterAll(async () => {
     await app?.close();
     await database?.destroy();
+    await inspect?.end();
     if (admin !== undefined) {
       await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
       await admin.end();
@@ -332,5 +337,116 @@ describe.skipIf(adminUrl === undefined)("Hersteller-Endpunkte (echte Datenbank)"
     );
     expect(r.statusCode).toBe(404);
     expect((await get(`/admin/v1/manufacturers/${idsB[1]}`, "b")).json().name).toBe("Hosenbau");
+  });
+
+  // --- Ereignisse (Outbox, Etappe E5) ---
+
+  const eventsFor = async (id: string) =>
+    (
+      await inspect.query(
+        `SELECT tenant_id, type, actor, data, correlation_id FROM kernel.outbox WHERE data->>'id' = $1 ORDER BY id`,
+        [id],
+      )
+    ).rows;
+
+  it("Anlegen und Ändern schreiben je ein Ereignis mit Urheber, nur mit geänderten Feldern", async () => {
+    const correlation = uuidv7();
+    const created = await send(
+      "POST",
+      "/admin/v1/manufacturers",
+      "a",
+      { name: "Mit Ereignis", address: { city: "Kiel" } },
+      { "x-correlation-id": correlation },
+    );
+    const id = created.json().id as string;
+    const changed = await send(
+      "PATCH",
+      `/admin/v1/manufacturers/${id}`,
+      "a",
+      { address: { city: "Hamburg" }, email: "info@teehaus.example", name: "Mit Ereignis" },
+      { "if-match": '"1"' },
+    );
+    expect(changed.statusCode).toBe(200);
+    expect(await eventsFor(id)).toEqual([
+      {
+        tenant_id: TENANT_A,
+        type: "catalog.manufacturer.created.v1",
+        actor: { type: "user", id: USER_A },
+        data: { id, name: "Mit Ereignis" },
+        correlation_id: correlation,
+      },
+      {
+        tenant_id: TENANT_A,
+        type: "catalog.manufacturer.updated.v1",
+        actor: { type: "user", id: USER_A },
+        data: { id, changes: { city: ["Kiel", "Hamburg"], email: [null, "info@teehaus.example"] } },
+        correlation_id: expect.any(String),
+      },
+    ]);
+  });
+
+  it("kein Ereignis ohne Änderung, bei 412, 404 und bei abgelehnter Eingabe", async () => {
+    const created = await send("POST", "/admin/v1/manufacturers", "a", { name: "Ruhig" });
+    const id = created.json().id as string;
+    const url = `/admin/v1/manufacturers/${id}`;
+    expect((await send("PATCH", url, "a", { name: "Ruhig" }, { "if-match": '"1"' })).statusCode).toBe(200);
+    expect((await send("PATCH", url, "a", { name: "Neu" }, { "if-match": '"7"' })).statusCode).toBe(412);
+    expect((await send("PATCH", url, "b", { name: "Fremd" }, { "if-match": '"1"' })).statusCode).toBe(404);
+    expect((await send("PATCH", url, "a", { unbekannt: 1 }, { "if-match": '"1"' })).statusCode).toBe(422);
+    expect((await eventsFor(id)).map((e: { type: string }) => e.type)).toEqual([
+      "catalog.manufacturer.created.v1",
+    ]);
+  });
+
+  // --- Änderungsprotokoll lesen (PLA-07) ---
+
+  it("Änderungsprotokoll: neueste zuerst, Filter nach Objekt und Urheber, nur der eigene Shop", async () => {
+    const thing = uuidv7();
+    const insert = (tenant: string, entityId: string, action: string, actorType = "user") =>
+      inspect.query(
+        `INSERT INTO audit.audit_entry (tenant_id, actor_type, actor_id, action, entity_type, entity_id, changes)
+         VALUES ($1, $2, $3, $4, 'catalog.manufacturer', $5, $6)`,
+        [
+          tenant,
+          actorType,
+          actorType === "user" ? USER_A : null,
+          action,
+          entityId,
+          action.endsWith("updated.v1") ? JSON.stringify({ name: ["Alt", "Neu"] }) : null,
+        ],
+      );
+    await insert(TENANT_A, thing, "catalog.manufacturer.created.v1");
+    await insert(TENANT_A, thing, "catalog.manufacturer.updated.v1");
+    await insert(TENANT_A, uuidv7(), "catalog.manufacturer.created.v1", "system");
+    await insert(TENANT_B, thing, "catalog.manufacturer.archived.v1");
+
+    const all = await get(`/admin/v1/audit-entries?entityId=${thing}`, "a");
+    expect(all.statusCode).toBe(200);
+    expect(all.json().data.map((e: { action: string }) => e.action)).toEqual([
+      "catalog.manufacturer.updated.v1",
+      "catalog.manufacturer.created.v1",
+    ]);
+    expect(all.json().data[0]).toMatchObject({
+      actor: { type: "user", id: USER_A, onBehalfOfUserId: null },
+      entity: { type: "catalog.manufacturer", id: thing },
+      changes: { name: ["Alt", "Neu"] },
+    });
+    const fromB = await get(`/admin/v1/audit-entries?entityId=${thing}`, "b");
+    expect(fromB.json().data.map((e: { action: string }) => e.action)).toEqual([
+      "catalog.manufacturer.archived.v1",
+    ]);
+
+    const system = await get(`/admin/v1/audit-entries?actorType=system`, "a");
+    expect(system.json().data).toHaveLength(1);
+    const byType = await get(`/admin/v1/audit-entries?entityType=catalog.manufacturer&limit=1`, "a");
+    expect(byType.json().data).toHaveLength(1);
+    expect(byType.json().page.hasMore).toBe(true);
+    const next = await get(
+      `/admin/v1/audit-entries?entityType=catalog.manufacturer&limit=1&cursor=${byType.json().page.nextCursor}`,
+      "a",
+    );
+    expect(next.json().data[0].id < byType.json().data[0].id).toBe(true);
+    expect((await get(`/admin/v1/audit-entries?entityType=Katalog`, "a")).statusCode).toBe(422);
+    expect((await get(`/admin/v1/audit-entries?actorType=operator`, "a")).statusCode).toBe(200);
   });
 });

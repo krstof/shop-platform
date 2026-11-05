@@ -6,6 +6,206 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/admin/v1/audit-entries": {
+      "get": {
+        "operationId": "listAuditEntries",
+        "summary": "Änderungsprotokoll lesen",
+        "description": "Listet die Einträge im Änderungsprotokoll des Shops, neueste zuerst, seitenweise mit Cursor. Einträge entstehen aus den Ereignissen der Module mit wenigen Sekunden Verzögerung und lassen sich weder ändern noch löschen.",
+        "tags": [
+          "Änderungsprotokoll"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Einträge pro Seite, 1 bis 100 (Standard 25).",
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Lesemarke aus `page.nextCursor` der vorigen Seite.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": false,
+            "description": "Nur Einträge zu dieser Art von Objekt, zum Beispiel catalog.manufacturer.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "pattern": "^[a-z_]+\\.[a-z_]+$"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "required": false,
+            "description": "Nur Einträge zu diesem Objekt.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "actorType",
+            "in": "query",
+            "required": false,
+            "description": "Nur diese Art Urheber.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "user",
+                "api_token",
+                "ai",
+                "app",
+                "system",
+                "operator"
+              ]
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "required": false,
+            "description": "Nur dieser Urheber.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eine Seite mit Einträgen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "maxItems": 100,
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditEntry"
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "audit:read"
+        ]
+      }
+    },
     "/admin/v1/manufacturers": {
       "get": {
         "operationId": "listManufacturers",
@@ -1006,6 +1206,137 @@
   },
   "components": {
     "schemas": {
+      "AuditEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "actor": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "user, api_token, ai, app, system oder operator"
+              },
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "onBehalfOfUserId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "onBehalfOfUserId"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "type": "string",
+            "description": "Ereignis, zum Beispiel catalog.manufacturer.updated.v1."
+          },
+          "entity": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Art des Objekts, zum Beispiel catalog.manufacturer."
+              },
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "changes": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "prefixItems": [
+                    {},
+                    {}
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Geänderte Felder als { feld: [alt, neu] }, sonst null."
+          },
+          "correlationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "occurredAt",
+          "actor",
+          "action",
+          "entity",
+          "changes",
+          "correlationId"
+        ],
+        "additionalProperties": false,
+        "description": "Eintrag im Änderungsprotokoll: wer hat was wann getan."
+      },
       "Manufacturer": {
         "type": "object",
         "properties": {

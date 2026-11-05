@@ -25,7 +25,7 @@ END $$;
 CREATE FUNCTION pg_temp.rls_tables() RETURNS SETOF regclass LANGUAGE sql STABLE AS $$
   SELECT c.oid::regclass FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE c.relkind IN ('r','p') AND c.relrowsecurity
-     AND n.nspname NOT IN ('pg_catalog','information_schema','public') AND n.nspname NOT LIKE 'pg_%'
+     AND n.nspname NOT IN ('pg_catalog','information_schema','public') AND n.nspname NOT LIKE 'pg\_%'
    ORDER BY c.oid::regclass::text
 $$;
 
@@ -270,7 +270,7 @@ FROM (
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema','public')
      AND n.nspname NOT IN (SELECT name FROM global_schema)
-     AND n.nspname NOT LIKE 'pg_%'
+     AND n.nspname NOT LIKE 'pg\_%'
      AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped)
      AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
           OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid))
@@ -284,7 +284,7 @@ FROM (
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema','public')
      AND n.nspname NOT IN (SELECT name FROM global_schema)
-     AND n.nspname NOT LIKE 'pg_%'
+     AND n.nspname NOT LIKE 'pg\_%'
      AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped)
      AND c.oid NOT IN (SELECT to_regclass(name) FROM global_table WHERE to_regclass(name) IS NOT NULL)
 ) v;

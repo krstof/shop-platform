@@ -1,0 +1,32 @@
+{
+  "name": "@shop/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dienst worker: Outbox-Relay, Zustellung der Ereignisse an die Subscriber, Hintergrundjobs (Architektur 3.5, BET-05)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@shop/audit": "workspace:*",
+    "@shop/kernel": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@shop/catalog": "workspace:*",
+    "@shop/config": "workspace:*",
+    "@shop/testing": "workspace:*",
+    "@types/node": "^24.19.2",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
+  }
+}

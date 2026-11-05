@@ -138,6 +138,20 @@ export async function withPlatformTransaction<DB, T>(
 }
 
 /**
+ * Transaktion ohne Mandant und ohne Akteur, nur für den Worker mit der Rolle `shop_relay`
+ * (Outbox weiterleiten, Abgelaufenes aufräumen). Nicht über `@shop/kernel` exportiert, sondern
+ * nur über `@shop/kernel/worker`; was die Rolle sieht, regeln ihre eigenen RLS-Policies.
+ */
+export async function withRelayTransaction<T>(
+  database: Database<unknown>,
+  fn: (trx: Transaction<unknown>) => Promise<T>,
+): Promise<T> {
+  return kyselyOf(database)
+    .transaction()
+    .execute((trx) => fn(trx));
+}
+
+/**
  * Nur für Tests, nicht über das Paket exportiert: liest eine Einstellung auf einer Verbindung
  * aus dem Pool, ohne Transaktion und ohne vorher etwas zu setzen. Damit prüft der Test,
  * dass der Mandant nach dem Ende einer Transaktion nicht an der Verbindung hängen bleibt.

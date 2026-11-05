@@ -31,3 +31,18 @@ export {
   type IdempotencyRequest,
   type IdempotencyStart,
 } from "./db/idempotency.js";
+export {
+  defineEvent,
+  EVENT_TYPE_PATTERN,
+  eventEnvelopeSchema,
+  isEvent,
+  publishEvent,
+  type EventDefinition,
+  type EventEnvelope,
+} from "./events/event.js";
+export {
+  defineSubscriber,
+  subscribesTo,
+  type Subscriber,
+  type SubscriberOptions,
+} from "./events/subscriber.js";

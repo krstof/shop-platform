@@ -9,7 +9,7 @@ import { loadGlobalTables } from "../global-tables.mjs";
 
 test("echte Liste ist gültig", () => {
   const g = loadGlobalTables();
-  assert.deepEqual(g.schemas, ["platform", "shop_migration"]);
+  assert.deepEqual(g.schemas, ["platform", "shop_migration", "pgboss"]);
   assert.ok(g.tables.includes('identity."user"'));
   assert.ok(g.tables.includes("tax.tax_rate"));
 });

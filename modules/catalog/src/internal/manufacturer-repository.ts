@@ -103,7 +103,7 @@ export async function insertManufacturer(
 }
 
 export type UpdateResult =
-  | { readonly kind: "updated"; readonly row: ManufacturerRow }
+  | { readonly kind: "updated"; readonly row: ManufacturerRow; readonly before: ManufacturerRow }
   | { readonly kind: "not_found" }
   | { readonly kind: "version_mismatch" };
 
@@ -117,23 +117,52 @@ export async function updateManufacturer(
   expectedVersion: number,
   changes: ManufacturerChanges,
 ): Promise<UpdateResult> {
-  // Nichts zu ändern (zum Beispiel nur ein leeres address-Objekt): Version trotzdem prüfen.
-  const row =
-    Object.keys(changes).length === 0
-      ? await trx
-          .selectFrom(TABLE)
-          .select(COLUMNS)
-          .where("id", "=", id)
-          .where("version", "=", expectedVersion)
-          .executeTakeFirst()
-      : await trx
-          .updateTable(TABLE)
-          .set(changes)
-          .where("id", "=", id)
-          .where("version", "=", expectedVersion)
-          .returning(COLUMNS)
-          .executeTakeFirst();
-  if (row !== undefined) return { kind: "updated", row };
-  const exists = await trx.selectFrom(TABLE).select("id").where("id", "=", id).executeTakeFirst();
-  return exists === undefined ? { kind: "not_found" } : { kind: "version_mismatch" };
+  // Alter Stand für das Änderungs-Ereignis, gesperrt bis zum Ende der Transaktion, damit niemand
+  // zwischen Lesen und Ändern dazwischenkommt.
+  const before = await trx
+    .selectFrom(TABLE)
+    .select(COLUMNS)
+    .where("id", "=", id)
+    .forUpdate()
+    .executeTakeFirst();
+  if (before === undefined) return { kind: "not_found" };
+  if (before.version !== expectedVersion) return { kind: "version_mismatch" };
+  // Nichts zu ändern (zum Beispiel nur ein leeres address-Objekt): Zeile bleibt, wie sie ist.
+  if (Object.keys(changes).length === 0) return { kind: "updated", row: before, before };
+  const row = await trx
+    .updateTable(TABLE)
+    .set(changes)
+    .where("id", "=", id)
+    .where("version", "=", expectedVersion)
+    .returning(COLUMNS)
+    .executeTakeFirstOrThrow();
+  return { kind: "updated", row, before };
 }
+
+/** Felder mit anderem Wert vorher und nachher, als { spalte: [alt, neu] } für das Ereignis. */
+export function changedFields(
+  before: ManufacturerRow,
+  after: ManufacturerRow,
+): Record<string, [string | null, string | null]> {
+  const result: Record<string, [string | null, string | null]> = {};
+  for (const column of EDITABLE) {
+    if (before[column] !== after[column]) result[column] = [before[column], after[column]];
+  }
+  return result;
+}
+
+const EDITABLE = [
+  "name",
+  "trade_name",
+  "address_line1",
+  "address_line2",
+  "postal_code",
+  "city",
+  "country_code",
+  "email",
+  "website_url",
+  "eu_responsible_name",
+  "eu_responsible_address",
+  "eu_responsible_email",
+  "eu_responsible_phone",
+] as const satisfies readonly (keyof ManufacturerChanges)[];

@@ -21,7 +21,7 @@ END $$;
 CREATE FUNCTION pg_temp.app_tables() RETURNS SETOF regclass LANGUAGE sql STABLE AS $$
   SELECT c.oid::regclass FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE c.relkind IN ('r','p','v','m')
-     AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_%'
+     AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg\_%'
 $$;
 
 -- Hat die Rolle irgendein Recht auf die Tabelle (ganze Tabelle oder einzelne Spalten)?
@@ -79,7 +79,7 @@ SELECT pg_temp.ok(count(*) = 0, 'shop_app, shop_platform und shop_relay lesen ke
        (SELECT a.attrelid::regclass::text || '.' || a.attname AS col, a.attrelid, a.attname
           FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
          WHERE c.relkind IN ('r','p') AND a.attnum > 0 AND NOT a.attisdropped
-           AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_%'
+           AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg\_%'
            AND a.attname ~ '(password|secret|encrypted|private_key|backup_code)') cols
  WHERE has_column_privilege(r, cols.attrelid, cols.attname, 'SELECT')
    AND cols.col NOT IN ('payments.payment_method_config.secret_ciphertext');
@@ -88,8 +88,36 @@ SELECT pg_temp.ok(count(*) = 3, 'Die Prüfung oben erkennt die Anmeldegeheimniss
  WHERE n.nspname = 'identity' AND a.attnum > 0 AND a.attname ~ '(password|secret|encrypted|private_key|backup_code)';
 
 \echo '--- 4. Weitere Rollen'
-SELECT pg_temp.ok(count(*) = 0, 'shop_relay sieht nur die Outbox (Verstöße: ' || coalesce(string_agg(t::text, ', '), 'keine') || ')')
-  FROM pg_temp.app_tables() t WHERE pg_temp.any_priv('shop_relay', t) AND t::text <> 'kernel.outbox';
+-- shop_relay (Dienst worker, Etappe E5): Outbox, Warteschlange pg-boss und das Aufräumen
+-- abgelaufener Idempotenz-Schlüssel. Keine Fachdaten der Shops.
+SELECT pg_temp.ok(count(*) = 0, 'shop_relay sieht nur Outbox, Idempotenz-Schlüssel und Warteschlange (Verstöße: '
+                  || coalesce(string_agg(t::text, ', '), 'keine') || ')')
+  FROM pg_temp.app_tables() t
+ WHERE pg_temp.any_priv('shop_relay', t)
+   AND t::text NOT IN ('kernel.outbox', 'kernel.idempotency_key')
+   AND split_part(t::text, '.', 1) <> 'pgboss';
+SELECT pg_temp.ok(count(*) = 0, 'shop_relay liest von den Idempotenz-Schlüsseln nur Shop, ID und Ablauf, ändert nichts (Verstöße: '
+                  || coalesce(string_agg(x, ', '), 'keine') || ')')
+  FROM (SELECT a.attname || ' lesen' AS x FROM pg_attribute a
+         WHERE a.attrelid = 'kernel.idempotency_key'::regclass AND a.attnum > 0 AND NOT a.attisdropped
+           AND a.attname NOT IN ('tenant_id', 'id', 'expires_at')
+           AND has_column_privilege('shop_relay', a.attrelid, a.attname, 'SELECT')
+        UNION ALL
+        SELECT p FROM unnest(ARRAY['INSERT', 'UPDATE']) p
+         WHERE has_table_privilege('shop_relay', 'kernel.idempotency_key', p)
+            OR has_any_column_privilege('shop_relay', 'kernel.idempotency_key', p)
+        UNION ALL
+        SELECT 'TRUNCATE' WHERE has_table_privilege('shop_relay', 'kernel.idempotency_key', 'TRUNCATE')) v;
+SELECT pg_temp.ok(count(*) = 1, 'shop_relay sieht Idempotenz-Schlüssel nur nach Ablauf (eigene Policy, gefunden: ' || count(*) || ')')
+  FROM pg_policies
+ WHERE schemaname = 'kernel' AND tablename = 'idempotency_key' AND roles = '{shop_relay}'
+   AND qual LIKE '%expires_at < now()%';
+SELECT pg_temp.ok(count(*) = 0, 'Nur shop_relay erreicht die Warteschlange pgboss (Verstöße: '
+                  || coalesce(string_agg(r, ', '), 'keine') || ')')
+  FROM (VALUES ('shop_app'), ('shop_auth'), ('shop_platform'), ('shop_backup'), ('public')) AS roles(r)
+ WHERE has_schema_privilege(r, 'pgboss', 'USAGE');
+SELECT pg_temp.ok(count(*) > 10, 'Die Prüfung oben erkennt die Warteschlange wirklich (' || count(*) || ' Tabellen in pgboss für shop_relay)')
+  FROM pg_temp.app_tables() t WHERE split_part(t::text, '.', 1) = 'pgboss' AND pg_temp.any_priv('shop_relay', t);
 SELECT pg_temp.ok(count(*) = 0, 'shop_platform hat keinen Zugriff auf Shopdaten wie Produkte, Kunden, Bestellungen (Verstöße: '
                   || coalesce(string_agg(t::text, ', '), 'keine') || ')')
   FROM pg_temp.app_tables() t
@@ -101,7 +129,7 @@ SELECT pg_temp.ok(count(*) = 0, 'Niemand darf über PUBLIC (alle Rollen) auf Pla
 SELECT pg_temp.ok(count(*) = 0, 'Keine Betriebsrolle darf in irgendeinem Schema Objekte anlegen (Verstöße: '
                   || coalesce(string_agg(r || ' in ' || nspname, ', '), 'keine') || ')')
   FROM (VALUES ('shop_app'), ('shop_auth'), ('shop_platform'), ('shop_relay'), ('shop_backup')) AS roles(r), pg_namespace
- WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema' AND has_schema_privilege(r, oid, 'CREATE');
+ WHERE nspname NOT LIKE 'pg\_%' AND nspname <> 'information_schema' AND has_schema_privilege(r, oid, 'CREATE');
 
 \echo '--- 5. Funktionen mit erhöhten Rechten'
 -- SECURITY DEFINER = Funktion läuft mit den Rechten ihres Besitzers. Ohne festen search_path
@@ -109,12 +137,12 @@ SELECT pg_temp.ok(count(*) = 0, 'Keine Betriebsrolle darf in irgendeinem Schema 
 SELECT pg_temp.ok(count(*) = 0, 'Jede SECURITY-DEFINER-Funktion hat einen festen search_path (Verstöße: '
                   || coalesce(string_agg(p.oid::regprocedure::text, ', '), 'keine') || ')')
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
- WHERE p.prosecdef AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+ WHERE p.prosecdef AND n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
    AND NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) c WHERE c LIKE 'search_path=%');
 SELECT pg_temp.ok(count(*) = 0, 'Keine SECURITY-DEFINER-Funktion ist für alle (PUBLIC) aufrufbar (Verstöße: '
                   || coalesce(string_agg(p.oid::regprocedure::text, ', '), 'keine') || ')')
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
- WHERE p.prosecdef AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+ WHERE p.prosecdef AND n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
    AND has_function_privilege('public', p.oid, 'EXECUTE');
 
 \echo '--- Alle Prüfungen in test_sicherheit.sql bestanden'

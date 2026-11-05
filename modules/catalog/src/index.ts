@@ -6,6 +6,7 @@ import type { DB } from "./db.generated.js";
 import { manufacturerEndpoints } from "./http/admin/manufacturers.js";
 
 export type { Manufacturer } from "./http/admin/manufacturer.schema.js";
+export { catalogEvents, manufacturerCreated, manufacturerUpdated } from "./catalog.events.js";
 
 export interface CatalogDependencies {
   /** Verbindung als Rolle shop_app. Der Zugriff läuft ausschließlich über withTenantTransaction. */

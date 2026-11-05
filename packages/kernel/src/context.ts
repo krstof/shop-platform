@@ -15,6 +15,8 @@ export interface RequestContext {
   readonly requestId: string;
   /** Verbindet alle Schritte eines Vorgangs, auch über Hintergrundjobs hinweg. */
   readonly correlationId?: string;
+  /** Ereignis, das gerade verarbeitet wird. Folgeereignisse tragen es als `causationId`. */
+  readonly causationId?: string;
   readonly tenantId?: string;
   readonly actor?: Actor;
 }

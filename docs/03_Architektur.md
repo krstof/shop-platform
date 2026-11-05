@@ -214,6 +214,8 @@ Es gibt genau zwei erlaubte Wege.
 
 Ein Ereignis hat immer dieselbe Hülle: `id` (UUIDv7), `type` (zum Beispiel `orders.order.placed.v1`), `tenantId`, `occurredAt`, `actor` (wer es ausgelöst hat), `correlationId` (verbindet alle Schritte eines Vorgangs) und `data` (der Inhalt, mit Zod-Schema beschrieben).
 
+**Stand Etappe E5 (05.11.2026):** Umgesetzt im Kernel (`events/`, `jobs/`) und im neuen Dienst `apps/worker`. Zusätzlich zur Hülle oben trägt jedes Ereignis `causationId` (das Ereignis, aus dem es entstand). Das Relay arbeitet als `shop_relay` und schreibt Aufgaben und Markierung in einer Transaktion, die Job-ID ist die Ereignis-ID. Die Warteschlange pg-boss liegt im Schema `pgboss`, angelegt vom Migrationslauf; nur `shop_relay` erreicht es. Verarbeitet wird als `shop_app` in einer `withTenantTransaction` für genau den Shop des Ereignisses, zusammen mit dem Eintrag in der Inbox. Erster Subscriber ist `audit.record` (hört auf alle Ereignisse, PLA-07). Plattform-Ereignisse ohne Shop werden markiert, aber noch an niemanden zugestellt.
+
 **Workflows für mehrstufige Vorgänge.** Vorgänge, die mehrere Module betreffen, sind als benannte Workflows geschrieben. Jeder Schritt hat einen Kompensationsschritt, also eine Anweisung, wie er rückgängig gemacht wird. Beispiel „Bestellung aufgeben“:
 
 ```mermaid

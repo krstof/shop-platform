@@ -14,6 +14,10 @@ Gemeinsamer Werkzeugkasten aller Module (Architektur 3.2). Der Kernel kennt kein
 | `db/migrate.ts` (Unterpfad `@shop/kernel/migrate`) | Migrationslauf: `db/roles.sql`, SCRAM-Passwörter, Prüfsummen, alle Migrationen in einer Transaktion als `shop_owner`, Sperre gegen gleichzeitige Läufe. Nur für den Dienst `apps/migrate` | Architektur 6.1, BET-01 |
 | `migrations/` | Migrationen des Kernels (Schema `kernel`) | Architektur 6.1 |
 | `db/database.ts` | `connectDatabase`, `withTenantTransaction`, `withPlatformTransaction`. Kysely und Pool sind eingeschlossen; ohne Mandant wird die Datenbank gar nicht erst gefragt | Architektur 5.3, PLA-03 |
+| `events/event.ts` | `defineEvent` (Name `<modul>.<sache>.<vergangenheit>.v<n>`, nur `z.strictObject`), `publishEvent` schreibt in derselben Transaktion nach `kernel.outbox`; Shop aus der Transaktion, Urheber, `correlationId` und `causationId` aus dem Kontext. Vereinbarung: `data.id` = Objekt, `data.changes` = `{ feld: [alt, neu] }` | ADR-007, E5 |
+| `events/subscriber.ts` | `defineSubscriber` (Name `<schema>.<name>`, Ereignisliste oder `"*"`); `deliverEvent` (nur `@shop/kernel/worker`): Inbox `<schema>.processed_event` und Wirkung in einer Transaktion, also genau einmal | ADR-007, E5 |
+| `events/relay.ts`, `jobs/queue.ts`, `jobs/cleanup.ts` (Unterpfad `@shop/kernel/worker`) | Relay: Outbox lesen (`FOR UPDATE SKIP LOCKED`), je Subscriber eine Aufgabe in pg-boss (Job-ID = Ereignis-ID), markieren, alles in einer Transaktion als `shop_relay`. Warteschlange: pg-boss ohne eigene Schemaänderungen, prüft die Schema-Version, 10 Wiederholungen mit wachsenden Abständen, je Aufgabe einzeln quittiert. Aufräumen: abgelaufene Idempotenz-Schlüssel, veröffentlichte Ereignisse nach 30 Tagen | BET-05, E5 |
+| `scripts/pgboss-schema.mjs` | Erzeugt die Migration `20261105T060000_create_pgboss.sql` aus pg-boss selbst; ein Test prüft, dass sie zur installierten Version passt | E5 |
 
 Tests: `pnpm --filter @shop/kernel test`. Die Datenbanktests brauchen `SHOP_TEST_DATABASE_URL`;
 `pnpm test:with-db` startet dafür eine Wegwerf-Datenbank PostgreSQL 18.6 in Docker.

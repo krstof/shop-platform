@@ -1,5 +1,5 @@
-// Beispiel-Endpunkte des API-Gerüsts (E4): Hersteller lesen. Schreiben, ETag und If-Match folgen
-// mit E4 Teil 2 und E10. Beide Endpunkte zeigen die Regeln, an die sich alle späteren halten:
+// Beispiel-Endpunkte des API-Gerüsts (E4): Hersteller lesen, anlegen und ändern. Anlegen und Ändern
+// schreiben seit E5 ein Ereignis in die Outbox (catalog.events.ts), das audit protokolliert. Beide Endpunkte zeigen die Regeln, an die sich alle späteren halten:
 // Berechtigung erklärt, strenge Eingaben, Datenzugriff nur über withTenantTransaction,
 // fremde IDs ergeben 404.
 import { decodeCursor, defineEndpoint, idParam, listQuery, pageOf, toPage, type Endpoint } from "@shop/http";
@@ -7,12 +7,15 @@ import {
   getContext,
   NotFoundError,
   PreconditionFailedError,
+  publishEvent,
   withTenantTransaction,
   type Database,
 } from "@shop/kernel";
 import { z } from "zod";
+import { manufacturerCreated, manufacturerUpdated } from "../../catalog.events.js";
 import type { DB } from "../../db.generated.js";
 import {
+  changedFields,
   findManufacturerById,
   findManufacturers,
   insertManufacturer,
@@ -90,9 +93,12 @@ export function manufacturerEndpoints(db: Database<DB>): Endpoint[] {
     response: { status: 201, description: "Der angelegte Hersteller.", schema: manufacturerSchema },
     handler: async ({ body }) => {
       const tenantId = getContext()?.tenantId ?? "";
-      const row = await withTenantTransaction(db, (trx) =>
-        insertManufacturer(trx, tenantId, { ...toChanges(body), name: body.name }),
-      );
+      // Hersteller und Ereignis in derselben Transaktion (Outbox, ADR-007).
+      const row = await withTenantTransaction(db, async (trx) => {
+        const created = await insertManufacturer(trx, tenantId, { ...toChanges(body), name: body.name });
+        await publishEvent(trx, manufacturerCreated, { id: created.id, name: created.name });
+        return created;
+      });
       return toManufacturer(row);
     },
   });
@@ -115,9 +121,17 @@ export function manufacturerEndpoints(db: Database<DB>): Endpoint[] {
     response: { status: 200, description: "Der geänderte Hersteller.", schema: manufacturerSchema },
     problems: [404, 412, 428],
     handler: async ({ params, body, ifMatch }) => {
-      const result = await withTenantTransaction(db, (trx) =>
-        updateManufacturer(trx, params.manufacturerId, ifMatch ?? 0, toChanges(body)),
-      );
+      const result = await withTenantTransaction(db, async (trx) => {
+        const updated = await updateManufacturer(trx, params.manufacturerId, ifMatch ?? 0, toChanges(body));
+        if (updated.kind === "updated") {
+          const changes = changedFields(updated.before, updated.row);
+          // Kein Ereignis, wenn sich nichts geändert hat.
+          if (Object.keys(changes).length > 0) {
+            await publishEvent(trx, manufacturerUpdated, { id: updated.row.id, changes });
+          }
+        }
+        return updated;
+      });
       if (result.kind === "not_found") throw new NotFoundError();
       if (result.kind === "version_mismatch") throw new PreconditionFailedError();
       return toManufacturer(result.row);

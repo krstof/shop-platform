@@ -150,18 +150,21 @@ describe.skipIf(adminUrl === undefined)("Migrationslauf mit echter Datenbank", (
       expect(again.alreadyApplied).toBeGreaterThanOrEqual(20);
     });
 
-    it("legt 20 Schemas und 112 Tabellen an, 93 davon mit Mandantentrennung", async () => {
-      const [row] = await query<{ schemas: string; tables: string; rls: string }>(
+    it("legt 20 Schemas und 112 Tabellen an, 93 davon mit Mandantentrennung, dazu die Warteschlange", async () => {
+      const [row] = await query<{ schemas: string; tables: string; rls: string; queue: string }>(
         url,
-        `SELECT (SELECT count(*) FROM pg_namespace WHERE nspowner = 'shop_owner'::regrole) AS schemas,
-                count(*) AS tables,
-                count(*) FILTER (WHERE c.relrowsecurity AND c.relforcerowsecurity) AS rls
+        `SELECT (SELECT count(*) FROM pg_namespace WHERE nspowner = 'shop_owner'::regrole AND nspname <> 'pgboss') AS schemas,
+                count(*) FILTER (WHERE n.nspname <> 'pgboss') AS tables,
+                count(*) FILTER (WHERE c.relrowsecurity AND c.relforcerowsecurity) AS rls,
+                count(*) FILTER (WHERE n.nspname = 'pgboss') AS queue
            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE c.relkind IN ('r','p') AND n.nspowner = 'shop_owner'::regrole`,
       );
       expect(Number(row?.schemas)).toBe(20);
       expect(Number(row?.tables)).toBe(112);
       expect(Number(row?.rls)).toBe(93);
+      // pg-boss (Etappe E5): eigenes Schema, gehört ebenfalls shop_owner, ohne RLS (db/global-tables.yaml).
+      expect(Number(row?.queue)).toBeGreaterThan(5);
     });
 
     it("jede Tabelle mit tenant_id hat RLS mit FORCE und eine Regel (T-01)", async () => {

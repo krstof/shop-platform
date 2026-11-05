@@ -2,7 +2,7 @@
   "name": "@shop/kernel",
   "version": "0.0.0",
   "private": true,
-  "description": "Gemeinsamer Werkzeugkasten aller Module: Geld, Steuer, IDs, Fehler, Konfiguration, Protokoll, Mandanten-Transaktionen",
+  "description": "Gemeinsamer Werkzeugkasten aller Module: Geld, Steuer, IDs, Fehler, Konfiguration, Protokoll, Mandanten-Transaktionen, Ereignisse (Outbox) und Hintergrundaufgaben",
   "license": "UNLICENSED",
   "type": "module",
   "exports": {
@@ -15,6 +15,11 @@
       "source": "./src/db/migrate.ts",
       "types": "./dist/db/migrate.d.ts",
       "default": "./dist/db/migrate.js"
+    },
+    "./worker": {
+      "source": "./src/worker.ts",
+      "types": "./dist/worker.d.ts",
+      "default": "./dist/worker.js"
     }
   },
   "files": [
@@ -29,6 +34,7 @@
   "dependencies": {
     "kysely": "0.29.7",
     "pg": "8.23.1",
+    "pg-boss": "12.38.0",
     "pino": "10.4.0",
     "zod": "4.6.7"
   },

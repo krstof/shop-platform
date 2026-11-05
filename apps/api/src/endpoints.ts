@@ -1,5 +1,6 @@
 // Setzt die Endpunkte aller Module zusammen (Architektur 6.1: apps/api setzt Module zusammen).
 // Neue Module tragen sich hier ein. Die Reihenfolge spielt keine Rolle.
+import { auditEndpoints } from "@shop/audit";
 import { catalogEndpoints } from "@shop/catalog";
 import type { Endpoint } from "@shop/http";
 import type { Database } from "@shop/kernel";
@@ -9,7 +10,7 @@ export interface EndpointDependencies {
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
-  return [...catalogEndpoints(deps)];
+  return [...catalogEndpoints(deps), ...auditEndpoints(deps)];
 }
 
 /**
