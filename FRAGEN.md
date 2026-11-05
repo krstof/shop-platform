@@ -4,9 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Kranken Hintergrunddienst automatisch neu starten?** Der neue Hintergrunddienst (er trägt zum Beispiel jede Änderung ins Änderungsprotokoll ein) meldet jetzt, wenn er „krank“ ist, etwa weil die Datenbank weg ist. Von selbst neu gestartet wird er heute nur, wenn er ganz abstürzt; ein kleiner Wächter-Container könnte ihn auch bei „krank“ neu starten, braucht dafür aber Zugriff auf Docker (Sicherheitsrisiko). Meine Empfehlung: **Nein**, er erholt sich bei uns von selbst (getestet), und auf dem Testserver reicht eine Warnung. Antwort: **Ja** / **Nein**
+Zurzeit keine offenen Fragen.
 
 ## Beantwortet
+
+- **Kranken Hintergrunddienst automatisch neu starten?** Ja (gegen die Empfehlung „Nein“). Umgesetzt ohne Wächter mit Docker-Zugriff: Der Worker beendet sich nach 3 Minuten am Stück „krank“ selbst, Docker startet ihn neu. (05.11.2026)
 
 - **Was gehört ins Änderungsprotokoll?** Alles, auch Aktionen der Kunden im Shop (Warenkorb, Konto, Bestellungen). Der Subscriber `audit.record` hört deshalb weiter auf alle Ereignisse. (05.11.2026)
 

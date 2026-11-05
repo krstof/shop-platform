@@ -36,6 +36,17 @@ describe("Einstellungen des Workers", () => {
     expect(() => loadWorkerConfig({ ...base, SHOP_OUTBOX_RETENTION_DAYS: "0" })).toThrow();
   });
 
+  it("Selbst-Neustart nach 180 s Krankheit, 0 schaltet ihn ab", () => {
+    expect(loadWorkerConfig(base).SHOP_WORKER_UNHEALTHY_EXIT_SECONDS).toBe(180);
+    expect(
+      loadWorkerConfig({ ...base, SHOP_WORKER_UNHEALTHY_EXIT_SECONDS: "0" })
+        .SHOP_WORKER_UNHEALTHY_EXIT_SECONDS,
+    ).toBe(0);
+    expect(() => loadWorkerConfig({ ...base, SHOP_WORKER_UNHEALTHY_EXIT_SECONDS: "-1" })).toThrow(
+      /SHOP_WORKER_UNHEALTHY_EXIT_SECONDS/,
+    );
+  });
+
   it("Lebenszeichen auf Port 3001, nur unprivilegierte Ports erlaubt", () => {
     expect(loadWorkerConfig(base).SHOP_WORKER_HEALTH_PORT).toBe(3001);
     expect(loadWorkerConfig({ ...base, SHOP_WORKER_HEALTH_PORT: "4000" }).SHOP_WORKER_HEALTH_PORT).toBe(4000);

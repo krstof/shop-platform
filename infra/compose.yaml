@@ -223,6 +223,8 @@ services:
       SHOP_APP_DATABASE_URL: postgres://shop_app:${SHOP_DB_PASSWORD_APP:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
       SHOP_RELAY_DATABASE_URL: postgres://shop_relay:${SHOP_DB_PASSWORD_RELAY:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
       SHOP_WORKER_HEALTH_PORT: "3001"
+      # Drei Minuten am Stück krank: Der Worker beendet sich, Docker startet ihn neu (restart: unless-stopped).
+      SHOP_WORKER_UNHEALTHY_EXIT_SECONDS: "180"
     networks: [internal]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/livez"]

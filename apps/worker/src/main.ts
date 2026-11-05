@@ -1,7 +1,7 @@
 // Startet den Dienst worker. Einstellungen kommen aus der Umgebung (siehe config.ts).
 import { ConfigError, connectDatabase, createLogger } from "@shop/kernel";
 import { loadWorkerConfig } from "./config.js";
-import { startHealthServer } from "./health.js";
+import { startHealthServer, watchUnhealthy } from "./health.js";
 import { allSubscribers } from "./subscribers.js";
 import { startWorker } from "./worker.js";
 
@@ -37,11 +37,30 @@ async function main(): Promise<void> {
   const stop = async () => {
     if (stopping) return;
     stopping = true;
+    watchdog?.stop();
     await worker.stop();
     await health.close();
     await appDatabase.destroy();
     await relayDatabase.destroy();
   };
+  // Selbst-Neustart bei anhaltender Krankheit: beenden mit Code 1, Docker startet neu.
+  const exitAfter = config.SHOP_WORKER_UNHEALTHY_EXIT_SECONDS;
+  const watchdog =
+    exitAfter === 0
+      ? undefined
+      : watchUnhealthy({
+          isHealthy: () => worker.isHealthy(),
+          afterMs: exitAfter * 1000,
+          onUnhealthy: (ms) => {
+            logger.error(
+              { unhealthyForSeconds: Math.round(ms / 1000) },
+              "Worker zu lange krank, beendet sich für einen Neustart",
+            );
+            // Höchstens 20 s geordnet anhalten, dann auf jeden Fall beenden.
+            setTimeout(() => process.exit(1), 20_000).unref();
+            void stop().finally(() => process.exit(1));
+          },
+        });
   process.once("SIGTERM", () => void stop());
   process.once("SIGINT", () => void stop());
 }

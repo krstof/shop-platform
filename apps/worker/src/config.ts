@@ -18,6 +18,8 @@ export const workerConfigSchema = baseConfigSchema.extend({
   SHOP_OUTBOX_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
   /** Port des Lebenszeichens /livez, nur auf 127.0.0.1 im Container (Gesundheitscheck). */
   SHOP_WORKER_HEALTH_PORT: z.coerce.number().int().min(1024).max(65535).default(3001),
+  /** Ist der Worker so viele Sekunden am Stück krank, beendet er sich; Docker startet ihn neu. 0 = nie. */
+  SHOP_WORKER_UNHEALTHY_EXIT_SECONDS: z.coerce.number().int().min(0).max(86_400).default(180),
 });
 
 export type WorkerConfig = z.infer<typeof workerConfigSchema>;

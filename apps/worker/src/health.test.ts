@@ -2,7 +2,7 @@
 import { request } from "node:http";
 import { networkInterfaces } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
-import { evaluateHealth, startHealthServer, type RunningHealthServer } from "./health.js";
+import { evaluateHealth, startHealthServer, watchUnhealthy, type RunningHealthServer } from "./health.js";
 
 describe("Regel für „gesund“", () => {
   const t0 = 1_000_000;
@@ -90,5 +90,71 @@ describe("Server für /livez", () => {
       .find((a) => a !== undefined && a.family === "IPv4" && !a.internal)?.address;
     if (other === undefined) return; // Rechner ohne weitere Adresse: nichts zu prüfen
     await expect(call(server.port, "GET", "/livez", other)).rejects.toThrow();
+  });
+});
+
+describe("Selbst-Neustart bei anhaltender Krankheit", () => {
+  function setup(afterMs: number) {
+    let t = 0;
+    let healthy = true;
+    const fired: number[] = [];
+    const w = watchUnhealthy({
+      isHealthy: () => healthy,
+      afterMs,
+      checkEveryMs: 3_600_000,
+      onUnhealthy: (ms) => fired.push(ms),
+      now: () => t,
+    });
+    return {
+      fired,
+      at: (time: number, h: boolean) => {
+        t = time;
+        healthy = h;
+        w.check();
+      },
+      stop: () => w.stop(),
+    };
+  }
+
+  it("löst erst aus, wenn der Worker die ganze Zeit am Stück krank war, und nur einmal", () => {
+    const s = setup(180_000);
+    s.at(0, false);
+    s.at(170_000, false);
+    expect(s.fired).toEqual([]);
+    s.at(180_000, false);
+    s.at(200_000, false);
+    expect(s.fired).toEqual([180_000]);
+    s.stop();
+  });
+
+  it("zwischendurch gesund setzt die Uhr zurück", () => {
+    const s = setup(180_000);
+    s.at(0, false);
+    s.at(100_000, true);
+    s.at(110_000, false);
+    s.at(280_000, false);
+    expect(s.fired).toEqual([]);
+    s.at(290_000, false);
+    expect(s.fired).toEqual([180_000]);
+    s.stop();
+  });
+
+  it("eine scheiternde Prüfung zählt als krank", () => {
+    const fired: number[] = [];
+    let t = 0;
+    const w = watchUnhealthy({
+      isHealthy: () => {
+        throw new Error("kaputt");
+      },
+      afterMs: 1_000,
+      checkEveryMs: 3_600_000,
+      onUnhealthy: (ms) => fired.push(ms),
+      now: () => t,
+    });
+    w.check();
+    t = 1_000;
+    w.check();
+    expect(fired).toEqual([1_000]);
+    w.stop();
   });
 });
