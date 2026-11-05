@@ -3,6 +3,7 @@
 // zurück: erst das Relay, dann die Warteschlange (laufende Aufgaben dürfen fertig werden).
 import type { Database, Logger, Subscriber } from "@shop/kernel";
 import { cleanupExpired, deliverEvent, startJobQueue, startRelay, type JobQueue } from "@shop/kernel/worker";
+import { evaluateHealth, type HealthPolicy } from "./health.js";
 
 /** Warteschlange des Aufräumens. Läuft stündlich; pg-boss sorgt dafür, dass es nur einmal läuft. */
 export const CLEANUP_QUEUE = "kernel.cleanup";
@@ -21,15 +22,21 @@ export interface WorkerOptions {
   /** Nur Tests: schnellere Abfragen. */
   readonly pollingIntervalSeconds?: number;
   readonly relayIdleMs?: number;
+  /** Nur Tests: andere Grenzen für das Lebenszeichen. */
+  readonly health?: HealthPolicy;
 }
 
 export interface RunningWorker {
   readonly queue: JobQueue;
+  /** Für das Lebenszeichen (/livez): läuft und erreicht die Datenbank. */
+  isHealthy(now?: number): boolean;
   stop(): Promise<void>;
 }
 
 export async function startWorker(options: WorkerOptions): Promise<RunningWorker> {
   const { logger } = options;
+  const startedAt = Date.now();
+  let stopping = false;
   const queue = await startJobQueue({
     connectionString: options.queueConnectionString,
     applicationName: "worker",
@@ -87,7 +94,10 @@ export async function startWorker(options: WorkerOptions): Promise<RunningWorker
 
   return {
     queue,
+    isHealthy: (now = Date.now()) =>
+      evaluateHealth({ stopping, startedAt, lastSuccessAt: relay.lastSuccessAt() }, now, options.health),
     async stop() {
+      stopping = true;
       await relay.stop();
       await queue.stop();
       logger.info("Worker angehalten");

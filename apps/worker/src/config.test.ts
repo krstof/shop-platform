@@ -35,6 +35,17 @@ describe("Einstellungen des Workers", () => {
   it("lehnt eine Aufbewahrungsfrist unter einem Tag ab", () => {
     expect(() => loadWorkerConfig({ ...base, SHOP_OUTBOX_RETENTION_DAYS: "0" })).toThrow();
   });
+
+  it("Lebenszeichen auf Port 3001, nur unprivilegierte Ports erlaubt", () => {
+    expect(loadWorkerConfig(base).SHOP_WORKER_HEALTH_PORT).toBe(3001);
+    expect(loadWorkerConfig({ ...base, SHOP_WORKER_HEALTH_PORT: "4000" }).SHOP_WORKER_HEALTH_PORT).toBe(4000);
+    expect(() => loadWorkerConfig({ ...base, SHOP_WORKER_HEALTH_PORT: "80" })).toThrow(
+      /SHOP_WORKER_HEALTH_PORT/,
+    );
+    expect(() => loadWorkerConfig({ ...base, SHOP_WORKER_HEALTH_PORT: "abc" })).toThrow(
+      /SHOP_WORKER_HEALTH_PORT/,
+    );
+  });
 });
 
 describe("Subscriber", () => {

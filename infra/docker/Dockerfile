@@ -2,12 +2,13 @@
 # Container-Abbilder der eigenen Dienste (Architektur 7.1, Sicherheit 5.11 und 5.16).
 #   docker build -f infra/docker/Dockerfile --target api     .
 #   docker build -f infra/docker/Dockerfile --target migrate .
-# `pnpm dev` baut beide über Docker Compose.
+#   docker build -f infra/docker/Dockerfile --target worker  .
+# `pnpm dev` baut alle drei (tools/dev.mjs).
 #
 # Aufbau in zwei Stufen:
 # 1. build: installiert mit der Lockdatei, übersetzt TypeScript und legt mit `pnpm deploy`
 #    je Dienst einen Ordner an, der nur die Laufzeit-Abhängigkeiten enthält.
-# 2. api / migrate: schlankes Node-Abbild, ohne npm, ohne Quellcode und ohne Prüfwerkzeuge.
+# 2. api / migrate / worker: schlankes Node-Abbild, ohne npm, ohne Quellcode und ohne Prüfwerkzeuge.
 #    Die Dateien gehören root und sind für den Dienst nur lesbar; er läuft als `node` (UID 1000).
 #
 # Basisabbild mit fester Version UND fester Prüfsumme. Dependabot schlägt Updates vor.
@@ -26,15 +27,16 @@ RUN --mount=type=secret,id=extra_ca \
     if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
     npm install -g --no-fund --no-audit pnpm@12.15.0
 COPY . .
-# Nur die beiden Dienste und ihre Bausteine, nicht die Prüfwerkzeuge des Repositorys.
+# Nur die drei Dienste und ihre Bausteine, nicht die Prüfwerkzeuge des Repositorys.
 RUN --mount=type=secret,id=extra_ca \
     --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
     pnpm config set store-dir /pnpm/store && \
-    pnpm install --frozen-lockfile --filter "@shop/api..." --filter "@shop/migrate..." && \
-    pnpm --filter "@shop/api..." --filter "@shop/migrate..." run build && \
+    pnpm install --frozen-lockfile --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." && \
+    pnpm --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." run build && \
     pnpm --filter @shop/api deploy --prod --offline /out/api && \
-    pnpm --filter @shop/migrate deploy --prod --offline /out/migrate
+    pnpm --filter @shop/migrate deploy --prod --offline /out/migrate && \
+    pnpm --filter @shop/worker deploy --prod --offline /out/worker
 # Migrationen und Rollen für den Dienst migrate (Aufbau wie im Repository, siehe findMigrationDirs).
 RUN mkdir -p /out/schema/db /out/schema/packages/kernel /out/schema/modules && \
     cp db/roles.sql /out/schema/db/ && \
@@ -57,4 +59,10 @@ FROM runtime AS migrate
 COPY --from=build --chown=root:root /out/migrate /app
 COPY --from=build --chown=root:root /out/schema /schema
 ENV SHOP_MIGRATIONS_ROOT=/schema
+CMD ["node", "dist/main.js"]
+
+# Hintergrunddienst (E5): Relay, Zustellung, Aufräumen. Keine Netzschnittstelle nach außen; das
+# Lebenszeichen /livez lauscht nur auf 127.0.0.1 im Container (Gesundheitscheck).
+FROM runtime AS worker
+COPY --from=build --chown=root:root /out/worker /app
 CMD ["node", "dist/main.js"]

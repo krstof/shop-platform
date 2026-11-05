@@ -78,6 +78,48 @@ check "Migrationen sind ausgeführt (mindestens 20)" '[[ "$(PGPASSWORD="$POSTGRE
 check "shop_app meldet sich mit dem Passwort aus .env an" '[[ "$(PGPASSWORD="$SHOP_DB_PASSWORD_APP" "${PSQL[@]}" -U shop_app -c "SELECT current_user")" == shop_app ]]'
 check "shop_app ohne richtiges Passwort: abgewiesen" '! PGPASSWORD="falsch-$RANDOM" "${PSQL[@]}" -U shop_app -c "SELECT 1" >/dev/null 2>&1'
 
+echo "== Worker: Hintergrunddienst (E5)"
+W=shop-platform-worker-1
+check "Worker: Container ist gesund (Lebenszeichen)" '[[ "$(docker inspect $W --format "{{.State.Health.Status}}")" == healthy ]]'
+check "Worker: keine Ports nach außen" '[[ -z "$(docker port $W)" ]]'
+check "Worker: nur im internen Netz" '[[ "$(docker inspect $W --format "{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}")" == "shop-platform_internal " ]]'
+check "Worker: Lebenszeichen von anderen Containern nicht erreichbar" '! docker exec shop-platform-api-1 wget -q -T 3 -O /dev/null http://worker:3001/livez 2>/dev/null'
+check "Worker: kein Internetzugang aus dem Container" '! docker exec $W node -e "fetch(\"https://example.com\",{signal:AbortSignal.timeout(3000)}).then(()=>process.exit(0),()=>process.exit(1))"'
+check "Worker: kein npm im Abbild" '! docker exec $W sh -c "command -v npm" >/dev/null'
+check "Worker: Programmdateien nicht beschreibbar" '! docker exec $W sh -c "touch /app/dist/x" 2>/dev/null'
+check "Worker: Abbild ohne Quellcode und Tests" '! docker exec $W sh -c "ls /app/src /app/node_modules/.pnpm | grep -qiE \"^src|vitest|typescript@|testcontainers\"" 2>/dev/null'
+# Die Verbindung als shop_app baut der Worker erst bei Arbeit auf, deshalb: keine andere Rolle, shop_relay dabei.
+WROLES="$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT count(*) FILTER (WHERE usename NOT IN ('shop_app','shop_relay')) || '/' || count(*) FILTER (WHERE usename = 'shop_relay') FROM pg_stat_activity WHERE application_name LIKE 'worker%'")"
+check "Worker: meldet sich nur als shop_app oder shop_relay an, nie als Verwaltung (andere/relay: $WROLES)" '[[ "$WROLES" =~ ^0/[1-9] ]]'
+# Ende zu Ende: Bis E6 kann sich niemand an der API anmelden. Der Rauchtest schreibt deshalb als
+# shop_app genau das, was die API beim Anlegen eines Herstellers schreibt (Hersteller und Ereignis in
+# EINER Transaktion), und wartet, bis der Worker es ins Änderungsprotokoll gebracht hat.
+SU=(env PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres)
+TENANT="$("${SU[@]}" -c "SELECT id FROM platform.tenant WHERE handle = 'rauchtest'")"
+if [[ -z "$TENANT" ]]; then
+  TENANT="$("${SU[@]}" -c "WITH m AS (INSERT INTO platform.merchant (name) VALUES ('Rauchtest') RETURNING id)
+    INSERT INTO platform.tenant (merchant_id, plan_id, handle, name, status)
+    SELECT m.id, p.id, 'rauchtest', 'Rauchtest-Shop', 'active' FROM m, platform.plan p WHERE p.is_default RETURNING id" | head -1)"
+fi
+MID="$("${SU[@]}" -c "SELECT uuidv7()")"
+# Mit -i, damit psql den Text unten bekommt.
+docker exec -i -e PGPASSWORD="$SHOP_DB_PASSWORD_APP" shop-platform-postgres-1 psql -h 127.0.0.1 -X -q -tA \
+  -d "${SHOP_DB_NAME:-shop}" -U shop_app -v ON_ERROR_STOP=1 >/dev/null <<SQL
+BEGIN;
+SELECT set_config('app.tenant_id', '$TENANT', true);
+INSERT INTO catalog.manufacturer (tenant_id, id, name) VALUES (kernel.current_tenant_id(), '$MID', 'Rauchtest-Hersteller');
+INSERT INTO kernel.outbox (tenant_id, type, actor, correlation_id, data)
+VALUES (kernel.current_tenant_id(), 'catalog.manufacturer.created.v1', '{"type":"system"}', uuidv7(),
+        jsonb_build_object('id', '$MID'::uuid, 'name', 'Rauchtest-Hersteller'));
+COMMIT;
+SQL
+audit_entry() { for _ in $(seq 1 40); do
+  [[ "$("${SU[@]}" -c "SELECT count(*) FROM audit.audit_entry WHERE tenant_id = '$TENANT' AND entity_id = '$MID' AND action = 'catalog.manufacturer.created.v1'")" == 1 ]] && return 0
+  sleep 0.5; done; return 1; }
+check "Worker: neuer Hersteller erscheint genau einmal im Änderungsprotokoll" audit_entry
+check "Worker: Ereignis in der Outbox als weitergeleitet markiert" '[[ "$("${SU[@]}" -c "SELECT published_at IS NOT NULL FROM kernel.outbox WHERE data->>\$\$id\$\$ = \$\$$MID\$\$")" == t ]]'
+check "Worker: Aufräumen ist stündlich eingeplant" '[[ "$("${SU[@]}" -c "SELECT cron FROM pgboss.schedule WHERE name = \$\$kernel.cleanup\$\$")" == "17 * * * *" ]]'
+
 echo "== Härtung der Container (Sicherheit 5.16)"
 for c in $(docker ps --filter label=com.docker.compose.project=shop-platform --format '{{.Names}}'); do
   U="$(docker inspect "$c" --format '{{.Config.User}}')"

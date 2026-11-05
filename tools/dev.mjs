@@ -1,7 +1,7 @@
 // Startet die lokale Plattform mit einem Befehl (BET-02, Architektur 7.2).
 //   pnpm dev       .env anlegen oder ergänzen, eigene Abbilder bauen, Container starten
 //                  (darin legt der Dienst migrate die Datenbank an und führt alle Migrationen aus,
-//                  danach startet die API), Objektspeicher einrichten
+//                  danach starten API und Worker), Objektspeicher einrichten
 //   pnpm dev:down  Container stoppen (Daten bleiben erhalten)
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
@@ -67,7 +67,7 @@ function initGarage(env) {
  * beim Bauen eingebunden und landet nie im Abbild.
  */
 function buildImages() {
-  for (const target of ["migrate", "api"]) {
+  for (const target of ["migrate", "api", "worker"]) {
     const args = ["build", "-f", resolve(root, "infra/docker/Dockerfile"), "--target", target];
     args.push("-t", `shop-platform/${target}:local`);
     if (process.env.SHOP_BUILD_NETWORK) args.push("--network", process.env.SHOP_BUILD_NETWORK);

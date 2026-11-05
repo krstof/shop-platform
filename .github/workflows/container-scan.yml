@@ -1,5 +1,5 @@
 # Wöchentlicher Container-Scan mit Trivy und Stückliste (SBOM), T-07 (Sicherheit 5.11, Architektur 8.2).
-# - Eigene Abbilder (api, migrate): eine kritische Lücke mit verfügbarer Korrektur lässt den Lauf scheitern.
+# - Eigene Abbilder (api, migrate, worker): eine kritische Lücke mit verfügbarer Korrektur lässt den Lauf scheitern.
 # - Fremde Abbilder aus infra/compose.yaml: nur Bericht in der Zusammenfassung, weil die Korrektur vom
 #   Hersteller kommen muss (Dependabot schlägt neue Versionen vor).
 # - Stückliste je eigenem Abbild im Format CycloneDX als Anhang des Laufs (90 Tage).
@@ -41,7 +41,7 @@ jobs:
           persist-credentials: false
       - name: Eigene Abbilder bauen
         run: |
-          for t in api migrate; do
+          for t in api migrate worker; do
             docker build -f infra/docker/Dockerfile --target "$t" -t "shop-platform/$t:scan" .
           done
       - name: Trivy vorbereiten
@@ -53,7 +53,7 @@ jobs:
       - name: Eigene Abbilder prüfen (kritisch mit Korrektur = Abbruch)
         run: |
           status=0
-          for t in api migrate; do
+          for t in api migrate worker; do
             echo "### shop-platform/$t" >> "$GITHUB_STEP_SUMMARY"
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$RUNNER_TEMP/trivy-cache:/root/.cache" \
               "$TRIVY_IMAGE" image --skip-db-update --no-progress --scanners vuln \
@@ -76,7 +76,7 @@ jobs:
       - name: Stücklisten erzeugen (CycloneDX)
         if: always()
         run: |
-          for t in api migrate; do
+          for t in api migrate worker; do
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$RUNNER_TEMP/trivy-cache:/root/.cache" \
               -v "$PWD/out:/out" "$TRIVY_IMAGE" image --skip-db-update --no-progress \
               --format cyclonedx --output "/out/sbom-$t.cdx.json" "shop-platform/$t:scan"

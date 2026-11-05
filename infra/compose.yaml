@@ -8,7 +8,7 @@
 #   (cap_drop: ALL), no-new-privileges, Dateisystem wo möglich nur lesbar.
 # - Nur Caddy ist von außen erreichbar. Datenbank, Objektspeicher und Mailpit
 #   hängen in einem internen Netz ohne Internetzugang.
-# - Eigene Dienste (migrate, api) kommen aus infra/docker/Dockerfile. worker und
+# - Eigene Dienste (migrate, api, worker) kommen aus infra/docker/Dockerfile.
 #   Oberflächen kommen mit ihren Etappen dazu.
 # =============================================================================
 name: shop-platform
@@ -203,5 +203,33 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # Hintergrunddienst (Architektur 3.5, E5): leitet Ereignisse aus der Outbox weiter, stellt sie den
+  # Subscribern zu (etwa dem Änderungsprotokoll) und räumt stündlich auf. Zwei Verbindungen mit
+  # getrennten Rollen: shop_app für die Verarbeitung je Shop, shop_relay für Outbox und Warteschlange.
+  # Keine Ports, nur internes Netz ohne Internet; das Lebenszeichen lauscht nur im Container.
+  worker:
+    <<: *hardening
+    build: { <<: *build, target: worker }
+    image: shop-platform/worker:local
+    user: "1000:1000"
+    read_only: true
+    stop_grace_period: 30s
+    environment:
+      SHOP_ENV: ${SHOP_ENV:?fehlt}
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?fehlt}
+      SHOP_APP_DATABASE_URL: postgres://shop_app:${SHOP_DB_PASSWORD_APP:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
+      SHOP_RELAY_DATABASE_URL: postgres://shop_relay:${SHOP_DB_PASSWORD_RELAY:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
+      SHOP_WORKER_HEALTH_PORT: "3001"
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/livez"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 30s
+      start_interval: 2s
     depends_on:
       migrate: { condition: service_completed_successfully }

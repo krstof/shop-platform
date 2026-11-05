@@ -16,6 +16,8 @@ export const workerConfigSchema = baseConfigSchema.extend({
   SHOP_RELAY_DATABASE_URL: roleUrl("shop_relay"),
   /** Veröffentlichte Ereignisse so viele Tage in der Outbox aufheben (ADR-007). */
   SHOP_OUTBOX_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /** Port des Lebenszeichens /livez, nur auf 127.0.0.1 im Container (Gesundheitscheck). */
+  SHOP_WORKER_HEALTH_PORT: z.coerce.number().int().min(1024).max(65535).default(3001),
 });
 
 export type WorkerConfig = z.infer<typeof workerConfigSchema>;

@@ -103,6 +103,8 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
 export interface RunningRelay {
   /** Hält an, nachdem der laufende Durchgang fertig ist. */
   stop(): Promise<void>;
+  /** Zeitpunkt (ms seit 1970) des letzten fehlerfreien Durchgangs; undefined, solange keiner gelang. */
+  lastSuccessAt(): number | undefined;
 }
 
 export interface StartRelayOptions extends RelayOptions {
@@ -117,6 +119,7 @@ export interface StartRelayOptions extends RelayOptions {
 /** Läuft im Worker ständig: volle Durchgänge sofort hintereinander, sonst mit kurzer Pause. */
 export function startRelay(options: StartRelayOptions): RunningRelay {
   let stopped = false;
+  let lastSuccess: number | undefined;
   let wake: (() => void) | undefined;
   const sleep = (ms: number) =>
     new Promise<void>((resolve) => {
@@ -131,6 +134,7 @@ export function startRelay(options: StartRelayOptions): RunningRelay {
     while (!stopped) {
       try {
         const result = await relayOutboxOnce(options);
+        lastSuccess = Date.now();
         if (result.published > 0) options.onRelayed?.(result);
         if (result.published < limit) await sleep(options.idleMs ?? 500);
       } catch (error) {
@@ -145,5 +149,6 @@ export function startRelay(options: StartRelayOptions): RunningRelay {
       wake?.();
       await loop;
     },
+    lastSuccessAt: () => lastSuccess,
   };
 }

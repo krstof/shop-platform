@@ -1,6 +1,7 @@
 // Startet den Dienst worker. Einstellungen kommen aus der Umgebung (siehe config.ts).
 import { ConfigError, connectDatabase, createLogger } from "@shop/kernel";
 import { loadWorkerConfig } from "./config.js";
+import { startHealthServer } from "./health.js";
 import { allSubscribers } from "./subscribers.js";
 import { startWorker } from "./worker.js";
 
@@ -28,11 +29,16 @@ async function main(): Promise<void> {
     logger,
     outboxRetentionDays: config.SHOP_OUTBOX_RETENTION_DAYS,
   });
+  const health = await startHealthServer({
+    port: config.SHOP_WORKER_HEALTH_PORT,
+    isHealthy: () => worker.isHealthy(),
+  });
   let stopping = false;
   const stop = async () => {
     if (stopping) return;
     stopping = true;
     await worker.stop();
+    await health.close();
     await appDatabase.destroy();
     await relayDatabase.destroy();
   };

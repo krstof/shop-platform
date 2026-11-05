@@ -207,7 +207,11 @@ describe.skipIf(adminUrl === undefined)("Worker Ende zu Ende (echte Datenbank)",
     expect(await auditCount(ids)).toBe(0);
     const worker = await start();
     await waitFor(async () => (await auditCount(ids)) === 3);
+    // Lebenszeichen: gesund, solange er läuft; auch eine Stunde nach dem letzten Durchgang nicht mehr.
+    expect(worker.isHealthy()).toBe(true);
+    expect(worker.isHealthy(Date.now() + 3_600_000)).toBe(false);
     await stop(worker);
+    expect(worker.isHealthy()).toBe(false);
     // Neustart: nichts wird erneut verarbeitet.
     const again = await start();
     await new Promise((r) => setTimeout(r, 1500));

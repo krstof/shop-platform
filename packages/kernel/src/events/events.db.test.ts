@@ -274,6 +274,30 @@ describe.skipIf(adminUrl === undefined)("Outbox, Relay und Zustellung (echte Dat
     expect(await jobsIn(sub.name)).toBe(1);
   });
 
+  it("laufendes Relay meldet den letzten fehlerfreien Durchgang (Lebenszeichen des Workers)", async () => {
+    const sub = counter("audit.relay_health"); // Warteschlange gibt es noch nicht: jeder Durchgang scheitert
+    await publishThing(TENANT_A);
+    const errors: unknown[] = [];
+    const relay = startRelay({
+      database: relayDb,
+      queue,
+      subscribers: [sub],
+      idleMs: 50,
+      errorBackoffMs: 50,
+      onError: (e) => errors.push(e),
+    });
+    try {
+      await waitFor(async () => errors.length >= 3);
+      expect(relay.lastSuccessAt()).toBeUndefined();
+      const before = Date.now();
+      await queue.ensureQueue(sub.name);
+      await waitFor(async () => relay.lastSuccessAt() !== undefined);
+      expect(relay.lastSuccessAt()).toBeGreaterThanOrEqual(before);
+    } finally {
+      await relay.stop();
+    }
+  });
+
   it("vier Relays gleichzeitig stellen 300 Ereignisse je genau einmal ein", async () => {
     const sub = counter("audit.relay_parallel");
     await queue.ensureQueue(sub.name);
