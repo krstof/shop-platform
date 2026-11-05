@@ -64,6 +64,7 @@ Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anford
 - Fehlgeschlagene Hintergrundaufgaben (nach 10 Versuchen) für den Betreiber sichtbar machen (BET-05), mit der Betreiber-Oberfläche E20; bis dahin stehen sie in `pgboss.job` mit Zustand `failed`. Dort auch die Sicht des Betreibers auf das Änderungsprotokoll (PLA-07).
 - Plattform-Ereignisse ohne Shop werden vom Relay markiert, aber an niemanden zugestellt; Zustellung bauen, sobald ein Subscriber sie braucht (spätestens E20).
 - Bei jedem Update von pg-boss: neue Migration mit `getMigrationPlans` erzeugen (die alte Migration bleibt unverändert), der Test `pgboss-schema.test.ts` meldet sich dann.
+- Änderungsprotokoll (Entscheidung Kristof 05.11.2026): protokolliert alles, auch Aktionen der Kunden, und wird nie automatisch gelöscht. Folgen beachten: Wächst die Tabelle stark, nach Monaten aufteilen (Architektur 9, Partitionierung). Wird später ein Kundenkonto gelöscht (Recht auf Löschung, E13), die Einträge nicht löschen, sondern den Urheber unkenntlich machen; das braucht dann eine eng begrenzte Ausnahme von „nur anhängen“.
 - Vor E6: vollständige Liste der Better-Auth-Sicherheitsmeldungen auf GitHub lesen (bei der Recherche nicht erreichbar) und Mindestversion 1.6.11 oder neuer fest eintragen.
 - Vor E15/E23: Angaben zur Button-Lösung (§ 312j BGB) gegen eine Quelle prüfen (Anforderungen 6.2).
 

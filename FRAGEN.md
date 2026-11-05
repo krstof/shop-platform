@@ -4,11 +4,13 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Was gehört ins Änderungsprotokoll?** Seit heute schreibt das Protokoll automatisch mit, wer im Shop etwas geändert hat (zum Beispiel einen Hersteller). Später kämen auch alle Aktionen der Kunden im Shop dazu (Warenkorb, Konto), das macht das Protokoll sehr voll. Vorschlag: nur Aktionen aus dem Händler-Backend, von der KI und vom System, dazu Bestellungen. Antwort: **Vorschlag** oder **Alles**.
-
-2. **Wie lange bleiben Einträge im Änderungsprotokoll?** Die Einträge nennen, wer etwas getan hat, sind also persönliche Daten und sollten nicht ewig liegen. Vorschlag: 2 Jahre, danach automatisch löschen. Antwort: **Ja** oder eine andere Zahl an Jahren.
+Zurzeit keine offenen Fragen.
 
 ## Beantwortet
+
+- **Was gehört ins Änderungsprotokoll?** Alles, auch Aktionen der Kunden im Shop (Warenkorb, Konto, Bestellungen). Der Subscriber `audit.record` hört deshalb weiter auf alle Ereignisse. (05.11.2026)
+
+- **Wie lange bleiben Einträge im Änderungsprotokoll?** Unbegrenzt, es wird nichts automatisch gelöscht. (05.11.2026)
 
 - **Container-Scan auch bei fremden Bausteinen streng?** So lassen: Nur kritische Lücken mit Korrektur in den eigenen Abbildern (api, migrate) lassen den Scan scheitern, fremde Abbilder werden nur berichtet und über Dependabot aktualisiert. (04.11.2026)
 

@@ -18,3 +18,5 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 **Ereignisse (geplant):** keine
 
 **Hört auf:** alle Ereignisse (Subscriber `audit.record`, `src/record.subscriber.ts`). Übernimmt nur Hülle, `data.id` und `data.changes`, keine weiteren Daten. Genau einmal über die Inbox `processed_event`.
+
+**Entscheidungen Kristof (05.11.2026):** Das Protokoll enthält alles, auch Aktionen der Kunden im Shop. Einträge werden nie automatisch gelöscht.
