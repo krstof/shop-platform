@@ -4,7 +4,8 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-Zurzeit keine offenen Fragen.
+1. **Kästchen „Angemeldet bleiben“ bei der Händler-Anmeldung?** Ohne Kästchen gilt immer: 12 Stunden ohne Aktivität, höchstens 7 Tage. Mit Kästchen (nicht angehakt) endet die Anmeldung schon beim Schließen des Browsers, das ist sicherer auf fremden Rechnern, aber ein Klick mehr. Empfehlung: **Nein** (einfacher, Shopify macht es auch so). Antwort: Ja / Nein
+2. **Ungefähren Ort in der Liste „Aktive Sitzungen“ anzeigen?** Dafür bräuchte die Plattform eine frei verfügbare Ortsdatenbank für IP-Adressen (etwa „DB-IP Lite“, kostenlos, monatlich zu aktualisieren). Ohne sie stehen dort nur Gerät, Browser und Zeitpunkt. Empfehlung: **Später** (Welle 2), für Welle 1 reichen Gerät und Zeit. Antwort: Jetzt / Später
 
 ## Beantwortet
 

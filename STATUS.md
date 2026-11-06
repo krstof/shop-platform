@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 05.11.2026 (zweiter Lauf, Nachtrag)
+Stand: 06.11.2026
 
 ## Erledigt
 
@@ -41,11 +41,13 @@ Stand: 05.11.2026 (zweiter Lauf, Nachtrag)
 
 - **Nachtrag E5: Selbst-Neustart des Workers (05.11.2026, Antwort Kristof „Ja“):** Ist der Worker 3 Minuten am Stück krank (`SHOP_WORKER_UNHEALTHY_EXIT_SECONDS`, Standard 180, 0 schaltet ab), beendet er sich mit Code 1 (höchstens 20 s geordnetes Anhalten), und Docker startet ihn über `restart: unless-stopped` neu. Bewusst ohne Wächter-Container, der Zugriff auf Docker bräuchte. Neu `watchUnhealthy` in `apps/worker/src/health.ts`. **Getestet:** 3 neue Tests (löst erst nach der ganzen Zeit am Stück aus und nur einmal; zwischendurch gesund setzt die Uhr zurück; scheiternde Prüfung zählt als krank), 1 Einstellungstest, `pnpm check` komplett grün, Rauchtest grün. **Gegenprobe mit echten Containern:** Datenbank gestoppt: nach 257 s beendet sich der Worker mit der Meldung „zu lange krank“, Docker startet ihn neu (solange die Datenbank fehlt, immer wieder mit wachsender Pause); Datenbank wieder da: nach 9 s gesund, Rauchtest danach grün.
 
+- **Etappe E6 Modul `identity`, Teil 1: Anmeldung mit Better Auth (06.11.2026):** Better Auth **1.7.14** fest eingetragen (neueste Version, die die 7-Tage-Regel erfüllt). Vorher die vollständige Liste der Sicherheitsmeldungen gelesen (26 Stück, über OSV; Ergebnis in Anforderungen 6.5). Neues Paket `@shop/identity` mit eigener Schnittstelle `createIdentityService`: Konto anlegen (E-Mail klein geschrieben, doppelte E-Mail ergibt 409), anmelden, Sitzung lesen, abmelden. Better Auth läuft mit eigenem Pool als `shop_auth`, nur E-Mail und Passwort, keine Selbst-Registrierung, keine Plugins, eingebaute Bremse aus, kein Sitzungs-Cache im Cookie, Telemetrie aus, Meldungen ins eigene Protokoll. **Passwörter:** Argon2id mit 19 MiB, 2 Durchläufen, Parallelität 1 (`@node-rs/argon2` 2.2.2), Regeln nach NIST (12 bis 128 Zeichen, keine Zwangsregeln, nicht die E-Mail), Abgleich mit 46 888 bekannten Passwörtern aus SecLists (offline, `src/internal/data/`). **Sitzungen:** Cookie `__Host-shop_session` mit HttpOnly, Secure, SameSite=Lax, Pfad `/`, ohne Domain; in der Datenbank nur der SHA-256-Hash des Tokens (neue Hülle um den Datenbank-Adapter, **ADR-010**); 12 Stunden ohne Aktivität, gleitend verlängert höchstens alle 15 Minuten, Höchstdauer 7 Tage. Falsches Passwort, unbekannte E-Mail und ungültige Eingabe ergeben dieselbe Antwort und brauchen ungefähr gleich lang. IPv6-Adressen speichert Better Auth nur gekürzt auf das `/64`-Netz. Getestet: 30 Tests grün, davon 16 gegen eine echte PostgreSQL 18.6 (Hash statt Token in der Tabelle, Cookie-Eigenschaften, gleiche Antworten und Zeiten, verfälschte und fremde Cookies abgelehnt, Abmelden, Ablauf, Höchstdauer, gleitende Verlängerung). Gegenproben: ohne die Hülle scheitern 11 Tests, mit schwächerem Argon2id scheitert der Hash-Test. `pnpm check` komplett grün (inkl. gitleaks und Schwachstellen-Scan). **Bewusst noch ohne HTTP-Endpunkte**, weil ohne die eigene Bremse ungebremstes Raten möglich wäre.
+
 ## Nächste Schritte (in dieser Reihenfolge)
 
 Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anforderungen.md` Kapitel 5. Jeder Lauf nimmt die nächste offene Etappe.
 
-1. **E6 Modul `identity`, Teil 1** (Better Auth): zuerst Anforderungskatalog prüfen (`docs/06_Welle1_Anforderungen.md`), vollständige Liste der Better-Auth-Sicherheitsmeldungen lesen und Mindestversion fest eintragen (siehe unten), dann Anmeldung für Händler mit Sitzung als `shop_auth`. Wenn sinnvoll, in Teile schneiden wie bei E4 und E5.
+1. **E6 Modul `identity`, Teil 2:** eigene Bremse für die Anmeldung (je Konto und je Netz: ab 5 Fehlversuchen wachsende Wartezeit, ab 20 Sperre 15 Minuten in `identity.user.locked_until`, Ereignis `identity.login.failed.v1`; E-Mail an den Inhaber folgt mit dem Modul notifications), dann HTTP-Endpunkte Anmelden, Abmelden, „Wer bin ich“ in OpenAPI, Herkunftsprüfung (CSRF), Akteur aus dem Sitzungs-Cookie statt `nobodyResolver` im Programm `api`, neue Einstellung `SHOP_AUTH_SECRET` und Verbindung als `shop_auth`. Danach T-10 und T-11 vollständig grün. Weitere Teile: Mitgliedschaften und Rollen (`owner`, `staff`), Einladungen und „Passwort vergessen“, Zwei-Faktor für den Betreiber, API-Token.
 2. Danach den Rauchtest des Workers auf „Hersteller über die API anlegen“ umstellen (statt direkt in die Datenbank zu schreiben).
 
 ## Nachzutragen
@@ -71,7 +73,9 @@ Die vollständige Bau-Reihenfolge mit 26 Etappen steht in `docs/06_Welle1_Anford
 - Änderungsprotokoll (Entscheidung Kristof 05.11.2026): protokolliert alles, auch Aktionen der Kunden, und wird nie automatisch gelöscht. Folgen beachten: Wächst die Tabelle stark, nach Monaten aufteilen (Architektur 9, Partitionierung). Wird später ein Kundenkonto gelöscht (Recht auf Löschung, E13), die Einträge nicht löschen, sondern den Urheber unkenntlich machen; das braucht dann eine eng begrenzte Ausnahme von „nur anhängen“.
 - Worker: Meldungen von pg-boss bei fehlender Datenbank drosseln (heute eine Meldung je Sekunde und Verbindung), z. B. nur die erste und dann eine je Minute.
 - Rauchtest: legt in der lokalen Datenbank einmalig den Shop „rauchtest“ an und bei jedem Lauf einen Hersteller dort; das Änderungsprotokoll löscht nichts (gewollt). Bei Bedarf lokal mit `pnpm dev:down` und Löschen des Datenbank-Volumes neu beginnen.
-- Vor E6: vollständige Liste der Better-Auth-Sicherheitsmeldungen auf GitHub lesen (bei der Recherche nicht erreichbar) und Mindestversion 1.6.11 oder neuer fest eintragen.
+- Better Auth: Update nur mit Blick in die Meldungen und auf die Tests von `identity` (Hülle in ADR-010 hängt am Feldnamen `token`). Neue Meldungen erkennt der Schwachstellen-Scan in der CI; ein wöchentlicher geplanter Scan fehlt noch.
+- Mit E6 Teil 2 prüfen: `@node-rs/argon2` bringt fertige Bausteine je Plattform mit. Im Container-Abbild der `api` (und für arm64 auf dem Testserver) muss der passende dabei sein; Abbild bauen und Anmeldung im Rauchtest prüfen.
+- Liste bekannter Passwörter enthält vor allem englische Einträge. Häufige deutsche Passwörter mit mindestens 12 Zeichen ergänzen, wenn eine frei nutzbare Liste gefunden ist.
 - Vor E15/E23: Angaben zur Button-Lösung (§ 312j BGB) gegen eine Quelle prüfen (Anforderungen 6.2).
 
 ## Offene Entscheidungen

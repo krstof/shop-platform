@@ -280,6 +280,19 @@ Die vollständige Liste auf GitHub war für die Recherche nicht erreichbar. Gefu
 
 Zusätzlich gab es Hinweise auf weitere Meldungen aus 2025 und 2026, deren Inhalt nicht geprüft werden konnte. Vor E6 wird die vollständige Liste von GitHub gelesen und die neueste Version fest eingetragen.
 
+**Nachtrag 06.11.2026 (E6 Teil 1):** Vollständige Liste über die Schwachstellen-Datenbank OSV gelesen (sie spiegelt die GitHub-Meldungen; die GitHub-Seite selbst war aus der Cloud-Sitzung nicht erreichbar). 26 Meldungen von Dezember 2024 bis 27.10.2026, die neuesten behoben in 1.7.7. Fest eingetragen ist **1.7.14** (26.10.2026), die neueste Version, die die 7-Tage-Regel erfüllt. Für uns wichtig:
+
+| Meldung | Inhalt | Wie wir sie vermeiden |
+|---|---|---|
+| CVE-2025-71399 | Pfad mit doppeltem Schrägstrich umgeht gesperrte Pfade und Bremse | HTTP-Teil von Better Auth gar nicht freigegeben (ADR-010) |
+| CVE-2026-45364 | Bremse durch wechselnde IPv6-Adressen umgehbar | Eingebaute Bremse aus, eigene Bremse mit `/64` (E6 Teil 2) |
+| CVE-2026-67337 (kritisch) | Zwei-Faktor umgehbar über den Sitzungs-Cache im Cookie | Sitzungs-Cache aus |
+| CVE-2025-71403 | Prüfung der erlaubten Herkunft umgehbar | Version behoben; eigene Herkunftsprüfung mit Teil 2 |
+| CVE-2026-53514, -53516, -67327, -110862, -110864 | Kontoübernahme über Organisation, fremde Anmeldedienste, Magic Link, OAuth-Proxy | Diese Funktionen sind aus |
+| CVE-2025-61928, CVE-2026-45337 | API-Key-Plugin, Geräte-Anmeldung | Plugins aus, eigene API-Token |
+
+Alle übrigen Meldungen betreffen Plugins oder Anmeldedienste, die wir nicht nutzen. Quelle: https://api.osv.dev (Abfrage für npm `better-auth`), Einzelmeldungen unter `https://osv.dev/vulnerability/<GHSA-Kennung>`.
+
 ### Quellen
 
 - Noerr, Umsetzungsgesetz zum Widerrufsbutton: https://www.noerr.com/de/insights/umsetzungsgesetz-zum-widerrufsbutton-veroeffentlicht

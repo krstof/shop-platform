@@ -1,0 +1,41 @@
+{
+  "name": "@shop/identity",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modul identity: Anmeldung, Sitzungen, Zwei-Faktor, Mitgliedschaften und Rollen, API-Token (Architektur 3.2, ADR-008)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@better-auth/kysely-adapter": "1.7.14",
+    "@node-rs/argon2": "2.2.2",
+    "@shop/kernel": "workspace:*",
+    "better-auth": "1.7.14",
+    "kysely": "0.29.7",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@shop/config": "workspace:*",
+    "@shop/testing": "workspace:*",
+    "@types/node": "^24.19.2",
+    "@types/pg": "8.23.1",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
+  }
+}
