@@ -143,9 +143,9 @@ describe.skipIf(adminUrl === undefined)("T-10: Bremse und Sperre der Anmeldung (
     expect(r.ok).toBe(true);
   });
 
-  it("ein Netz wird nach 20 Fehlversuchen über viele Konten gesperrt", async () => {
+  it("ein Netz, das viele Konten durchprobiert, wird gebremst, aber nie gesperrt", async () => {
     const identity = service();
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       const r = await identity.signIn({
         email: `k${i}@x.example`,
         password: WRONG_PW,
@@ -156,13 +156,21 @@ describe.skipIf(adminUrl === undefined)("T-10: Bremse und Sperre der Anmeldung (
         await identity.signIn({ email: `k${i}@x.example`, password: WRONG_PW, ipAddress: "2001:db8:aa::1" });
       }
     }
-    // Richtiges Passwort, anderes Konto, neue Adresse im selben /64: trotzdem gesperrt.
+    // Richtiges Passwort, anderes Konto, neue Adresse im selben /64: erst warten (höchstens 60 s) ...
     const r = await identity.signIn({
       email: "mitarbeiter@teeladen.example",
       password: LOGIN_PW,
       ipAddress: "2001:db8:aa::ffff",
     });
-    expect(r).toMatchObject({ ok: false, reason: "throttled" });
+    expect(r).toEqual({ ok: false, reason: "throttled", retryAfterSeconds: 60 });
+    // ... dann klappt es: Kollegen hinter derselben Adresse werden nicht 15 Minuten ausgesperrt.
+    advance(60);
+    const after = await identity.signIn({
+      email: "mitarbeiter@teeladen.example",
+      password: LOGIN_PW,
+      ipAddress: "2001:db8:aa::ffff",
+    });
+    expect(after.ok).toBe(true);
     // Das Konto selbst ist nicht gesperrt: aus einem anderen Netz geht es.
     const elsewhere = await identity.signIn({
       email: "mitarbeiter@teeladen.example",

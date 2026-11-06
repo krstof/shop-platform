@@ -4,7 +4,9 @@
 // (IPv4-Adresse, IPv6 auf das /64-Netz gekürzt, CVE-2026-45364). Beide zählen Fehlversuche:
 //   - die ersten 5 Fehlversuche sind frei,
 //   - ab dem 5. muss vor dem nächsten Versuch gewartet werden, 1 s, 2 s, 4 s ... höchstens 60 s,
-//   - beim 20. Fehlversuch folgt eine Sperre von 15 Minuten.
+//   - beim 20. Fehlversuch wird das Konto 15 Minuten gesperrt. Ein Netz wird nie gesperrt, nur
+//     gebremst (höchstens 60 s Wartezeit), damit nicht alle hinter derselben Büro-Adresse
+//     mitgesperrt werden (Entscheidung Kristof 06.11.2026).
 // Der Konto-Zähler läuft auch für E-Mail-Adressen, die es gar nicht gibt. So antwortet die Bremse
 // in beiden Fällen gleich und verrät nicht, ob ein Konto existiert. Eine erfolgreiche Anmeldung
 // setzt nur den Konto-Zähler zurück, nie den Zähler des Netzes (sonst könnte ein Angreifer mit
@@ -49,8 +51,6 @@ interface Counter {
 export interface FailureOutcome {
   /** Gesetzt, wenn dieser Fehlversuch das Konto gesperrt hat. */
   readonly accountLockedUntil?: Date;
-  /** Gesetzt, wenn dieser Fehlversuch das Netz gesperrt hat. */
-  readonly networkLockedUntil?: Date;
 }
 
 /** Schlüssel eines Versuchs. Die E-Mail ist bereits getrimmt und klein geschrieben. */
@@ -87,12 +87,9 @@ export class LoginThrottle {
   recordFailure(keys: AttemptKeys): FailureOutcome {
     const t = this.now();
     const [accountKey, networkKey] = this.keysOf(keys);
-    const accountLock = accountKey === undefined ? undefined : this.fail(accountKey, t);
-    const networkLock = networkKey === undefined ? undefined : this.fail(networkKey, t);
-    return {
-      ...(accountLock === undefined ? {} : { accountLockedUntil: accountLock }),
-      ...(networkLock === undefined ? {} : { networkLockedUntil: networkLock }),
-    };
+    const accountLock = accountKey === undefined ? undefined : this.fail(accountKey, t, true);
+    if (networkKey !== undefined) this.fail(networkKey, t, false);
+    return accountLock === undefined ? {} : { accountLockedUntil: accountLock };
   }
 
   /** Nach erfolgreicher Anmeldung: nur der Zähler des Kontos. */
@@ -125,8 +122,11 @@ export class LoginThrottle {
     return c;
   }
 
-  /** Zählt einen Fehlversuch. Liefert das Ende der Sperre, wenn er die Sperre auslöst. */
-  private fail(key: string, t: number): Date | undefined {
+  /**
+   * Zählt einen Fehlversuch. Liefert das Ende der Sperre, wenn er die Sperre auslöst.
+   * `lockable: false` (Netz): nur Wartezeit, nie Sperre.
+   */
+  private fail(key: string, t: number, lockable: boolean): Date | undefined {
     let c = this.current(key, t);
     if (c === undefined) {
       this.evictIfFull();
@@ -137,7 +137,7 @@ export class LoginThrottle {
     c.failures += 1;
     c.lastFailureAt = t;
     const r = this.rules;
-    if (c.failures >= r.lockAfterFailures) {
+    if (lockable && c.failures >= r.lockAfterFailures) {
       // Nach der Sperre beginnt die Zählung von vorn (wieder mit wachsender Wartezeit ab dem 5.).
       c.failures = 0;
       c.blockedUntil = t + r.lockSeconds * 1000;

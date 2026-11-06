@@ -55,7 +55,7 @@ export function authEndpoints(identity: IdentityService): Endpoint[] {
       "Meldet mit E-Mail und Passwort an und setzt das Sitzungs-Cookie __Host-shop_session " +
       "(HttpOnly, Secure, SameSite=Lax). Eine schon vorhandene Sitzung dieses Browsers wird beendet. " +
       "Unbekannte E-Mail und falsches Passwort ergeben dieselbe Antwort. Nach 5 Fehlversuchen je Konto " +
-      "oder Netz kommt 429 mit wachsender Wartezeit, nach 20 eine Sperre von 15 Minuten.",
+      "oder Netz kommt 429 mit wachsender Wartezeit (höchstens 60 s), nach 20 wird das Konto 15 Minuten gesperrt.",
     tags: ["Anmeldung"],
     access: { public: true, reason: "Wer sich anmeldet, hat noch keine Sitzung." },
     body: signInInput,

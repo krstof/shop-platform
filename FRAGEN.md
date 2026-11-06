@@ -4,11 +4,13 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Kästchen „Angemeldet bleiben“ bei der Händler-Anmeldung?** Ohne Kästchen gilt immer: 12 Stunden ohne Aktivität, höchstens 7 Tage. Mit Kästchen (nicht angehakt) endet die Anmeldung schon beim Schließen des Browsers, das ist sicherer auf fremden Rechnern, aber ein Klick mehr. Empfehlung: **Nein** (einfacher, Shopify macht es auch so). Antwort: Ja / Nein
-2. **Ungefähren Ort in der Liste „Aktive Sitzungen“ anzeigen?** Dafür bräuchte die Plattform eine frei verfügbare Ortsdatenbank für IP-Adressen (etwa „DB-IP Lite“, kostenlos, monatlich zu aktualisieren). Ohne sie stehen dort nur Gerät, Browser und Zeitpunkt. Empfehlung: **Später** (Welle 2), für Welle 1 reichen Gerät und Zeit. Antwort: Jetzt / Später
-3. **Nach 20 falschen Passwörtern auch das ganze Netz sperren?** Gebaut wie im Sicherheitskonzept: Wer aus einem Netz 20-mal falsch rät, egal bei welchen Konten, wird 15 Minuten gesperrt; das trifft aber auch alle Kollegen hinter derselben Büro-Adresse. Alternative: das Netz nur bremsen (höchstens 60 Sekunden warten) und nur das einzelne Konto sperren. Empfehlung: **Sperren**. Antwort: Sperren / Bremsen
+(keine)
 
 ## Beantwortet
+
+- **Kästchen „Angemeldet bleiben“ bei der Händler-Anmeldung?** Nein. Es gilt immer: 12 Stunden ohne Aktivität, höchstens 7 Tage. (06.11.2026)
+- **Ungefähren Ort in der Liste „Aktive Sitzungen“ anzeigen?** Nein, nicht jetzt (Antwort „nein“, verstanden als „später“). Die Liste zeigt Gerät, Browser und Zeitpunkt. (06.11.2026)
+- **Nach 20 falschen Passwörtern auch das ganze Netz sperren?** Nein (gegen die Empfehlung). Das Netz wird nur gebremst (höchstens 60 Sekunden Wartezeit), gesperrt wird nur das einzelne Konto. Umgesetzt am selben Tag. (06.11.2026)
 
 - **Kranken Hintergrunddienst automatisch neu starten?** Ja (gegen die Empfehlung „Nein“). Umgesetzt ohne Wächter mit Docker-Zugriff: Der Worker beendet sich nach 3 Minuten am Stück „krank“ selbst, Docker startet ihn neu. (05.11.2026)
 

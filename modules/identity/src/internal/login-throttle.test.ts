@@ -45,10 +45,7 @@ describe("LoginThrottle", () => {
       outcome = t.recordFailure(A);
       if (i < 20) expect(outcome).toEqual({});
     }
-    expect(outcome).toEqual({
-      accountLockedUntil: new Date(c.now() + 15 * 60 * 1000),
-      networkLockedUntil: new Date(c.now() + 15 * 60 * 1000),
-    });
+    expect(outcome).toEqual({ accountLockedUntil: new Date(c.now() + 15 * 60 * 1000) });
     expect(t.check(A)).toEqual({ allowed: false, retryAfterSeconds: 900 });
     c.advance(899);
     expect(t.check(A).allowed).toBe(false);
@@ -81,6 +78,24 @@ describe("LoginThrottle", () => {
     expect(t.check({ email: "neu@x.example", ipAddress: "2001:db8:1:3::1" }).allowed).toBe(true);
     expect(loginNetwork("2001:db8:1:2:ffff::9")).toBe(loginNetwork("2001:db8:1:2::1"));
     expect(loginNetwork("203.0.113.7")).not.toBe(loginNetwork("203.0.113.8"));
+  });
+
+  it("sperrt ein Netz nie, die Wartezeit bleibt höchstens 60 s (Entscheidung Kristof 06.11.2026)", () => {
+    const c = clock();
+    const t = new LoginThrottle(LOGIN_THROTTLE_RULES, c.now);
+    const ip = "203.0.113.99";
+    for (let i = 0; i < 60; i++) {
+      const d = t.check({ email: `k${i}@x.example`, ipAddress: ip });
+      if (!d.allowed) {
+        expect(d.retryAfterSeconds).toBeLessThanOrEqual(60);
+        c.advance(d.retryAfterSeconds);
+      }
+      expect(t.recordFailure({ email: `k${i}@x.example`, ipAddress: ip })).toEqual({});
+    }
+    expect(t.check({ email: "neu@x.example", ipAddress: ip })).toEqual({
+      allowed: false,
+      retryAfterSeconds: 60,
+    });
   });
 
   it("eine erfolgreiche Anmeldung leert nur den Zähler des Kontos, nie den des Netzes", () => {

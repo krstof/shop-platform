@@ -223,11 +223,6 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
         ) {
           const outcome = throttle.recordFailure(keys);
           if (outcome.accountLockedUntil !== undefined) await lockAccount(email, outcome.accountLockedUntil);
-          if (outcome.networkLockedUntil !== undefined)
-            options.logger?.warn(
-              { until: outcome.networkLockedUntil.toISOString() },
-              "Netz nach zu vielen Fehlversuchen für 15 Minuten gesperrt",
-            );
           return { ok: false, reason: "invalid_credentials" };
         }
         throw error;
