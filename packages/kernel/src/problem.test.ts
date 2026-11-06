@@ -5,7 +5,9 @@ import { PROBLEM_TITLES } from "./problem-texts.js";
 import {
   BadRequestError,
   ConflictError,
+  CrossOriginRejectedError,
   ForbiddenError,
+  InvalidCredentialsError,
   MethodNotAllowedError,
   NotFoundError,
   PayloadTooLargeError,
@@ -96,12 +98,23 @@ describe("Zod-Fehler als Feldfehler", () => {
   });
 });
 
+describe("RateLimitedError", () => {
+  it("trägt die Wartezeit, ohne sie in die Antwort zu schreiben", () => {
+    const e = new RateLimitedError({ retryAfterSeconds: 7 });
+    expect(e.retryAfterSeconds).toBe(7);
+    expect(new RateLimitedError().retryAfterSeconds).toBeUndefined();
+    expect(Object.keys(toProblemDetails(e, REQ))).not.toContain("retryAfterSeconds");
+  });
+});
+
 describe("Fehlertexte in zwei Sprachen", () => {
   const classes = [
     new ValidationError(),
     new BadRequestError(),
     new UnauthorizedError(),
     new ForbiddenError(),
+    new InvalidCredentialsError(),
+    new CrossOriginRejectedError(),
     new NotFoundError(),
     new MethodNotAllowedError(),
     new ConflictError(),

@@ -2,7 +2,9 @@
 // Außerhalb dieses Moduls weiß niemand, dass Better Auth dahintersteht.
 import { ConflictError, ValidationError } from "@shop/kernel";
 import { APIError } from "better-auth";
+import { Kysely, PostgresDialect } from "kysely";
 import { z } from "zod";
+import type { DB } from "../db.generated.js";
 import {
   CLIENT_IP_HEADER,
   createAuth,
@@ -12,6 +14,7 @@ import {
   type Auth,
   type AuthOptions,
 } from "./auth.js";
+import { LoginThrottle, type AttemptKeys } from "./login-throttle.js";
 import { checkNewPassword, hashPassword, type PasswordProblem } from "./password.js";
 
 const PASSWORD_MESSAGES: Record<PasswordProblem, string> = {
@@ -42,6 +45,9 @@ export type SignInResult =
       readonly ok: true;
       readonly userId: string;
       readonly sessionId: string;
+      readonly email: string;
+      readonly createdAt: Date;
+      readonly expiresAt: Date;
       /** Fertige `Set-Cookie`-Zeile für die Antwort. */
       readonly setCookie: string;
     }
@@ -49,6 +55,15 @@ export type SignInResult =
       readonly ok: false;
       /** Immer gleich, egal ob E-Mail unbekannt oder Passwort falsch (Sicherheit 5.2). */
       readonly reason: "invalid_credentials";
+    }
+  | {
+      readonly ok: false;
+      /**
+       * Zu viele Fehlversuche für dieses Konto oder aus diesem Netz (Bremse oder Sperre). Das
+       * Passwort wurde gar nicht erst geprüft. Gilt für unbekannte E-Mails genauso.
+       */
+      readonly reason: "throttled";
+      readonly retryAfterSeconds: number;
     };
 
 export interface ActiveSession {
@@ -87,9 +102,48 @@ function sessionCookieLine(headers: Headers): string {
 /** Löscht das Cookie im Browser, auch wenn es keine Sitzung (mehr) gibt. */
 export const CLEAR_SESSION_COOKIE = `${SESSION_COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
 
-export function createIdentityService(options: AuthOptions): IdentityService {
+export interface IdentityServiceOptions extends AuthOptions {
+  /** Nur für Tests: eigene Bremse (etwa mit eigener Uhr). Standard: Werte aus Sicherheit 5.2. */
+  readonly loginThrottle?: LoginThrottle;
+  /** Nur für Tests: Uhr für die Sperre in der Datenbank. */
+  readonly now?: () => number;
+}
+
+/** E-Mail so, wie sie gespeichert und gezählt wird. Sehr lange Eingaben werden gekürzt. */
+function normalizeEmail(raw: string): string {
+  return raw.trim().toLowerCase().slice(0, 320);
+}
+
+export function createIdentityService(options: IdentityServiceOptions): IdentityService {
   const pool = createAuthPool(options);
   const auth: Auth = createAuth(options, pool);
+  const db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
+  const throttle = options.loginThrottle ?? new LoginThrottle();
+  const now = options.now ?? Date.now;
+
+  /** Sperre aus der Datenbank (übersteht einen Neustart). Läuft für unbekannte E-Mails genauso. */
+  async function lockedFor(email: string): Promise<number> {
+    const row = await db
+      .selectFrom("identity.user")
+      .select("locked_until")
+      .where("email", "=", email)
+      .executeTakeFirst();
+    const until = row?.locked_until;
+    if (until === null || until === undefined) return 0;
+    const ms = new Date(until).getTime() - now();
+    return ms > 0 ? Math.ceil(ms / 1000) : 0;
+  }
+
+  async function lockAccount(email: string, until: Date): Promise<void> {
+    const result = await db
+      .updateTable("identity.user")
+      .set({ locked_until: until, updated_at: new Date(now()) })
+      .where("email", "=", email)
+      .executeTakeFirst();
+    // Nur ein Hinweis fürs Protokoll, ohne E-Mail. Die E-Mail an den Inhaber kommt mit notifications.
+    if (result.numUpdatedRows > 0n)
+      options.logger?.warn({ until: until.toISOString() }, "Konto nach zu vielen Fehlversuchen gesperrt");
+  }
 
   async function deleteByToken(token: string): Promise<void> {
     await (await auth.$context).internalAdapter.deleteSession(token);
@@ -132,9 +186,18 @@ export function createIdentityService(options: AuthOptions): IdentityService {
     },
 
     async signIn(input) {
+      const email = normalizeEmail(input.email);
+      const keys: AttemptKeys = { email, ipAddress: input.ipAddress };
+      // 1. Bremse und Sperre vor der Passwortprüfung: Gesperrt heißt gesperrt, auch mit richtigem Passwort.
+      const gate = throttle.check(keys);
+      if (!gate.allowed) return { ok: false, reason: "throttled", retryAfterSeconds: gate.retryAfterSeconds };
+      const locked = await lockedFor(email);
+      if (locked > 0) return { ok: false, reason: "throttled", retryAfterSeconds: locked };
+
+      // 2. Better Auth prüft E-Mail und Passwort.
       try {
         const { headers, response } = await auth.api.signInEmail({
-          body: { email: input.email.trim().toLowerCase(), password: input.password, rememberMe: true },
+          body: { email, password: input.password, rememberMe: true },
           headers: requestHeaders(input),
           returnHeaders: true,
         });
@@ -142,10 +205,14 @@ export function createIdentityService(options: AuthOptions): IdentityService {
           headers: requestHeaders({ cookie: sessionCookieLine(headers).split(";")[0] ?? "" }),
         });
         if (session === null) throw new Error("Neue Sitzung nicht lesbar");
+        throttle.recordSuccess(keys);
         return {
           ok: true,
           userId: response.user.id,
           sessionId: session.session.id,
+          email: session.user.email,
+          createdAt: session.session.createdAt,
+          expiresAt: session.session.expiresAt,
           setCookie: sessionCookieLine(headers),
         };
       } catch (error) {
@@ -154,6 +221,13 @@ export function createIdentityService(options: AuthOptions): IdentityService {
           error instanceof APIError &&
           (error.status === "UNAUTHORIZED" || error.status === "BAD_REQUEST")
         ) {
+          const outcome = throttle.recordFailure(keys);
+          if (outcome.accountLockedUntil !== undefined) await lockAccount(email, outcome.accountLockedUntil);
+          if (outcome.networkLockedUntil !== undefined)
+            options.logger?.warn(
+              { until: outcome.networkLockedUntil.toISOString() },
+              "Netz nach zu vielen Fehlversuchen für 15 Minuten gesperrt",
+            );
           return { ok: false, reason: "invalid_credentials" };
         }
         throw error;
@@ -194,7 +268,7 @@ export function createIdentityService(options: AuthOptions): IdentityService {
     },
 
     async close() {
-      await pool.end();
+      await db.destroy();
     },
   };
 }

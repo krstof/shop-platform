@@ -1,15 +1,17 @@
 // Registriert alle Endpunkte aus den Modulen bei Fastify (ADR-009). Jede Anfrage läuft durch
 // dieselbe Kette, kein Endpunkt kann einen Schritt überspringen:
 //
+//   0. Herkunftsprüfung (CSRF, Q-14, Sicherheit 5.5): ändernde Anfragen von fremden Seiten ergeben 403.
 //   1. Anmeldung und Berechtigung (globaler Wächter, Q-03): ohne Akteur 401, ohne Scope 403.
 //      Die Prüfung kommt vor der Eingabeprüfung, damit Unangemeldete nichts über Schemas erfahren.
 //   2. Strenge Prüfung von Pfad, Abfrage und Inhalt mit Zod (Q-02): Fehler ergeben 422.
 //   3. Ausführung im Anfrage-Kontext des Kernels (requestId, Mandant, Akteur), sodass
 //      withTenantTransaction den Shop kennt, ohne dass ein Endpunkt ihn weiterreichen muss.
 //   4. Ausgabe durch das Antwort-Schema: Felder, die dort nicht stehen, gehen nie hinaus.
-import type { AuthenticatedActor, Endpoint } from "@shop/http";
+import type { AuthenticatedActor, ClientInfo, Endpoint } from "@shop/http";
 import {
   BadRequestError,
+  CrossOriginRejectedError,
   ForbiddenError,
   MethodNotAllowedError,
   IDEMPOTENCY_KEY_PATTERN,
@@ -49,6 +51,31 @@ export interface RouterOptions {
   readonly idempotency: IdempotencyStore;
   /** Ohne Bremse nur in Tests, die sie nicht prüfen. */
   readonly rateLimiter?: RateLimiter | undefined;
+  /** Oberflächen, die ändernde Anfragen schicken dürfen. Leer: jede Anfrage mit `Origin` wird abgelehnt. */
+  readonly allowedOrigins?: readonly string[] | undefined;
+}
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Herkunftsprüfung gegen untergeschobene Anfragen (CSRF, Sicherheit 5.5, B-11, T-11).
+ * Browser schicken bei ändernden Anfragen immer `Origin`; die muss in der Liste stehen
+ * (auch „null“ von Sandbox-Seiten oder Weiterleitungen fällt durch). Ältere Browser ohne `Origin`
+ * schicken oft `Sec-Fetch-Site`: nur „same-origin“ und „none“ (vom Nutzer selbst ausgelöst) gehen.
+ * Ohne beide Kopfzeilen fragt kein Browser an (Skripte, Apps mit API-Token): Dann gibt es nichts
+ * unterzuschieben, weil kein Browser ungefragt Cookies mitsendet.
+ */
+export function isAllowedOrigin(
+  method: string,
+  headers: Readonly<Record<string, string | string[] | undefined>>,
+  allowedOrigins: ReadonlySet<string>,
+): boolean {
+  if (SAFE_METHODS.has(method.toUpperCase())) return true;
+  const origin = headers["origin"];
+  if (origin !== undefined) return typeof origin === "string" && allowedOrigins.has(origin);
+  const site = headers["sec-fetch-site"];
+  if (site !== undefined) return site === "same-origin" || site === "none";
+  return true;
 }
 
 /** Pfad aus OpenAPI-Form (`{id}`) in Fastify-Form (`:id`). */
@@ -114,6 +141,7 @@ function rejectUnsafe(value: unknown, prefix: string, locale: Locale): void {
 
 export function registerEndpoints(fastify: FastifyInstance, options: RouterOptions): void {
   assertUniqueEndpoints(options.endpoints);
+  const allowedOrigins = new Set(options.allowedOrigins ?? []);
   // Bekannte Adresse, aber falsche Methode: 405 mit Allow, statt 404 oder 500 (gefunden von Schemathesis).
   const byPath = new Map<string, Set<string>>();
   for (const e of options.endpoints) {
@@ -152,7 +180,7 @@ export function registerEndpoints(fastify: FastifyInstance, options: RouterOptio
       // Fehler aus Fastify selbst (Größe, Datenformat, kaputtes JSON) ebenfalls als Problem Details.
       errorHandler: (error, request, reply) =>
         sendProblem(reply, error, request.id, pickLocale(request.headers["accept-language"]), options.logger),
-      handler: (request, reply) => handle(endpoint, request, reply, options),
+      handler: (request, reply) => handle(endpoint, request, reply, options, allowedOrigins),
     });
   }
 }
@@ -210,18 +238,46 @@ function sendJson(reply: FastifyReply, status: number, data: unknown): FastifyRe
     .send(JSON.stringify(data));
 }
 
+const SET_COOKIE_NOT_ALLOWED = "setCookie gibt es nur in der Auth-API";
+
 async function handle(
   endpoint: Endpoint,
   request: FastifyRequest,
   reply: FastifyReply,
   options: RouterOptions,
+  allowedOrigins: ReadonlySet<string>,
 ): Promise<FastifyReply> {
   const requestId = request.id;
   const locale = pickLocale(request.headers["accept-language"]);
   const state: RequestState = { endpoint, request, reply, options, locale };
+  // Cookies setzt nur die Auth-API; sie gehen auch mit einer Fehlerantwort hinaus.
+  const cookies: string[] = [];
+  const isAuthApi = endpoint.api === "auth";
+  const setCookie = (line: string): void => {
+    if (!isAuthApi) throw new Error(SET_COOKIE_NOT_ALLOWED);
+    cookies.push(line);
+  };
+  const flushCookies = (): void => {
+    if (cookies.length > 0) reply.header("set-cookie", cookies);
+  };
+  const client: ClientInfo | undefined = isAuthApi
+    ? {
+        ip: request.ip,
+        userAgent: headerValue(request.headers["user-agent"]),
+        cookie: headerValue(request.headers["cookie"]),
+      }
+    : undefined;
   try {
+    // 0. Herkunft (vor allem anderen, auch vor der Anmeldung)
+    if (!isAllowedOrigin(request.method, request.headers, allowedOrigins))
+      throw new CrossOriginRejectedError();
+
     // 1. Anmeldung, Berechtigung und Bremse je Akteur
     let auth: AuthenticatedActor | undefined;
+    if ("signedIn" in endpoint.access) {
+      auth = await options.resolveActor({ headers: request.headers });
+      if (auth === undefined) throw new UnauthorizedError();
+    }
     if ("scopes" in endpoint.access) {
       auth = await options.resolveActor({ headers: request.headers });
       if (auth === undefined) throw new UnauthorizedError();
@@ -272,7 +328,7 @@ async function handle(
           ...(auth?.tenantId === undefined ? {} : { tenantId: auth.tenantId }),
           ...(auth === undefined ? {} : { actor: auth.actor }),
         },
-        () => endpoint.handler({ params, query, body, requestId, locale, auth, ifMatch }),
+        () => endpoint.handler({ params, query, body, requestId, locale, auth, ifMatch, client, setCookie }),
       );
       const output = endpoint.response.schema.safeParse(result);
       if (!output.success) {
@@ -297,8 +353,10 @@ async function handle(
     }
     if (idem !== undefined)
       await options.idempotency.complete(idem, { status: endpoint.response.status, body: data });
+    flushCookies();
     return sendJson(reply, endpoint.response.status, data);
   } catch (error) {
+    flushCookies();
     return sendProblem(reply, error, requestId, locale, options.logger);
   }
 }

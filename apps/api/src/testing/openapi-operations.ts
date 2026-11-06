@@ -28,7 +28,9 @@ interface RawOp {
   "x-public"?: boolean;
 }
 
-export function loadOperations(apis: readonly string[] = ["admin", "store", "platform"]): Operation[] {
+export function loadOperations(
+  apis: readonly string[] = ["admin", "store", "platform", "auth"],
+): Operation[] {
   const ops: Operation[] = [];
   for (const api of apis) {
     const doc = JSON.parse(readFileSync(join(repoRoot, "openapi", `${api}.json`), "utf8")) as {

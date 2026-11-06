@@ -7,6 +7,7 @@ import {
   NotFoundError,
   PayloadTooLargeError,
   PROBLEM_CONTENT_TYPE,
+  RateLimitedError,
   toProblemDetails,
   UnsupportedMediaTypeError,
   type Locale,
@@ -60,6 +61,8 @@ export function sendProblem(
     logger.error({ err: error, requestId }, "Anfrage mit unerwartetem Fehler beendet");
   else logger.debug({ code: problem.code, status: problem.status }, "Anfrage abgelehnt");
   if (problem.status === 401) reply.header("www-authenticate", "Bearer");
+  if (normalized instanceof RateLimitedError && normalized.retryAfterSeconds !== undefined)
+    reply.header("retry-after", String(Math.max(1, Math.ceil(normalized.retryAfterSeconds))));
   return reply
     .code(problem.status)
     .header("content-type", `${PROBLEM_CONTENT_TYPE}; charset=utf-8`)

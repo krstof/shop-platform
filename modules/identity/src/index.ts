@@ -5,6 +5,7 @@ export {
   CLEAR_SESSION_COOKIE,
   type ActiveSession,
   type IdentityService,
+  type IdentityServiceOptions,
   type NewUser,
   type SignInRequest,
   type SignInResult,
@@ -17,3 +18,10 @@ export {
   PASSWORD_MIN_LENGTH,
   type PasswordProblem,
 } from "./internal/password.js";
+export { authEndpoints, currentSessionSchema } from "./http/auth.js";
+export {
+  LOGIN_THROTTLE_RULES,
+  LoginThrottle,
+  loginNetwork,
+  type LoginThrottleRules,
+} from "./internal/login-throttle.js";

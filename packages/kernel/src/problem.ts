@@ -68,6 +68,23 @@ export class UnauthorizedError extends AppError {
   readonly title = "Bitte melde dich an.";
 }
 
+/**
+ * Anmeldung fehlgeschlagen. Immer dieselbe Antwort, ob die E-Mail unbekannt oder das Passwort
+ * falsch ist (Sicherheit 5.2).
+ */
+export class InvalidCredentialsError extends AppError {
+  readonly status = 401;
+  readonly code = "invalid_credentials";
+  readonly title = "E-Mail oder Passwort ist falsch.";
+}
+
+/** Ändernde Anfrage von einer fremden Webseite (CSRF, Sicherheit 5.5, B-11). */
+export class CrossOriginRejectedError extends AppError {
+  readonly status = 403;
+  readonly code = "cross_origin_rejected";
+  readonly title = "Anfrage von einer fremden Seite abgelehnt.";
+}
+
 export class ForbiddenError extends AppError {
   readonly status = 403;
   readonly code = "forbidden";
@@ -125,6 +142,13 @@ export class RateLimitedError extends AppError {
   readonly status = 429;
   readonly code = "rate_limited";
   readonly title = "Zu viele Anfragen. Bitte warte kurz.";
+  /** Sekunden bis zum nächsten Versuch; die API schickt sie als `Retry-After`. */
+  readonly retryAfterSeconds: number | undefined;
+
+  constructor(options: AppErrorOptions & { readonly retryAfterSeconds?: number } = {}) {
+    super(options);
+    this.retryAfterSeconds = options.retryAfterSeconds;
+  }
 }
 
 export class ServiceUnavailableError extends AppError {

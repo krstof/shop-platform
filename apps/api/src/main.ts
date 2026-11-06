@@ -1,8 +1,8 @@
 // Startet den Kern-Server. Einstellungen kommen aus der Umgebung (siehe config.ts).
-// Die Anmeldung (Sitzung, API-Token) kommt mit E6; bis dahin lehnt der Wächter jede
-// geschützte Anfrage mit 401 ab.
+// Anmeldung über das Sitzungs-Cookie (E6 Teil 2); API-Token folgen später.
+import { createIdentityService } from "@shop/identity";
 import { ConfigError, connectDatabase, createLogger } from "@shop/kernel";
-import { nobodyResolver } from "./actor.js";
+import { sessionResolver } from "./actor.js";
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
 import { databaseIdempotencyStore } from "./idempotency-store.js";
@@ -17,11 +17,21 @@ async function main(): Promise<void> {
     onConnectionError: (error) =>
       logger.warn({ err: error }, "Datenbankverbindung abgebrochen, wird neu aufgebaut"),
   });
+  // Eigener kleiner Pool als shop_auth, nur im Modul identity (ADR-008).
+  const identity = createIdentityService({
+    connectionString: config.SHOP_AUTH_DATABASE_URL,
+    secret: config.SHOP_AUTH_SECRET,
+    baseUrl: config.SHOP_ALLOWED_ORIGINS[0] ?? `https://admin.${config.SHOP_DOMAIN}`,
+    logger,
+    onConnectionError: (error) =>
+      logger.warn({ err: error }, "Datenbankverbindung (Anmeldung) abgebrochen, wird neu aufgebaut"),
+  });
   const app = await createApi({
-    endpoints: allEndpoints({ database }),
-    resolveActor: nobodyResolver,
+    endpoints: allEndpoints({ database, identity }),
+    resolveActor: sessionResolver(identity),
     logger,
     idempotency: databaseIdempotencyStore(database),
+    allowedOrigins: config.SHOP_ALLOWED_ORIGINS,
     ...(config.SHOP_TRUSTED_PROXY === undefined ? {} : { trustedProxy: config.SHOP_TRUSTED_PROXY }),
   });
   app.enableShutdownHooks();
@@ -29,6 +39,7 @@ async function main(): Promise<void> {
   logger.info({ port: config.SHOP_API_PORT }, "API gestartet");
   const stop = async () => {
     await app.close();
+    await identity.close();
     await database.destroy();
   };
   process.once("SIGTERM", () => void stop());

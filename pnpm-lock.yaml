@@ -239,6 +239,9 @@ importers:
       '@shop/http':
         specifier: workspace:*
         version: link:../../packages/http
+      '@shop/identity':
+        specifier: workspace:*
+        version: link:../../modules/identity
       '@shop/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
@@ -428,6 +431,9 @@ importers:
       '@node-rs/argon2':
         specifier: 2.2.2
         version: 2.2.2
+      '@shop/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@shop/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel

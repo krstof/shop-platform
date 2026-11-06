@@ -24,12 +24,19 @@ const API_INFO: Readonly<Record<ApiName, { title: string; description: string }>
     title: "Shop-Plattform Platform API",
     description: "API der Plattform-Verwaltung (Betreiber). Kein Zugriff auf Shopdaten.",
   },
+  auth: {
+    title: "Shop-Plattform Auth API",
+    description:
+      "Anmelden, Abmelden und eigene Sitzung für Backoffice und Plattform-Verwaltung. Die Sitzung steckt " +
+      "im Cookie __Host-shop_session (HttpOnly, Secure, SameSite=Lax). Ändernde Anfragen aus dem Browser " +
+      "müssen von einer erlaubten Oberfläche kommen (Origin), sonst 403.",
+  },
 };
 
 const PROBLEM_DESCRIPTIONS: Readonly<Record<number, string>> = {
   400: "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
   401: "Nicht angemeldet.",
-  403: "Berechtigung fehlt.",
+  403: "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
   404: "Nicht gefunden, auch bei Datensätzen anderer Shops.",
   409: "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
   412: "Der Datensatz wurde inzwischen geändert (If-Match).",
@@ -111,11 +118,12 @@ function problemResponse(status: number): JsonObject {
 
 function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
   const scoped = "scopes" in endpoint.access;
+  const signedIn = "signedIn" in endpoint.access;
   const statuses = new Set<number>([...endpoint.problems, 500]);
-  if (scoped) {
-    statuses.add(401);
-    statuses.add(403);
-  }
+  if (scoped || signedIn) statuses.add(401);
+  if (scoped) statuses.add(403);
+  // Herkunftsprüfung (CSRF): jede ändernde Anfrage kann mit 403 abgelehnt werden.
+  if (endpoint.method !== "GET") statuses.add(403);
   if (endpoint.params !== undefined || endpoint.query !== undefined || endpoint.body !== undefined)
     statuses.add(422);
   if (endpoint.body !== undefined) {
@@ -136,20 +144,21 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
   }
   const shape = (endpoint.response.schema as { shape?: Record<string, unknown> }).shape;
   const hasVersion = shape !== undefined && "version" in shape;
+  const successHeaders: JsonObject = {};
+  if (hasVersion)
+    successHeaders["ETag"] = {
+      description: 'Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. "3".',
+      schema: { type: "string" },
+    };
+  if (endpoint.api === "auth" && endpoint.method === "POST")
+    successHeaders["Set-Cookie"] = {
+      description: "Setzt oder löscht das Sitzungs-Cookie __Host-shop_session.",
+      schema: { type: "string" },
+    };
   const responses: JsonObject = {
     [String(endpoint.response.status)]: {
       description: endpoint.response.description,
-      ...(hasVersion
-        ? {
-            headers: {
-              ETag: {
-                description:
-                  'Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. "3".',
-                schema: { type: "string" },
-              },
-            },
-          }
-        : {}),
+      ...(Object.keys(successHeaders).length > 0 ? { headers: successHeaders } : {}),
       content: { "application/json": { schema: collector.convert(endpoint.response.schema, "output") } },
     },
   };
@@ -205,13 +214,17 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
           },
         }),
     responses,
-    ...("scopes" in endpoint.access
-      ? {
-          security: [{ session: [] }, { apiToken: [] }],
-          "x-required-scopes": [...endpoint.access.scopes],
-        }
-      : { security: [], "x-public": true, "x-public-reason": endpoint.access.reason }),
+    ...accessFields(endpoint),
   };
+}
+
+/** Zugang in OpenAPI: Berechtigungen, „nur angemeldet“ oder öffentlich mit Begründung. */
+function accessFields(endpoint: Endpoint): JsonObject {
+  const access = endpoint.access;
+  if ("scopes" in access)
+    return { security: [{ session: [] }, { apiToken: [] }], "x-required-scopes": [...access.scopes] };
+  if ("signedIn" in access) return { security: [{ session: [] }], "x-signed-in": true };
+  return { security: [], "x-public": true, "x-public-reason": access.reason };
 }
 
 function escapeRe(s: string): string {
@@ -259,8 +272,12 @@ export function buildOpenApi(api: ApiName, endpoints: readonly Endpoint[]): Json
         session: {
           type: "apiKey",
           in: "cookie",
+          // Der Name hier ist veraltet; ihn zu ändern wäre für oasdiff ein Bruch (E6 Teil 2).
+          // Er wird mit der nächsten Hauptversion korrigiert, die Beschreibung nennt den echten Namen.
           name: "shop_session",
-          description: "Sitzungs-Cookie nach der Anmeldung (HttpOnly, Secure, SameSite=Lax).",
+          description:
+            "Sitzungs-Cookie nach der Anmeldung über /auth/v1/sign-in. Der Browser schickt es unter dem " +
+            "Namen __Host-shop_session (HttpOnly, Secure, SameSite=Lax).",
         },
         apiToken: {
           type: "http",
@@ -298,7 +315,9 @@ export function lintOpenApi(doc: JsonObject): string[] {
       else ids.add(id);
       const scopes = op["x-required-scopes"];
       const isPublic = op["x-public"] === true && typeof op["x-public-reason"] === "string";
-      if (!isPublic && (!Array.isArray(scopes) || scopes.length === 0))
+      // „Nur angemeldet“ ohne Berechtigung gibt es nur in der Auth-API (/auth/v1/...).
+      const signedInOnly = op["x-signed-in"] === true && path.startsWith("/auth/");
+      if (!isPublic && !signedInOnly && (!Array.isArray(scopes) || scopes.length === 0))
         problems.push(`${where}: x-required-scopes fehlt (Standard ist „verboten“)`);
     }
   }

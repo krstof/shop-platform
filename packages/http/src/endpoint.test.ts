@@ -49,7 +49,31 @@ describe("defineEndpoint", () => {
     [
       "öffentlicher Admin-Endpunkt",
       { access: { public: true, reason: "weil es bequem ist" } },
-      "nur die Storefront-API",
+      "nur die Storefront- und die Auth-API",
+    ],
+    ["signedIn in der Admin-API", { access: { signedIn: true } }, "signedIn ohne Berechtigung gibt es nur"],
+    [
+      "Berechtigungen in der Auth-API",
+      { api: "auth", access: { scopes: ["products:read"] } },
+      "die Auth-API kennt keine Berechtigungen",
+    ],
+    [
+      "public und signedIn zugleich",
+      { api: "auth", access: { public: true, signedIn: true, reason: "Anmelden geht ohne Sitzung." } },
+      "schließen sich aus",
+    ],
+    [
+      "POST der Auth-API mit Idempotenz",
+      {
+        api: "auth",
+        method: "POST",
+        path: "/sign-in",
+        params: undefined,
+        access: { public: true, reason: "Anmelden geht ohne Sitzung." },
+        body: z.strictObject({ email: z.string() }),
+        bodyExample: { email: "a@b.example" },
+      },
+      'braucht idempotency: "none"',
     ],
     ["öffentlich ohne Begründung", { api: "store", access: { public: true, reason: "" } }, "Begründung"],
     ["operationId nicht camelCase", { operationId: "Get_Thing" }, "camelCase"],
@@ -116,6 +140,32 @@ describe("defineEndpoint", () => {
       access: { public: true, reason: "Für alle sichtbar." },
     } as AnySpec);
     expect(store.rateLimit).toBe("store-read");
+    const signIn = defineEndpoint({
+      ...base,
+      api: "auth",
+      method: "POST",
+      path: "/sign-in",
+      operationId: "signIn",
+      params: undefined,
+      access: { public: true, reason: "Anmelden geht nur ohne Sitzung." },
+      body: z.strictObject({ email: z.string() }),
+      bodyExample: { email: "a@b.example" },
+      idempotency: "none",
+    } as AnySpec);
+    expect([signIn.fullPath, signIn.rateLimit, signIn.idempotency]).toEqual([
+      "/auth/v1/sign-in",
+      "login",
+      "none",
+    ]);
+    const me = defineEndpoint({
+      ...base,
+      api: "auth",
+      path: "/session",
+      operationId: "getSession",
+      params: undefined,
+      access: { signedIn: true },
+    } as AnySpec);
+    expect(me.rateLimit).toBe("admin");
   });
 
   it("erlaubt öffentliche Endpunkte nur in der Storefront-API mit Begründung", () => {

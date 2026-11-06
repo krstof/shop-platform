@@ -26,3 +26,9 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 **Tests:** `src/identity.db.test.ts` (echte Datenbank, Rolle `shop_auth`), `password.test.ts`, `hashed-session-adapter.test.ts`.
 
 **Ereignisse (geplant):** identity.user.registered.v1, identity.login.failed.v1, identity.membership.changed.v1
+
+## Stand E6 Teil 2 (06.11.2026)
+
+- Endpunkte der Auth-API (`src/http/auth.ts`): `POST /auth/v1/sign-in`, `POST /auth/v1/sign-out`, `GET /auth/v1/session`.
+- Eigene Anmelde-Bremse (`src/internal/login-throttle.ts`): je Konto und je Netz, Sperre des Kontos in `identity.user.locked_until`.
+- Der gebaute Code bringt die Liste bekannter Passwörter mit (`scripts/copy-data.mjs`).

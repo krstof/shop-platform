@@ -48,6 +48,8 @@ export interface ApiOptions {
   readonly idempotency: IdempotencyStore;
   /** Standard: neue Bremse mit den Startwerten aus Sicherheit 5.8. */
   readonly rateLimiter?: RateLimiter;
+  /** Oberflächen, die ändernde Anfragen schicken dürfen (CSRF, Sicherheit 5.5). Standard: keine. */
+  readonly allowedOrigins?: readonly string[];
 }
 
 // NestJS braucht eine Klasse als Kennung des Moduls; der Inhalt steht in rootModule().

@@ -8,7 +8,13 @@ import { runMigrations } from "@shop/kernel/migrate";
 import { roleUrl } from "@shop/testing";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createIdentityService, SESSION_COOKIE_NAME, type IdentityService } from "./index.js";
+import {
+  createIdentityService,
+  LOGIN_THROTTLE_RULES,
+  LoginThrottle,
+  SESSION_COOKIE_NAME,
+  type IdentityService,
+} from "./index.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const adminUrl = process.env["SHOP_TEST_DATABASE_URL"];
@@ -57,6 +63,13 @@ describe.skipIf(adminUrl === undefined)("Anmeldung mit Better Auth (echte Datenb
       connectionString: roleUrl(adminUrl ?? "", dbName, "shop_auth"),
       secret: randomBytes(32).toString("base64url"),
       baseUrl: "https://admin.localhost",
+      // Diese Tests messen Antworten und Zeiten mit vielen Fehlversuchen; die Bremse prüft
+      // identity-throttle.db.test.ts.
+      loginThrottle: new LoginThrottle({
+        ...LOGIN_THROTTLE_RULES,
+        freeFailures: 1000,
+        lockAfterFailures: 2000,
+      }),
     });
     ({ userId } = await identity.createUser({ email: EMAIL, password: LOGIN_PW, name: "Ida Inhaberin" }));
   }, 120_000);

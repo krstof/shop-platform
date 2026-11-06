@@ -22,6 +22,7 @@
     "@shop/audit": "workspace:*",
     "@shop/catalog": "workspace:*",
     "@shop/http": "workspace:*",
+    "@shop/identity": "workspace:*",
     "@shop/kernel": "workspace:*",
     "fastify": "5.12.7",
     "reflect-metadata": "0.2.2",

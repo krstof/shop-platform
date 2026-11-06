@@ -13,7 +13,7 @@ import type { Actor, Locale } from "@shop/kernel";
 import type { z } from "zod";
 import { isScope, type Scope } from "./scopes.js";
 
-export const API_NAMES = ["admin", "store", "platform"] as const;
+export const API_NAMES = ["admin", "store", "platform", "auth"] as const;
 export type ApiName = (typeof API_NAMES)[number];
 
 /** Pfad-Präfix je API (Architektur 4.2 und 4.3). */
@@ -21,13 +21,32 @@ export const API_PREFIX: Readonly<Record<ApiName, string>> = {
   admin: "/admin/v1",
   store: "/store/v1",
   platform: "/platform/v1",
+  /** Anmelden, Abmelden, eigene Sitzung (E6). Gilt für Backoffice und Plattform-Verwaltung. */
+  auth: "/auth/v1",
 };
 
 export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
+/**
+ * Wer einen Endpunkt aufrufen darf:
+ * - `scopes`: angemeldet und mit allen genannten Berechtigungen (Normalfall).
+ * - `signedIn`: angemeldet, ohne bestimmte Berechtigung. Nur in der Auth-API („Wer bin ich“).
+ * - `public`: ohne Anmeldung, mit Begründung. Nur in Storefront- und Auth-API.
+ */
 export type EndpointAccess =
-  { readonly scopes: readonly [Scope, ...Scope[]] } | { readonly public: true; readonly reason: string };
+  | { readonly scopes: readonly [Scope, ...Scope[]] }
+  | { readonly signedIn: true }
+  | { readonly public: true; readonly reason: string };
+
+/** Angaben zum Aufrufer, die nur die Auth-API braucht (Bremse je Netz, Sitzungsliste, Cookie). */
+export interface ClientInfo {
+  /** Absenderadresse, wie Fastify sie ermittelt hat (hinter Caddy aus X-Forwarded-For des Proxys). */
+  readonly ip: string;
+  readonly userAgent: string | undefined;
+  /** Rohe Kopfzeile `Cookie`. */
+  readonly cookie: string | undefined;
+}
 
 /** Wer die Anfrage stellt, nachdem die Anmeldung geprüft wurde. */
 export interface AuthenticatedActor {
@@ -48,6 +67,13 @@ export interface HandlerContext<P, Q, B> {
   readonly auth: AuthenticatedActor | undefined;
   /** Version aus `If-Match` (Architektur 4.6). Bei `ifMatch: "required"` immer gesetzt. */
   readonly ifMatch: number | undefined;
+  /** Nur in der Auth-API gesetzt, sonst `undefined`: Kein Fachmodul sieht Cookies oder Adressen. */
+  readonly client: ClientInfo | undefined;
+  /**
+   * Hängt eine `Set-Cookie`-Zeile an die Antwort (auch an eine Fehlerantwort, etwa zum Löschen).
+   * Nur in der Auth-API erlaubt; sonst wirft der Aufruf.
+   */
+  readonly setCookie: (line: string) => void;
 }
 
 /**
@@ -64,8 +90,11 @@ export const RATE_LIMIT_CATEGORIES = [
 ] as const;
 export type RateLimitCategory = (typeof RATE_LIMIT_CATEGORIES)[number];
 
-/** Fehler-Statuscodes, die ein Endpunkt in OpenAPI dokumentiert (401, 403, 422, 500 kommen immer dazu). */
-export type DocumentedProblem = 400 | 404 | 409 | 412 | 413 | 415 | 428 | 429;
+/**
+ * Zusätzliche Fehler-Statuscodes, die ein Endpunkt in OpenAPI dokumentiert. Was aus Zugang,
+ * Eingaben und Methode folgt (401, 403, 422, 429, 500 ...), ergänzt die Erzeugung von selbst.
+ */
+export type DocumentedProblem = 400 | 401 | 404 | 409 | 412 | 413 | 415 | 428 | 429;
 
 type AnyObject = z.ZodObject;
 
@@ -131,6 +160,7 @@ export interface Endpoint {
 
 function defaultRateLimit(api: ApiName, method: HttpMethod): RateLimitCategory {
   if (api === "store") return method === "GET" ? "store-read" : "store-write";
+  if (api === "auth") return method === "GET" ? "admin" : "login";
   return api;
 }
 
@@ -185,18 +215,33 @@ function validateSpec(spec: EndpointSpec<AnyObject, AnyObject, z.ZodType, z.ZodT
   if (spec.description.trim().length < 10) p.push("description fehlt");
 
   // Berechtigung (Q-03, Sicherheit 5.3): Standard ist „verboten“.
-  const access = spec.access as Partial<{ scopes: readonly string[]; public: boolean; reason: string }>;
-  if (access.public === true) {
-    if (spec.api !== "store") p.push("nur die Storefront-API darf öffentliche Endpunkte haben");
+  const access = spec.access as Partial<{
+    scopes: readonly string[];
+    public: boolean;
+    signedIn: boolean;
+    reason: string;
+  }>;
+  const kinds = [access.scopes !== undefined, access.public !== undefined, access.signedIn !== undefined];
+  if (kinds.filter(Boolean).length > 1) p.push("access: scopes, signedIn und public schließen sich aus");
+  if (access.public !== undefined) {
+    if (access.public !== true) p.push("access.public muss true sein");
+    if (spec.api !== "store" && spec.api !== "auth")
+      p.push("nur die Storefront- und die Auth-API dürfen öffentliche Endpunkte haben");
     if (typeof access.reason !== "string" || access.reason.trim().length < 10)
       p.push("öffentlicher Endpunkt braucht eine Begründung (reason)");
-    if (access.scopes !== undefined) p.push("öffentlich und Berechtigungen schließen sich aus");
+  } else if (access.signedIn !== undefined) {
+    if (access.signedIn !== true) p.push("access.signedIn muss true sein");
+    if (spec.api !== "auth") p.push("signedIn ohne Berechtigung gibt es nur in der Auth-API");
   } else if (!Array.isArray(access.scopes) || access.scopes.length === 0) {
     p.push("Berechtigung fehlt: access.scopes muss mindestens einen Eintrag haben");
   } else {
+    if (spec.api === "auth") p.push("die Auth-API kennt keine Berechtigungen (signedIn oder public)");
     for (const s of access.scopes) if (!isScope(s)) p.push(`unbekannte Berechtigung „${s}“`);
     if (new Set(access.scopes).size !== access.scopes.length) p.push("doppelte Berechtigung");
   }
+  // Anmelden und Abmelden laufen ohne Idempotenz-Schlüssel (ein Passwort gehört nie in einen Speicher).
+  if (spec.api === "auth" && spec.method === "POST" && spec.idempotency !== "none")
+    p.push('POST in der Auth-API braucht idempotency: "none"');
 
   // Pfad und Platzhalter
   if (!spec.path.startsWith("/") || spec.path.endsWith("/")) {

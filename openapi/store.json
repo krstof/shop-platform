@@ -73,7 +73,7 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "shop_session",
-        "description": "Sitzungs-Cookie nach der Anmeldung (HttpOnly, Secure, SameSite=Lax)."
+        "description": "Sitzungs-Cookie nach der Anmeldung über /auth/v1/sign-in. Der Browser schickt es unter dem Namen __Host-shop_session (HttpOnly, Secure, SameSite=Lax)."
       },
       "apiToken": {
         "type": "http",

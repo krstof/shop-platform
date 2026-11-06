@@ -65,7 +65,17 @@ check "API: Container ist gesund (Gesundheitscheck)" '[[ "$(docker inspect shop-
 check "API: kein Internetzugang aus dem Container" '! docker exec shop-platform-api-1 node -e "fetch(\"https://example.com\",{signal:AbortSignal.timeout(3000)}).then(()=>process.exit(0),()=>process.exit(1))"'
 check "API: kein npm im Abbild" '! docker exec shop-platform-api-1 sh -c "command -v npm" >/dev/null'
 check "API: Programmdateien nicht beschreibbar" '! docker exec shop-platform-api-1 sh -c "touch /app/dist/x" 2>/dev/null'
-check "API: Abbild ohne Quellcode und Tests" '! docker exec shop-platform-api-1 sh -c "ls /app/src /app/node_modules/.pnpm | grep -qiE \"^src|vitest|typescript@\"" 2>/dev/null'
+check "API: Abbild ohne Quellcode und Tests" '! docker exec shop-platform-api-1 sh -c "ls /app/src /app/node_modules/.pnpm | grep -qiE \"^src$|^(vitest|@vitest[+]|typescript|vite)@\"" 2>/dev/null'
+
+echo "== Anmeldung (E6, Sicherheit 5.2 und 5.5)"
+SIGNIN=(-X POST -H "Content-Type: application/json" --data '{"email":"niemand@teeladen.example","password":"drei kleine teekannen"}')
+L="$("${C[@]}" -D - "${SIGNIN[@]}" -H "Origin: https://admin.$D" "https://api.$D/auth/v1/sign-in")"
+# 401 heißt: Argon2id lief im Container (passender Baustein für musl/arm64 vorhanden) und shop_auth erreicht die Datenbank.
+check "Anmeldung: unbekannte E-Mail ergibt 401 invalid_credentials" '[[ "$L" =~ ^HTTP/2\ 401 ]] && grep -q "\"code\":\"invalid_credentials\"" <<<"$L"'
+check "Anmeldung: kein Cookie bei Fehlschlag" '! grep -qi "^set-cookie:" <<<"$L"'
+check "Anmeldung: fremde Herkunft ergibt 403" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "${SIGNIN[@]}" -H "Origin: https://evil.example" "https://api.$D/auth/v1/sign-in")" == 403 ]]'
+check "Anmeldung: „Wer bin ich“ ohne Cookie 401" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://api.$D/auth/v1/session")" == 401 ]]'
+check "Anmeldung: Liste bekannter Passwörter im Abbild" 'docker exec shop-platform-api-1 sh -c "test -s /app/node_modules/@shop/identity/dist/internal/data/common-passwords.txt.gz"'
 check "migrate: beendet mit Code 0" '[[ "$(docker inspect shop-platform-migrate-1 --format "{{.State.ExitCode}}")" == 0 ]]'
 MU="$(docker inspect shop-platform-migrate-1 --format '{{.Config.User}} {{json .HostConfig.CapDrop}} {{.HostConfig.ReadonlyRootfs}} {{json .HostConfig.SecurityOpt}}')"
 check "migrate: gehärtet wie die übrigen Container ($MU)" '[[ "$MU" == 1000:1000\ *ALL*\ true\ *no-new-privileges* ]]'
@@ -77,6 +87,7 @@ PSQL=(docker exec -e PGPASSWORD shop-platform-postgres-1 psql -h 127.0.0.1 -X -q
 check "Migrationen sind ausgeführt (mindestens 20)" '[[ "$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT count(*) FROM shop_migration.checksum")" -ge 20 ]]'
 check "shop_app meldet sich mit dem Passwort aus .env an" '[[ "$(PGPASSWORD="$SHOP_DB_PASSWORD_APP" "${PSQL[@]}" -U shop_app -c "SELECT current_user")" == shop_app ]]'
 check "shop_app ohne richtiges Passwort: abgewiesen" '! PGPASSWORD="falsch-$RANDOM" "${PSQL[@]}" -U shop_app -c "SELECT 1" >/dev/null 2>&1'
+check "API: Anmeldemodul ist als shop_auth verbunden" '[[ "$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT count(*) FROM pg_stat_activity WHERE usename = '"'"'shop_auth'"'"' AND application_name = '"'"'identity'"'"'")" -ge 1 ]]'
 
 echo "== Worker: Hintergrunddienst (E5)"
 W=shop-platform-worker-1

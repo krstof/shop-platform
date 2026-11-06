@@ -193,6 +193,10 @@ services:
       SHOP_ENV: ${SHOP_ENV:?fehlt}
       SHOP_DOMAIN: ${SHOP_DOMAIN:?fehlt}
       SHOP_APP_DATABASE_URL: postgres://shop_app:${SHOP_DB_PASSWORD_APP:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
+      # Anmeldemodul (E6): eigener kleiner Pool als shop_auth, Geheimnis für die Sitzungs-Cookies.
+      SHOP_AUTH_DATABASE_URL: postgres://shop_auth:${SHOP_DB_PASSWORD_AUTH:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
+      SHOP_AUTH_SECRET: ${SHOP_AUTH_SECRET:?fehlt}
+      # Herkunftsprüfung (CSRF): Standard sind https://admin.<Domain> und https://platform.<Domain>.
       SHOP_API_HOST: 0.0.0.0
       SHOP_API_PORT: "3000"
       # Nur Caddy darf die Absenderadresse weitergeben (wichtig für die Anfragebremse).

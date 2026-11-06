@@ -10,6 +10,11 @@ export const PROBLEM_TITLES: Readonly<Record<string, Texts>> = {
   bad_request: { de: "Die Anfrage ist fehlerhaft.", en: "The request is malformed." },
   unauthenticated: { de: "Bitte melde dich an.", en: "Please sign in." },
   forbidden: { de: "Dafür fehlt die Berechtigung.", en: "You are not allowed to do this." },
+  invalid_credentials: { de: "E-Mail oder Passwort ist falsch.", en: "Email or password is incorrect." },
+  cross_origin_rejected: {
+    de: "Anfrage von einer fremden Seite abgelehnt.",
+    en: "Request from another site rejected.",
+  },
   not_found: { de: "Nicht gefunden.", en: "Not found." },
   method_not_allowed: {
     de: "Diese Methode ist hier nicht erlaubt.",
