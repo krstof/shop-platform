@@ -400,6 +400,24 @@ describe("Funde von Schemathesis (T-12) als feste Tests", () => {
     }
   });
 
+  it("kaputte Kopfzeile Shop-Id ergibt 400, eine gültige wird angenommen", async () => {
+    for (const shopId of ["aQ", "?`V2\\MaU&d%9=", "", [ID, ID]]) {
+      const r = await fastify().inject({
+        method: "GET",
+        url: `/admin/v1/things/${ID}`,
+        headers: { ...auth, "shop-id": shopId },
+      });
+      expect(r.statusCode, String(shopId)).toBe(400);
+      expect(r.json().errors[0].path).toBe("/headers/shop-id");
+    }
+    const ok = await fastify().inject({
+      method: "GET",
+      url: `/admin/v1/things/${ID}`,
+      headers: { ...auth, "shop-id": TENANT.toUpperCase() },
+    });
+    expect(ok.statusCode).not.toBe(400);
+  });
+
   it("bekannte Adresse mit falscher Methode ergibt 405 mit Allow, auch QUERY und TRACE", async () => {
     for (const method of ["DELETE", "PUT", "TRACE", "QUERY", "OPTIONS"] as const) {
       const r = await fastify().inject({ method, url: `/admin/v1/things/${ID}`, headers: auth });

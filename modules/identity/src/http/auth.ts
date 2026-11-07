@@ -1,10 +1,38 @@
 // Endpunkte der Auth-API (E6 Teil 2, PLA-04, Sicherheit 5.2, ADR-010): Anmelden, Abmelden und
-// „Wer bin ich“. Better Auth selbst bekommt keinen HTTP-Zugang; diese drei Endpunkte laufen wie
+// „Wer bin ich“. Seit E6 Teil 3 nennen „Anmelden“ und „Wer bin ich“ auch die Shops des Kontos. Better Auth selbst bekommt keinen HTTP-Zugang; diese drei Endpunkte laufen wie
 // alle anderen durch den Vertrag (Zod, OpenAPI, Anfragebremse, Herkunftsprüfung im Router).
 import { defineEndpoint, type ClientInfo, type Endpoint } from "@shop/http";
 import { InvalidCredentialsError, RateLimitedError, UnauthorizedError } from "@shop/kernel";
 import { z } from "zod";
 import type { IdentityService } from "../internal/identity-service.js";
+import { SYSTEM_ROLES, type SystemRole } from "../internal/roles.js";
+
+/** Ein Shop, zu dem das Konto gehört, wie die Shop-Auswahl im Backoffice ihn zeigt. */
+export interface ShopOfUser {
+  readonly id: string;
+  readonly handle: string;
+  readonly name: string;
+  readonly role: SystemRole;
+}
+
+export interface AuthEndpointOptions {
+  /**
+   * Shops des Kontos, in denen es gerade arbeiten darf (aktive Mitgliedschaft, Shop aktiv).
+   * Setzt apps/api aus den Modulen identity und platform zusammen. Ohne Angabe: keine Shops.
+   */
+  readonly shopsOfUser?: (userId: string) => Promise<readonly ShopOfUser[]>;
+}
+
+const shopOfUserSchema = z
+  .object({
+    id: z.uuid().describe("Kennung des Shops. Als Kopfzeile Shop-Id an jede Anfrage der Admin-API hängen."),
+    handle: z.string(),
+    name: z.string(),
+    role: z
+      .enum(SYSTEM_ROLES)
+      .describe("owner: Inhaberin oder Inhaber, staff: Mitarbeiterin oder Mitarbeiter."),
+  })
+  .meta({ id: "ShopOfUser" });
 
 /** Eigene Sitzung, wie Backoffice und Plattform-Verwaltung sie anzeigen. Das Token steht nie darin. */
 export const currentSessionSchema = z
@@ -19,6 +47,9 @@ export const currentSessionSchema = z
           "Endet ohne Aktivität zu diesem Zeitpunkt; jede Anfrage schiebt ihn nach vorn (höchstens 7 Tage ab Anmeldung).",
         ),
     }),
+    shops: z
+      .array(shopOfUserSchema)
+      .describe("Shops, in denen das Konto arbeiten darf. Leer, solange es zu keinem aktiven Shop gehört."),
   })
   .meta({ id: "CurrentSession" });
 
@@ -44,7 +75,9 @@ function iso(d: Date): string {
   return d.toISOString();
 }
 
-export function authEndpoints(identity: IdentityService): Endpoint[] {
+export function authEndpoints(identity: IdentityService, options: AuthEndpointOptions = {}): Endpoint[] {
+  const shopsOf = async (userId: string) => [...((await options.shopsOfUser?.(userId)) ?? [])];
+
   const signIn = defineEndpoint({
     api: "auth",
     method: "POST",
@@ -86,6 +119,7 @@ export function authEndpoints(identity: IdentityService): Endpoint[] {
       return {
         user: { id: result.userId, email: result.email },
         session: { id: result.sessionId, createdAt: iso(result.createdAt), expiresAt: iso(result.expiresAt) },
+        shops: await shopsOf(result.userId),
       };
     },
   });
@@ -123,16 +157,19 @@ export function authEndpoints(identity: IdentityService): Endpoint[] {
     path: "/session",
     operationId: "getCurrentSession",
     summary: "Wer bin ich",
-    description: "Liefert das angemeldete Konto und die laufende Sitzung. Ohne gültige Sitzung 401.",
+    description:
+      "Liefert das angemeldete Konto, die laufende Sitzung und die Shops, in denen das Konto arbeiten darf. " +
+      "Ohne gültige Sitzung 401.",
     tags: ["Anmeldung"],
     access: { signedIn: true },
-    response: { status: 200, description: "Konto und Sitzung.", schema: currentSessionSchema },
+    response: { status: 200, description: "Konto, Sitzung und Shops.", schema: currentSessionSchema },
     handler: async ({ client }) => {
       const s = await identity.getSession(requireClient(client).cookie);
       if (s === undefined) throw new UnauthorizedError();
       return {
         user: { id: s.userId, email: s.email },
         session: { id: s.sessionId, createdAt: iso(s.createdAt), expiresAt: iso(s.expiresAt) },
+        shops: await shopsOf(s.userId),
       };
     },
   });

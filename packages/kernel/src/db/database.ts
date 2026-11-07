@@ -89,13 +89,14 @@ async function run<DB, T>(
   actorId: string,
   isolationLevel: IsolationLevel | undefined,
   fn: (trx: Transaction<DB>) => Promise<T>,
+  userId = "",
 ): Promise<T> {
   const db = kyselyOf(database);
   const builder =
     isolationLevel === undefined ? db.transaction() : db.transaction().setIsolationLevel(isolationLevel);
   return builder.execute(async (trx) => {
     // Werte als Parameter, nie als Text in der Abfrage. `true` = nur für diese Transaktion.
-    await sql`select set_config('app.tenant_id', ${tenantId}, true), set_config('app.actor_id', ${actorId}, true)`.execute(
+    await sql`select set_config('app.tenant_id', ${tenantId}, true), set_config('app.actor_id', ${actorId}, true), set_config('app.user_id', ${userId}, true)`.execute(
       trx,
     );
     return fn(trx);
@@ -125,8 +126,9 @@ export async function withTenantTransaction<DB, T>(
 }
 
 /**
- * Transaktion ohne Mandant, nur für die Plattform-Verwaltung mit der Rolle `shop_platform`
- * (Händler und Shops anlegen). Die RLS-Regeln zeigen dabei nur Zeilen ohne Shop.
+ * Transaktion ohne Mandant: für die Plattform-Verwaltung mit der Rolle `shop_platform`
+ * (Händler und Shops anlegen) und für das Modul platform, wenn es globale Tabellen ohne RLS
+ * liest (etwa Name und Zustand eines Shops). Die RLS-Regeln zeigen dabei nur Zeilen ohne Shop.
  * Fachmodule benutzen immer `withTenantTransaction`.
  */
 export async function withPlatformTransaction<DB, T>(
@@ -135,6 +137,21 @@ export async function withPlatformTransaction<DB, T>(
   options: Omit<TenantTransactionOptions, "tenantId"> = {},
 ): Promise<T> {
   return run(database, "", resolveActor(options.actorId), options.isolationLevel, fn);
+}
+
+/**
+ * Transaktion ohne Mandant für genau einen angemeldeten Nutzer (E6 Teil 3). Setzt `app.user_id`,
+ * damit RLS-Regeln mit `kernel.current_user_id()` greifen, etwa „eigene Mitgliedschaften lesen“
+ * vor der Shop-Auswahl. Shopdaten bleiben unsichtbar, weil kein Mandant gesetzt ist. Nur das
+ * Modul identity braucht das; Fachmodule benutzen immer `withTenantTransaction`.
+ */
+export async function withUserTransaction<DB, T>(
+  database: Database<DB>,
+  userId: string,
+  fn: (trx: Transaction<DB>) => Promise<T>,
+): Promise<T> {
+  if (!isUuid(userId)) throw new TypeError("userId muss eine UUID sein");
+  return run(database, "", userId, undefined, fn, userId);
 }
 
 /**

@@ -3,20 +3,25 @@
 import { auditEndpoints } from "@shop/audit";
 import { catalogEndpoints } from "@shop/catalog";
 import type { Endpoint } from "@shop/http";
-import { authEndpoints, type IdentityService } from "@shop/identity";
+import { authEndpoints, type IdentityService, type ShopOfUser } from "@shop/identity";
 import type { Database } from "@shop/kernel";
 
 export interface EndpointDependencies {
   readonly database: Database<unknown>;
   /** Anmeldemodul. Ohne Angabe: ein Griff ohne Verbindung (nur OpenAPI und Tests ohne Anmeldung). */
   readonly identity?: IdentityService;
+  /** Shops eines Kontos für „Wer bin ich“ (actor.ts, shopsOfUser). Ohne Angabe: keine Shops. */
+  readonly shopsOfUser?: (userId: string) => Promise<readonly ShopOfUser[]>;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
   return [
     ...catalogEndpoints(deps),
     ...auditEndpoints(deps),
-    ...authEndpoints(deps.identity ?? unconnectedIdentity),
+    ...authEndpoints(
+      deps.identity ?? unconnectedIdentity,
+      deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser },
+    ),
   ];
 }
 

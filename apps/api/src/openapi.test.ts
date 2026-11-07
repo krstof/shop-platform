@@ -20,6 +20,7 @@ describe("OpenAPI (API-03)", () => {
     expect(get?.["x-required-scopes"]).toEqual(["products:read"]);
     expect(Object.keys(get?.["responses"] as object)).toEqual([
       "200",
+      "400",
       "401",
       "403",
       "404",

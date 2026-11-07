@@ -1,8 +1,10 @@
 // Startet den Kern-Server. Einstellungen kommen aus der Umgebung (siehe config.ts).
-// Anmeldung über das Sitzungs-Cookie (E6 Teil 2); API-Token folgen später.
-import { createIdentityService } from "@shop/identity";
+// Anmeldung über das Sitzungs-Cookie (E6 Teil 2), Shop und Rolle über die Kopfzeile Shop-Id und die
+// Mitgliedschaft (E6 Teil 3); API-Token folgen später.
+import { createIdentityService, createMembershipDirectory } from "@shop/identity";
 import { ConfigError, connectDatabase, createLogger } from "@shop/kernel";
-import { sessionResolver } from "./actor.js";
+import { createShopDirectory } from "@shop/platform";
+import { sessionResolver, shopsOfUser } from "./actor.js";
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
 import { databaseIdempotencyStore } from "./idempotency-store.js";
@@ -26,9 +28,11 @@ async function main(): Promise<void> {
     onConnectionError: (error) =>
       logger.warn({ err: error }, "Datenbankverbindung (Anmeldung) abgebrochen, wird neu aufgebaut"),
   });
+  const memberships = createMembershipDirectory({ database });
+  const shops = createShopDirectory({ database });
   const app = await createApi({
-    endpoints: allEndpoints({ database, identity }),
-    resolveActor: sessionResolver(identity),
+    endpoints: allEndpoints({ database, identity, shopsOfUser: shopsOfUser({ memberships, shops }) }),
+    resolveActor: sessionResolver({ identity, memberships, shops }),
     logger,
     idempotency: databaseIdempotencyStore(database),
     allowedOrigins: config.SHOP_ALLOWED_ORIGINS,

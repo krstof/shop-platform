@@ -6,6 +6,12 @@ import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { InjectOptions } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { sessionResolver } from "./actor.js";
+
+/** Konten ohne Mitgliedschaft: Die Sitzung hat keinen Shop (E6 Teil 3 prüft actor.test.ts). */
+const noShops = {
+  memberships: { findMembership: async () => undefined },
+  shops: { getShops: async () => [] },
+};
 import { createApi } from "./app.js";
 import { allEndpoints, unconnectedDatabase } from "./endpoints.js";
 import { memoryIdempotencyStore } from "./idempotency-store.js";
@@ -73,7 +79,7 @@ beforeAll(async () => {
   fake = fakeIdentity();
   app = await createApi({
     endpoints: allEndpoints({ database: unconnectedDatabase, identity: fake.identity }),
-    resolveActor: sessionResolver(fake.identity),
+    resolveActor: sessionResolver({ identity: fake.identity, ...noShops }),
     logger: createLogger({ level: "silent" }),
     idempotency: memoryIdempotencyStore(),
     rateLimiter: generous,
@@ -158,6 +164,7 @@ describe("Anmelden über die Auth-API", () => {
     expect(r.json()).toEqual({
       user: { id: USER, email: "inhaberin@teeladen.example" },
       session: { id: SESSION, createdAt: "2026-11-06T12:00:00.000Z", expiresAt: "2026-11-07T00:00:00.000Z" },
+      shops: [],
     });
     // Das Token steht nie im Inhalt.
     expect(r.body).not.toContain("gueltig");
@@ -230,7 +237,7 @@ describe("Sitzung und Abmelden", () => {
     }
   });
 
-  it("angemeldet, aber ohne Mitgliedschaft: Admin-API antwortet 403 (Rollen folgen in E6 Teil 3)", async () => {
+  it("angemeldet, aber ohne Mitgliedschaft: Admin-API antwortet 403", async () => {
     const r = await inject({ method: "GET", url: "/admin/v1/manufacturers", headers: { cookie: COOKIE } });
     expect(r.statusCode).toBe(403);
     expect(r.json().code).toBe("forbidden");
@@ -242,7 +249,7 @@ describe("Allgemeine Anfragebremse für die Anmeldung (Sicherheit 5.8)", () => {
     const f = fakeIdentity();
     const strict = await createApi({
       endpoints: allEndpoints({ database: unconnectedDatabase, identity: f.identity }),
-      resolveActor: sessionResolver(f.identity),
+      resolveActor: sessionResolver({ identity: f.identity, ...noShops }),
       logger: createLogger({ level: "silent" }),
       idempotency: memoryIdempotencyStore(),
       allowedOrigins: [ADMIN],

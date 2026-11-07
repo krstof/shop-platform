@@ -4,7 +4,8 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(keine)
+1. **Gesperrter Shop: Darf der Händler noch ins Backoffice, nur zum Lesen?** Wenn du als Betreiber einen Shop sperrst, kommt der Händler heute gar nicht mehr hinein (sicherer Standard). Shopify lässt gesperrte Händler zum Beispiel noch Rechnungen und Daten ansehen. Antwort: „gesperrt“ (so lassen) oder „lesen“.
+2. **Dürfen Mitarbeiter das Änderungsprotokoll ihres Shops sehen?** Es zeigt, wer wann was geändert hat. Umgesetzt ist „ja“ (meine Empfehlung, weil es nur den eigenen Shop betrifft und Fehler leichter finden lässt). Antwort: „ja“ oder „nein“ (dann nur die Inhaberin).
 
 ## Beantwortet
 

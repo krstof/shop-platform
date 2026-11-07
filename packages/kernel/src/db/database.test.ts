@@ -15,6 +15,7 @@ import {
   readSessionSettingForTest,
   withPlatformTransaction,
   withTenantTransaction,
+  withUserTransaction,
   type Database,
 } from "./database.js";
 import { runMigrations } from "./migrate.js";
@@ -183,6 +184,24 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
         trx.selectFrom(TABLE).selectAll().execute(),
       );
       expect(rows).toEqual([]);
+    } finally {
+      await single.destroy();
+    }
+  });
+
+  it("withUserTransaction setzt nur den Nutzer: keine Shopdaten, nichts bleibt an der Verbindung", async () => {
+    const single = connectDatabase<TestDB>({ connectionString: appUrl, maxConnections: 1 });
+    try {
+      const inside = await withUserTransaction(single, ACTOR, async (trx) => {
+        const r = await sql<{ u: string | null; a: string | null; t: string | null }>`
+          select kernel.current_user_id()::text as u, kernel.current_actor_id()::text as a,
+                 kernel.current_tenant_id()::text as t`.execute(trx);
+        const rows = await trx.selectFrom(TABLE).selectAll().execute();
+        return { ...r.rows[0], rows: rows.length };
+      });
+      expect(inside).toEqual({ u: ACTOR, a: ACTOR, t: null, rows: 0 });
+      expect(await readSessionSettingForTest(single, "app.user_id")).toBeOneOf(["", null]);
+      await expect(withUserTransaction(single, "kein-uuid", async () => 1)).rejects.toThrow(TypeError);
     } finally {
       await single.destroy();
     }

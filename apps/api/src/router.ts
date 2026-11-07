@@ -5,6 +5,7 @@
 //   1. Anmeldung und Berechtigung (globaler Wächter, Q-03): ohne Akteur 401, ohne Scope 403.
 //      Die Prüfung kommt vor der Eingabeprüfung, damit Unangemeldete nichts über Schemas erfahren.
 //   2. Strenge Prüfung von Pfad, Abfrage und Inhalt mit Zod (Q-02): Fehler ergeben 422.
+//      Kopfzeilen (If-Match, Idempotency-Key, Shop-Id) mit falschem Format ergeben 400.
 //   3. Ausführung im Anfrage-Kontext des Kernels (requestId, Mandant, Akteur), sodass
 //      withTenantTransaction den Shop kennt, ohne dass ein Endpunkt ihn weiterreichen muss.
 //   4. Ausgabe durch das Antwort-Schema: Felder, die dort nicht stehen, gehen nie hinaus.
@@ -31,7 +32,7 @@ import {
 } from "@shop/kernel";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import type { ActorResolver } from "./actor.js";
+import { SHOP_ID_HEADER, type ActorResolver } from "./actor.js";
 import type { IdempotencyStore } from "./idempotency-store.js";
 import { clientNetwork, type RateLimiter } from "./rate-limit.js";
 import { sendProblem } from "./problem-reply.js";
@@ -210,6 +211,28 @@ function readIfMatch({ endpoint, request, locale }: RequestState): number | unde
   return Number(m[1]);
 }
 
+/**
+ * Kopfzeile Shop-Id der Admin-API (E6 Teil 3): Wenn sie kommt, dann genau einmal und als UUID.
+ * Welcher Shop gilt, entscheidet allein die Auflösung des Akteurs (actor.ts) anhand der
+ * Mitgliedschaft; mit Sitzung führt eine kaputte Shop-Id dort schon zu 403. Diese Prüfung sorgt
+ * dafür, dass eine kaputte Angabe nie still übergangen wird (etwa bei API-Token, die ihren Shop
+ * selbst mitbringen).
+ */
+function checkShopIdHeader({ request, locale }: RequestState): void {
+  const raw = request.headers[SHOP_ID_HEADER];
+  if (raw === undefined) return;
+  if (typeof raw === "string" && isUuid(raw.trim().toLowerCase())) return;
+  throw new BadRequestError({
+    detail: SHOP_ID_INVALID[locale],
+    errors: [{ path: "/headers/shop-id", code: "invalid_format", message: SHOP_ID_INVALID[locale] }],
+  });
+}
+
+const SHOP_ID_INVALID: Readonly<Record<Locale, string>> = {
+  de: "Shop-Id muss genau einmal und als UUID angegeben werden.",
+  en: "Shop-Id must be given exactly once, as a UUID.",
+};
+
 /** Bremse nach der Anmeldung: je Akteur (Token oder Sitzung), sonst je Netz. */
 function limitActor(
   { endpoint, request, reply, options }: RequestState,
@@ -306,6 +329,7 @@ async function handle(
       });
     }
     const ifMatch = readIfMatch(state);
+    if (endpoint.api === "admin") checkShopIdHeader(state);
 
     // 3. Idempotenz (Architektur 4.5)
     const idem = idempotencyFor(state, auth, body);

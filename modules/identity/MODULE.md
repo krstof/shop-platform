@@ -13,7 +13,7 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Fassade (heute):** `createIdentityService(options)` liefert `createUser`, `signIn`, `getSession`, `signOut`, `close`. Dazu `checkNewPassword` und die Konstanten zum Cookie und zur Sitzungsdauer.
 
-**Fassade (geplant):** getActor(token), assertPermission(actor, permission), listMemberships(userId), createApiToken(...)
+**Fassade (geplant):** getActor(token) für API-Token, createApiToken(...), Einladungen
 
 **Aufbau innen** (`src/internal/`):
 - `auth.ts`: Better Auth 1.7.14 (fest), nur E-Mail und Passwort, keine Selbst-Registrierung, keine Plugins, eingebaute Bremse aus, eigener Pool als `shop_auth`, Cookie `__Host-shop_session`, kein Sitzungs-Cache im Cookie.
@@ -32,3 +32,10 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 - Endpunkte der Auth-API (`src/http/auth.ts`): `POST /auth/v1/sign-in`, `POST /auth/v1/sign-out`, `GET /auth/v1/session`.
 - Eigene Anmelde-Bremse (`src/internal/login-throttle.ts`): je Konto und je Netz, Sperre des Kontos in `identity.user.locked_until`.
 - Der gebaute Code bringt die Liste bekannter Passwörter mit (`scripts/copy-data.mjs`).
+
+## Stand E6 Teil 3 (07.11.2026)
+
+- Systemrollen im Code (`src/internal/roles.ts`): `owner` bekommt alle Berechtigungen des Shops, `staff` die Liste `STAFF_SCOPES`. Nur für Inhaber (`OWNER_ONLY_SCOPES`) ist heute leer; Mitarbeiter, API-Token, Shop löschen und Zahlungseinstellungen kommen dort hinein, sobald es diese Berechtigungen gibt. `platform:*` bekommt keine Händlerrolle. `roles.test.ts` scheitert, wenn eine neue Berechtigung nicht eingeordnet ist.
+- Mitgliedschaften (`src/internal/memberships.ts`): `createMembershipDirectory({ database })` mit `listMemberships(userId)` und `findMembership(userId, tenantId)`. Läuft als shop_app über `withUserTransaction` (RLS über `kernel.current_user_id()`). Zählt nur `status = 'active'`, Systemrollen und aktive Konten; eigene Rollen (`custom`) geben bis Welle 5 nichts.
+- `authEndpoints(identity, { shopsOfUser })`: „Anmelden“ und „Wer bin ich“ liefern zusätzlich `shops` (id, handle, name, role). Die Funktion setzt `apps/api` zusammen (identity plus platform).
+- Bewusst noch nicht da: Einladungen und Mitarbeiter entfernen, „Passwort vergessen“, Zwei-Faktor und Zugang des Betreibers zur Platform-API, API-Token, erneute Passworteingabe nach 15 Minuten.

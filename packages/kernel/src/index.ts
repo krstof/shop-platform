@@ -14,6 +14,7 @@ export {
   connectDatabase,
   withTenantTransaction,
   withPlatformTransaction,
+  withUserTransaction,
   MissingTenantError,
   type Database,
   type DatabaseOptions,

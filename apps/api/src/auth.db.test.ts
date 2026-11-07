@@ -6,12 +6,14 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createIdentityService,
+  createMembershipDirectory,
   LOGIN_THROTTLE_RULES,
   LoginThrottle,
   type IdentityService,
 } from "@shop/identity";
 import { connectDatabase, createLogger, type Database } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
+import { createShopDirectory } from "@shop/platform";
 import { roleUrl } from "@shop/testing";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { InjectOptions } from "fastify";
@@ -88,7 +90,11 @@ describe.skipIf(adminUrl === undefined)("Auth-API Ende zu Ende (echte Datenbank)
     await identity.createUser({ email: EMAIL, password: LOGIN_PW });
     app = await createApi({
       endpoints: allEndpoints({ database, identity }),
-      resolveActor: sessionResolver(identity),
+      resolveActor: sessionResolver({
+        identity,
+        memberships: createMembershipDirectory({ database }),
+        shops: createShopDirectory({ database }),
+      }),
       logger: createLogger({ level: "silent" }),
       idempotency: databaseIdempotencyStore(database),
       // Die allgemeine Bremse (5 Anmeldungen je Minute) prüft auth.test.ts; hier geht es um die eigene.

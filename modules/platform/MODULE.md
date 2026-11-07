@@ -1,6 +1,6 @@
 # Modul `platform`
 
-> Landkarte für spätere Läufe (Architektur 8.4). Fassade und Ereignisse sind geplant, Code entsteht ab Etappe E4.
+> Landkarte für spätere Läufe (Architektur 8.4). Stand: E6 Teil 3 (07.11.2026), erste Fassade.
 
 **Aufgabe:** Händlerkonten, Shops (Mandanten), Tarife und Funktionsschalter, Domains, Plattform-Einstellungen. Nur für den Betreiber; das Schema hat keine RLS (db/global-tables.yaml).
 
@@ -11,6 +11,8 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Darf aufrufen** (`module.json` → `dependsOn`): `identity`. Alles andere nur über Ereignisse.
 
-**Fassade (geplant):** resolveTenantByHost(host), getTenant(id), isFeatureEnabled(tenantId, feature), createTenant(...)
+**Fassade (heute):** `createShopDirectory({ database })` mit `getShops(ids)`: Kennung, Handle, Name und Zustand von Shops, gelesen als shop_app (nur lesen) aus `platform.tenant`. Nutzt `apps/api` für die Shop-Auswahl (nur Shops im Zustand `active` gelten).
+
+**Fassade (geplant):** resolveTenantByHost(host), isFeatureEnabled(tenantId, feature), createTenant(...)
 
 **Ereignisse (geplant):** platform.tenant.created.v1, platform.tenant.suspended.v1, platform.tenant.deleted.v1

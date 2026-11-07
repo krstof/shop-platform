@@ -18,7 +18,25 @@ export {
   PASSWORD_MIN_LENGTH,
   type PasswordProblem,
 } from "./internal/password.js";
-export { authEndpoints, currentSessionSchema } from "./http/auth.js";
+export {
+  authEndpoints,
+  currentSessionSchema,
+  type AuthEndpointOptions,
+  type ShopOfUser,
+} from "./http/auth.js";
+export {
+  createMembershipDirectory,
+  type Membership,
+  type MembershipDirectory,
+  type MembershipDirectoryOptions,
+} from "./internal/memberships.js";
+export {
+  isSystemRole,
+  MERCHANT_SCOPES,
+  scopesForRole,
+  SYSTEM_ROLES,
+  type SystemRole,
+} from "./internal/roles.js";
 export {
   LOGIN_THROTTLE_RULES,
   LoginThrottle,

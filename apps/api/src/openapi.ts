@@ -132,6 +132,8 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
     statuses.add(415);
   }
   statuses.add(429);
+  // Kaputte Kopfzeile Shop-Id (nicht genau einmal oder keine UUID).
+  if (endpoint.api === "admin") statuses.add(400);
   if (endpoint.idempotency !== "none") {
     statuses.add(400);
     statuses.add(409);
@@ -175,6 +177,18 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
     ...parameters(endpoint.params, "path", collector),
     ...parameters(endpoint.query, "query", collector),
   ];
+  if (endpoint.api === "admin") {
+    // Optional in OpenAPI, weil API-Token (später) ihren Shop selbst mitbringen (Architektur 4.2).
+    params.push({
+      name: "Shop-Id",
+      in: "header",
+      required: false,
+      description:
+        "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus " +
+        "shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+      schema: { type: "string", format: "uuid" },
+    });
+  }
   if (endpoint.idempotency !== "none") {
     params.push({
       name: "Idempotency-Key",
