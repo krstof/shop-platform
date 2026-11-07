@@ -36,9 +36,9 @@
     "@eslint/js": "^10.0.1",
     "@shop/config": "workspace:*",
     "@shop/testing": "workspace:*",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.6",
     "dependency-cruiser": "^18.7.0",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "globals": "^17.13.0",
     "kysely": "0.29.7",
     "kysely-codegen": "0.20.0",
@@ -46,8 +46,8 @@
     "prettier": "^3.9.10",
     "prettier-plugin-astro": "1.1.2",
     "turbo": "^2.11.10",
-    "typescript": "~6.0.3",
-    "typescript-eslint": "^8.72.0",
+    "typescript": "~7.0.2",
+    "typescript-eslint": "^8.72.1",
     "yaml": "^2.9.1"
   }
 }
