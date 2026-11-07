@@ -5,9 +5,116 @@
     "description": "API der Plattform-Verwaltung (Betreiber). Kein Zugriff auf Shopdaten.",
     "version": "1.0.0"
   },
-  "paths": {},
+  "paths": {
+    "/platform/v1/operator": {
+      "get": {
+        "operationId": "getPlatformOperator",
+        "summary": "Wer bin ich als Betreiber",
+        "description": "Liefert das Betreiberkonto der Sitzung und seine Rolle. Nur mit bestätigtem zweitem Faktor; ohne Zwei-Faktor oder ohne Betreiberkonto 403. Die Sitzung endet nach 1 Stunde ohne Aktivität, spätestens 12 Stunden nach der Anmeldung.",
+        "tags": [
+          "Plattform"
+        ],
+        "responses": {
+          "200": {
+            "description": "Betreiberkonto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformOperator"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "platform:read"
+        ]
+      }
+    }
+  },
   "components": {
     "schemas": {
+      "PlatformOperator": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "operator",
+              "support",
+              "viewer"
+            ],
+            "description": "owner: Inhaber der Plattform, operator: Betrieb, support: Hilfe für Händler, viewer: nur lesen."
+          }
+        },
+        "required": [
+          "userId",
+          "role"
+        ],
+        "additionalProperties": false
+      },
       "Problem": {
         "type": "object",
         "properties": {

@@ -2,7 +2,7 @@
 // Mitgliedschaft in einem aktiven Shop. Alles andere ergibt eine Sitzung ohne Shop und ohne Rechte.
 import type { ActiveSession, Membership } from "@shop/identity";
 import { uuidv7 } from "@shop/kernel";
-import type { ShopSummary, TenantStatus } from "@shop/platform";
+import type { OperatorRole, ShopSummary, TenantStatus } from "@shop/platform";
 import { describe, expect, it } from "vitest";
 import { requestedShopId, sessionResolver, shopsOfUser, type RequestHeaders } from "./actor.js";
 
@@ -19,6 +19,7 @@ const session: ActiveSession = {
   email: "inhaberin@teeladen.example",
   createdAt: new Date(),
   expiresAt: new Date(),
+  secondFactor: "not_enrolled",
 };
 
 const memberships: Membership[] = [
@@ -34,12 +35,21 @@ const shopStatus: Record<string, TenantStatus> = {
   [SUSPENDED]: "suspended",
 };
 
-function deps() {
+function deps(options: { secondFactor?: ActiveSession["secondFactor"]; operatorRole?: OperatorRole } = {}) {
   const calls: string[] = [];
+  const s: ActiveSession = { ...session, secondFactor: options.secondFactor ?? session.secondFactor };
   return {
     calls,
     identity: {
-      getSession: async (cookie: string | undefined) => (cookie === COOKIE ? session : undefined),
+      getSession: async (cookie: string | undefined) => (cookie === COOKIE ? s : undefined),
+    },
+    operators: {
+      findOperator: async (userId: string) => {
+        calls.push("operator");
+        return userId === USER && options.operatorRole !== undefined
+          ? { userId, role: options.operatorRole }
+          : undefined;
+      },
     },
     memberships: {
       findMembership: async (userId: string, tenantId: string) => {
@@ -114,6 +124,45 @@ describe("Shop-Id und Mitgliedschaft (Architektur 4.2, Sicherheit 5.3)", () => {
 
   it("Groß- und Kleinschreibung der UUID und Leerzeichen sind egal", () => {
     expect(requestedShopId({ "shop-id": `  ${OWN.toUpperCase()} ` })).toBe(OWN);
+  });
+});
+
+describe("Betreiberkonto und Platform-API (E6 Teil 4, ADR-011)", () => {
+  const platform = (o: Parameters<typeof deps>[0]) =>
+    sessionResolver(deps(o))({ headers: { cookie: COOKIE } });
+
+  it("Betreiber mit bestätigtem zweitem Faktor: Berechtigungen der Platform-API, kein Shop", async () => {
+    const a = await platform({ secondFactor: "verified", operatorRole: "owner" });
+    expect([...(a?.scopes ?? [])].sort()).toEqual(["platform:read", "platform:write"]);
+    expect(a?.tenantId).toBeUndefined();
+  });
+
+  it("Rollen support und viewer dürfen nur lesen", async () => {
+    for (const role of ["support", "viewer"] as const) {
+      const a = await platform({ secondFactor: "verified", operatorRole: role });
+      expect([...(a?.scopes ?? [])]).toEqual(["platform:read"]);
+    }
+  });
+
+  it("Betreiber ohne eingerichteten zweiten Faktor: angemeldet, aber ohne Platform-Rechte", async () => {
+    const d = deps({ secondFactor: "not_enrolled", operatorRole: "owner" });
+    const a = await sessionResolver(d)({ headers: { cookie: COOKIE } });
+    expect(a?.scopes.size).toBe(0);
+    // Ohne zweiten Faktor wird gar nicht erst nachgesehen.
+    expect(d.calls).toEqual([]);
+  });
+
+  it("bestätigter zweiter Faktor allein macht niemanden zum Betreiber", async () => {
+    const a = await platform({ secondFactor: "verified" });
+    expect(a?.scopes.size).toBe(0);
+  });
+
+  it("Betreiber mit Shop-Id bekommt nur die Rechte im Shop, nie platform:*", async () => {
+    const a = await sessionResolver(deps({ secondFactor: "verified", operatorRole: "owner" }))({
+      headers: { cookie: COOKIE, "shop-id": OWN },
+    });
+    expect(a?.tenantId).toBe(OWN);
+    expect(a?.scopes.has("platform:read")).toBe(false);
   });
 });
 

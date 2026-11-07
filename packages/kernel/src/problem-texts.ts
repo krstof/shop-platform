@@ -11,6 +11,10 @@ export const PROBLEM_TITLES: Readonly<Record<string, Texts>> = {
   unauthenticated: { de: "Bitte melde dich an.", en: "Please sign in." },
   forbidden: { de: "Dafür fehlt die Berechtigung.", en: "You are not allowed to do this." },
   invalid_credentials: { de: "E-Mail oder Passwort ist falsch.", en: "Email or password is incorrect." },
+  invalid_second_factor: {
+    de: "Der Code ist falsch oder abgelaufen.",
+    en: "The code is wrong or has expired.",
+  },
   cross_origin_rejected: {
     de: "Anfrage von einer fremden Seite abgelehnt.",
     en: "Request from another site rejected.",

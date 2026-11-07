@@ -78,6 +78,16 @@ export class InvalidCredentialsError extends AppError {
   readonly title = "E-Mail oder Passwort ist falsch.";
 }
 
+/**
+ * Zweiter Faktor falsch, schon benutzt oder abgelaufen (E6 Teil 4, Sicherheit 5.2). Ob ein Code nur
+ * vertippt oder schon verbraucht ist, verrät die Antwort nicht.
+ */
+export class InvalidSecondFactorError extends AppError {
+  readonly status = 401;
+  readonly code = "invalid_second_factor";
+  readonly title = "Der Code ist falsch oder abgelaufen.";
+}
+
 /** Ändernde Anfrage von einer fremden Webseite (CSRF, Sicherheit 5.5, B-11). */
 export class CrossOriginRejectedError extends AppError {
   readonly status = 403;

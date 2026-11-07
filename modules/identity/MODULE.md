@@ -13,7 +13,7 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Fassade (heute):** `createIdentityService(options)` liefert `createUser`, `signIn`, `getSession`, `signOut`, `close`. Dazu `checkNewPassword` und die Konstanten zum Cookie und zur Sitzungsdauer.
 
-**Fassade (geplant):** getActor(token) für API-Token, createApiToken(...), Einladungen
+**Fassade (geplant):** getActor(token) für API-Token, createApiToken(...), Einladungen, Zwei-Faktor zurücksetzen
 
 **Aufbau innen** (`src/internal/`):
 - `auth.ts`: Better Auth 1.7.14 (fest), nur E-Mail und Passwort, keine Selbst-Registrierung, keine Plugins, eingebaute Bremse aus, eigener Pool als `shop_auth`, Cookie `__Host-shop_session`, kein Sitzungs-Cache im Cookie.
@@ -39,3 +39,13 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 - Mitgliedschaften (`src/internal/memberships.ts`): `createMembershipDirectory({ database })` mit `listMemberships(userId)` und `findMembership(userId, tenantId)`. Läuft als shop_app über `withUserTransaction` (RLS über `kernel.current_user_id()`). Zählt nur `status = 'active'`, Systemrollen und aktive Konten; eigene Rollen (`custom`) geben bis Welle 5 nichts.
 - `authEndpoints(identity, { shopsOfUser })`: „Anmelden“ und „Wer bin ich“ liefern zusätzlich `shops` (id, handle, name, role). Die Funktion setzt `apps/api` zusammen (identity plus platform).
 - Bewusst noch nicht da: Einladungen und Mitarbeiter entfernen, „Passwort vergessen“, Zwei-Faktor und Zugang des Betreibers zur Platform-API, API-Token, erneute Passworteingabe nach 15 Minuten.
+
+## Stand E6 Teil 4 (07.11.2026)
+
+- Zwei-Faktor nach TOTP ohne Better-Auth-Plugin (ADR-011): `src/internal/totp.ts` (RFC 6238, Ersatzcodes), Regeln für Sitzungen in `src/internal/session-rules.ts`.
+- Fassade neu: `verifySecondFactor(cookie, code)`, `startTwoFactorSetup({ cookie, password, ipAddress })`, `confirmTwoFactorSetup(cookie, code)`. `signIn` meldet `secondFactorRequired`, `getSession` liefert `secondFactor` (`verified` oder `not_enrolled`) und nie eine wartende Sitzung.
+- Pflicht-Option `secretBox` (Hauptschlüssel, `createSecretBox` aus dem kernel), optional `sessionKindOf(userId)` für die strengeren Betreiberregeln.
+- Migration `20261107T090000_two_factor.sql`: `two_factor.last_used_step`, `session.two_factor_verified_at`, `session.two_factor_failures`, `session.last_seen_at`.
+- Endpunkte: `POST /auth/v1/two-factor/verify`, `/setup`, `/enable`.
+- Tests: `totp.test.ts`, `two-factor.db.test.ts`.
+- Bewusst noch nicht da: Zwei-Faktor ausschalten oder zurücksetzen, neue Ersatzcodes erzeugen, Passkeys (Welle 2).

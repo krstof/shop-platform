@@ -11,6 +11,7 @@ import { sessionResolver } from "./actor.js";
 const noShops = {
   memberships: { findMembership: async () => undefined },
   shops: { getShops: async () => [] },
+  operators: { findOperator: async () => undefined },
 };
 import { createApi } from "./app.js";
 import { allEndpoints, unconnectedDatabase } from "./endpoints.js";
@@ -44,6 +45,7 @@ function fakeIdentity() {
         createdAt: new Date("2026-11-06T12:00:00Z"),
         expiresAt: new Date("2026-11-07T00:00:00Z"),
         setCookie: SET_COOKIE,
+        secondFactorRequired: false,
       };
     },
     getSession: async (cookie) =>
@@ -54,12 +56,16 @@ function fakeIdentity() {
             email: "inhaberin@teeladen.example",
             createdAt: new Date("2026-11-06T12:00:00Z"),
             expiresAt: new Date("2026-11-07T00:00:00Z"),
+            secondFactor: "not_enrolled" as const,
           }
         : undefined,
     signOut: async (cookie) => {
       signedOut.push(cookie);
       return { clearCookie: CLEAR };
     },
+    verifySecondFactor: async () => ({ ok: false, reason: "no_session" }),
+    startTwoFactorSetup: async () => ({ ok: false, reason: "no_session" }),
+    confirmTwoFactorSetup: async () => ({ ok: false, reason: "no_session" }),
     close: async () => undefined,
   };
   return { identity, calls, signedOut };
@@ -165,6 +171,7 @@ describe("Anmelden über die Auth-API", () => {
       user: { id: USER, email: "inhaberin@teeladen.example" },
       session: { id: SESSION, createdAt: "2026-11-06T12:00:00.000Z", expiresAt: "2026-11-07T00:00:00.000Z" },
       shops: [],
+      secondFactor: "not_enrolled",
     });
     // Das Token steht nie im Inhalt.
     expect(r.body).not.toContain("gueltig");

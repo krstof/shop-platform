@@ -1,9 +1,9 @@
 // Startet den Kern-Server. Einstellungen kommen aus der Umgebung (siehe config.ts).
 // Anmeldung über das Sitzungs-Cookie (E6 Teil 2), Shop und Rolle über die Kopfzeile Shop-Id und die
-// Mitgliedschaft (E6 Teil 3); API-Token folgen später.
+// Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4); API-Token folgen später.
 import { createIdentityService, createMembershipDirectory } from "@shop/identity";
-import { ConfigError, connectDatabase, createLogger } from "@shop/kernel";
-import { createShopDirectory } from "@shop/platform";
+import { ConfigError, connectDatabase, createLogger, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
+import { createOperatorDirectory, createShopDirectory } from "@shop/platform";
 import { sessionResolver, shopsOfUser } from "./actor.js";
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
@@ -19,8 +19,18 @@ async function main(): Promise<void> {
     onConnectionError: (error) =>
       logger.warn({ err: error }, "Datenbankverbindung abgebrochen, wird neu aufgebaut"),
   });
+  const operators = createOperatorDirectory({ database });
   // Eigener kleiner Pool als shop_auth, nur im Modul identity (ADR-008).
   const identity = createIdentityService({
+    secretBox: createSecretBox(
+      masterKeysFromEnv({
+        SHOP_MASTER_KEY_V1: config.SHOP_MASTER_KEY_V1,
+        SHOP_MASTER_KEY_V2: config.SHOP_MASTER_KEY_V2,
+      }),
+    ),
+    // Betreiberkonten: 1 Stunde ohne Aktivität, höchstens 12 Stunden (Sicherheit 5.2).
+    sessionKindOf: async (userId) =>
+      (await operators.findOperator(userId)) === undefined ? "standard" : "operator",
     connectionString: config.SHOP_AUTH_DATABASE_URL,
     secret: config.SHOP_AUTH_SECRET,
     baseUrl: config.SHOP_ALLOWED_ORIGINS[0] ?? `https://admin.${config.SHOP_DOMAIN}`,
@@ -31,8 +41,13 @@ async function main(): Promise<void> {
   const memberships = createMembershipDirectory({ database });
   const shops = createShopDirectory({ database });
   const app = await createApi({
-    endpoints: allEndpoints({ database, identity, shopsOfUser: shopsOfUser({ memberships, shops }) }),
-    resolveActor: sessionResolver({ identity, memberships, shops }),
+    endpoints: allEndpoints({
+      database,
+      identity,
+      operators,
+      shopsOfUser: shopsOfUser({ memberships, shops }),
+    }),
+    resolveActor: sessionResolver({ identity, memberships, shops, operators }),
     logger,
     idempotency: databaseIdempotencyStore(database),
     allowedOrigins: config.SHOP_ALLOWED_ORIGINS,

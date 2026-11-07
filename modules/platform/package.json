@@ -2,7 +2,7 @@
   "name": "@shop/platform",
   "version": "0.0.0",
   "private": true,
-  "description": "Modul platform: H\u00e4ndler, Shops (Mandanten), Tarife, Domains (Architektur 3.2)",
+  "description": "Modul platform: Händler, Shops (Mandanten), Tarife, Domains (Architektur 3.2)",
   "license": "UNLICENSED",
   "type": "module",
   "exports": {
@@ -22,8 +22,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@shop/http": "workspace:*",
     "@shop/kernel": "workspace:*",
-    "kysely": "0.29.7"
+    "kysely": "0.29.7",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@shop/config": "workspace:*",

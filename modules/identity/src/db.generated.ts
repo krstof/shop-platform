@@ -97,7 +97,10 @@ export interface IdentitySession {
   id: Generated<string>;
   impersonated_by: string | null;
   ip_address: string | null;
+  last_seen_at: Generated<Timestamp>;
   token_hash: Buffer;
+  two_factor_failures: Generated<number>;
+  two_factor_verified_at: Timestamp | null;
   updated_at: Generated<Timestamp>;
   user_agent: string | null;
   user_id: string;
@@ -108,7 +111,9 @@ export interface IdentityTwoFactor {
   created_at: Generated<Timestamp>;
   enabled_at: Timestamp | null;
   id: Generated<string>;
+  last_used_step: Int8 | null;
   secret_encrypted: Buffer;
+  updated_at: Generated<Timestamp>;
   user_id: string;
 }
 

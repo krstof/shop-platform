@@ -10,7 +10,14 @@ import {
   type IdentityService,
   type MembershipDirectory,
 } from "@shop/identity";
-import { connectDatabase, createLogger, uuidv7, withUserTransaction, type Database } from "@shop/kernel";
+import {
+  connectDatabase,
+  createLogger,
+  createSecretBox,
+  uuidv7,
+  withUserTransaction,
+  type Database,
+} from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
 import { createShopDirectory } from "@shop/platform";
 import { roleUrl } from "@shop/testing";
@@ -99,6 +106,7 @@ describe.skipIf(adminUrl === undefined)("Mitgliedschaften und Rollen (E6 Teil 3,
       applicationName: "api-member-test",
     });
     identity = createIdentityService({
+      secretBox: createSecretBox(new Map([[1, randomBytes(32)]])),
       connectionString: roleUrl(adminUrl ?? "", dbName, "shop_auth"),
       secret: randomBytes(32).toString("base64url"),
       baseUrl: ADMIN,
@@ -136,7 +144,12 @@ describe.skipIf(adminUrl === undefined)("Mitgliedschaften und Rollen (E6 Teil 3,
     const shops = createShopDirectory({ database });
     app = await createApi({
       endpoints: allEndpoints({ database, identity, shopsOfUser: shopsOfUser({ memberships, shops }) }),
-      resolveActor: sessionResolver({ identity, memberships, shops }),
+      resolveActor: sessionResolver({
+        identity,
+        memberships,
+        shops,
+        operators: { findOperator: async () => undefined },
+      }),
       logger: createLogger({ level: "silent" }),
       idempotency: databaseIdempotencyStore(database),
       rateLimiter: new RateLimiter(

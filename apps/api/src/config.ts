@@ -1,5 +1,5 @@
 // Einstellungen des Kern-Servers (Architektur 7.4). Fehlt etwas oder ist es unsicher, startet er nicht.
-import { baseConfigSchema, loadConfig, port, postgresUrl, secret } from "@shop/kernel";
+import { base64Key, baseConfigSchema, loadConfig, port, postgresUrl, secret } from "@shop/kernel";
 import { z } from "zod";
 
 function roleUrl(role: string) {
@@ -22,6 +22,12 @@ export const apiConfigSchema = baseConfigSchema.extend({
   SHOP_AUTH_DATABASE_URL: roleUrl("shop_auth"),
   /** Geheimnis zum Signieren der Sitzungs-Cookies (Sicherheit 5.10). */
   SHOP_AUTH_SECRET: secret(32),
+  /**
+   * Hauptschlüssel für TOTP-Geheimnisse und Ersatzcodes (Envelope Encryption, Sicherheit 5.10).
+   * Für einen Schlüsselwechsel kommt SHOP_MASTER_KEY_V2 dazu; V1 bleibt, bis alles umgeschlüsselt ist.
+   */
+  SHOP_MASTER_KEY_V1: base64Key(32),
+  SHOP_MASTER_KEY_V2: base64Key(32).optional(),
   SHOP_API_HOST: z.union([z.ipv4(), z.ipv6()]).default("127.0.0.1"),
   SHOP_API_PORT: port().default(3000),
   /** Adresse des Reverse Proxy (Caddy). Nur er darf die Absenderadresse weitergeben. */

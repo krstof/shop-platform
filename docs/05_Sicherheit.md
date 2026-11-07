@@ -171,7 +171,7 @@ Ausführlich beschrieben in Architektur Kapitel 5 und Datenmodell Kapitel 2.6. K
 | Abmelden überall | Bei Passwortänderung und auf Knopfdruck werden alle anderen Sitzungen beendet. Der Händler sieht seine aktiven Sitzungen mit Gerät und ungefährem Ort. | Muss |
 | Einmalcodes | Für E-Mail-Bestätigung, „Passwort vergessen“ und Einladungen: 32 Byte Zufall, nur der Hash in der Datenbank, einmal verwendbar, Ablauf nach 30 Minuten (Einladungen 7 Tage). „Passwort vergessen“ verrät nicht, ob es die E-Mail gibt. | Muss |
 | API-Token | Präfix `shp_at_`, 32 Byte Zufall, nur der Hash gespeichert, immer an genau einen Shop und eine Liste von Berechtigungen gebunden, optional Ablaufdatum, jederzeit widerrufbar, letzte Nutzung sichtbar. Das Token wird nur einmal beim Anlegen angezeigt. | Muss |
-| Zwei-Faktor und Passkeys | Für das **Betreiberkonto** schon in Welle 1 Pflicht (Code aus einer Authenticator-App nach TOTP, dazu Ersatzcodes; Entscheidung Kristof 28.10.2026). Für Händler ab Welle 2 (SIC-09). | Muss (Betreiber Welle 1, Händler Welle 2) |
+| Zwei-Faktor und Passkeys | Für das **Betreiberkonto** schon in Welle 1 Pflicht (Code aus einer Authenticator-App nach TOTP, dazu Ersatzcodes; Entscheidung Kristof 28.10.2026). Für Händler ab Welle 2 (SIC-09). **Umgesetzt 07.11.2026 (E6 Teil 4, ADR-011):** jeder Code nur einmal, 5 falsche Codes beenden die Sitzung, Geheimnis mit Hauptschlüssel verschlüsselt, Platform-API nur mit bestätigtem Code. | Muss (Betreiber Welle 1, Händler Welle 2) |
 | Neue Anmeldung von unbekanntem Gerät | E-Mail an den Kontoinhaber | Wäre gut |
 | Kundenkonten der Storefront | erst ab Welle 2, dann mit denselben Regeln und eigener Cookie-Domain je Shop | Welle 2 |
 

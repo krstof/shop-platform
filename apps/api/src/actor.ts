@@ -4,9 +4,11 @@
 // das Konto dort eine aktive Mitgliedschaft hat und der Shop aktiv ist. Dann kommen die
 // Berechtigungen aus der Rolle (owner oder staff). Sonst bleibt die Sitzung ohne Shop und ohne
 // Berechtigungen, und die Admin-API antwortet 403. Ob es den Shop gibt, verrät die Antwort nicht.
-// Betreiberkonten (Platform-API, mit Zwei-Faktor) und API-Token folgen in späteren Teilen von E6.
+// Seit E6 Teil 4 auch Betreiberkonten: Ohne Shop-Id bekommt ein aktives Betreiberkonto die
+// Berechtigungen der Platform-API, aber nur mit bestätigtem zweitem Faktor (ADR-011). API-Token
+// folgen in E6 Teil 5.
 // Tests setzen eine eigene Auflösung ein.
-import type { AuthenticatedActor } from "@shop/http";
+import type { AuthenticatedActor, Scope } from "@shop/http";
 import {
   scopesForRole,
   type IdentityService,
@@ -14,7 +16,7 @@ import {
   type ShopOfUser,
 } from "@shop/identity";
 import { isUuid } from "@shop/kernel";
-import type { ShopDirectory } from "@shop/platform";
+import type { OperatorDirectory, OperatorRole, ShopDirectory } from "@shop/platform";
 
 export interface RequestHeaders {
   readonly [name: string]: string | string[] | undefined;
@@ -46,6 +48,14 @@ export interface SessionResolverDependencies {
   readonly identity: Pick<IdentityService, "getSession">;
   readonly memberships: Pick<MembershipDirectory, "findMembership">;
   readonly shops: Pick<ShopDirectory, "getShops">;
+  readonly operators: Pick<OperatorDirectory, "findOperator">;
+}
+
+/** Berechtigungen der Platform-API je Betreiberrolle (Sicherheit 5.3). */
+export function platformScopesForRole(role: OperatorRole): ReadonlySet<Scope> {
+  return role === "owner" || role === "operator"
+    ? new Set<Scope>(["platform:read", "platform:write"])
+    : new Set<Scope>(["platform:read"]);
 }
 
 /** Akteur aus dem Sitzungs-Cookie. Abgelaufene, beendete oder gefälschte Sitzungen ergeben `undefined`. */
@@ -55,7 +65,14 @@ export function sessionResolver(deps: SessionResolverDependencies): ActorResolve
     if (session === undefined) return undefined;
     const signedIn: AuthenticatedActor = { actor: { type: "user", id: session.userId }, scopes: new Set() };
     const shopId = requestedShopId(headers);
-    if (shopId === undefined) return signedIn;
+    if (shopId === undefined) {
+      // Platform-API: nur Betreiber, nur mit bestätigtem zweitem Faktor.
+      if (session.secondFactor !== "verified") return signedIn;
+      const operator = await deps.operators.findOperator(session.userId);
+      return operator === undefined
+        ? signedIn
+        : { ...signedIn, scopes: platformScopesForRole(operator.role) };
+    }
     const membership = await deps.memberships.findMembership(session.userId, shopId);
     if (membership === undefined) return signedIn;
     const [shop] = await deps.shops.getShops([shopId]);

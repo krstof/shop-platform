@@ -8,3 +8,12 @@ export {
   type ShopSummary,
   type TenantStatus,
 } from "./internal/shops.js";
+export {
+  createOperatorDirectory,
+  OPERATOR_ROLES,
+  type Operator,
+  type OperatorDirectory,
+  type OperatorDirectoryOptions,
+  type OperatorRole,
+} from "./internal/operators.js";
+export { platformEndpoints, type PlatformEndpointOptions } from "./http/platform.js";

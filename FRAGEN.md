@@ -6,6 +6,8 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 1. **Gesperrter Shop: Darf der Händler noch ins Backoffice, nur zum Lesen?** Wenn du als Betreiber einen Shop sperrst, kommt der Händler heute gar nicht mehr hinein (sicherer Standard). Shopify lässt gesperrte Händler zum Beispiel noch Rechnungen und Daten ansehen. Antwort: „gesperrt“ (so lassen) oder „lesen“.
 2. **Dürfen Mitarbeiter das Änderungsprotokoll ihres Shops sehen?** Es zeigt, wer wann was geändert hat. Umgesetzt ist „ja“ (meine Empfehlung, weil es nur den eigenen Shop betrifft und Fehler leichter finden lässt). Antwort: „ja“ oder „nein“ (dann nur die Inhaberin).
+3. **Handy weg und Ersatzcodes weg: Wie kommst du wieder in die Plattform-Verwaltung?** Für das Betreiberkonto gibt es jetzt Zwei-Faktor mit einer Authenticator-App und 10 Ersatzcodes. Gehen beide verloren, braucht es einen Notweg. Meine Empfehlung: Ich setze es auf deine Bitte hin auf dem Server zurück (sicher, aber nur mit mir). Bequemer, aber schwächer wäre ein Link per E-Mail. Antwort: „Claude“ oder „E-Mail“.
+4. **Sollen Händler Zwei-Faktor schon jetzt freiwillig einschalten dürfen?** Geplant ist Zwei-Faktor für Händler erst in Welle 2. Technisch funktioniert es jetzt schon für jedes Konto, Pflicht ist es nur für dich als Betreiber. Antwort: „freiwillig“ (so lassen, meine Empfehlung) oder „später“ (bis Welle 2 nur für Betreiber).
 
 ## Beantwortet
 

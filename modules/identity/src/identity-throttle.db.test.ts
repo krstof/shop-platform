@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createSecretBox } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
 import { roleUrl } from "@shop/testing";
 import pg from "pg";
@@ -33,6 +34,7 @@ describe.skipIf(adminUrl === undefined)("T-10: Bremse und Sperre der Anmeldung (
 
   function service(): IdentityService {
     const s = createIdentityService({
+      secretBox: createSecretBox(new Map([[1, randomBytes(32)]])),
       connectionString: connection,
       secret,
       baseUrl: "https://admin.localhost",

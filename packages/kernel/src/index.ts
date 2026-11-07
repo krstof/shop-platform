@@ -10,6 +10,7 @@ export * from "./context.js";
 export * from "./config.js";
 export * from "./ip.js";
 export * from "./logger.js";
+export * from "./secret-box.js";
 export {
   connectDatabase,
   withTenantTransaction,

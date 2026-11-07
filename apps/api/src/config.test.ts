@@ -9,6 +9,7 @@ const base = {
   SHOP_APP_DATABASE_URL: "postgres://shop_app:x@db/shop",
   SHOP_AUTH_DATABASE_URL: "postgres://shop_auth:x@db/shop",
   SHOP_AUTH_SECRET: randomBytes(32).toString("base64url"),
+  SHOP_MASTER_KEY_V1: randomBytes(32).toString("base64"),
 };
 
 describe("Einstellungen der API", () => {
@@ -34,6 +35,16 @@ describe("Einstellungen der API", () => {
     const { SHOP_AUTH_SECRET: _s, ...without } = base;
     void _s;
     expect(() => loadApiConfig(without)).toThrow(/SHOP_AUTH_SECRET: fehlt/);
+  });
+
+  it("verlangt einen Hauptschlüssel mit genau 32 Byte (Zwei-Faktor, Sicherheit 5.10)", () => {
+    const { SHOP_MASTER_KEY_V1: _k, ...without } = base;
+    void _k;
+    expect(() => loadApiConfig(without)).toThrow(/SHOP_MASTER_KEY_V1: fehlt/);
+    expect(() => loadApiConfig({ ...base, SHOP_MASTER_KEY_V1: randomBytes(16).toString("base64") })).toThrow(
+      /SHOP_MASTER_KEY_V1: muss genau 32 Byte lang sein/,
+    );
+    expect(() => loadApiConfig({ ...base, SHOP_MASTER_KEY_V1: "__KEY32__" })).toThrow(/SHOP_MASTER_KEY_V1/);
   });
 
   it("verlangt außerhalb von local TLS zur Datenbank", () => {

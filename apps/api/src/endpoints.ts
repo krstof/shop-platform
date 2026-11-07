@@ -5,6 +5,7 @@ import { catalogEndpoints } from "@shop/catalog";
 import type { Endpoint } from "@shop/http";
 import { authEndpoints, type IdentityService, type ShopOfUser } from "@shop/identity";
 import type { Database } from "@shop/kernel";
+import { platformEndpoints, type OperatorDirectory } from "@shop/platform";
 
 export interface EndpointDependencies {
   readonly database: Database<unknown>;
@@ -12,6 +13,8 @@ export interface EndpointDependencies {
   readonly identity?: IdentityService;
   /** Shops eines Kontos für „Wer bin ich“ (actor.ts, shopsOfUser). Ohne Angabe: keine Shops. */
   readonly shopsOfUser?: (userId: string) => Promise<readonly ShopOfUser[]>;
+  /** Betreiberkonten (Modul platform). Ohne Angabe: niemand ist Betreiber. */
+  readonly operators?: Pick<OperatorDirectory, "findOperator">;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
@@ -22,6 +25,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       deps.identity ?? unconnectedIdentity,
       deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser },
     ),
+    ...platformEndpoints({ operators: deps.operators ?? { findOperator: async () => undefined } }),
   ];
 }
 
@@ -41,5 +45,8 @@ export const unconnectedIdentity: IdentityService = {
   signIn: notConnected,
   getSession: notConnected,
   signOut: notConnected,
+  verifySecondFactor: notConnected,
+  startTwoFactorSetup: notConnected,
+  confirmTwoFactorSetup: notConnected,
   close: async () => undefined,
 };

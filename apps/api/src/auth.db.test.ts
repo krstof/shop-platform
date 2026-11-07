@@ -11,7 +11,7 @@ import {
   LoginThrottle,
   type IdentityService,
 } from "@shop/identity";
-import { connectDatabase, createLogger, type Database } from "@shop/kernel";
+import { connectDatabase, createLogger, createSecretBox, type Database } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
 import { createShopDirectory } from "@shop/platform";
 import { roleUrl } from "@shop/testing";
@@ -81,6 +81,7 @@ describe.skipIf(adminUrl === undefined)("Auth-API Ende zu Ende (echte Datenbank)
       applicationName: "api-auth-test",
     });
     identity = createIdentityService({
+      secretBox: createSecretBox(new Map([[1, randomBytes(32)]])),
       connectionString: roleUrl(adminUrl ?? "", dbName, "shop_auth"),
       secret: randomBytes(32).toString("base64url"),
       baseUrl: ADMIN,
@@ -94,6 +95,7 @@ describe.skipIf(adminUrl === undefined)("Auth-API Ende zu Ende (echte Datenbank)
         identity,
         memberships: createMembershipDirectory({ database }),
         shops: createShopDirectory({ database }),
+        operators: { findOperator: async () => undefined },
       }),
       logger: createLogger({ level: "silent" }),
       idempotency: databaseIdempotencyStore(database),

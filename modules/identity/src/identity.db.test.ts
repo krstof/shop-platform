@@ -4,6 +4,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createSecretBox } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
 import { roleUrl } from "@shop/testing";
 import pg from "pg";
@@ -60,6 +61,7 @@ describe.skipIf(adminUrl === undefined)("Anmeldung mit Better Auth (echte Datenb
     inspect = new pg.Client({ connectionString: setupUrl.href });
     await inspect.connect();
     identity = createIdentityService({
+      secretBox: createSecretBox(new Map([[1, randomBytes(32)]])),
       connectionString: roleUrl(adminUrl ?? "", dbName, "shop_auth"),
       secret: randomBytes(32).toString("base64url"),
       baseUrl: "https://admin.localhost",

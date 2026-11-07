@@ -1,10 +1,19 @@
 // Endpunkte der Auth-API (E6 Teil 2, PLA-04, Sicherheit 5.2, ADR-010): Anmelden, Abmelden und
-// „Wer bin ich“. Seit E6 Teil 3 nennen „Anmelden“ und „Wer bin ich“ auch die Shops des Kontos. Better Auth selbst bekommt keinen HTTP-Zugang; diese drei Endpunkte laufen wie
+// „Wer bin ich“. Seit E6 Teil 3 nennen „Anmelden“ und „Wer bin ich“ auch die Shops des Kontos.
+// Seit E6 Teil 4 (ADR-011) gibt es den zweiten Faktor: Code nach dem Passwort eingeben und
+// Zwei-Faktor einrichten. Better Auth selbst bekommt keinen HTTP-Zugang; alle Endpunkte laufen wie
 // alle anderen durch den Vertrag (Zod, OpenAPI, Anfragebremse, Herkunftsprüfung im Router).
 import { defineEndpoint, type ClientInfo, type Endpoint } from "@shop/http";
-import { InvalidCredentialsError, RateLimitedError, UnauthorizedError } from "@shop/kernel";
+import {
+  ConflictError,
+  InvalidCredentialsError,
+  InvalidSecondFactorError,
+  RateLimitedError,
+  UnauthorizedError,
+  ValidationError,
+} from "@shop/kernel";
 import { z } from "zod";
-import type { IdentityService } from "../internal/identity-service.js";
+import type { ActiveSession, IdentityService } from "../internal/identity-service.js";
 import { SYSTEM_ROLES, type SystemRole } from "../internal/roles.js";
 
 /** Ein Shop, zu dem das Konto gehört, wie die Shop-Auswahl im Backoffice ihn zeigt. */
@@ -49,9 +58,37 @@ export const currentSessionSchema = z
     }),
     shops: z
       .array(shopOfUserSchema)
-      .describe("Shops, in denen das Konto arbeiten darf. Leer, solange es zu keinem aktiven Shop gehört."),
+      .describe(
+        "Shops, in denen das Konto arbeiten darf. Leer, solange es zu keinem aktiven Shop gehört " +
+          "oder der zweite Faktor noch fehlt.",
+      ),
+    secondFactor: z
+      .enum(["required", "verified", "not_enrolled"])
+      .describe(
+        "required: Passwort stimmt, jetzt den Code aus der Authenticator-App an " +
+          "POST /auth/v1/two-factor/verify schicken (innerhalb von 10 Minuten); bis dahin gilt die " +
+          "Sitzung nirgends. verified: zweiter Faktor bestätigt. not_enrolled: Konto ohne zweiten Faktor.",
+      ),
   })
   .meta({ id: "CurrentSession" });
+
+const twoFactorSetupSchema = z
+  .object({
+    secret: z.string().describe("Geheimnis zum Abtippen in die App (Base32), falls kein QR-Code geht."),
+    otpauthUri: z.string().describe("Inhalt des QR-Codes für die Authenticator-App."),
+    backupCodes: z
+      .array(z.string())
+      .describe("10 Ersatzcodes, je einmal gültig. Werden nur jetzt gezeigt; sicher aufbewahren."),
+  })
+  .meta({ id: "TwoFactorSetup" });
+
+const codeInput = z.strictObject({
+  code: z
+    .string()
+    .min(1)
+    .max(64)
+    .describe("6 Ziffern aus der Authenticator-App oder ein Ersatzcode wie abcde-fghjk."),
+});
 
 /**
  * Anmeldedaten. Bewusst locker in Länge und Format: Eine ungültige E-Mail bekommt dieselbe
@@ -75,6 +112,10 @@ function iso(d: Date): string {
   return d.toISOString();
 }
 
+function sessionBody(s: ActiveSession) {
+  return { id: s.sessionId, createdAt: iso(s.createdAt), expiresAt: iso(s.expiresAt) };
+}
+
 export function authEndpoints(identity: IdentityService, options: AuthEndpointOptions = {}): Endpoint[] {
   const shopsOf = async (userId: string) => [...((await options.shopsOfUser?.(userId)) ?? [])];
 
@@ -88,7 +129,9 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
       "Meldet mit E-Mail und Passwort an und setzt das Sitzungs-Cookie __Host-shop_session " +
       "(HttpOnly, Secure, SameSite=Lax). Eine schon vorhandene Sitzung dieses Browsers wird beendet. " +
       "Unbekannte E-Mail und falsches Passwort ergeben dieselbe Antwort. Nach 5 Fehlversuchen je Konto " +
-      "oder Netz kommt 429 mit wachsender Wartezeit (höchstens 60 s), nach 20 wird das Konto 15 Minuten gesperrt.",
+      "oder Netz kommt 429 mit wachsender Wartezeit (höchstens 60 s), nach 20 wird das Konto 15 Minuten gesperrt. " +
+      "Hat das Konto Zwei-Faktor, steht in der Antwort secondFactor: required; die Sitzung gilt dann erst nach " +
+      "POST /auth/v1/two-factor/verify.",
     tags: ["Anmeldung"],
     access: { public: true, reason: "Wer sich anmeldet, hat noch keine Sitzung." },
     body: signInInput,
@@ -119,7 +162,9 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
       return {
         user: { id: result.userId, email: result.email },
         session: { id: result.sessionId, createdAt: iso(result.createdAt), expiresAt: iso(result.expiresAt) },
-        shops: await shopsOf(result.userId),
+        // Vor dem zweiten Faktor verrät die Antwort keine Shops.
+        shops: result.secondFactorRequired ? [] : await shopsOf(result.userId),
+        secondFactor: result.secondFactorRequired ? ("required" as const) : ("not_enrolled" as const),
       };
     },
   });
@@ -168,11 +213,135 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
       if (s === undefined) throw new UnauthorizedError();
       return {
         user: { id: s.userId, email: s.email },
-        session: { id: s.sessionId, createdAt: iso(s.createdAt), expiresAt: iso(s.expiresAt) },
+        session: sessionBody(s),
         shops: await shopsOf(s.userId),
+        secondFactor: s.secondFactor,
       };
     },
   });
 
-  return [signIn, signOut, current];
+  const verifySecondFactor = defineEndpoint({
+    api: "auth",
+    method: "POST",
+    path: "/two-factor/verify",
+    operationId: "verifySecondFactor",
+    summary: "Zweiten Faktor eingeben",
+    description:
+      "Zweiter Schritt der Anmeldung für Konten mit Zwei-Faktor: Code aus der Authenticator-App " +
+      "(6 Ziffern, jeder Code gilt nur einmal) oder ein Ersatzcode. Danach gilt die Sitzung. " +
+      "Nach 5 falschen Codes ist die Sitzung beendet und die Anmeldung beginnt mit dem Passwort neu. " +
+      "Falsche, schon benutzte und abgelaufene Codes ergeben dieselbe Antwort.",
+    tags: ["Anmeldung"],
+    access: {
+      public: true,
+      reason: "Die Sitzung wartet noch auf den zweiten Faktor und gilt deshalb noch nicht als angemeldet.",
+    },
+    body: codeInput,
+    bodyExample: { code: "123456" },
+    idempotency: "none",
+    response: { status: 200, description: "Bestätigt. Die Sitzung gilt.", schema: currentSessionSchema },
+    problems: [401, 409, 429],
+    handler: async ({ body, client }) => {
+      const result = await identity.verifySecondFactor(requireClient(client).cookie, body.code);
+      if (!result.ok) {
+        if (result.reason === "not_pending")
+          throw new ConflictError({ detail: "Diese Sitzung braucht keinen Code." });
+        if (result.reason === "no_session")
+          throw new UnauthorizedError({ detail: "Bitte zuerst mit E-Mail und Passwort anmelden." });
+        throw new InvalidSecondFactorError();
+      }
+      const s = result.session;
+      return {
+        user: { id: s.userId, email: s.email },
+        session: sessionBody(s),
+        shops: await shopsOf(s.userId),
+        secondFactor: s.secondFactor,
+      };
+    },
+  });
+
+  const startSetup = defineEndpoint({
+    api: "auth",
+    method: "POST",
+    path: "/two-factor/setup",
+    operationId: "startTwoFactorSetup",
+    summary: "Zwei-Faktor einrichten (Schritt 1)",
+    description:
+      "Prüft das Passwort erneut und erzeugt ein neues Geheimnis für die Authenticator-App samt " +
+      "10 Ersatzcodes. Zwei-Faktor ist danach noch aus; erst POST /auth/v1/two-factor/enable mit " +
+      "einem Code aus der App schaltet es ein (innerhalb von 15 Minuten). Ist Zwei-Faktor schon an, 409.",
+    tags: ["Anmeldung"],
+    access: { signedIn: true },
+    body: z.strictObject({
+      password: z.string().min(1).max(1024).describe("Aktuelles Passwort des Kontos."),
+    }),
+    bodyExample: { password: "drei kleine teekannen" },
+    idempotency: "none",
+    response: {
+      status: 200,
+      description: "Geheimnis und Ersatzcodes. Nur in dieser Antwort sichtbar.",
+      schema: twoFactorSetupSchema,
+    },
+    problems: [401, 409, 429],
+    handler: async ({ body, client }) => {
+      const c = requireClient(client);
+      const result = await identity.startTwoFactorSetup({
+        cookie: c.cookie,
+        password: body.password,
+        ipAddress: c.ip,
+      });
+      if (!result.ok) {
+        if (result.reason === "throttled")
+          throw new RateLimitedError({ retryAfterSeconds: result.retryAfterSeconds });
+        if (result.reason === "already_enabled")
+          throw new ConflictError({ detail: "Zwei-Faktor ist für dieses Konto schon eingeschaltet." });
+        if (result.reason === "no_session") throw new UnauthorizedError();
+        throw new InvalidCredentialsError({ detail: "Das Passwort ist falsch." });
+      }
+      return { ...result.setup, backupCodes: [...result.setup.backupCodes] };
+    },
+  });
+
+  const enable = defineEndpoint({
+    api: "auth",
+    method: "POST",
+    path: "/two-factor/enable",
+    operationId: "enableTwoFactor",
+    summary: "Zwei-Faktor einrichten (Schritt 2)",
+    description:
+      "Schaltet Zwei-Faktor mit einem ersten Code aus der App ein. Diese Sitzung gilt danach als " +
+      "bestätigt, alle anderen Sitzungen des Kontos werden beendet. Falscher Code: 422; nach 5 falschen " +
+      "Codes ist die Sitzung beendet.",
+    tags: ["Anmeldung"],
+    access: { signedIn: true },
+    body: codeInput,
+    bodyExample: { code: "123456" },
+    idempotency: "none",
+    response: { status: 200, description: "Zwei-Faktor ist eingeschaltet.", schema: currentSessionSchema },
+    problems: [401, 409, 429],
+    handler: async ({ body, client, locale }) => {
+      const result = await identity.confirmTwoFactorSetup(requireClient(client).cookie, body.code);
+      if (!result.ok) {
+        if (result.reason === "already_enabled")
+          throw new ConflictError({ detail: "Zwei-Faktor ist für dieses Konto schon eingeschaltet." });
+        if (result.reason === "no_setup")
+          throw new ConflictError({
+            detail: "Keine begonnene Einrichtung (oder älter als 15 Minuten). Bitte neu beginnen.",
+          });
+        if (result.reason === "no_session") throw new UnauthorizedError();
+        const message =
+          locale === "en" ? "The code is wrong or has expired." : "Der Code ist falsch oder abgelaufen.";
+        throw new ValidationError({ errors: [{ path: "/body/code", code: "invalid_code", message }] });
+      }
+      const s = result.session;
+      return {
+        user: { id: s.userId, email: s.email },
+        session: sessionBody(s),
+        shops: await shopsOf(s.userId),
+        secondFactor: s.secondFactor,
+      };
+    },
+  });
+
+  return [signIn, signOut, current, verifySecondFactor, startSetup, enable];
 }

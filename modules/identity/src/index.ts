@@ -9,7 +9,18 @@ export {
   type NewUser,
   type SignInRequest,
   type SignInResult,
+  type ConfirmTwoFactorSetupResult,
+  type StartTwoFactorSetupResult,
+  type TwoFactorSetup,
+  type VerifySecondFactorResult,
 } from "./internal/identity-service.js";
+export {
+  MAX_SECOND_FACTOR_FAILURES,
+  PENDING_SECOND_FACTOR_SECONDS,
+  SESSION_RULES,
+  type SessionKind,
+  type SessionRules,
+} from "./internal/session-rules.js";
 export type { AuthOptions as IdentityOptions } from "./internal/auth.js";
 export { SESSION_COOKIE_NAME, SESSION_IDLE_SECONDS, SESSION_MAX_AGE_SECONDS } from "./internal/auth.js";
 export {

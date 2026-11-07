@@ -13,6 +13,8 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Fassade (heute):** `createShopDirectory({ database })` mit `getShops(ids)`: Kennung, Handle, Name und Zustand von Shops, gelesen als shop_app (nur lesen) aus `platform.tenant`. Nutzt `apps/api` für die Shop-Auswahl (nur Shops im Zustand `active` gelten).
 
+**Seit E6 Teil 4:** `createOperatorDirectory({ database })` mit `findOperator(userId)`: aktives Betreiberkonto und Rolle aus `platform.platform_user` (shop_app darf dort nur `user_id`, `role`, `status` lesen, Migration `20261107T090100`). Erster Endpunkt der Platform-API in `src/http/platform.ts`: `GET /platform/v1/operator` (Berechtigung `platform:read`, die `apps/api` nur mit bestätigtem zweitem Faktor vergibt).
+
 **Fassade (geplant):** resolveTenantByHost(host), isFeatureEnabled(tenantId, feature), createTenant(...)
 
 **Ereignisse (geplant):** platform.tenant.created.v1, platform.tenant.suspended.v1, platform.tenant.deleted.v1
