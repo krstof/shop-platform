@@ -59,5 +59,9 @@ export const unconnectedIdentity: IdentityService = {
   startTwoFactorSetup: notConnected,
   confirmTwoFactorSetup: notConnected,
   confirmPassword: notConnected,
+  requestPasswordReset: () => {
+    throw new Error("Anmeldemodul ist nicht verbunden");
+  },
+  resetPassword: notConnected,
   close: async () => undefined,
 };

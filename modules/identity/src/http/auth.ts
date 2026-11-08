@@ -1,7 +1,7 @@
 // Endpunkte der Auth-API (E6 Teil 2, PLA-04, Sicherheit 5.2, ADR-010): Anmelden, Abmelden und
 // „Wer bin ich“. Seit E6 Teil 3 nennen „Anmelden“ und „Wer bin ich“ auch die Shops des Kontos.
 // Seit E6 Teil 4 (ADR-011) gibt es den zweiten Faktor: Code nach dem Passwort eingeben und
-// Zwei-Faktor einrichten. Better Auth selbst bekommt keinen HTTP-Zugang; alle Endpunkte laufen wie
+// Zwei-Faktor einrichten. Seit E6 Teil 6 „Passwort vergessen“ (ADR-013). Better Auth selbst bekommt keinen HTTP-Zugang; alle Endpunkte laufen wie
 // alle anderen durch den Vertrag (Zod, OpenAPI, Anfragebremse, Herkunftsprüfung im Router).
 import { defineEndpoint, type ClientInfo, type Endpoint } from "@shop/http";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@shop/kernel";
 import { z } from "zod";
 import type { ActiveSession, IdentityService } from "../internal/identity-service.js";
+import { PASSWORD_RESET_PATH, PASSWORD_RESET_SECONDS } from "../internal/password-reset.js";
 import { SYSTEM_ROLES, type SystemRole } from "../internal/roles.js";
 
 /** Ein Shop, zu dem das Konto gehört, wie die Shop-Auswahl im Backoffice ihn zeigt. */
@@ -107,6 +108,16 @@ const signInInput = z.strictObject({
 });
 
 const signedOutSchema = z.object({ signedOut: z.literal(true) }).meta({ id: "SignedOut" });
+
+const passwordResetRequestedSchema = z
+  .object({
+    accepted: z
+      .literal(true)
+      .describe("Immer true, auch wenn es die E-Mail-Adresse nicht gibt. Die Antwort verrät nichts."),
+  })
+  .meta({ id: "PasswordResetRequested" });
+
+const passwordChangedSchema = z.object({ passwordChanged: z.literal(true) }).meta({ id: "PasswordChanged" });
 
 function requireClient(client: ClientInfo | undefined): ClientInfo {
   // Der Router setzt client für jeden Endpunkt der Auth-API; fehlt er, ist das ein Programmfehler.
@@ -406,5 +417,92 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
     },
   });
 
-  return [signIn, signOut, current, verifySecondFactor, startSetup, enable, confirmPassword];
+  const forgotPassword = defineEndpoint({
+    api: "auth",
+    method: "POST",
+    path: "/password/forgot",
+    operationId: "requestPasswordReset",
+    summary: "Passwort vergessen",
+    description:
+      "Schickt einen Link zum Zurücksetzen an die E-Mail-Adresse, falls es dazu ein aktives Konto gibt. " +
+      "Die Antwort ist immer dieselbe und kommt sofort, damit niemand so herausfindet, welche Adressen " +
+      `ein Konto haben. Der Link führt ins Backoffice (${PASSWORD_RESET_PATH}#code=…), gilt ` +
+      `${PASSWORD_RESET_SECONDS / 60} Minuten und nur einmal; ein neuer Link macht den alten ungültig. ` +
+      "Höchstens 3 E-Mails je Konto in 15 Minuten, weitere Anfragen verschicken still nichts.",
+    tags: ["Anmeldung"],
+    access: { public: true, reason: "Wer sein Passwort vergessen hat, kann sich nicht anmelden." },
+    body: z.strictObject({
+      email: z
+        .string()
+        .min(1)
+        .max(320)
+        .describe("E-Mail-Adresse des Kontos (Groß- und Kleinschreibung egal)."),
+    }),
+    bodyExample: { email: "inhaberin@teeladen.example" },
+    idempotency: "none",
+    response: {
+      status: 200,
+      description: "Angenommen. Gibt es das Konto, ist die E-Mail unterwegs.",
+      schema: passwordResetRequestedSchema,
+    },
+    problems: [429],
+    handler: async ({ body }) => {
+      // Nicht auf den Hintergrund warten: Sonst dauert die Antwort bei bekannten Adressen länger.
+      identity.requestPasswordReset({ email: body.email });
+      return { accepted: true as const };
+    },
+  });
+
+  const resetPassword = defineEndpoint({
+    api: "auth",
+    method: "POST",
+    path: "/password/reset",
+    operationId: "resetPassword",
+    summary: "Neues Passwort setzen",
+    description:
+      "Setzt mit dem Code aus dem Link ein neues Passwort. Meldet nicht an: Danach ganz normal anmelden " +
+      "(mit Zwei-Faktor wie gewohnt). Alle Sitzungen des Kontos werden beendet, eine Sperre nach " +
+      "Fehlversuchen fällt weg. Unbekannter, benutzter oder abgelaufener Code: 422 mit invalid_reset_code. " +
+      "Erfüllt das Passwort die Regeln nicht (mindestens 12 Zeichen, nicht zu bekannt, ohne die E-Mail), " +
+      "kommt 422 und der Code bleibt gültig.",
+    tags: ["Anmeldung"],
+    access: { public: true, reason: "Wer sein Passwort vergessen hat, kann sich nicht anmelden." },
+    body: z.strictObject({
+      code: z.string().min(1).max(128).describe("Code aus dem Link in der E-Mail (der Teil nach #code=)."),
+      newPassword: z.string().min(1).max(1024).describe("Das neue Passwort."),
+    }),
+    bodyExample: {
+      code: "q3v8yQ0lRk2c5wP1bT9mN4xZ7hJ6sD0aF8gK2eL5uIo",
+      newPassword: "vier kleine teekannen",
+    },
+    idempotency: "none",
+    response: { status: 200, description: "Das Passwort ist geändert.", schema: passwordChangedSchema },
+    handler: async ({ body, locale }) => {
+      const result = await identity.resetPassword({ code: body.code, newPassword: body.newPassword });
+      if (result.ok) return { passwordChanged: true as const };
+      if (result.reason === "weak_password")
+        throw new ValidationError({
+          errors: [
+            { path: "/body/newPassword", code: `password_${result.problem}`, message: result.message },
+          ],
+        });
+      const message =
+        locale === "en"
+          ? "The link is invalid, has already been used or has expired. Please request a new one."
+          : "Der Link ist ungültig, schon benutzt oder abgelaufen. Bitte einen neuen anfordern.";
+      throw new ValidationError({ errors: [{ path: "/body/code", code: "invalid_reset_code", message }] });
+    },
+  });
+
+  return [
+    signIn,
+    signOut,
+    current,
+    verifySecondFactor,
+    startSetup,
+    enable,
+    confirmPassword,
+    forgotPassword,
+    resetPassword,
+  ];
 }

@@ -10,6 +10,7 @@ export {
   type SignInRequest,
   type SignInResult,
   type ConfirmPasswordResult,
+  type ResetPasswordResult,
   type ConfirmTwoFactorSetupResult,
   type StartTwoFactorSetupResult,
   type TwoFactorSetup,
@@ -70,3 +71,12 @@ export {
   loginNetwork,
   type LoginThrottleRules,
 } from "./internal/login-throttle.js";
+export {
+  PASSWORD_RESET_MAILS_PER_WINDOW,
+  PASSWORD_RESET_PATH,
+  PASSWORD_RESET_SECONDS,
+  PASSWORD_RESET_WINDOW_SECONDS,
+  ResetMailLimiter,
+  type MailSender,
+  type OutgoingMail,
+} from "./internal/password-reset.js";

@@ -412,6 +412,8 @@ CREATE POLICY tenant_isolation ON catalog.product
 
 **Stand E6 Teil 5 (08.11.2026):** API-Token (ADR-012). Ein Skript schickt `Authorization: Bearer shp_at_…`; ist diese Kopfzeile da, zählt nur sie. `apps/api/src/actor.ts` (`requestResolver`) wählt zwischen Sitzung und Token. Das Modul `identity` sucht das Token über seinen Hash in einer Transaktion, die nur `app.api_token_hash` setzt (`withApiTokenTransaction` im `kernel`), und gibt Shop und Berechtigungen zurück: Token ∩ aktuelle Rolle des anlegenden Kontos, nie `api_tokens:*`. Der Shop muss aktiv sein. Verwalten (`/admin/v1/api-tokens`) darf nur die Inhaberin mit Sitzung; Anlegen zusätzlich nur mit Passworteingabe vor höchstens 15 Minuten (`POST /auth/v1/confirm-password`, Fehler 403 `reauthentication_required`). Ereignisse `identity.api_token.created.v1` und `.revoked.v1`; was ein Token schreibt, trägt im Änderungsprotokoll den Urheber `api_token`.
 
+**Stand E6 Teil 6 (08.11.2026):** „Passwort vergessen“ (ADR-013). `POST /auth/v1/password/forgot` antwortet immer gleich und sofort; das Modul `identity` sucht im Hintergrund das Konto, legt einen Einmalcode an (nur SHA-256 in `identity.verification`, 30 Minuten) und schickt die E-Mail über einen `MailSender`, den `apps/api` mit Nodemailer an Mailpit zusammensetzt (`apps/api/src/mail.ts`, `SHOP_SMTP_URL`). `POST /auth/v1/password/reset` setzt das Passwort, beendet alle Sitzungen und meldet nicht an. Mit E16 übernimmt das Modul `notifications` den Versand im Worker.
+
 Dieses Verfahren funktioniert auch mit **PgBouncer** im Transaktionsmodus. PgBouncer ist ein Verbindungsverteiler, der später viele Anwendungsinstanzen auf wenige Datenbankverbindungen bündelt.
 
 ### 5.4 Datenbankrollen

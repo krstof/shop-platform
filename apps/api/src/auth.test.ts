@@ -68,6 +68,8 @@ function fakeIdentity() {
     startTwoFactorSetup: async () => ({ ok: false, reason: "no_session" }),
     confirmTwoFactorSetup: async () => ({ ok: false, reason: "no_session" }),
     confirmPassword: async () => ({ ok: false, reason: "no_session" }),
+    requestPasswordReset: () => ({ done: Promise.resolve() }),
+    resetPassword: async () => ({ ok: false, reason: "invalid_code" }),
     close: async () => undefined,
   };
   return { identity, calls, signedOut };

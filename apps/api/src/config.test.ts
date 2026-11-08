@@ -10,6 +10,7 @@ const base = {
   SHOP_AUTH_DATABASE_URL: "postgres://shop_auth:x@db/shop",
   SHOP_AUTH_SECRET: randomBytes(32).toString("base64url"),
   SHOP_MASTER_KEY_V1: randomBytes(32).toString("base64"),
+  SHOP_SMTP_URL: "smtp://mailpit:1025",
 };
 
 describe("Einstellungen der API", () => {
@@ -45,6 +46,35 @@ describe("Einstellungen der API", () => {
       /SHOP_MASTER_KEY_V1: muss genau 32 Byte lang sein/,
     );
     expect(() => loadApiConfig({ ...base, SHOP_MASTER_KEY_V1: "__KEY32__" })).toThrow(/SHOP_MASTER_KEY_V1/);
+  });
+
+  it("verlangt einen Mailserver, unverschlüsselt nur Mailpit oder localhost, ohne Werte zu nennen", () => {
+    const { SHOP_SMTP_URL: _m, ...without } = base;
+    void _m;
+    expect(() => loadApiConfig(without)).toThrow(/SHOP_SMTP_URL: fehlt/);
+    expect(() => loadApiConfig({ ...base, SHOP_SMTP_URL: "http://mailpit:1025" })).toThrow(
+      /SHOP_SMTP_URL: muss mit smtp:\/\/ oder smtps:\/\/ beginnen/,
+    );
+    try {
+      loadApiConfig({ ...base, SHOP_SMTP_URL: "smtp://nutzer:Geheim123@mail.example.com:25" });
+      expect.unreachable();
+    } catch (e) {
+      expect((e as Error).message).toMatch(/SHOP_SMTP_URL: unverschlüsselt/);
+      expect((e as Error).message).not.toContain("Geheim123");
+    }
+    expect(
+      loadApiConfig({ ...base, SHOP_SMTP_URL: "smtps://nutzer:pw@mail.example.com:465" }).SHOP_SMTP_URL,
+    ).toBe("smtps://nutzer:pw@mail.example.com:465");
+    expect(loadApiConfig({ ...base, SHOP_SMTP_URL: "smtp://127.0.0.1:1025" }).SHOP_SMTP_URL).toBe(
+      "smtp://127.0.0.1:1025",
+    );
+  });
+
+  it("nimmt als Absender no-reply an der eigenen Domain, Zeilenumbrüche nie", () => {
+    expect(loadApiConfig(base).SHOP_MAIL_FROM).toBe("Shop-Plattform <no-reply@localhost>");
+    expect(() => loadApiConfig({ ...base, SHOP_MAIL_FROM: "a@b.example\r\nBcc: x@y.example" })).toThrow(
+      /SHOP_MAIL_FROM: darf keinen Zeilenumbruch enthalten/,
+    );
   });
 
   it("verlangt außerhalb von local TLS zur Datenbank", () => {

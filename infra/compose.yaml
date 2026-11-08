@@ -198,6 +198,8 @@ services:
       SHOP_AUTH_SECRET: ${SHOP_AUTH_SECRET:?fehlt}
       # Hauptschlüssel für Zwei-Faktor-Geheimnisse (Envelope Encryption, E6 Teil 4).
       SHOP_MASTER_KEY_V1: ${SHOP_MASTER_KEY_V1:?fehlt}
+      # E-Mails („Passwort vergessen“, E6 Teil 6) gehen nur an Mailpit, nie nach außen.
+      SHOP_SMTP_URL: smtp://mailpit:1025
       # Herkunftsprüfung (CSRF): Standard sind https://admin.<Domain> und https://platform.<Domain>.
       SHOP_API_HOST: 0.0.0.0
       SHOP_API_PORT: "3000"
@@ -211,6 +213,7 @@ services:
       retries: 20
     depends_on:
       migrate: { condition: service_completed_successfully }
+      mailpit: { condition: service_healthy }
 
   # Hintergrunddienst (Architektur 3.5, E5): leitet Ereignisse aus der Outbox weiter, stellt sie den
   # Subscribern zu (etwa dem Änderungsprotokoll) und räumt stündlich auf. Zwei Verbindungen mit

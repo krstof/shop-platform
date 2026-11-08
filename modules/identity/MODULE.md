@@ -59,3 +59,12 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 - Migration `20261108T060000_api_tokens.sql`: Prüfregeln für Präfix, Hash, Name und Ablauf; `shop_app` darf nur `last_used_at` und `revoked_at` ändern und nichts löschen; `session.reauthenticated_at`.
 - Tests: `api-tokens.test.ts`, `api-tokens.db.test.ts` (15 Fälle), in apps/api `api-tokens.db.test.ts` (9 Fälle Ende zu Ende).
 - Bewusst noch nicht da: Token für KI (Welle 2) und Apps (Welle 4), Prüfsumme im Token für fremde Geheimnis-Scanner.
+
+## Stand E6 Teil 6 (08.11.2026)
+
+- „Passwort vergessen“ (ADR-013): Bausteine in `src/internal/password-reset.ts` (Code, Hash, Link, E-Mail-Text de/en, `ResetMailLimiter`), Ablauf in `identity-service.ts`.
+- Fassade neu: `requestPasswordReset({ email })` liefert sofort `{ done }` (Hintergrund), `resetPassword({ code, newPassword })`. Option `mailer` (`MailSender`, setzt apps/api zusammen), für Tests `resetMailLimiter`.
+- Endpunkte: `POST /auth/v1/password/forgot`, `POST /auth/v1/password/reset`.
+- Migration `20261108T120000_password_reset.sql`: `verification.value_hash` eindeutig und 32 Byte, Ablauf nach Anlage.
+- Tests: `password-reset.test.ts`, `password-reset.db.test.ts` (15 Fälle, u. a. einmalig auch gleichzeitig, Ablauf, Ersatz, Sperre aufheben, Zwei-Faktor bleibt), in apps/api `password-reset.db.test.ts` und `mail.test.ts`.
+- Bewusst noch nicht da: Einladungen, Mitarbeiter entfernen (E6 Teil 7), Ereignis „Passwort geändert“ und Hinweis-E-Mail danach (mit notifications, E16).

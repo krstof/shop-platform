@@ -1,6 +1,7 @@
 // Startet den Kern-Server. Einstellungen kommen aus der Umgebung (siehe config.ts).
 // Anmeldung über das Sitzungs-Cookie (E6 Teil 2), Shop und Rolle über die Kopfzeile Shop-Id und die
-// Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4), API-Token (E6 Teil 5).
+// Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4), API-Token (E6 Teil 5),
+// „Passwort vergessen“ mit E-Mail an Mailpit (E6 Teil 6).
 import { createApiTokenService, createIdentityService, createMembershipDirectory } from "@shop/identity";
 import { ConfigError, connectDatabase, createLogger, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
 import { createOperatorDirectory, createShopDirectory } from "@shop/platform";
@@ -8,6 +9,7 @@ import { apiTokenResolver, requestResolver, sessionResolver, shopsOfUser } from 
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
 import { databaseIdempotencyStore } from "./idempotency-store.js";
+import { createSmtpMailSender } from "./mail.js";
 import { allEndpoints } from "./endpoints.js";
 
 async function main(): Promise<void> {
@@ -20,6 +22,7 @@ async function main(): Promise<void> {
       logger.warn({ err: error }, "Datenbankverbindung abgebrochen, wird neu aufgebaut"),
   });
   const operators = createOperatorDirectory({ database });
+  const mailer = createSmtpMailSender({ url: config.SHOP_SMTP_URL, from: config.SHOP_MAIL_FROM });
   // Eigener kleiner Pool als shop_auth, nur im Modul identity (ADR-008).
   const identity = createIdentityService({
     secretBox: createSecretBox(
@@ -31,6 +34,7 @@ async function main(): Promise<void> {
     // Betreiberkonten: 1 Stunde ohne Aktivität, höchstens 12 Stunden (Sicherheit 5.2).
     sessionKindOf: async (userId) =>
       (await operators.findOperator(userId)) === undefined ? "standard" : "operator",
+    mailer,
     connectionString: config.SHOP_AUTH_DATABASE_URL,
     secret: config.SHOP_AUTH_SECRET,
     baseUrl: config.SHOP_ALLOWED_ORIGINS[0] ?? `https://admin.${config.SHOP_DOMAIN}`,
@@ -64,6 +68,7 @@ async function main(): Promise<void> {
   const stop = async () => {
     await app.close();
     await identity.close();
+    mailer.close();
     await database.destroy();
   };
   process.once("SIGTERM", () => void stop());

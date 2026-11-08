@@ -1,6 +1,6 @@
 // Anmeldung hinter einer eigenen Schnittstelle (Sicherheit 5.2: „damit ein Wechsel möglich bleibt“).
 // Außerhalb dieses Moduls weiß niemand, dass Better Auth dahintersteht.
-import { ConflictError, ValidationError, type SecretBox } from "@shop/kernel";
+import { ConflictError, isUuid, ValidationError, type Locale, type SecretBox } from "@shop/kernel";
 import { APIError } from "better-auth";
 import { Kysely, PostgresDialect } from "kysely";
 import { z } from "zod";
@@ -15,6 +15,16 @@ import {
 } from "./auth.js";
 import { LoginThrottle, type AttemptKeys } from "./login-throttle.js";
 import { checkNewPassword, hashPassword, verifyPassword, type PasswordProblem } from "./password.js";
+import {
+  hashResetCode,
+  newResetCode,
+  PASSWORD_RESET_SECONDS,
+  passwordResetMail,
+  RESET_CODE_PATTERN,
+  ResetMailLimiter,
+  resetLink,
+  type MailSender,
+} from "./password-reset.js";
 import {
   LAST_SEEN_RESOLUTION_SECONDS,
   MAX_SECOND_FACTOR_FAILURES,
@@ -140,6 +150,21 @@ export type ConfirmTwoFactorSetupResult =
   | { readonly ok: true; readonly session: ActiveSession }
   | { readonly ok: false; readonly reason: "no_session" | "already_enabled" | "no_setup" | "invalid_code" };
 
+export type ResetPasswordResult =
+  | { readonly ok: true }
+  | {
+      readonly ok: false;
+      /** Code unbekannt, schon benutzt, abgelaufen oder durch einen neueren ersetzt. Alles sieht gleich aus. */
+      readonly reason: "invalid_code";
+    }
+  | {
+      readonly ok: false;
+      /** Das neue Passwort erfüllt die Regeln nicht. Der Code bleibt dann gültig. */
+      readonly reason: "weak_password";
+      readonly problem: PasswordProblem;
+      readonly message: string;
+    };
+
 export interface IdentityService {
   /** Legt ein Konto mit Passwort an. Für die Plattform-Verwaltung (E7) und Tests. */
   createUser(input: NewUser): Promise<{ readonly userId: string }>;
@@ -170,6 +195,17 @@ export interface IdentityService {
     readonly password: string;
     readonly ipAddress?: string;
   }): Promise<ConfirmPasswordResult>;
+  /**
+   * „Passwort vergessen“: Kehrt sofort zurück, egal ob es die E-Mail gibt. Gibt es ein aktives
+   * Konto, bekommt es im Hintergrund eine E-Mail mit einem Link (30 Minuten, einmal gültig).
+   * `done` erfüllt sich, wenn der Hintergrund fertig ist (nur für Tests; scheitert nie).
+   */
+  requestPasswordReset(input: { readonly email: string }): { readonly done: Promise<void> };
+  /**
+   * Neues Passwort mit dem Code aus der E-Mail. Meldet nicht an, beendet alle Sitzungen des Kontos
+   * und hebt eine Sperre nach Fehlversuchen auf. Zwei-Faktor bleibt unverändert.
+   */
+  resetPassword(input: { readonly code: string; readonly newPassword: string }): Promise<ResetPasswordResult>;
   close(): Promise<void>;
 }
 
@@ -198,6 +234,13 @@ export interface IdentityServiceOptions extends AuthOptions {
    * platform zusammen. Ohne Angabe: überall die Regeln für Händler.
    */
   readonly sessionKindOf?: (userId: string) => Promise<SessionKind>;
+  /**
+   * Versand von E-Mails („Passwort vergessen“). Ohne Angabe verschickt das Modul nichts und
+   * schreibt eine Warnung ins Protokoll.
+   */
+  readonly mailer?: MailSender;
+  /** Nur für Tests: eigene Zählung der E-Mails je Konto. */
+  readonly resetMailLimiter?: ResetMailLimiter;
   /** Name in der Authenticator-App. */
   readonly issuer?: string;
   /** Nur für Tests: eigene Bremse (etwa mit eigener Uhr). Standard: Werte aus Sicherheit 5.2. */
@@ -220,6 +263,9 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
   const box = options.secretBox;
   const issuer = options.issuer ?? "Shop-Plattform";
   const kindOf = options.sessionKindOf ?? (async () => "standard" as const);
+  const resetLimiter = options.resetMailLimiter ?? new ResetMailLimiter(now);
+  /** Laufende Hintergrundarbeiten; close() wartet auf sie. */
+  const background = new Set<Promise<void>>();
 
   const secretPurpose = (userId: string) => `identity.two_factor.secret:${userId}`;
   const codesPurpose = (userId: string) => `identity.two_factor.backup_codes:${userId}`;
@@ -381,6 +427,55 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       .set({ two_factor_verified_at: new Date(now()), two_factor_failures: 0, last_seen_at: new Date(now()) })
       .where("id", "=", sessionId)
       .execute();
+  }
+
+  /** Hintergrund von „Passwort vergessen“: Konto suchen, Code speichern, E-Mail schicken. */
+  async function sendPasswordReset(email: string): Promise<void> {
+    if (!emailSchema.safeParse(email).success) return;
+    const user = await db
+      .selectFrom("identity.user")
+      .select(["id", "email", "name", "locale", "status"])
+      .where("email", "=", email)
+      .executeTakeFirst();
+    // Unbekannt, gesperrt oder deaktiviert: nichts tun. Die Antwort war schon gleich.
+    if (user === undefined || user.status !== "active") return;
+    if (options.mailer === undefined) {
+      options.logger?.warn("Passwort vergessen: kein E-Mail-Versand eingerichtet");
+      return;
+    }
+    if (!resetLimiter.take(user.id)) {
+      options.logger?.info({ userId: user.id }, "Passwort vergessen: zu viele E-Mails, diese entfällt");
+      return;
+    }
+    const { code, hash } = newResetCode();
+    const at = new Date(now());
+    await db.transaction().execute(async (trx) => {
+      // Ein neuer Code ersetzt den alten; abgelaufene Codes aller Konten räumen wir gleich mit auf.
+      await trx
+        .deleteFrom("identity.verification")
+        .where("purpose", "=", "password_reset")
+        .where((eb) => eb.or([eb("identifier", "=", user.id), eb("expires_at", "<=", at)]))
+        .execute();
+      await trx
+        .insertInto("identity.verification")
+        .values({
+          identifier: user.id,
+          value_hash: hash,
+          purpose: "password_reset",
+          expires_at: new Date(at.getTime() + PASSWORD_RESET_SECONDS * 1000),
+          created_at: at,
+        })
+        .execute();
+    });
+    await options.mailer.send(
+      passwordResetMail({
+        to: user.email,
+        name: user.name,
+        locale: (user.locale === "en" ? "en" : "de") satisfies Locale,
+        link: resetLink(options.baseUrl, code),
+      }),
+    );
+    options.logger?.info({ userId: user.id }, "Passwort vergessen: E-Mail verschickt");
   }
 
   return {
@@ -655,7 +750,92 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       return { ok: true, session: { ...s, passwordConfirmedAt: at } };
     },
 
+    requestPasswordReset(input) {
+      const email = normalizeEmail(input.email);
+      const done = sendPasswordReset(email).catch((error: unknown) => {
+        // Ohne Empfänger und ohne Fehlertext: Meldungen von Mailservern nennen oft die Adresse.
+        const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+        options.logger?.error(
+          { code: typeof code === "string" ? code : undefined },
+          "Passwort vergessen: Hintergrund gescheitert",
+        );
+      });
+      background.add(done);
+      void done.finally(() => background.delete(done));
+      return { done };
+    },
+
+    async resetPassword(input) {
+      const invalid = { ok: false, reason: "invalid_code" } as const;
+      if (!RESET_CODE_PATTERN.test(input.code)) return invalid;
+      const hash = hashResetCode(input.code);
+      const at = new Date(now());
+      const found = await db
+        .selectFrom("identity.verification")
+        .select(["identifier", "expires_at"])
+        .where("value_hash", "=", hash)
+        .where("purpose", "=", "password_reset")
+        .executeTakeFirst();
+      if (found === undefined || new Date(found.expires_at) <= at || !isUuid(found.identifier))
+        return invalid;
+      const user = await db
+        .selectFrom("identity.user")
+        .select(["id", "email", "status"])
+        .where("id", "=", found.identifier)
+        .executeTakeFirst();
+      if (user === undefined || user.status !== "active") return invalid;
+      // Erst die Regeln prüfen, dann den Code verbrauchen: Ein zu schwaches Passwort kostet ihn nicht.
+      const problem = checkNewPassword(input.newPassword, user.email);
+      if (problem !== undefined)
+        return { ok: false, reason: "weak_password", problem, message: PASSWORD_MESSAGES[problem] };
+      const passwordHash = await hashPassword(input.newPassword);
+      const changed = await db.transaction().execute(async (trx) => {
+        // Löschen ist das Verbrauchen: Von zwei gleichzeitigen Anfragen bekommt nur eine die Zeile.
+        const used = await trx
+          .deleteFrom("identity.verification")
+          .where("value_hash", "=", hash)
+          .where("purpose", "=", "password_reset")
+          .where("identifier", "=", user.id)
+          .where("expires_at", ">", at)
+          .returning("id")
+          .executeTakeFirst();
+        if (used === undefined) return false;
+        const updated = await trx
+          .updateTable("identity.account")
+          .set({ password_hash: passwordHash, updated_at: at })
+          .where("user_id", "=", user.id)
+          .where("provider_id", "=", "credential")
+          .executeTakeFirst();
+        if (updated.numUpdatedRows === 0n) {
+          await trx
+            .insertInto("identity.account")
+            .values({
+              user_id: user.id,
+              provider_id: "credential",
+              account_id: user.id,
+              password_hash: passwordHash,
+            })
+            .execute();
+        }
+        // Wer den Link aus dem Postfach benutzt, hat die Adresse bestätigt. Eine Sperre nach
+        // Fehlversuchen schützte das alte Passwort und fällt weg.
+        await trx
+          .updateTable("identity.user")
+          .set({ email_verified: true, locked_until: null, updated_at: at })
+          .where("id", "=", user.id)
+          .execute();
+        // Alle Sitzungen beenden, auch die eines Angreifers mit dem alten Passwort.
+        await trx.deleteFrom("identity.session").where("user_id", "=", user.id).execute();
+        return true;
+      });
+      if (!changed) return invalid;
+      throttle.recordSuccess({ email: normalizeEmail(user.email) });
+      options.logger?.info({ userId: user.id }, "Passwort über den Link aus der E-Mail neu gesetzt");
+      return { ok: true };
+    },
+
     async close() {
+      await Promise.allSettled([...background]);
       await db.destroy();
     },
   };
