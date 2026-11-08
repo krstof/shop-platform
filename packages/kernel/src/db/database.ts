@@ -90,13 +90,14 @@ async function run<DB, T>(
   isolationLevel: IsolationLevel | undefined,
   fn: (trx: Transaction<DB>) => Promise<T>,
   userId = "",
+  apiTokenHashHex = "",
 ): Promise<T> {
   const db = kyselyOf(database);
   const builder =
     isolationLevel === undefined ? db.transaction() : db.transaction().setIsolationLevel(isolationLevel);
   return builder.execute(async (trx) => {
     // Werte als Parameter, nie als Text in der Abfrage. `true` = nur für diese Transaktion.
-    await sql`select set_config('app.tenant_id', ${tenantId}, true), set_config('app.actor_id', ${actorId}, true), set_config('app.user_id', ${userId}, true)`.execute(
+    await sql`select set_config('app.tenant_id', ${tenantId}, true), set_config('app.actor_id', ${actorId}, true), set_config('app.user_id', ${userId}, true), set_config('app.api_token_hash', ${apiTokenHashHex}, true)`.execute(
       trx,
     );
     return fn(trx);
@@ -152,6 +153,21 @@ export async function withUserTransaction<DB, T>(
 ): Promise<T> {
   if (!isUuid(userId)) throw new TypeError("userId muss eine UUID sein");
   return run(database, "", userId, undefined, fn, userId);
+}
+
+/**
+ * Transaktion ohne Mandant für die Prüfung eines API-Tokens (E6 Teil 5). Setzt nur
+ * `app.api_token_hash`; die RLS-Regel von `identity.api_token` zeigt dann genau die eine Zeile mit
+ * diesem Hash (wer den Hash kennt, besitzt das Token). Erst danach steht fest, zu welchem Shop die
+ * Anfrage gehört. Alle anderen Mandantentabellen bleiben leer. Nur für das Modul identity.
+ */
+export async function withApiTokenTransaction<DB, T>(
+  database: Database<DB>,
+  tokenHash: Uint8Array,
+  fn: (trx: Transaction<DB>) => Promise<T>,
+): Promise<T> {
+  if (tokenHash.length !== 32) throw new TypeError("tokenHash muss ein SHA-256-Wert (32 Byte) sein");
+  return run(database, "", "", undefined, fn, "", Buffer.from(tokenHash).toString("hex"));
 }
 
 /**

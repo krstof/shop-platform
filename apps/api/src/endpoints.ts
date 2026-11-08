@@ -3,7 +3,14 @@
 import { auditEndpoints } from "@shop/audit";
 import { catalogEndpoints } from "@shop/catalog";
 import type { Endpoint } from "@shop/http";
-import { authEndpoints, type IdentityService, type ShopOfUser } from "@shop/identity";
+import {
+  apiTokenEndpoints,
+  authEndpoints,
+  createApiTokenService,
+  type ApiTokenService,
+  type IdentityService,
+  type ShopOfUser,
+} from "@shop/identity";
 import type { Database } from "@shop/kernel";
 import { platformEndpoints, type OperatorDirectory } from "@shop/platform";
 
@@ -15,12 +22,15 @@ export interface EndpointDependencies {
   readonly shopsOfUser?: (userId: string) => Promise<readonly ShopOfUser[]>;
   /** Betreiberkonten (Modul platform). Ohne Angabe: niemand ist Betreiber. */
   readonly operators?: Pick<OperatorDirectory, "findOperator">;
+  /** API-Token (Modul identity). Ohne Angabe: Token-Verwaltung über dieselbe Datenbank. */
+  readonly tokens?: ApiTokenService;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
   return [
     ...catalogEndpoints(deps),
     ...auditEndpoints(deps),
+    ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...authEndpoints(
       deps.identity ?? unconnectedIdentity,
       deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser },
@@ -48,5 +58,6 @@ export const unconnectedIdentity: IdentityService = {
   verifySecondFactor: notConnected,
   startTwoFactorSetup: notConnected,
   confirmTwoFactorSetup: notConnected,
+  confirmPassword: notConnected,
   close: async () => undefined,
 };

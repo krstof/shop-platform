@@ -95,6 +95,17 @@ export class CrossOriginRejectedError extends AppError {
   readonly title = "Anfrage von einer fremden Seite abgelehnt.";
 }
 
+/**
+ * Kritische Aktion (etwa API-Token anlegen), aber die letzte Passworteingabe liegt mehr als
+ * 15 Minuten zurück (Sicherheit 5.3). Die Oberfläche fragt das Passwort ab, schickt es an
+ * POST /auth/v1/confirm-password und wiederholt die Aktion.
+ */
+export class ReauthenticationRequiredError extends AppError {
+  readonly status = 403;
+  readonly code = "reauthentication_required";
+  readonly title = "Bitte bestätige zuerst dein Passwort.";
+}
+
 export class ForbiddenError extends AppError {
   readonly status = 403;
   readonly code = "forbidden";

@@ -5,12 +5,15 @@
 // Berechtigungen aus der Rolle (owner oder staff). Sonst bleibt die Sitzung ohne Shop und ohne
 // Berechtigungen, und die Admin-API antwortet 403. Ob es den Shop gibt, verrät die Antwort nicht.
 // Seit E6 Teil 4 auch Betreiberkonten: Ohne Shop-Id bekommt ein aktives Betreiberkonto die
-// Berechtigungen der Platform-API, aber nur mit bestätigtem zweitem Faktor (ADR-011). API-Token
-// folgen in E6 Teil 5.
+// Berechtigungen der Platform-API, aber nur mit bestätigtem zweitem Faktor (ADR-011).
+// Seit E6 Teil 5 auch API-Token (`Authorization: Bearer shp_at_…`): Das Token bestimmt den Shop,
+// die Berechtigungen sind die Schnittmenge aus Token und Rolle des Kontos, das es angelegt hat.
+// Kommt eine Kopfzeile Authorization, zählt nur sie; ein Cookie daneben wird nicht beachtet.
 // Tests setzen eine eigene Auflösung ein.
 import type { AuthenticatedActor, Scope } from "@shop/http";
 import {
   scopesForRole,
+  type ApiTokenService,
   type IdentityService,
   type MembershipDirectory,
   type ShopOfUser,
@@ -63,7 +66,11 @@ export function sessionResolver(deps: SessionResolverDependencies): ActorResolve
   return async ({ headers }) => {
     const session = await deps.identity.getSession(single(headers["cookie"]));
     if (session === undefined) return undefined;
-    const signedIn: AuthenticatedActor = { actor: { type: "user", id: session.userId }, scopes: new Set() };
+    const signedIn: AuthenticatedActor = {
+      actor: { type: "user", id: session.userId },
+      scopes: new Set(),
+      passwordConfirmedAt: session.passwordConfirmedAt,
+    };
     const shopId = requestedShopId(headers);
     if (shopId === undefined) {
       // Platform-API: nur Betreiber, nur mit bestätigtem zweitem Faktor.
@@ -79,6 +86,46 @@ export function sessionResolver(deps: SessionResolverDependencies): ActorResolve
     if (shop?.status !== "active") return signedIn;
     return { ...signedIn, tenantId: shopId, scopes: scopesForRole(membership.role) };
   };
+}
+
+/**
+ * Token aus `Authorization: Bearer …`. `undefined`: keine solche Kopfzeile. `null`: Kopfzeile da,
+ * aber unbrauchbar (anderes Verfahren, mehrfach, leer). Dann gilt die Anfrage als nicht angemeldet.
+ */
+export function bearerToken(headers: RequestHeaders): string | null | undefined {
+  const raw = headers["authorization"];
+  if (raw === undefined) return undefined;
+  if (typeof raw !== "string") return null;
+  const match = /^Bearer ([A-Za-z0-9_-]{1,200})$/i.exec(raw.trim());
+  return match?.[1] ?? null;
+}
+
+export interface ApiTokenResolverDependencies {
+  readonly tokens: Pick<ApiTokenService, "authenticate">;
+  readonly shops: Pick<ShopDirectory, "getShops">;
+}
+
+/** Akteur aus einem API-Token. Ungültig, widerrufen, abgelaufen oder Shop nicht aktiv: `undefined`. */
+export function apiTokenResolver(deps: ApiTokenResolverDependencies): ActorResolver {
+  return async ({ headers }) => {
+    const token = bearerToken(headers);
+    if (token === undefined || token === null) return undefined;
+    const t = await deps.tokens.authenticate(token);
+    if (t === undefined) return undefined;
+    const [shop] = await deps.shops.getShops([t.tenantId]);
+    if (shop?.status !== "active") return undefined;
+    const actor: AuthenticatedActor = { actor: { type: "api_token", id: t.tokenId }, scopes: new Set() };
+    // Eine Shop-Id, die nicht zum Token passt, führt zu 403 statt still den Shop zu wechseln.
+    const shopId = requestedShopId(headers);
+    if (headers[SHOP_ID_HEADER] !== undefined && shopId !== t.tenantId) return actor;
+    return { ...actor, tenantId: t.tenantId, scopes: t.scopes };
+  };
+}
+
+/** Sitzung oder API-Token: Mit Kopfzeile Authorization zählt nur das Token. */
+export function requestResolver(session: ActorResolver, apiToken: ActorResolver): ActorResolver {
+  return async (request) =>
+    request.headers["authorization"] === undefined ? session(request) : apiToken(request);
 }
 
 export interface ShopsOfUserDependencies {

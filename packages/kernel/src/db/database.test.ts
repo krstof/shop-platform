@@ -15,6 +15,7 @@ import {
   readSessionSettingForTest,
   withPlatformTransaction,
   withTenantTransaction,
+  withApiTokenTransaction,
   withUserTransaction,
   type Database,
 } from "./database.js";
@@ -202,6 +203,32 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
       expect(inside).toEqual({ u: ACTOR, a: ACTOR, t: null, rows: 0 });
       expect(await readSessionSettingForTest(single, "app.user_id")).toBeOneOf(["", null]);
       await expect(withUserTransaction(single, "kein-uuid", async () => 1)).rejects.toThrow(TypeError);
+    } finally {
+      await single.destroy();
+    }
+  });
+
+  it("withApiTokenTransaction setzt nur den Token-Hash: kein Shop, kein Akteur, nichts bleibt hängen", async () => {
+    const single = connectDatabase<TestDB>({ connectionString: appUrl, maxConnections: 1 });
+    const hash = new Uint8Array(32).fill(0xab);
+    try {
+      const inside = await withApiTokenTransaction(single, hash, async (trx) => {
+        const r = await sql<{ h: string | null; a: string | null; t: string | null; u: string | null }>`
+          select encode(kernel.current_api_token_hash(), 'hex') as h, kernel.current_actor_id()::text as a,
+                 kernel.current_tenant_id()::text as t, kernel.current_user_id()::text as u`.execute(trx);
+        const rows = await trx.selectFrom(TABLE).selectAll().execute();
+        return { ...r.rows[0], rows: rows.length };
+      });
+      expect(inside).toEqual({ h: "ab".repeat(32), a: null, t: null, u: null, rows: 0 });
+      expect(await readSessionSettingForTest(single, "app.api_token_hash")).toBeOneOf(["", null]);
+      // Andere Transaktionen setzen den Hash ausdrücklich leer.
+      const inTenant = await withTenantTransaction(
+        single,
+        async (trx) => (await sql<{ h: string | null }>`select kernel.current_api_token_hash() as h`.execute(trx)).rows[0]?.h,
+        { tenantId: TENANT_A },
+      );
+      expect(inTenant).toBeNull();
+      await expect(withApiTokenTransaction(single, new Uint8Array(16), async () => 1)).rejects.toThrow(TypeError);
     } finally {
       await single.destroy();
     }

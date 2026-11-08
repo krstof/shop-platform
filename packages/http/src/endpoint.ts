@@ -55,6 +55,12 @@ export interface AuthenticatedActor {
   readonly tenantId?: string;
   /** Schnittmenge aus Rolle und Token (Sicherheit 5.3). */
   readonly scopes: ReadonlySet<Scope>;
+  /**
+   * Nur bei Sitzungen: Wann das Passwort zuletzt eingegeben wurde (Anmeldung oder
+   * POST /auth/v1/confirm-password). Kritische Aktionen verlangen höchstens 15 Minuten
+   * (Sicherheit 5.3). Bei API-Token nie gesetzt.
+   */
+  readonly passwordConfirmedAt?: Date;
 }
 
 export interface HandlerContext<P, Q, B> {

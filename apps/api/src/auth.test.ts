@@ -57,6 +57,7 @@ function fakeIdentity() {
             createdAt: new Date("2026-11-06T12:00:00Z"),
             expiresAt: new Date("2026-11-07T00:00:00Z"),
             secondFactor: "not_enrolled" as const,
+            passwordConfirmedAt: new Date("2026-11-06T12:00:00Z"),
           }
         : undefined,
     signOut: async (cookie) => {
@@ -66,6 +67,7 @@ function fakeIdentity() {
     verifySecondFactor: async () => ({ ok: false, reason: "no_session" }),
     startTwoFactorSetup: async () => ({ ok: false, reason: "no_session" }),
     confirmTwoFactorSetup: async () => ({ ok: false, reason: "no_session" }),
+    confirmPassword: async () => ({ ok: false, reason: "no_session" }),
     close: async () => undefined,
   };
   return { identity, calls, signedOut };
@@ -169,7 +171,13 @@ describe("Anmelden über die Auth-API", () => {
     expect(r.headers["cache-control"]).toBe("no-store");
     expect(r.json()).toEqual({
       user: { id: USER, email: "inhaberin@teeladen.example" },
-      session: { id: SESSION, createdAt: "2026-11-06T12:00:00.000Z", expiresAt: "2026-11-07T00:00:00.000Z" },
+      session: {
+        id: SESSION,
+        createdAt: "2026-11-06T12:00:00.000Z",
+        expiresAt: "2026-11-07T00:00:00.000Z",
+        // Die Anmeldung selbst ist eine Passworteingabe.
+        passwordConfirmedAt: "2026-11-06T12:00:00.000Z",
+      },
       shops: [],
       secondFactor: "not_enrolled",
     });

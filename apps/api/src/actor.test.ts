@@ -4,7 +4,16 @@ import type { ActiveSession, Membership } from "@shop/identity";
 import { uuidv7 } from "@shop/kernel";
 import type { OperatorRole, ShopSummary, TenantStatus } from "@shop/platform";
 import { describe, expect, it } from "vitest";
-import { requestedShopId, sessionResolver, shopsOfUser, type RequestHeaders } from "./actor.js";
+import type { AuthenticatedApiToken } from "@shop/identity";
+import {
+  apiTokenResolver,
+  bearerToken,
+  requestedShopId,
+  requestResolver,
+  sessionResolver,
+  shopsOfUser,
+  type RequestHeaders,
+} from "./actor.js";
 
 const USER = uuidv7();
 const OWN = uuidv7();
@@ -20,6 +29,7 @@ const session: ActiveSession = {
   createdAt: new Date(),
   expiresAt: new Date(),
   secondFactor: "not_enrolled",
+  passwordConfirmedAt: new Date(),
 };
 
 const memberships: Membership[] = [
@@ -177,5 +187,84 @@ describe("Shops für „Wer bin ich“", () => {
 
   it("ohne Mitgliedschaft eine leere Liste", async () => {
     expect(await shopsOfUser(deps())(uuidv7())).toEqual([]);
+  });
+});
+
+describe("API-Token (E6 Teil 5, Architektur 4.4)", () => {
+  const TOKEN = `shp_at_${"a".repeat(43)}`;
+  const TOKEN_ID = uuidv7();
+  const known: Record<string, AuthenticatedApiToken> = {
+    [TOKEN]: { tokenId: TOKEN_ID, tenantId: OWN, scopes: new Set(["products:read"]) },
+    [`shp_at_${"s".repeat(43)}`]: {
+      tokenId: uuidv7(),
+      tenantId: SUSPENDED,
+      scopes: new Set(["products:read"]),
+    },
+  };
+  const seen: string[] = [];
+  const tokenDeps = {
+    tokens: {
+      authenticate: async (t: string) => {
+        seen.push(t);
+        return known[t];
+      },
+    },
+    shops: deps().shops,
+  };
+  const resolveToken = (headers: RequestHeaders) => apiTokenResolver(tokenDeps)({ headers });
+  const both = (headers: RequestHeaders) =>
+    requestResolver(sessionResolver(deps()), apiTokenResolver(tokenDeps))({ headers });
+
+  it("liest nur genau „Bearer <token>“", () => {
+    expect(bearerToken({})).toBeUndefined();
+    expect(bearerToken({ authorization: `Bearer ${TOKEN}` })).toBe(TOKEN);
+    expect(bearerToken({ authorization: `bearer ${TOKEN}` })).toBe(TOKEN);
+    for (const bad of [
+      "",
+      "Bearer",
+      `Basic ${TOKEN}`,
+      `Bearer ${TOKEN} x`,
+      `Bearer <script>`,
+      `Token ${TOKEN}`,
+    ])
+      expect(bearerToken({ authorization: bad }), bad).toBeNull();
+    expect(bearerToken({ authorization: [`Bearer ${TOKEN}`, `Bearer ${TOKEN}`] })).toBeNull();
+  });
+
+  it("gültiges Token: Akteur api_token, Shop und Berechtigungen aus dem Token", async () => {
+    const a = await resolveToken({ authorization: `Bearer ${TOKEN}` });
+    expect(a?.actor).toEqual({ type: "api_token", id: TOKEN_ID });
+    expect(a?.tenantId).toBe(OWN);
+    expect([...(a?.scopes ?? [])]).toEqual(["products:read"]);
+    expect(a?.passwordConfirmedAt).toBeUndefined();
+  });
+
+  it("unbekanntes Token, gesperrter Shop oder kaputte Kopfzeile: nicht angemeldet", async () => {
+    expect(await resolveToken({ authorization: `Bearer shp_at_${"x".repeat(43)}` })).toBeUndefined();
+    expect(await resolveToken({ authorization: `Bearer shp_at_${"s".repeat(43)}` })).toBeUndefined();
+    seen.length = 0;
+    expect(await resolveToken({ authorization: "Basic dGVhbTpnZWhlaW0=" })).toBeUndefined();
+    expect(seen).toEqual([]);
+  });
+
+  it("Shop-Id passend: gilt; andere oder kaputte Shop-Id: ohne Shop und ohne Rechte (403)", async () => {
+    expect((await resolveToken({ authorization: `Bearer ${TOKEN}`, "shop-id": OWN }))?.tenantId).toBe(OWN);
+    for (const shop of [FOREIGN, "kein-shop", [OWN, OWN]]) {
+      const a = await resolveToken({ authorization: `Bearer ${TOKEN}`, "shop-id": shop });
+      expect(a?.actor.type).toBe("api_token");
+      expect(a?.tenantId).toBeUndefined();
+      expect(a?.scopes.size).toBe(0);
+    }
+  });
+
+  it("mit Kopfzeile Authorization zählt nur das Token, ein gültiges Cookie daneben hilft nicht", async () => {
+    expect((await both({ cookie: COOKIE, "shop-id": OWN }))?.actor.type).toBe("user");
+    expect(await both({ cookie: COOKIE, "shop-id": OWN, authorization: "Bearer falsch" })).toBeUndefined();
+    expect((await both({ cookie: COOKIE, authorization: `Bearer ${TOKEN}` }))?.actor.type).toBe("api_token");
+  });
+
+  it("Sitzungen tragen die letzte Passworteingabe, Token nie", async () => {
+    const a = await resolve({ cookie: COOKIE, "shop-id": OWN });
+    expect(a?.passwordConfirmedAt).toEqual(session.passwordConfirmedAt);
   });
 });

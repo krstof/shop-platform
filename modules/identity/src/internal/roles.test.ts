@@ -1,6 +1,14 @@
 import { SCOPES } from "@shop/http";
 import { describe, expect, it } from "vitest";
-import { MERCHANT_SCOPES, OWNER_ONLY_SCOPES, PLATFORM_SCOPES, scopesForRole, STAFF_SCOPES } from "./roles.js";
+import {
+  MERCHANT_SCOPES,
+  OWNER_ONLY_SCOPES,
+  PLATFORM_SCOPES,
+  scopesForRole,
+  STAFF_SCOPES,
+  TOKEN_FORBIDDEN_SCOPES,
+  TOKEN_SCOPES,
+} from "./roles.js";
 
 describe("Systemrollen (Sicherheit 5.3)", () => {
   it("jede Berechtigung ist bewusst eingeordnet: Mitarbeiter, nur Inhaber oder nur Betreiber", () => {
@@ -29,5 +37,14 @@ describe("Systemrollen (Sicherheit 5.3)", () => {
     expect(scopesForRole("admin").size).toBe(0);
     expect(scopesForRole("").size).toBe(0);
     expect(scopesForRole("__proto__").size).toBe(0);
+  });
+
+  it("API-Token sehen und verwalten darf nur die Inhaberin, und kein Token kann es selbst", () => {
+    expect(scopesForRole("owner").has("api_tokens:write")).toBe(true);
+    expect(scopesForRole("staff").has("api_tokens:read")).toBe(false);
+    expect(TOKEN_FORBIDDEN_SCOPES).toEqual(["api_tokens:read", "api_tokens:write"]);
+    for (const s of [...TOKEN_FORBIDDEN_SCOPES, ...PLATFORM_SCOPES]) expect(TOKEN_SCOPES).not.toContain(s);
+    // Alles andere, was ein Shop vergeben kann, darf ein Token tragen.
+    expect([...TOKEN_SCOPES, ...TOKEN_FORBIDDEN_SCOPES].sort()).toEqual([...MERCHANT_SCOPES].sort());
   });
 });

@@ -16,6 +16,7 @@ export {
   withTenantTransaction,
   withPlatformTransaction,
   withUserTransaction,
+  withApiTokenTransaction,
   MissingTenantError,
   type Database,
   type DatabaseOptions,

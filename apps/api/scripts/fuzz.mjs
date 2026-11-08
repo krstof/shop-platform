@@ -61,18 +61,30 @@ try {
         `${handle} ${i}`,
       ]);
   }
+  // Echte Inhaberin von Shop A: API-Token anlegen prüft die eigene Rolle (E6 Teil 5).
+  const ownerId = uuidv7();
+  await setup.query(`INSERT INTO identity."user" (id, email) VALUES ($1, 'fuzz@teeladen.example')`, [
+    ownerId,
+  ]);
+  await setup.query(
+    `INSERT INTO identity.membership (tenant_id, user_id, role_key) VALUES ($1, $2, 'owner')`,
+    [tenantA, ownerId],
+  );
   await setup.end();
 
   database = connectDatabase({
     connectionString: roleUrl(adminUrl, dbName, "shop_app"),
     applicationName: "fuzz",
   });
-  const actor = { type: "user", id: uuidv7() };
+  const actor = { type: "user", id: ownerId };
   const generous = { limit: 1_000_000, windowMs: 60_000 };
   app = await createApi({
     endpoints: allEndpoints({ database }),
     resolveActor: async ({ headers }) =>
-      headers["x-test-shop"] === "a" ? { actor, tenantId: tenantA, scopes: new Set(SCOPES) } : undefined,
+      headers["x-test-shop"] === "a"
+        ? // Passwort gerade bestätigt, damit auch „API-Token anlegen“ bis in die Logik kommt.
+          { actor, tenantId: tenantA, scopes: new Set(SCOPES), passwordConfirmedAt: new Date() }
+        : undefined,
     logger: createLogger({ level: process.env["SHOP_FUZZ_LOG"] ?? "error" }),
     idempotency: databaseIdempotencyStore(database),
     // Die Bremse prüft T-18; hier würde sie die Zufallstests nur ausbremsen.

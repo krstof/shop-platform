@@ -9,6 +9,7 @@ export {
   type NewUser,
   type SignInRequest,
   type SignInResult,
+  type ConfirmPasswordResult,
   type ConfirmTwoFactorSetupResult,
   type StartTwoFactorSetupResult,
   type TwoFactorSetup,
@@ -17,6 +18,7 @@ export {
 export {
   MAX_SECOND_FACTOR_FAILURES,
   PENDING_SECOND_FACTOR_SECONDS,
+  REAUTHENTICATION_SECONDS,
   SESSION_RULES,
   type SessionKind,
   type SessionRules,
@@ -46,8 +48,22 @@ export {
   MERCHANT_SCOPES,
   scopesForRole,
   SYSTEM_ROLES,
+  TOKEN_FORBIDDEN_SCOPES,
+  TOKEN_SCOPES,
   type SystemRole,
 } from "./internal/roles.js";
+export {
+  API_TOKEN_PATTERN,
+  API_TOKEN_PREFIX,
+  createApiTokenService,
+  MAX_ACTIVE_TOKENS_PER_SHOP,
+  type ApiTokenRecord,
+  type ApiTokenService,
+  type ApiTokenServiceOptions,
+  type AuthenticatedApiToken,
+} from "./internal/api-tokens.js";
+export { apiTokenEndpoints, type ApiTokenEndpointOptions } from "./http/api-tokens.js";
+export { apiTokenCreated, apiTokenRevoked, identityEvents } from "./identity.events.js";
 export {
   LOGIN_THROTTLE_RULES,
   LoginThrottle,

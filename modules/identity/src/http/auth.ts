@@ -55,6 +55,12 @@ export const currentSessionSchema = z
         .describe(
           "Endet ohne Aktivität zu diesem Zeitpunkt; jede Anfrage schiebt ihn nach vorn (höchstens 7 Tage ab Anmeldung).",
         ),
+      passwordConfirmedAt: z.iso
+        .datetime({ offset: true })
+        .describe(
+          "Letzte Passworteingabe (Anmeldung oder POST /auth/v1/confirm-password). Kritische Aktionen " +
+            "wie API-Token anlegen verlangen höchstens 15 Minuten; sonst vorher das Passwort bestätigen.",
+        ),
     }),
     shops: z
       .array(shopOfUserSchema)
@@ -113,7 +119,12 @@ function iso(d: Date): string {
 }
 
 function sessionBody(s: ActiveSession) {
-  return { id: s.sessionId, createdAt: iso(s.createdAt), expiresAt: iso(s.expiresAt) };
+  return {
+    id: s.sessionId,
+    createdAt: iso(s.createdAt),
+    expiresAt: iso(s.expiresAt),
+    passwordConfirmedAt: iso(s.passwordConfirmedAt),
+  };
 }
 
 export function authEndpoints(identity: IdentityService, options: AuthEndpointOptions = {}): Endpoint[] {
@@ -161,7 +172,12 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
       setCookie(result.setCookie);
       return {
         user: { id: result.userId, email: result.email },
-        session: { id: result.sessionId, createdAt: iso(result.createdAt), expiresAt: iso(result.expiresAt) },
+        session: {
+          id: result.sessionId,
+          createdAt: iso(result.createdAt),
+          expiresAt: iso(result.expiresAt),
+          passwordConfirmedAt: iso(result.createdAt),
+        },
         // Vor dem zweiten Faktor verrät die Antwort keine Shops.
         shops: result.secondFactorRequired ? [] : await shopsOf(result.userId),
         secondFactor: result.secondFactorRequired ? ("required" as const) : ("not_enrolled" as const),
@@ -343,5 +359,52 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
     },
   });
 
-  return [signIn, signOut, current, verifySecondFactor, startSetup, enable];
+  const confirmPassword = defineEndpoint({
+    api: "auth",
+    method: "POST",
+    path: "/confirm-password",
+    operationId: "confirmPassword",
+    summary: "Passwort bestätigen",
+    description:
+      "Prüft das Passwort der laufenden Sitzung erneut, ohne neu anzumelden. Danach sind 15 Minuten " +
+      "lang kritische Aktionen erlaubt, etwa API-Token anlegen (Antwort 403 reauthentication_required " +
+      "heißt: zuerst hier bestätigen). Falsches Passwort zählt wie ein Fehlversuch bei der Anmeldung " +
+      "(Bremse, nach 20 Fehlversuchen Sperre des Kontos).",
+    tags: ["Anmeldung"],
+    access: { signedIn: true },
+    body: z.strictObject({
+      password: z.string().min(1).max(1024).describe("Aktuelles Passwort des Kontos."),
+    }),
+    bodyExample: { password: "drei kleine teekannen" },
+    idempotency: "none",
+    response: {
+      status: 200,
+      description: "Bestätigt. Die Sitzung nennt die neue Zeit.",
+      schema: currentSessionSchema,
+    },
+    problems: [401, 429],
+    handler: async ({ body, client }) => {
+      const c = requireClient(client);
+      const result = await identity.confirmPassword({
+        cookie: c.cookie,
+        password: body.password,
+        ipAddress: c.ip,
+      });
+      if (!result.ok) {
+        if (result.reason === "throttled")
+          throw new RateLimitedError({ retryAfterSeconds: result.retryAfterSeconds });
+        if (result.reason === "no_session") throw new UnauthorizedError();
+        throw new InvalidCredentialsError({ detail: "Das Passwort ist falsch." });
+      }
+      const s = result.session;
+      return {
+        user: { id: s.userId, email: s.email },
+        session: sessionBody(s),
+        shops: await shopsOf(s.userId),
+        secondFactor: s.secondFactor,
+      };
+    },
+  });
+
+  return [signIn, signOut, current, verifySecondFactor, startSetup, enable, confirmPassword];
 }

@@ -19,6 +19,10 @@ export const PROBLEM_TITLES: Readonly<Record<string, Texts>> = {
     de: "Anfrage von einer fremden Seite abgelehnt.",
     en: "Request from another site rejected.",
   },
+  reauthentication_required: {
+    de: "Bitte bestätige zuerst dein Passwort.",
+    en: "Please confirm your password first.",
+  },
   not_found: { de: "Nicht gefunden.", en: "Not found." },
   method_not_allowed: {
     de: "Diese Methode ist hier nicht erlaubt.",

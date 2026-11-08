@@ -98,6 +98,7 @@ export interface IdentitySession {
   impersonated_by: string | null;
   ip_address: string | null;
   last_seen_at: Generated<Timestamp>;
+  reauthenticated_at: Timestamp | null;
   token_hash: Buffer;
   two_factor_failures: Generated<number>;
   two_factor_verified_at: Timestamp | null;

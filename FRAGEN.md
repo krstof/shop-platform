@@ -8,6 +8,8 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 2. **Dürfen Mitarbeiter das Änderungsprotokoll ihres Shops sehen?** Es zeigt, wer wann was geändert hat. Umgesetzt ist „ja“ (meine Empfehlung, weil es nur den eigenen Shop betrifft und Fehler leichter finden lässt). Antwort: „ja“ oder „nein“ (dann nur die Inhaberin).
 3. **Handy weg und Ersatzcodes weg: Wie kommst du wieder in die Plattform-Verwaltung?** Für das Betreiberkonto gibt es jetzt Zwei-Faktor mit einer Authenticator-App und 10 Ersatzcodes. Gehen beide verloren, braucht es einen Notweg. Meine Empfehlung: Ich setze es auf deine Bitte hin auf dem Server zurück (sicher, aber nur mit mir). Bequemer, aber schwächer wäre ein Link per E-Mail. Antwort: „Claude“ oder „E-Mail“.
 4. **Sollen Händler Zwei-Faktor schon jetzt freiwillig einschalten dürfen?** Geplant ist Zwei-Faktor für Händler erst in Welle 2. Technisch funktioniert es jetzt schon für jedes Konto, Pflicht ist es nur für dich als Betreiber. Antwort: „freiwillig“ (so lassen, meine Empfehlung) oder „später“ (bis Welle 2 nur für Betreiber).
+5. **Brauchen API-Token immer ein Ablaufdatum?** Mit einem API-Token kann ein Programm ohne Anmeldung auf deinen Shop zugreifen. Heute ist das Ablaufdatum freiwillig; GitHub verlangt zum Beispiel eins (höchstens ein Jahr), damit vergessene Schlüssel von selbst verfallen. Antwort: „freiwillig“ (so lassen) oder „Pflicht“ (höchstens ein Jahr, meine Empfehlung).
+6. **E-Mail an die Inhaberin, wenn ein neues API-Token angelegt wird?** Das würde auffallen lassen, falls jemand mit deinem Konto heimlich einen Schlüssel anlegt. Kommt dann mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
 
 ## Beantwortet
 

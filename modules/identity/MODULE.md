@@ -49,3 +49,13 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 - Endpunkte: `POST /auth/v1/two-factor/verify`, `/setup`, `/enable`.
 - Tests: `totp.test.ts`, `two-factor.db.test.ts`.
 - Bewusst noch nicht da: Zwei-Faktor ausschalten oder zurücksetzen, neue Ersatzcodes erzeugen, Passkeys (Welle 2).
+
+## Stand E6 Teil 5 (08.11.2026)
+
+- API-Token (ADR-012): `createApiTokenService({ database, memberships? })` mit `authenticate(token)`, `create(...)`, `list(...)`, `revoke(...)` in `src/internal/api-tokens.ts`; Endpunkte `GET/POST /admin/v1/api-tokens`, `DELETE /admin/v1/api-tokens/{apiTokenId}` in `src/http/api-tokens.ts` (`apiTokenEndpoints`).
+- Schnittmenge: Token-Berechtigungen ∩ aktuelle Rolle des Kontos (`issued_for_user_id`), nie `api_tokens:*` (`TOKEN_FORBIDDEN_SCOPES`, `TOKEN_SCOPES` in `roles.ts`). `api_tokens:*` stehen in `OWNER_ONLY_SCOPES`.
+- Erneute Passworteingabe: `confirmPassword({ cookie, password, ipAddress })`, Endpunkt `POST /auth/v1/confirm-password`, Frist `REAUTHENTICATION_SECONDS` (15 Minuten). `ActiveSession.passwordConfirmedAt` (Anmeldung oder Bestätigung).
+- Ereignisse: `identity.api_token.created.v1`, `identity.api_token.revoked.v1` (`src/identity.events.ts`).
+- Migration `20261108T060000_api_tokens.sql`: Prüfregeln für Präfix, Hash, Name und Ablauf; `shop_app` darf nur `last_used_at` und `revoked_at` ändern und nichts löschen; `session.reauthenticated_at`.
+- Tests: `api-tokens.test.ts`, `api-tokens.db.test.ts` (15 Fälle), in apps/api `api-tokens.db.test.ts` (9 Fälle Ende zu Ende).
+- Bewusst noch nicht da: Token für KI (Welle 2) und Apps (Welle 4), Prüfsumme im Token für fremde Geheimnis-Scanner.

@@ -219,7 +219,7 @@ BEGIN
   INSERT INTO identity.role (tenant_id, key, name) VALUES (t, 'packer', 'Packer') RETURNING id INTO v_role;
   INSERT INTO identity.role_permission (tenant_id, role_id, permission) VALUES (t, v_role, 'orders:read');
   INSERT INTO identity.api_token (tenant_id, name, token_prefix, token_hash, scopes)
-    VALUES (t, 'Skript', 'shp_at_' || label, sha256(convert_to('shp_at_secret_' || label, 'UTF8')), ARRAY['products:read']);
+    VALUES (t, 'Skript', rpad('shp_at_' || label, 11, label), sha256(convert_to('shp_at_secret_' || label, 'UTF8')), ARRAY['products:read']);
 
   -- audit, kernel
   INSERT INTO audit.audit_entry (tenant_id, actor_type, actor_id, action, entity_type, entity_id)

@@ -98,7 +98,17 @@ export interface ActiveSession {
    * Sitzungen, die noch auf den Code warten, liefert getSession gar nicht erst.
    */
   readonly secondFactor: "verified" | "not_enrolled";
+  /**
+   * Letzte Passworteingabe: die Anmeldung selbst oder später `confirmPassword`. Kritische Aktionen
+   * verlangen höchstens 15 Minuten (REAUTHENTICATION_SECONDS).
+   */
+  readonly passwordConfirmedAt: Date;
 }
+
+export type ConfirmPasswordResult =
+  | { readonly ok: true; readonly session: ActiveSession }
+  | { readonly ok: false; readonly reason: "no_session" | "invalid_password" }
+  | { readonly ok: false; readonly reason: "throttled"; readonly retryAfterSeconds: number };
 
 export type VerifySecondFactorResult =
   | { readonly ok: true; readonly session: ActiveSession; readonly backupCodesLeft?: number }
@@ -151,6 +161,15 @@ export interface IdentityService {
    * Sitzung ist bestätigt und alle anderen Sitzungen des Kontos sind beendet.
    */
   confirmTwoFactorSetup(cookieHeader: string | undefined, code: string): Promise<ConfirmTwoFactorSetupResult>;
+  /**
+   * Passwort erneut eingeben, ohne sich neu anzumelden (für kritische Aktionen, Sicherheit 5.3).
+   * Gebremst wie die Anmeldung: Fehlversuche zählen für Konto und Netz und können sperren.
+   */
+  confirmPassword(input: {
+    readonly cookie: string | undefined;
+    readonly password: string;
+    readonly ipAddress?: string;
+  }): Promise<ConfirmPasswordResult>;
   close(): Promise<void>;
 }
 
@@ -256,7 +275,7 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
     const row = await db
       .selectFrom("identity.session as s")
       .innerJoin("identity.user as u", "u.id", "s.user_id")
-      .select(["s.two_factor_verified_at", "s.last_seen_at", "u.two_factor_enabled"])
+      .select(["s.two_factor_verified_at", "s.last_seen_at", "s.reauthenticated_at", "u.two_factor_enabled"])
       .where("s.id", "=", session.id)
       .executeTakeFirst();
     if (row === undefined) return undefined;
@@ -286,8 +305,42 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
         createdAt: session.createdAt,
         expiresAt: session.expiresAt,
         secondFactor: row.two_factor_enabled ? "verified" : "not_enrolled",
+        passwordConfirmedAt:
+          row.reauthenticated_at === null || new Date(row.reauthenticated_at) < session.createdAt
+            ? session.createdAt
+            : new Date(row.reauthenticated_at),
       },
     };
+  }
+
+  /**
+   * Prüft das Passwort einer laufenden Sitzung erneut, gebremst und mit Sperre wie die Anmeldung
+   * (ein gestohlenes Cookie allein reicht nicht, und Raten über diesen Weg ist genauso langsam).
+   */
+  async function recheckPassword(
+    s: ActiveSession,
+    password: string,
+    ipAddress: string | undefined,
+  ): Promise<"ok" | "invalid_password" | { readonly retryAfterSeconds: number }> {
+    const keys: AttemptKeys = { email: normalizeEmail(s.email), ipAddress };
+    const gate = throttle.check(keys);
+    if (!gate.allowed) return { retryAfterSeconds: gate.retryAfterSeconds };
+    const locked = await lockedFor(keys.email);
+    if (locked > 0) return { retryAfterSeconds: locked };
+    const account = await db
+      .selectFrom("identity.account")
+      .select("password_hash")
+      .where("user_id", "=", s.userId)
+      .where("provider_id", "=", "credential")
+      .executeTakeFirst();
+    const hash = account?.password_hash ?? null;
+    if (hash === null || !(await verifyPassword(hash, password))) {
+      const outcome = throttle.recordFailure(keys);
+      if (outcome.accountLockedUntil !== undefined) await lockAccount(keys.email, outcome.accountLockedUntil);
+      return "invalid_password";
+    }
+    throttle.recordSuccess(keys);
+    return "ok";
   }
 
   /** Nur fertige Sitzungen (nicht wartend). Schiebt „zuletzt aktiv“ nach vorn. */
@@ -496,23 +549,10 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       if (s === undefined) return { ok: false, reason: "no_session" };
       if (s.secondFactor === "verified") return { ok: false, reason: "already_enabled" };
       // Erneute Passworteingabe, gebremst wie die Anmeldung (ein gestohlenes Cookie allein reicht nicht).
-      const keys: AttemptKeys = { email: normalizeEmail(s.email), ipAddress: input.ipAddress };
-      const gate = throttle.check(keys);
-      if (!gate.allowed) return { ok: false, reason: "throttled", retryAfterSeconds: gate.retryAfterSeconds };
-      const account = await db
-        .selectFrom("identity.account")
-        .select("password_hash")
-        .where("user_id", "=", s.userId)
-        .where("provider_id", "=", "credential")
-        .executeTakeFirst();
-      const hash = account?.password_hash ?? null;
-      if (hash === null || !(await verifyPassword(hash, input.password))) {
-        const outcome = throttle.recordFailure(keys);
-        if (outcome.accountLockedUntil !== undefined)
-          await lockAccount(keys.email, outcome.accountLockedUntil);
-        return { ok: false, reason: "invalid_password" };
-      }
-      throttle.recordSuccess(keys);
+      const check = await recheckPassword(s, input.password, input.ipAddress);
+      if (check === "invalid_password") return { ok: false, reason: "invalid_password" };
+      if (check !== "ok")
+        return { ok: false, reason: "throttled", retryAfterSeconds: check.retryAfterSeconds };
       const secret = newTotpSecret();
       const backupCodes = newBackupCodes();
       try {
@@ -597,6 +637,22 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       if (outcome !== "ok") return { ok: false, reason: outcome };
       options.logger?.info({ userId: s.userId }, "Zwei-Faktor eingeschaltet");
       return { ok: true, session: { ...s, secondFactor: "verified" } };
+    },
+
+    async confirmPassword(input) {
+      const s = await activeSession(input.cookie);
+      if (s === undefined) return { ok: false, reason: "no_session" };
+      const check = await recheckPassword(s, input.password, input.ipAddress);
+      if (check === "invalid_password") return { ok: false, reason: "invalid_password" };
+      if (check !== "ok")
+        return { ok: false, reason: "throttled", retryAfterSeconds: check.retryAfterSeconds };
+      const at = new Date(now());
+      await db
+        .updateTable("identity.session")
+        .set({ reauthenticated_at: at, last_seen_at: at })
+        .where("id", "=", s.sessionId)
+        .execute();
+      return { ok: true, session: { ...s, passwordConfirmedAt: at } };
     },
 
     async close() {

@@ -36,11 +36,23 @@ export const STAFF_SCOPES: readonly Scope[] = [
   "audit:read",
 ];
 
-/** Nur die Inhaberin oder der Inhaber. Heute leer, siehe STAFF_SCOPES. */
-export const OWNER_ONLY_SCOPES: readonly Scope[] = [];
+/** Nur die Inhaberin oder der Inhaber. Mitarbeiter, Shop löschen und Zahlung folgen mit ihren Modulen. */
+export const OWNER_ONLY_SCOPES: readonly Scope[] = ["api_tokens:read", "api_tokens:write"];
 
 /** Alle Berechtigungen, die ein Shop überhaupt vergeben kann (alles außer Platform-API). */
 export const MERCHANT_SCOPES: readonly Scope[] = SCOPES.filter((s) => !PLATFORM_SCOPES.includes(s));
+
+/**
+ * Berechtigungen, die ein API-Token nie tragen kann: Ein gestohlenes Token darf sich weder neue
+ * Token anlegen noch die bestehenden sehen (sonst wäre ein Widerruf wirkungslos). Die Platform-API
+ * ist für Händler ohnehin tabu.
+ */
+export const TOKEN_FORBIDDEN_SCOPES: readonly Scope[] = ["api_tokens:read", "api_tokens:write"];
+
+/** Was ein API-Token höchstens bekommen kann. */
+export const TOKEN_SCOPES: readonly Scope[] = MERCHANT_SCOPES.filter(
+  (s) => !TOKEN_FORBIDDEN_SCOPES.includes(s),
+);
 
 const ROLE_SCOPES: Readonly<Record<SystemRole, ReadonlySet<Scope>>> = {
   owner: new Set([...STAFF_SCOPES, ...OWNER_ONLY_SCOPES]),

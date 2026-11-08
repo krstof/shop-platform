@@ -1,10 +1,10 @@
 // Startet den Kern-Server. Einstellungen kommen aus der Umgebung (siehe config.ts).
 // Anmeldung über das Sitzungs-Cookie (E6 Teil 2), Shop und Rolle über die Kopfzeile Shop-Id und die
-// Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4); API-Token folgen später.
-import { createIdentityService, createMembershipDirectory } from "@shop/identity";
+// Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4), API-Token (E6 Teil 5).
+import { createApiTokenService, createIdentityService, createMembershipDirectory } from "@shop/identity";
 import { ConfigError, connectDatabase, createLogger, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
 import { createOperatorDirectory, createShopDirectory } from "@shop/platform";
-import { sessionResolver, shopsOfUser } from "./actor.js";
+import { apiTokenResolver, requestResolver, sessionResolver, shopsOfUser } from "./actor.js";
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
 import { databaseIdempotencyStore } from "./idempotency-store.js";
@@ -40,14 +40,19 @@ async function main(): Promise<void> {
   });
   const memberships = createMembershipDirectory({ database });
   const shops = createShopDirectory({ database });
+  const tokens = createApiTokenService({ database, memberships });
   const app = await createApi({
     endpoints: allEndpoints({
       database,
       identity,
       operators,
+      tokens,
       shopsOfUser: shopsOfUser({ memberships, shops }),
     }),
-    resolveActor: sessionResolver({ identity, memberships, shops, operators }),
+    resolveActor: requestResolver(
+      sessionResolver({ identity, memberships, shops, operators }),
+      apiTokenResolver({ tokens, shops }),
+    ),
     logger,
     idempotency: databaseIdempotencyStore(database),
     allowedOrigins: config.SHOP_ALLOWED_ORIGINS,

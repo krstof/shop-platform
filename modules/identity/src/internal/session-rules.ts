@@ -35,3 +35,9 @@ export const MAX_SECOND_FACTOR_FAILURES = 5;
 
 /** „Zuletzt aktiv“ wird höchstens einmal je Minute geschrieben, nicht bei jeder Anfrage. */
 export const LAST_SEEN_RESOLUTION_SECONDS = 60;
+
+/**
+ * Kritische Aktionen (API-Token anlegen, später Shop löschen, Inhaber wechseln, E-Mail ändern)
+ * verlangen eine Passworteingabe vor höchstens so vielen Sekunden (Sicherheit 5.3).
+ */
+export const REAUTHENTICATION_SECONDS = 15 * 60;
