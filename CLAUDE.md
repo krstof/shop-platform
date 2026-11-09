@@ -11,6 +11,17 @@ Drei Ebenen:
 2. **Händler-Backend** pro Shop, inklusive Shop-Editor für das Aussehen.
 3. **Storefront** pro Shop (der Shop, den Endkunden sehen).
 
+## 1a. MVP-Fokus (Kristof, 09.11.2026, gilt vor allem anderen)
+
+Das System ist nur ein Test für Kristof und ein paar Kollegen. Es wird nie echte Händler oder Kunden haben. Daraus folgt:
+
+- **Nur bauen, was man beim Ausprobieren merkt:** Shop ansehen, Produkt anlegen, kaufen, Bestellung im Backoffice sehen, Shops in der Plattform-Verwaltung anlegen. Grundfunktionen wie Anmelden und „Passwort vergessen“ müssen funktionieren, mehr nicht.
+- **Nichts, was nur ein echter Händler bräuchte:** keine Rechtspflichten (Rechtstexte, Widerrufsbutton, Barrierefreiheitserklärung, GPSR), keine Feinheiten wie Ablaufdaten, Hinweis-E-Mails, Sonderrechte, Notwege, zusätzliche Härtung. Solche Ideen kommen ohne Rückfrage in die Liste „Später“ in `STATUS.md`.
+- **Größere Schritte, schnell sichtbare Ergebnisse:** lieber eine Funktion einfach und Ende zu Ende (API und Oberfläche) als eine Schicht perfekt. Oberflächen früh, nicht erst am Schluss.
+- **Fragen nur, wenn die Antwort etwas Sichtbares ändert.** Sonst einen vernünftigen Standard wählen und kurz im Bericht nennen. Keine Fragen zu Sicherheitsdetails, Protokollen, Fristen oder E-Mail-Hinweisen.
+- **Tests im Verhältnis:** Was gebaut wird, wird getestet, und die bestehenden Prüfungen (CI, Mandantentrennung) bleiben grün. Aber keine langen Gegenproben-Serien oder Recherchen zu Randfällen mehr.
+- **Bericht kurz:** 2–3 Sätze, was man jetzt ausprobieren kann. Keine Aufzählung technischer Details.
+
 ## 2. Grundsätze (verbindlich)
 
 - **Sicherheit zuerst.** Mandantentrennung (kein Shop sieht Daten eines anderen), OWASP-Regeln, keine Geheimnisse im Code, Zahlung nur über gehostete Testzahlung.
@@ -35,7 +46,7 @@ Drei Ebenen:
 
 ## 4. Arbeitsweise
 
-- Zu jedem Feature erstellt Claude zuerst einen Anforderungskatalog mit **Muss / Wäre gut / Vielleicht später**. Besonders aufwendige Punkte werden markiert. Kristof entscheidet danach, wie das Feature funktionieren soll.
+- Kein eigener Anforderungskatalog mehr je Feature. Claude baut die einfachste Version, die beim Ausprobieren funktioniert (Abschnitt 1a). Nur bei großen, sichtbaren Weichen (etwa wie der Checkout aussieht) kurz fragen.
 - Für einfache Arbeiten (Recherche, Zusammenfassungen) günstigere Modelle nutzen, für Architektur und schwierigen Code das stärkste Modell.
 - Kristof tippt nie Befehle und startet keine Skripte. Alles Technische erledigt Claude.
 - Kurze, klare deutsche Sprache, keine Fachbegriffe ohne Erklärung.
@@ -47,9 +58,9 @@ Drei Ebenen:
 3. Den nächsten Schritt aus `STATUS.md` umsetzen. Eine sinnvolle, abgeschlossene Etappe pro Lauf, nicht mehr.
 4. Testen, was gebaut wurde.
 5. `STATUS.md` aktualisieren (erledigt, nächster Schritt).
-6. Neue Fragen an Kristof in `FRAGEN.md` eintragen: nummeriert, je 1–2 Sätze Kontext, mit Ein-Wort-Antwortmöglichkeit.
+6. Nur wenn wirklich nötig (Abschnitt 1a): neue Fragen an Kristof in `FRAGEN.md` eintragen, nummeriert, je 1–2 Sätze Kontext, mit Ein-Wort-Antwortmöglichkeit. Keine Fragen ist der Normalfall.
 7. Commit und Push auf `main`.
-8. Zum Schluss eine kurze Nachricht an Kristof: was erledigt wurde (2–3 Sätze) und der vollständige Fragenkatalog.
+8. Zum Schluss eine kurze Nachricht an Kristof: was man jetzt ausprobieren kann (2–3 Sätze) und offene Fragen, falls es welche gibt.
 
 Wenn etwas blockiert (fehlende Entscheidung, Fehler), nicht raten, sondern als Frage aufnehmen und an einer anderen offenen Stelle weiterarbeiten.
 

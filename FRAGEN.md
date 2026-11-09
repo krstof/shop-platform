@@ -4,17 +4,12 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Gesperrter Shop: Darf der Händler noch ins Backoffice, nur zum Lesen?** Wenn du als Betreiber einen Shop sperrst, kommt der Händler heute gar nicht mehr hinein (sicherer Standard). Shopify lässt gesperrte Händler zum Beispiel noch Rechnungen und Daten ansehen. Antwort: „gesperrt“ (so lassen) oder „lesen“.
-2. **Dürfen Mitarbeiter das Änderungsprotokoll ihres Shops sehen?** Es zeigt, wer wann was geändert hat. Umgesetzt ist „ja“ (meine Empfehlung, weil es nur den eigenen Shop betrifft und Fehler leichter finden lässt). Antwort: „ja“ oder „nein“ (dann nur die Inhaberin).
-3. **Handy weg und Ersatzcodes weg: Wie kommst du wieder in die Plattform-Verwaltung?** Für das Betreiberkonto gibt es jetzt Zwei-Faktor mit einer Authenticator-App und 10 Ersatzcodes. Gehen beide verloren, braucht es einen Notweg. Meine Empfehlung: Ich setze es auf deine Bitte hin auf dem Server zurück (sicher, aber nur mit mir). Bequemer, aber schwächer wäre ein Link per E-Mail. Antwort: „Claude“ oder „E-Mail“.
-4. **Sollen Händler Zwei-Faktor schon jetzt freiwillig einschalten dürfen?** Geplant ist Zwei-Faktor für Händler erst in Welle 2. Technisch funktioniert es jetzt schon für jedes Konto, Pflicht ist es nur für dich als Betreiber. Antwort: „freiwillig“ (so lassen, meine Empfehlung) oder „später“ (bis Welle 2 nur für Betreiber).
-5. **Brauchen API-Token immer ein Ablaufdatum?** Mit einem API-Token kann ein Programm ohne Anmeldung auf deinen Shop zugreifen. Heute ist das Ablaufdatum freiwillig; GitHub verlangt zum Beispiel eins (höchstens ein Jahr), damit vergessene Schlüssel von selbst verfallen. Antwort: „freiwillig“ (so lassen) oder „Pflicht“ (höchstens ein Jahr, meine Empfehlung).
-6. **E-Mail an die Inhaberin, wenn ein neues API-Token angelegt wird?** Das würde auffallen lassen, falls jemand mit deinem Konto heimlich einen Schlüssel anlegt. Kommt dann mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
-7. **E-Mail „Dein Passwort wurde geändert“ nach dem Zurücksetzen?** Wer sein Passwort über „Passwort vergessen“ neu setzt, bekommt heute keine Bestätigung. Eine kurze Hinweis-E-Mail danach würde auffallen lassen, falls jemand anderes das Passwort geändert hat (so machen es Shopify und die meisten Banken). Kommt dann mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
-8. **Dürfen Mitarbeiter selbst weitere Mitarbeiter einladen?** Umgesetzt ist „nein“: Einladen und Entfernen darf nur die Inhaberin (so steht es im Sicherheitskonzept). Bei Shopify kann die Inhaberin dieses Recht auch einzelnen Mitarbeitern geben. Antwort: „nein“ (so lassen, meine Empfehlung) oder „ja“.
-9. **E-Mail an die Inhaberin, wenn jemand eine Einladung annimmt?** Dann weißt du, ab wann die neue Person mitarbeitet. Kommt mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
+Keine.
 
 ## Beantwortet
+
+- **Fragen 1 bis 9 vom 06.–09.11.2026** (gesperrter Shop lesbar, Änderungsprotokoll für Mitarbeiter, Notweg Zwei-Faktor, Zwei-Faktor für Händler, Ablaufdatum API-Token, E-Mail bei neuem Token, E-Mail „Passwort geändert“, Mitarbeiter laden ein, E-Mail bei angenommener Einladung): für das MVP egal. Es bleibt, wie es gebaut ist; nichts davon wird weiter verfolgt. Grundsatz seitdem: nur noch fragen, wenn die Antwort etwas Sichtbares ändert (CLAUDE.md 1a). (Kristof, 09.11.2026)
+- **Welle 1 komplett mit allen Rechtspflichten?** Neu entschieden: nein. Es ist nur ein Test für Kristof und Kollegen; Rechtspflichten und alles, was nur echte Händler brauchen, kommt in die Liste „Später“. (Kristof, 09.11.2026; ersetzt die Antwort vom 27.10.2026)
 
 - **Kästchen „Angemeldet bleiben“ bei der Händler-Anmeldung?** Nein. Es gilt immer: 12 Stunden ohne Aktivität, höchstens 7 Tage. (06.11.2026)
 - **Ungefähren Ort in der Liste „Aktive Sitzungen“ anzeigen?** Nein, nicht jetzt (Antwort „nein“, verstanden als „später“). Die Liste zeigt Gerät, Browser und Zeitpunkt. (06.11.2026)
