@@ -1,8 +1,13 @@
 // Startet den Kern-Server. Einstellungen kommen aus der Umgebung (siehe config.ts).
 // Anmeldung über das Sitzungs-Cookie (E6 Teil 2), Shop und Rolle über die Kopfzeile Shop-Id und die
 // Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4), API-Token (E6 Teil 5),
-// „Passwort vergessen“ mit E-Mail an Mailpit (E6 Teil 6).
-import { createApiTokenService, createIdentityService, createMembershipDirectory } from "@shop/identity";
+// „Passwort vergessen“ mit E-Mail an Mailpit (E6 Teil 6), Mitarbeiter einladen und entfernen (E6 Teil 7).
+import {
+  createApiTokenService,
+  createIdentityService,
+  createMemberService,
+  createMembershipDirectory,
+} from "@shop/identity";
 import { ConfigError, connectDatabase, createLogger, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
 import { createOperatorDirectory, createShopDirectory } from "@shop/platform";
 import { apiTokenResolver, requestResolver, sessionResolver, shopsOfUser } from "./actor.js";
@@ -45,12 +50,21 @@ async function main(): Promise<void> {
   const memberships = createMembershipDirectory({ database });
   const shops = createShopDirectory({ database });
   const tokens = createApiTokenService({ database, memberships });
+  const members = createMemberService({
+    database,
+    identity,
+    mailer,
+    baseUrl: config.SHOP_ALLOWED_ORIGINS[0] ?? `https://admin.${config.SHOP_DOMAIN}`,
+    shopName: async (tenantId) => (await shops.getShops([tenantId]))[0]?.name,
+    logger,
+  });
   const app = await createApi({
     endpoints: allEndpoints({
       database,
       identity,
       operators,
       tokens,
+      members,
       shopsOfUser: shopsOfUser({ memberships, shops }),
     }),
     resolveActor: requestResolver(

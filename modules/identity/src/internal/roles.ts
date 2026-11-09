@@ -36,18 +36,29 @@ export const STAFF_SCOPES: readonly Scope[] = [
   "audit:read",
 ];
 
-/** Nur die Inhaberin oder der Inhaber. Mitarbeiter, Shop löschen und Zahlung folgen mit ihren Modulen. */
-export const OWNER_ONLY_SCOPES: readonly Scope[] = ["api_tokens:read", "api_tokens:write"];
+/** Nur die Inhaberin oder der Inhaber. Shop löschen und Zahlung folgen mit ihren Modulen. */
+export const OWNER_ONLY_SCOPES: readonly Scope[] = [
+  "api_tokens:read",
+  "api_tokens:write",
+  "members:read",
+  "members:write",
+];
 
 /** Alle Berechtigungen, die ein Shop überhaupt vergeben kann (alles außer Platform-API). */
 export const MERCHANT_SCOPES: readonly Scope[] = SCOPES.filter((s) => !PLATFORM_SCOPES.includes(s));
 
 /**
  * Berechtigungen, die ein API-Token nie tragen kann: Ein gestohlenes Token darf sich weder neue
- * Token anlegen noch die bestehenden sehen (sonst wäre ein Widerruf wirkungslos). Die Platform-API
- * ist für Händler ohnehin tabu.
+ * Token anlegen noch die bestehenden sehen (sonst wäre ein Widerruf wirkungslos), und es darf
+ * keine Mitarbeiter einladen (sonst könnte sich ein Angreifer ein eigenes Konto im Shop
+ * verschaffen, das den Widerruf des Tokens überlebt). Die Platform-API ist für Händler ohnehin tabu.
  */
-export const TOKEN_FORBIDDEN_SCOPES: readonly Scope[] = ["api_tokens:read", "api_tokens:write"];
+export const TOKEN_FORBIDDEN_SCOPES: readonly Scope[] = [
+  "api_tokens:read",
+  "api_tokens:write",
+  "members:read",
+  "members:write",
+];
 
 /** Was ein API-Token höchstens bekommen kann. */
 export const TOKEN_SCOPES: readonly Scope[] = MERCHANT_SCOPES.filter(

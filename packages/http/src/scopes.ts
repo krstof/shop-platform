@@ -17,6 +17,9 @@ export const SCOPES = [
   // API-Token des Shops ansehen und anlegen oder widerrufen (E6 Teil 5). Nur die Inhaberin.
   "api_tokens:read",
   "api_tokens:write",
+  // Mitarbeiter einladen, auflisten und entfernen (E6 Teil 7). Nur die Inhaberin.
+  "members:read",
+  "members:write",
   "platform:read",
   "platform:write",
 ] as const;

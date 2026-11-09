@@ -11,6 +11,8 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 5. **Brauchen API-Token immer ein Ablaufdatum?** Mit einem API-Token kann ein Programm ohne Anmeldung auf deinen Shop zugreifen. Heute ist das Ablaufdatum freiwillig; GitHub verlangt zum Beispiel eins (höchstens ein Jahr), damit vergessene Schlüssel von selbst verfallen. Antwort: „freiwillig“ (so lassen) oder „Pflicht“ (höchstens ein Jahr, meine Empfehlung).
 6. **E-Mail an die Inhaberin, wenn ein neues API-Token angelegt wird?** Das würde auffallen lassen, falls jemand mit deinem Konto heimlich einen Schlüssel anlegt. Kommt dann mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
 7. **E-Mail „Dein Passwort wurde geändert“ nach dem Zurücksetzen?** Wer sein Passwort über „Passwort vergessen“ neu setzt, bekommt heute keine Bestätigung. Eine kurze Hinweis-E-Mail danach würde auffallen lassen, falls jemand anderes das Passwort geändert hat (so machen es Shopify und die meisten Banken). Kommt dann mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
+8. **Dürfen Mitarbeiter selbst weitere Mitarbeiter einladen?** Umgesetzt ist „nein“: Einladen und Entfernen darf nur die Inhaberin (so steht es im Sicherheitskonzept). Bei Shopify kann die Inhaberin dieses Recht auch einzelnen Mitarbeitern geben. Antwort: „nein“ (so lassen, meine Empfehlung) oder „ja“.
+9. **E-Mail an die Inhaberin, wenn jemand eine Einladung annimmt?** Dann weißt du, ab wann die neue Person mitarbeitet. Kommt mit dem E-Mail-Modul (E16). Antwort: „ja“ (meine Empfehlung) oder „nein“.
 
 ## Beantwortet
 

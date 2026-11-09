@@ -23,6 +23,19 @@ export const T08_FIXTURES: Readonly<Record<string, Fixture>> = {
     );
     return rows[0]?.id ?? "";
   },
+  // Eine Mitarbeiterin (nicht die Inhaberin: Die ließe sich gar nicht entfernen, der Test soll aber
+  // zeigen, dass schon das Finden am fremden Shop scheitert).
+  memberId: async (db, tenantId) => {
+    const { rows: users } = await db.query<{ id: string }>(
+      `INSERT INTO identity."user" (email) VALUES ($1) RETURNING id`,
+      [`t08-${randomBytes(6).toString("hex")}@teeladen.example`],
+    );
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO identity.membership (tenant_id, user_id, role_key) VALUES ($1, $2, 'staff') RETURNING id`,
+      [tenantId, users[0]?.id],
+    );
+    return rows[0]?.id ?? "";
+  },
   // Kein Pfad-Platzhalter, sondern Daten für die Liste GET /admin/v1/audit-entries: Ohne Einträge
   // in beiden Shops könnte der Test nicht zeigen, dass A nichts aus B sieht.
   auditEntryId: async (db, tenantId) => {

@@ -7,7 +7,10 @@ import {
   apiTokenEndpoints,
   authEndpoints,
   createApiTokenService,
+  createMemberService,
+  memberEndpoints,
   type ApiTokenService,
+  type MemberService,
   type IdentityService,
   type ShopOfUser,
 } from "@shop/identity";
@@ -24,6 +27,8 @@ export interface EndpointDependencies {
   readonly operators?: Pick<OperatorDirectory, "findOperator">;
   /** API-Token (Modul identity). Ohne Angabe: Token-Verwaltung über dieselbe Datenbank. */
   readonly tokens?: ApiTokenService;
+  /** Mitarbeiter (Modul identity). Ohne Angabe: über dieselbe Datenbank und das Anmeldemodul, ohne E-Mail. */
+  readonly members?: MemberService;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
@@ -31,6 +36,15 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...catalogEndpoints(deps),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
+    ...memberEndpoints({
+      members:
+        deps.members ??
+        createMemberService({
+          database: deps.database,
+          identity: deps.identity ?? unconnectedIdentity,
+          baseUrl: "https://admin.localhost",
+        }),
+    }),
     ...authEndpoints(
       deps.identity ?? unconnectedIdentity,
       deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser },
@@ -63,5 +77,10 @@ export const unconnectedIdentity: IdentityService = {
     throw new Error("Anmeldemodul ist nicht verbunden");
   },
   resetPassword: notConnected,
+  prepareInvitee: notConnected,
+  issueInvitationCode: notConnected,
+  findInvitation: notConnected,
+  redeemInvitation: notConnected,
+  withdrawInvitation: notConnected,
   close: async () => undefined,
 };

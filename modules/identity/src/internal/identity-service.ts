@@ -13,6 +13,7 @@ import {
   type Auth,
   type AuthOptions,
 } from "./auth.js";
+import { INVITATION_SECONDS, invitationIdentifier, parseInvitationIdentifier } from "./invitations.js";
 import { LoginThrottle, type AttemptKeys } from "./login-throttle.js";
 import { checkNewPassword, hashPassword, verifyPassword, type PasswordProblem } from "./password.js";
 import {
@@ -42,7 +43,7 @@ import {
   verifyTotp,
 } from "./totp.js";
 
-const PASSWORD_MESSAGES: Record<PasswordProblem, string> = {
+export const PASSWORD_MESSAGES: Readonly<Record<PasswordProblem, string>> = {
   too_short: "Das Passwort muss mindestens 12 Zeichen lang sein.",
   too_long: "Das Passwort darf höchstens 128 Zeichen lang sein.",
   common: "Dieses Passwort ist zu bekannt und wird oft geraten. Bitte ein anderes wählen.",
@@ -165,6 +166,21 @@ export type ResetPasswordResult =
       readonly message: string;
     };
 
+/** Ein Konto, wie Einladungen es brauchen (members.ts). */
+export interface Invitee {
+  readonly userId: string;
+  readonly email: string;
+  readonly name: string | null;
+  readonly locale: Locale;
+  /** `false`: Das Konto wurde für die Einladung angelegt und hat noch kein Passwort. */
+  readonly hasPassword: boolean;
+}
+
+export interface PendingInvitation extends Invitee {
+  readonly tenantId: string;
+  readonly expiresAt: Date;
+}
+
 export interface IdentityService {
   /** Legt ein Konto mit Passwort an. Für die Plattform-Verwaltung (E7) und Tests. */
   createUser(input: NewUser): Promise<{ readonly userId: string }>;
@@ -206,6 +222,32 @@ export interface IdentityService {
    * und hebt eine Sperre nach Fehlversuchen auf. Zwei-Faktor bleibt unverändert.
    */
   resetPassword(input: { readonly code: string; readonly newPassword: string }): Promise<ResetPasswordResult>;
+  /**
+   * Einladungen (E6 Teil 7, ADR-014), nur für den MemberService dieses Moduls: Konto zur E-Mail
+   * suchen oder ohne Passwort anlegen. `undefined`: keine gültige E-Mail-Adresse.
+   */
+  prepareInvitee(input: { readonly email: string; readonly locale: Locale }): Promise<Invitee | undefined>;
+  /** Neuer Einladungscode (7 Tage), ersetzt einen älteren für denselben Shop und dasselbe Konto. */
+  issueInvitationCode(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<{ readonly code: string; readonly expiresAt: Date }>;
+  /** Liest einen Einladungscode, ohne ihn zu verbrauchen. Ungültig, abgelaufen oder Konto nicht aktiv: `undefined`. */
+  findInvitation(code: string): Promise<PendingInvitation | undefined>;
+  /**
+   * Verbraucht den Code (von zwei gleichzeitigen Anfragen gewinnt genau eine). Hat das Konto noch
+   * kein Passwort, wird `newPassword` gesetzt (Regeln vorher prüfen); ein vorhandenes Passwort
+   * bleibt immer unverändert. Markiert die E-Mail als bestätigt. `false`: Code nicht (mehr) gültig.
+   */
+  redeemInvitation(input: {
+    readonly code: string;
+    readonly tenantId: string;
+    readonly userId: string;
+    readonly newPassword?: string;
+    readonly name?: string;
+  }): Promise<boolean>;
+  /** Macht einen offenen Einladungscode ungültig (Einladung zurückgezogen, Mitglied entfernt). */
+  withdrawInvitation(input: { readonly tenantId: string; readonly userId: string }): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -427,6 +469,18 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       .set({ two_factor_verified_at: new Date(now()), two_factor_failures: 0, last_seen_at: new Date(now()) })
       .where("id", "=", sessionId)
       .execute();
+  }
+
+  /** Hat das Konto ein Passwort? Eingeladene Konten haben bis zur Annahme keins. */
+  async function hasPassword(userId: string): Promise<boolean> {
+    const row = await db
+      .selectFrom("identity.account")
+      .select("id")
+      .where("user_id", "=", userId)
+      .where("provider_id", "=", "credential")
+      .where("password_hash", "is not", null)
+      .executeTakeFirst();
+    return row !== undefined;
   }
 
   /** Hintergrund von „Passwort vergessen“: Konto suchen, Code speichern, E-Mail schicken. */
@@ -832,6 +886,176 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       throttle.recordSuccess({ email: normalizeEmail(user.email) });
       options.logger?.info({ userId: user.id }, "Passwort über den Link aus der E-Mail neu gesetzt");
       return { ok: true };
+    },
+
+    async prepareInvitee(input) {
+      const parsed = emailSchema.safeParse(normalizeEmail(input.email));
+      if (!parsed.success) return undefined;
+      const email = parsed.data;
+      const find = () =>
+        db
+          .selectFrom("identity.user")
+          .select(["id", "email", "name", "locale"])
+          .where("email", "=", email)
+          .executeTakeFirst();
+      let user = await find();
+      if (user === undefined) {
+        try {
+          // Konto ohne Passwort (keine Zeile in identity.account): Anmelden geht erst nach der Annahme.
+          await db
+            .insertInto("identity.user")
+            .values({ email, name: null, locale: input.locale, email_verified: false })
+            .execute();
+        } catch (error) {
+          // Zwei Einladungen gleichzeitig an dieselbe neue Adresse: Die andere war schneller.
+          if (!(typeof error === "object" && error !== null && "code" in error && error.code === "23505"))
+            throw error;
+        }
+        user = await find();
+        if (user === undefined) throw new Error("Eingeladenes Konto nicht lesbar");
+      }
+      return {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        locale: user.locale === "en" ? "en" : "de",
+        hasPassword: await hasPassword(user.id),
+      };
+    },
+
+    async issueInvitationCode(input) {
+      if (!isUuid(input.tenantId) || !isUuid(input.userId)) throw new TypeError("Keine UUID");
+      const identifier = invitationIdentifier(input.tenantId, input.userId);
+      const { code, hash } = newResetCode();
+      const at = new Date(now());
+      const expiresAt = new Date(at.getTime() + INVITATION_SECONDS * 1000);
+      await db.transaction().execute(async (trx) => {
+        // Eine neue Einladung ersetzt die alte; abgelaufene Einladungen räumen wir gleich mit auf.
+        await trx
+          .deleteFrom("identity.verification")
+          .where("purpose", "=", "invitation")
+          .where((eb) => eb.or([eb("identifier", "=", identifier), eb("expires_at", "<=", at)]))
+          .execute();
+        await trx
+          .insertInto("identity.verification")
+          .values({
+            identifier,
+            value_hash: hash,
+            purpose: "invitation",
+            expires_at: expiresAt,
+            created_at: at,
+          })
+          .execute();
+      });
+      return { code, expiresAt };
+    },
+
+    async findInvitation(code) {
+      if (!RESET_CODE_PATTERN.test(code)) return undefined;
+      const found = await db
+        .selectFrom("identity.verification")
+        .select(["identifier", "expires_at"])
+        .where("value_hash", "=", hashResetCode(code))
+        .where("purpose", "=", "invitation")
+        .executeTakeFirst();
+      if (found === undefined || new Date(found.expires_at) <= new Date(now())) return undefined;
+      const ids = parseInvitationIdentifier(found.identifier);
+      if (ids === undefined) return undefined;
+      const user = await db
+        .selectFrom("identity.user")
+        .select(["id", "email", "name", "locale", "status"])
+        .where("id", "=", ids.userId)
+        .executeTakeFirst();
+      if (user === undefined || user.status !== "active") return undefined;
+      return {
+        tenantId: ids.tenantId,
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        locale: user.locale === "en" ? "en" : "de",
+        hasPassword: await hasPassword(user.id),
+        expiresAt: new Date(found.expires_at),
+      };
+    },
+
+    async redeemInvitation(input) {
+      if (!RESET_CODE_PATTERN.test(input.code)) return false;
+      const hash = hashResetCode(input.code);
+      const identifier = invitationIdentifier(input.tenantId, input.userId);
+      // Argon2id vor der Transaktion: Es dauert, und die Transaktion soll kurz bleiben.
+      const passwordHash =
+        input.newPassword === undefined ? undefined : await hashPassword(input.newPassword);
+      const at = new Date(now());
+      const redeemed = await db.transaction().execute(async (trx) => {
+        // Löschen ist das Verbrauchen: Von zwei gleichzeitigen Anfragen bekommt nur eine die Zeile.
+        const used = await trx
+          .deleteFrom("identity.verification")
+          .where("value_hash", "=", hash)
+          .where("purpose", "=", "invitation")
+          .where("identifier", "=", identifier)
+          .where("expires_at", ">", at)
+          .returning("id")
+          .executeTakeFirst();
+        if (used === undefined) return false;
+        if (passwordHash !== undefined) {
+          // Nur ein fehlendes Passwort wird gesetzt, ein vorhandenes nie überschrieben: Eine Einladung
+          // ist kein Weg, das Passwort eines bestehenden Kontos zu ändern.
+          const existing = await trx
+            .selectFrom("identity.account")
+            .select(["id", "password_hash"])
+            .where("user_id", "=", input.userId)
+            .where("provider_id", "=", "credential")
+            .forUpdate()
+            .executeTakeFirst();
+          if (existing === undefined) {
+            await trx
+              .insertInto("identity.account")
+              .values({
+                user_id: input.userId,
+                provider_id: "credential",
+                account_id: input.userId,
+                password_hash: passwordHash,
+              })
+              .execute();
+          } else if (existing.password_hash === null) {
+            await trx
+              .updateTable("identity.account")
+              .set({ password_hash: passwordHash, updated_at: at })
+              .where("id", "=", existing.id)
+              .execute();
+          }
+        }
+        // Den Namen nur setzen, wenn das Konto noch keinen hat (ein bestehendes Konto behält seinen).
+        const name = input.name?.trim() ?? "";
+        const current = await trx
+          .selectFrom("identity.user")
+          .select("name")
+          .where("id", "=", input.userId)
+          .forUpdate()
+          .executeTakeFirst();
+        await trx
+          .updateTable("identity.user")
+          .set({
+            // Wer den Link aus dem Postfach benutzt, hat die Adresse bestätigt.
+            email_verified: true,
+            updated_at: at,
+            ...(name !== "" && (current?.name ?? "") === "" ? { name } : {}),
+          })
+          .where("id", "=", input.userId)
+          .execute();
+        return true;
+      });
+      if (redeemed) options.logger?.info({ userId: input.userId }, "Einladung angenommen");
+      return redeemed;
+    },
+
+    async withdrawInvitation(input) {
+      if (!isUuid(input.tenantId) || !isUuid(input.userId)) return;
+      await db
+        .deleteFrom("identity.verification")
+        .where("purpose", "=", "invitation")
+        .where("identifier", "=", invitationIdentifier(input.tenantId, input.userId))
+        .execute();
     },
 
     async close() {

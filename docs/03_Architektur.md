@@ -414,6 +414,8 @@ CREATE POLICY tenant_isolation ON catalog.product
 
 **Stand E6 Teil 6 (08.11.2026):** „Passwort vergessen“ (ADR-013). `POST /auth/v1/password/forgot` antwortet immer gleich und sofort; das Modul `identity` sucht im Hintergrund das Konto, legt einen Einmalcode an (nur SHA-256 in `identity.verification`, 30 Minuten) und schickt die E-Mail über einen `MailSender`, den `apps/api` mit Nodemailer an Mailpit zusammensetzt (`apps/api/src/mail.ts`, `SHOP_SMTP_URL`). `POST /auth/v1/password/reset` setzt das Passwort, beendet alle Sitzungen und meldet nicht an. Mit E16 übernimmt das Modul `notifications` den Versand im Worker.
 
+**Stand E6 Teil 7 (09.11.2026):** Mitarbeiter einladen und entfernen (ADR-014). `createMemberService` im Modul `identity` arbeitet als `shop_app` mit den Mitgliedschaften und ruft für Konten und Codes fünf schmale Funktionen des `IdentityService` (`shop_auth`) auf; `apps/api` setzt beides mit dem Mailer und dem Shopnamen aus `platform` zusammen. Admin-API `GET/POST /admin/v1/members`, `DELETE /admin/v1/members/{memberId}` (nur Inhaberin, `members:*`, nie per Token), Auth-API `POST /auth/v1/invitations/accept`. Entfernen wirkt bei der nächsten Anfrage und widerruft die Token des Kontos im Shop. Damit ist E6 abgeschlossen.
+
 Dieses Verfahren funktioniert auch mit **PgBouncer** im Transaktionsmodus. PgBouncer ist ein Verbindungsverteiler, der später viele Anwendungsinstanzen auf wenige Datenbankverbindungen bündelt.
 
 ### 5.4 Datenbankrollen

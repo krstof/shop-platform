@@ -6,6 +6,8 @@ export {
   type ActiveSession,
   type IdentityService,
   type IdentityServiceOptions,
+  type Invitee,
+  type PendingInvitation,
   type NewUser,
   type SignInRequest,
   type SignInResult,
@@ -64,7 +66,30 @@ export {
   type AuthenticatedApiToken,
 } from "./internal/api-tokens.js";
 export { apiTokenEndpoints, type ApiTokenEndpointOptions } from "./http/api-tokens.js";
-export { apiTokenCreated, apiTokenRevoked, identityEvents } from "./identity.events.js";
+export {
+  apiTokenCreated,
+  apiTokenRevoked,
+  identityEvents,
+  memberInvited,
+  memberJoined,
+  memberRemoved,
+} from "./identity.events.js";
+export {
+  createMemberService,
+  INVITABLE_ROLES,
+  type AcceptResult,
+  type InviteResult,
+  type MemberRecord,
+  type MemberService,
+  type MemberServiceOptions,
+  type RemoveResult,
+} from "./internal/members.js";
+export {
+  INVITATION_PATH,
+  INVITATION_SECONDS,
+  MAX_PENDING_INVITATIONS_PER_SHOP,
+} from "./internal/invitations.js";
+export { memberEndpoints, type MemberEndpointOptions } from "./http/members.js";
 export {
   LOGIN_THROTTLE_RULES,
   LoginThrottle,

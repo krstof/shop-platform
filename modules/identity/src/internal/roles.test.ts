@@ -42,9 +42,23 @@ describe("Systemrollen (Sicherheit 5.3)", () => {
   it("API-Token sehen und verwalten darf nur die Inhaberin, und kein Token kann es selbst", () => {
     expect(scopesForRole("owner").has("api_tokens:write")).toBe(true);
     expect(scopesForRole("staff").has("api_tokens:read")).toBe(false);
-    expect(TOKEN_FORBIDDEN_SCOPES).toEqual(["api_tokens:read", "api_tokens:write"]);
+    expect(TOKEN_FORBIDDEN_SCOPES).toEqual([
+      "api_tokens:read",
+      "api_tokens:write",
+      "members:read",
+      "members:write",
+    ]);
     for (const s of [...TOKEN_FORBIDDEN_SCOPES, ...PLATFORM_SCOPES]) expect(TOKEN_SCOPES).not.toContain(s);
     // Alles andere, was ein Shop vergeben kann, darf ein Token tragen.
     expect([...TOKEN_SCOPES, ...TOKEN_FORBIDDEN_SCOPES].sort()).toEqual([...MERCHANT_SCOPES].sort());
+  });
+
+  it("Mitarbeiter verwalten darf nur die Inhaberin, und kein Token kann es", () => {
+    expect(scopesForRole("owner").has("members:write")).toBe(true);
+    expect(scopesForRole("owner").has("members:read")).toBe(true);
+    expect(scopesForRole("staff").has("members:read")).toBe(false);
+    expect(scopesForRole("staff").has("members:write")).toBe(false);
+    expect(TOKEN_SCOPES).not.toContain("members:read");
+    expect(TOKEN_SCOPES).not.toContain("members:write");
   });
 });
