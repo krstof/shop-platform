@@ -9,7 +9,8 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { connectDatabase, createLogger, uuidv7 } from "@shop/kernel";
+import { createIdentityService } from "@shop/identity";
+import { connectDatabase, createLogger, createSecretBox, uuidv7 } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
 import { roleUrl } from "@shop/testing";
 import { SCOPES } from "@shop/http";
@@ -41,6 +42,7 @@ setupUrl.pathname = `/${dbName}`;
 let status;
 let app;
 let database;
+let identity;
 try {
   await runMigrations({ connectionString: setupUrl.href, rootDir: repoRoot });
   const setup = new pg.Client({ connectionString: setupUrl.href });
@@ -76,10 +78,18 @@ try {
     connectionString: roleUrl(adminUrl, dbName, "shop_app"),
     applicationName: "fuzz",
   });
+  // Echtes Anmeldemodul (shop_auth), ohne E-Mail-Versand: „Mitarbeiter einladen“ legt Konten und
+  // Codes an und soll dabei bis in die Logik kommen (E6 Teil 7).
+  identity = createIdentityService({
+    secretBox: createSecretBox(new Map([[1, randomBytes(32)]])),
+    connectionString: roleUrl(adminUrl, dbName, "shop_auth"),
+    secret: randomBytes(32).toString("base64url"),
+    baseUrl: "https://admin.localhost",
+  });
   const actor = { type: "user", id: ownerId };
   const generous = { limit: 1_000_000, windowMs: 60_000 };
   app = await createApi({
-    endpoints: allEndpoints({ database }),
+    endpoints: allEndpoints({ database, identity }),
     resolveActor: async ({ headers }) =>
       headers["x-test-shop"] === "a"
         ? // Passwort gerade bestätigt, damit auch „API-Token anlegen“ bis in die Logik kommt.
@@ -136,6 +146,7 @@ try {
   });
 } finally {
   await app?.close();
+  await identity?.close();
   await database?.destroy();
   await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
   await admin.end();
