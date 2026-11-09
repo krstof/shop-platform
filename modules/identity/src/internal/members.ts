@@ -85,12 +85,19 @@ export interface MemberService {
     readonly tenantId: string;
     readonly invitedBy: string;
     readonly email: string;
-    readonly role: InvitableRole;
+    /** `owner` nur aus der Plattform-Verwaltung für einen neuen Shop (M1), nie über die Admin-API. */
+    readonly role: InvitableRole | "owner";
     /** Sprache für ein neu angelegtes Konto (und damit für die E-Mail). */
     readonly locale: Locale;
   }): Promise<InviteResult>;
   /** Entfernt ein Mitglied oder zieht eine Einladung zurück. */
   remove(tenantId: string, memberId: string): Promise<RemoveResult>;
+  /**
+   * Macht ein bestehendes Konto sofort zur aktiven Inhaberin, ohne Einladung. Nur für Testdaten
+   * (Befehl `seed`, M1). Hat der Shop schon eine Inhaberin oder das Konto schon eine Mitgliedschaft,
+   * passiert nichts (`false`).
+   */
+  addOwner(input: { readonly tenantId: string; readonly userId: string }): Promise<boolean>;
   /** Einladung mit dem Code aus der E-Mail annehmen. Meldet nicht an. */
   accept(input: {
     readonly code: string;
@@ -283,6 +290,30 @@ export function createMemberService(options: MemberServiceOptions): MemberServic
       });
       const invitationSent = await sendInvitation({ ...invitee, tenantId: input.tenantId, code });
       return { ok: true, member: toRecord(outcome), invitationSent, invitationExpiresAt: expiresAt };
+    },
+
+    async addOwner(input) {
+      return withTenantTransaction(
+        database,
+        async (trx) => {
+          const owner = await trx
+            .selectFrom("identity.membership")
+            .select("id")
+            .where("role_key", "=", "owner")
+            .executeTakeFirst();
+          if (owner !== undefined) return false;
+          const row = await trx
+            .insertInto("identity.membership")
+            .values({ tenant_id: input.tenantId, user_id: input.userId, role_key: "owner", status: "active" })
+            .onConflict((oc) => oc.doNothing())
+            .returning("id")
+            .executeTakeFirst();
+          if (row === undefined) return false;
+          await publishEvent(trx, memberJoined, { id: row.id, userId: input.userId, role: "owner" });
+          return true;
+        },
+        { tenantId: input.tenantId },
+      );
     },
 
     async remove(tenantId, memberId) {

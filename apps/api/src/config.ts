@@ -35,6 +35,8 @@ export const apiConfigSchema = baseConfigSchema.extend({
   SHOP_APP_DATABASE_URL: roleUrl("shop_app"),
   /** Verbindung des Anmeldemoduls (ADR-008). Nur sie sieht Passwort-Hashes und Sitzungen. */
   SHOP_AUTH_DATABASE_URL: roleUrl("shop_auth"),
+  /** Plattform-Verwaltung (M1): Shops anlegen und sperren. Kleiner Pool, nur im Modul platform. */
+  SHOP_PLATFORM_DATABASE_URL: roleUrl("shop_platform"),
   /** Geheimnis zum Signieren der Sitzungs-Cookies (Sicherheit 5.10). */
   SHOP_AUTH_SECRET: secret(32),
   /**

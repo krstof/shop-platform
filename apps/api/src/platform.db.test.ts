@@ -2,13 +2,19 @@
 // und erreicht erst dann die Platform-API. Echte Datenbank, echtes Anmeldemodul (shop_auth),
 // Betreiberkonten gelesen als shop_app (neues Leserecht auf drei Spalten von platform.platform_user).
 // Braucht SHOP_TEST_DATABASE_URL (pnpm test:with-db), sonst übersprungen; in der CI Pflicht.
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createIdentityService, createMembershipDirectory, type IdentityService } from "@shop/identity";
+import {
+  createIdentityService,
+  createMemberService,
+  createMembershipDirectory,
+  type IdentityService,
+  type OutgoingMail,
+} from "@shop/identity";
 import { connectDatabase, createLogger, createSecretBox, type Database } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
-import { createOperatorDirectory, createShopDirectory } from "@shop/platform";
+import { createOperatorDirectory, createShopAdministration, createShopDirectory } from "@shop/platform";
 import { roleUrl } from "@shop/testing";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { InjectOptions } from "fastify";
@@ -58,6 +64,8 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
   let admin: pg.Client;
   let inspect: pg.Client;
   let database: Database<unknown>;
+  let platformDatabase: Database<unknown>;
+  const mails: OutgoingMail[] = [];
   let identity: IdentityService;
   let app: NestFastifyApplication;
   let operatorId: string;
@@ -113,11 +121,24 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
 
     const memberships = createMembershipDirectory({ database });
     const shops = createShopDirectory({ database });
+    platformDatabase = connectDatabase<unknown>({
+      connectionString: roleUrl(adminUrl ?? "", dbName, "shop_platform"),
+      maxConnections: 2,
+      applicationName: "api-platform-test-admin",
+    });
     app = await createApi({
       endpoints: allEndpoints({
         database,
         identity,
         operators,
+        platformShops: createShopAdministration({ database: platformDatabase }),
+        members: createMemberService({
+          database,
+          identity,
+          baseUrl: "https://admin.localhost",
+          mailer: { send: async (mail) => void mails.push(mail) },
+          shopName: async (id) => (await shops.getShops([id]))[0]?.name,
+        }),
         shopsOfUser: shopsOfUser({ memberships, shops }),
       }),
       resolveActor: sessionResolver({ identity, memberships, shops, operators }),
@@ -136,6 +157,7 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
     await app?.close();
     await identity?.close();
     await database?.destroy();
+    await platformDatabase?.destroy();
     await inspect?.end();
     await admin?.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
     await admin?.end();
@@ -251,5 +273,130 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
     expect((await post("/auth/v1/two-factor/verify", { code: "123456", extra: 1 }, cookie)).statusCode).toBe(
       422,
     );
+  });
+
+  describe("Shops verwalten (M1)", () => {
+    const OWNER = "inhaberin@modeladen.example";
+    const OWNER_PW = "Leinenhemd-im-Sommer-77";
+    let cookie = "";
+    let shopId = "";
+
+    const action = (url: string, c: string) =>
+      inject({ method: "POST", url, headers: { origin: PLATFORM, cookie: c } });
+
+    async function operatorCookie(code: string | undefined) {
+      const first = await signIn();
+      const ok = await post("/auth/v1/two-factor/verify", { code }, first.cookie);
+      expect(ok.statusCode).toBe(200);
+      return first.cookie;
+    }
+
+    it("Betreiber legt einen Shop an; die Inhaberin bekommt eine Einladung", async () => {
+      cookie = await operatorCookie(backupCodes[2]);
+      const r = await post(
+        "/platform/v1/shops",
+        { handle: "modeladen", name: "Modeladen", ownerEmail: OWNER },
+        cookie,
+      );
+      expect(r.statusCode).toBe(201);
+      const body = r.json();
+      expect(body).toMatchObject({
+        handle: "modeladen",
+        name: "Modeladen",
+        status: "active",
+        ownerEmail: OWNER,
+        invitationSent: true,
+      });
+      shopId = body.id;
+      expect(mails.at(-1)?.to).toBe(OWNER);
+      expect(mails.at(-1)?.subject).toContain("Modeladen");
+
+      const list = await get("/platform/v1/shops", cookie);
+      expect(list.statusCode).toBe(200);
+      expect(list.json().data.map((s: { handle: string }) => s.handle)).toEqual(["modeladen"]);
+    });
+
+    it("gleicher Kurzname 409, ungültige Eingaben 422", async () => {
+      const again = await post(
+        "/platform/v1/shops",
+        { handle: "modeladen", name: "Noch einer", ownerEmail: "x@y.example" },
+        cookie,
+      );
+      expect(again.statusCode).toBe(409);
+      for (const body of [
+        { handle: "Mode Laden", name: "X", ownerEmail: "x@y.example" },
+        { handle: "ok-shop", name: "", ownerEmail: "x@y.example" },
+        { handle: "ok-shop", name: "X", ownerEmail: "keine-adresse" },
+      ])
+        expect((await post("/platform/v1/shops", body, cookie)).statusCode).toBe(422);
+    });
+
+    it("Inhaberin nimmt an, meldet sich an und sieht ihren Shop", async () => {
+      const code = /#code=([A-Za-z0-9_-]+)/.exec(mails.at(-1)?.text ?? "")?.[1];
+      expect(code).toBeDefined();
+      const accepted = await post("/auth/v1/invitations/accept", { code, password: OWNER_PW });
+      expect(accepted.statusCode).toBe(200);
+      const r = await post("/auth/v1/sign-in", { email: OWNER, password: OWNER_PW });
+      expect(r.statusCode).toBe(200);
+      expect(r.json().shops).toEqual([
+        expect.objectContaining({ id: shopId, handle: "modeladen", role: "owner" }),
+      ]);
+      const ownerCookie = String([r.headers["set-cookie"]].flat()[0]).split(";")[0] ?? "";
+      const team = await inject({
+        method: "GET",
+        url: "/admin/v1/members",
+        headers: { cookie: ownerCookie, "shop-id": shopId },
+      });
+      expect(team.statusCode).toBe(200);
+      expect(team.json().data).toEqual([
+        expect.objectContaining({ email: OWNER, role: "owner", status: "active" }),
+      ]);
+    });
+
+    it("gesperrter Shop ist für die Inhaberin weg, freigeschaltet wieder da", async () => {
+      const suspended = await action(`/platform/v1/shops/${shopId}/suspend`, cookie);
+      expect(suspended.statusCode).toBe(200);
+      expect(suspended.json().status).toBe("suspended");
+      const owner = await post("/auth/v1/sign-in", { email: OWNER, password: OWNER_PW });
+      expect(owner.json().shops).toEqual([]);
+      const ownerCookie = String([owner.headers["set-cookie"]].flat()[0]).split(";")[0] ?? "";
+      const blocked = await inject({
+        method: "GET",
+        url: "/admin/v1/members",
+        headers: { cookie: ownerCookie, "shop-id": shopId },
+      });
+      expect(blocked.statusCode).toBe(403);
+
+      const back = await action(`/platform/v1/shops/${shopId}/reactivate`, cookie);
+      expect(back.json().status).toBe("active");
+      const again = await post("/auth/v1/sign-in", { email: OWNER, password: OWNER_PW });
+      expect(again.json().shops).toHaveLength(1);
+      expect((await action(`/platform/v1/shops/${randomUUID()}/suspend`, cookie)).statusCode).toBe(404);
+    });
+
+    it("nur Betreiber mit Zwei-Faktor und Schreibrecht", async () => {
+      const merchant = await signIn(MERCHANT);
+      expect((await get("/platform/v1/shops", merchant.cookie)).statusCode).toBe(403);
+      await inspect.query(`UPDATE platform.platform_user SET role = 'viewer' WHERE user_id = $1`, [
+        operatorId,
+      ]);
+      try {
+        const viewer = await operatorCookie(backupCodes[3]);
+        expect((await get("/platform/v1/shops", viewer)).statusCode).toBe(200);
+        expect(
+          (
+            await post(
+              "/platform/v1/shops",
+              { handle: "teeladen", name: "T", ownerEmail: "a@b.example" },
+              viewer,
+            )
+          ).statusCode,
+        ).toBe(403);
+      } finally {
+        await inspect.query(`UPDATE platform.platform_user SET role = 'owner' WHERE user_id = $1`, [
+          operatorId,
+        ]);
+      }
+    });
   });
 });

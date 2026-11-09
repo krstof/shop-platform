@@ -8,6 +8,7 @@ const base = {
   SHOP_DOMAIN: "localhost",
   SHOP_APP_DATABASE_URL: "postgres://shop_app:x@db/shop",
   SHOP_AUTH_DATABASE_URL: "postgres://shop_auth:x@db/shop",
+  SHOP_PLATFORM_DATABASE_URL: "postgres://shop_platform:x@db/shop",
   SHOP_AUTH_SECRET: randomBytes(32).toString("base64url"),
   SHOP_MASTER_KEY_V1: randomBytes(32).toString("base64"),
   SHOP_SMTP_URL: "smtp://mailpit:1025",

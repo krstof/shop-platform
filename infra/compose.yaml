@@ -196,6 +196,8 @@ services:
       # Anmeldemodul (E6): eigener kleiner Pool als shop_auth, Geheimnis für die Sitzungs-Cookies.
       SHOP_AUTH_DATABASE_URL: postgres://shop_auth:${SHOP_DB_PASSWORD_AUTH:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
       SHOP_AUTH_SECRET: ${SHOP_AUTH_SECRET:?fehlt}
+      # Plattform-Verwaltung (M1): Shops anlegen und sperren, eigener kleiner Pool als shop_platform.
+      SHOP_PLATFORM_DATABASE_URL: postgres://shop_platform:${SHOP_DB_PASSWORD_PLATFORM:?fehlt}@postgres:5432/${SHOP_DB_NAME:?fehlt}
       # Hauptschlüssel für Zwei-Faktor-Geheimnisse (Envelope Encryption, E6 Teil 4).
       SHOP_MASTER_KEY_V1: ${SHOP_MASTER_KEY_V1:?fehlt}
       # E-Mails („Passwort vergessen“, E6 Teil 6) gehen nur an Mailpit, nie nach außen.

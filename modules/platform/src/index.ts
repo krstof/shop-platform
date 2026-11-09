@@ -16,4 +16,17 @@ export {
   type OperatorDirectoryOptions,
   type OperatorRole,
 } from "./internal/operators.js";
-export { platformEndpoints, type PlatformEndpointOptions } from "./http/platform.js";
+export {
+  createShopAdministration,
+  SHOP_HANDLE_PATTERN,
+  type ChangeStatusResult,
+  type CreateShopResult,
+  type ShopAdministration,
+  type ShopAdministrationOptions,
+  type ShopRecord,
+} from "./internal/shop-admin.js";
+export {
+  platformEndpoints,
+  type OwnerInvitationResult,
+  type PlatformEndpointOptions,
+} from "./http/platform.js";

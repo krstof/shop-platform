@@ -15,7 +15,12 @@ import {
   type ShopOfUser,
 } from "@shop/identity";
 import type { Database } from "@shop/kernel";
-import { platformEndpoints, type OperatorDirectory } from "@shop/platform";
+import {
+  createShopAdministration,
+  platformEndpoints,
+  type OperatorDirectory,
+  type ShopAdministration,
+} from "@shop/platform";
 
 export interface EndpointDependencies {
   readonly database: Database<unknown>;
@@ -29,27 +34,39 @@ export interface EndpointDependencies {
   readonly tokens?: ApiTokenService;
   /** Mitarbeiter (Modul identity). Ohne Angabe: über dieselbe Datenbank und das Anmeldemodul, ohne E-Mail. */
   readonly members?: MemberService;
+  /** Shops verwalten (Modul platform, Verbindung als shop_platform). Ohne Angabe: Shops über dieselbe Datenbank. */
+  readonly platformShops?: ShopAdministration;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
+  const members =
+    deps.members ??
+    createMemberService({
+      database: deps.database,
+      identity: deps.identity ?? unconnectedIdentity,
+      baseUrl: "https://admin.localhost",
+    });
   return [
     ...catalogEndpoints(deps),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
-    ...memberEndpoints({
-      members:
-        deps.members ??
-        createMemberService({
-          database: deps.database,
-          identity: deps.identity ?? unconnectedIdentity,
-          baseUrl: "https://admin.localhost",
-        }),
-    }),
+    ...memberEndpoints({ members }),
     ...authEndpoints(
       deps.identity ?? unconnectedIdentity,
       deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser },
     ),
-    ...platformEndpoints({ operators: deps.operators ?? { findOperator: async () => undefined } }),
+    ...platformEndpoints({
+      operators: deps.operators ?? { findOperator: async () => undefined },
+      shops: deps.platformShops ?? createShopAdministration({ database: deps.database }),
+      // Inhaberin eines neuen Shops einladen (M1): derselbe Ablauf wie bei Mitarbeitern, Rolle owner.
+      inviteOwner: async ({ tenantId, email, invitedBy, locale }) => {
+        const r = await members.invite({ tenantId, email, invitedBy, role: "owner", locale });
+        if (r.ok)
+          return { ok: true, invitationSent: r.invitationSent, invitationExpiresAt: r.invitationExpiresAt };
+        if (r.reason === "invalid_email") return { ok: false, reason: "invalid_email" };
+        throw new Error(`Einladung der Inhaberin gescheitert: ${r.reason}`);
+      },
+    }),
   ];
 }
 

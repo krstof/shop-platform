@@ -3,6 +3,7 @@
 //                  (darin legt der Dienst migrate die Datenbank an und führt alle Migrationen aus,
 //                  danach starten API und Worker), Objektspeicher einrichten
 //   pnpm dev:down  Container stoppen (Daten bleiben erhalten)
+//   pnpm dev:seed  Testshops Teeladen und Modeladen mit Inhaberkonto anlegen (M1, läuft in der API)
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -84,6 +85,10 @@ const command = process.argv[2] ?? "up";
 if (command === "down") {
   docker(["down"]);
   console.log("Plattform gestoppt. Die Daten bleiben erhalten.");
+} else if (command === "seed") {
+  const seedArgs = ["exec", "-T"];
+  if (process.env.SHOP_SEED_PASSWORD) seedArgs.push("-e", "SHOP_SEED_PASSWORD");
+  process.stdout.write(docker([...seedArgs, "api", "node", "dist/seed.js"]));
 } else {
   setupEnv(root);
   const env = parseEnv(readFileSync(resolve(root, ".env"), "utf8"));

@@ -15,6 +15,8 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Seit E6 Teil 4:** `createOperatorDirectory({ database })` mit `findOperator(userId)`: aktives Betreiberkonto und Rolle aus `platform.platform_user` (shop_app darf dort nur `user_id`, `role`, `status` lesen, Migration `20261107T090100`). Erster Endpunkt der Platform-API in `src/http/platform.ts`: `GET /platform/v1/operator` (Berechtigung `platform:read`, die `apps/api` nur mit bestätigtem zweitem Faktor vergibt).
 
+**Seit M1 (09.11.2026):** `createShopAdministration({ database })` mit Verbindung als **shop_platform** (in `apps/api` eigener Pool `SHOP_PLATFORM_DATABASE_URL`): `list`, `get`, `create` (je Shop ein eigener Händler-Eintrag, Shop sofort `active`), `setStatus` (sperren/freischalten). Endpunkte `GET/POST /platform/v1/shops`, `POST /platform/v1/shops/{shopId}/suspend` und `/reactivate`. Die Einladung der Inhaberin setzt `apps/api` mit `identity` zusammen (Option `inviteOwner`, Rolle `owner`). Testdaten: `apps/api/src/seed.ts` (`pnpm dev:seed`).
+
 **Fassade (geplant):** resolveTenantByHost(host), isFeatureEnabled(tenantId, feature), createTenant(...)
 
 **Ereignisse (geplant):** platform.tenant.created.v1, platform.tenant.suspended.v1, platform.tenant.deleted.v1

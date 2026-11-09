@@ -9,7 +9,7 @@ import {
   createMembershipDirectory,
 } from "@shop/identity";
 import { ConfigError, connectDatabase, createLogger, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
-import { createOperatorDirectory, createShopDirectory } from "@shop/platform";
+import { createOperatorDirectory, createShopAdministration, createShopDirectory } from "@shop/platform";
 import { apiTokenResolver, requestResolver, sessionResolver, shopsOfUser } from "./actor.js";
 import { createApi } from "./app.js";
 import { loadApiConfig } from "./config.js";
@@ -27,6 +27,14 @@ async function main(): Promise<void> {
       logger.warn({ err: error }, "Datenbankverbindung abgebrochen, wird neu aufgebaut"),
   });
   const operators = createOperatorDirectory({ database });
+  // Eigener kleiner Pool als shop_platform, nur für die Plattform-Verwaltung (M1).
+  const platformDatabase = connectDatabase<unknown>({
+    connectionString: config.SHOP_PLATFORM_DATABASE_URL,
+    applicationName: "api-platform",
+    maxConnections: 2,
+    onConnectionError: (error) =>
+      logger.warn({ err: error }, "Datenbankverbindung (Plattform) abgebrochen, wird neu aufgebaut"),
+  });
   const mailer = createSmtpMailSender({ url: config.SHOP_SMTP_URL, from: config.SHOP_MAIL_FROM });
   // Eigener kleiner Pool als shop_auth, nur im Modul identity (ADR-008).
   const identity = createIdentityService({
@@ -65,6 +73,7 @@ async function main(): Promise<void> {
       operators,
       tokens,
       members,
+      platformShops: createShopAdministration({ database: platformDatabase }),
       shopsOfUser: shopsOfUser({ memberships, shops }),
     }),
     resolveActor: requestResolver(
@@ -84,6 +93,7 @@ async function main(): Promise<void> {
     await identity.close();
     mailer.close();
     await database.destroy();
+    await platformDatabase.destroy();
   };
   process.once("SIGTERM", () => void stop());
   process.once("SIGINT", () => void stop());

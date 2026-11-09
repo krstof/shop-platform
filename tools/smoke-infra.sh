@@ -88,6 +88,8 @@ check "Migrationen sind ausgeführt (mindestens 20)" '[[ "$(PGPASSWORD="$POSTGRE
 check "shop_app meldet sich mit dem Passwort aus .env an" '[[ "$(PGPASSWORD="$SHOP_DB_PASSWORD_APP" "${PSQL[@]}" -U shop_app -c "SELECT current_user")" == shop_app ]]'
 check "shop_app ohne richtiges Passwort: abgewiesen" '! PGPASSWORD="falsch-$RANDOM" "${PSQL[@]}" -U shop_app -c "SELECT 1" >/dev/null 2>&1'
 check "API: Anmeldemodul ist als shop_auth verbunden" '[[ "$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT count(*) FROM pg_stat_activity WHERE usename = '"'"'shop_auth'"'"' AND application_name = '"'"'identity'"'"'")" -ge 1 ]]'
+# Testdaten (M1): legt Teeladen und Modeladen an (zweiter Lauf ändert nichts), schreibt als shop_platform.
+check "Testdaten: pnpm dev:seed legt die Testshops an" 'docker exec shop-platform-api-1 node dist/seed.js >/dev/null && docker exec shop-platform-api-1 node dist/seed.js | grep -q "Teeladen: gibt es schon"'
 
 echo "== Worker: Hintergrunddienst (E5)"
 W=shop-platform-worker-1

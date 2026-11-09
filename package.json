@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "node tools/dev.mjs",
     "dev:down": "node tools/dev.mjs down",
+    "dev:seed": "node tools/dev.mjs seed",
     "env:init": "node tools/setup-env.mjs",
     "check": "node tools/check.mjs",
     "lint": "eslint .",
