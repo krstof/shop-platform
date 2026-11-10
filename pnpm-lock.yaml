@@ -242,12 +242,18 @@ importers:
       '@shop/identity':
         specifier: workspace:*
         version: link:../../modules/identity
+      '@shop/inventory':
+        specifier: workspace:*
+        version: link:../../modules/inventory
       '@shop/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
       '@shop/platform':
         specifier: workspace:*
         version: link:../../modules/platform
+      '@shop/pricing':
+        specifier: workspace:*
+        version: link:../../modules/pricing
       fastify:
         specifier: 5.12.7
         version: 5.12.7
@@ -478,6 +484,28 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(yaml@2.9.1))
 
+  modules/inventory:
+    dependencies:
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(yaml@2.9.1))
+
   modules/platform:
     dependencies:
       '@shop/http':
@@ -492,6 +520,28 @@ importers:
       zod:
         specifier: 4.6.7
         version: 4.6.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(yaml@2.9.1))
+
+  modules/pricing:
+    dependencies:
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
     devDependencies:
       '@shop/config':
         specifier: workspace:*

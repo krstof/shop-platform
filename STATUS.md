@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 09.11.2026 (nach M1)
+Stand: 10.11.2026 (nach M2 Teil 1)
 
 ## Erledigt
 
@@ -59,12 +59,15 @@ Stand: 09.11.2026 (nach M1)
 
 - **M1 Shops und Testdaten (09.11.2026, Mittagslauf):** Platform-API kann Shops auflisten, anlegen (lädt die Inhaberin per E-Mail ein, Rolle `owner`) sowie sperren und wieder freischalten; eine Sperre wirkt sofort. Die API hat dafür einen kleinen zweiten Datenbank-Zugang als `shop_platform` (`SHOP_PLATFORM_DATABASE_URL`). `pnpm dev:seed` legt Teeladen (inhaberin@teeladen.example) und Modeladen (inhaber@modeladen.example) mit fertigem Inhaberkonto an; Passwort aus `SHOP_SEED_PASSWORD` oder zufällig, wird einmal ausgegeben. Getestet: alle Tests mit Datenbank grün (5 neue Ende-zu-Ende-Tests: anlegen, Einladung annehmen, anmelden, sperren, Rechte), Testdaten-Befehl zweimal gegen echte Datenbank, Rauchtest um eine Prüfung erweitert.
 
+- **M2 Teil 1 Produkte und Kategorien per API (10.11.2026):** Admin-API `/admin/v1/products` und `/admin/v1/categories` (auflisten, lesen, anlegen, ändern mit If-Match). Produkt mit Name, Beschreibung (Klartext mit Absätzen), Bruttopreis in Cent (EUR), Steuersatz 19 % (`standard`) oder 7 % (`reduced`), Bestand als Zahl, einer Kategorie, optional Artikelnummer, Status Entwurf/veröffentlicht; Adresse (slug) entsteht aus dem Namen. Preise und Bestand liegen in den Modulen pricing und inventory (erstmals mit Code), geschrieben in derselben Transaktion wie das Produkt; dafür kann sich `withTenantTransaction` jetzt in eine laufende Transaktion desselben Shops einklinken (Architektur 3.5). `pnpm dev:seed` legt jetzt auch die Produkte an: 6 Tees in 3 Kategorien (wie in der Vorschau) im Teeladen, 3 Artikel in 2 Kategorien im Modeladen, über die echte API. **Getestet:** `pnpm check` komplett grün; neu Ende-zu-Ende-Test mit echter Datenbank (8 Fälle: Anlegen, Preis/Bestand ändern mit Verlauf und Ereignis, Seiten und Filter, Shop B sieht nichts von A, nichts bleibt halb angelegt, Testdaten), Kernel-Test für die verschachtelte Transaktion, Texthelfer, T-08 für die neuen Pfade. Bilder sind bewusst auf Teil 2 verschoben (eigener Upload-Weg über den Speicher Garage).
+
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
 Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobieren merkt (CLAUDE.md 1a). Der alte Plan mit 26 Etappen in `docs/06_Welle1_Anforderungen.md` gilt nur noch als Nachschlagewerk. Fundament (E1 bis E6) ist fertig. Ab jetzt je Lauf eine sichtbare Etappe, API und Oberfläche zusammen, jeweils die einfachste Version:
 
 1. ~~M1 Shops und Testdaten~~ (erledigt 09.11.2026)
-2. **M2 Produkte per API:** Produkt mit Name, Beschreibung, Preis (brutto, 19 % oder 7 %), Bestand als einfache Zahl, Kategorie, ein oder mehrere Bilder (einfacher Upload). Testdaten aus der Vorschau (`apps/storefront/src/vorschau/`) als echte Produkte.
+2. ~~M2 Teil 1 Produkte und Kategorien per API mit Testdaten~~ (erledigt 10.11.2026)
+   **M2 Teil 2 Bilder (nächster Lauf):** Bild hochladen (JPEG, PNG, WebP; kein SVG) über die API in den Speicher Garage, Modul media mit Fassade, ein oder mehrere Bilder je Produkt mit Reihenfolge, Bilder in der Produktantwort. Testbilder für die Testprodukte (einfache, selbst erzeugte Abbildungen).
 3. **M3 Backoffice, erste Oberfläche:** Anmelden, „Passwort vergessen“, Shop wählen, Produkte auflisten, anlegen, bearbeiten, mit Bild. Schlicht, aber benutzbar.
 4. **M4 Storefront mit echten Daten:** Die Vorschau liest Produkte und Kategorien aus der API statt aus Beispieldaten.
 5. **M5 Auf den Testserver:** Backoffice, API und Storefront laufen auf dem Oracle-Server, Kollegen können sich anmelden.
@@ -76,7 +79,7 @@ Danach mit Kristof entscheiden, was als Nächstes sichtbar werden soll (z. B. Sh
 
 ## Später (nicht fürs MVP)
 
-Alles unter „Nachzutragen“ gilt ab 09.11.2026 als „Später“ und wird in den täglichen Läufen nicht bearbeitet, außer es blockiert eine MVP-Etappe oder die CI wird rot. Dazu kommen: alle Rechtspflichten (Rechtstexte, Impressum-Prüfung, Widerrufsbutton, Barrierefreiheitserklärung, GPSR, Button-Lösung), Preisverlauf, Nummernkreise nach Buchhaltungsregeln, Sicherungen und Wiederherstellungstests, Zwei-Faktor zurücksetzen, E-Mail-Hinweise aller Art, Ablaufdaten für Token, Better-Auth-Updates ohne Sicherheitsgrund, Dependabot-Vorschläge mit großem Versionssprung. Aus M1: Ereignisse `platform.tenant.created/suspended` und Eintrag im Änderungsprotokoll, Shop-Adressen (`tenant_domain`), Grund der Sperre, Inhaberin wechseln, mehrere Shops je Händler.
+Alles unter „Nachzutragen“ gilt ab 09.11.2026 als „Später“ und wird in den täglichen Läufen nicht bearbeitet, außer es blockiert eine MVP-Etappe oder die CI wird rot. Dazu kommen: alle Rechtspflichten (Rechtstexte, Impressum-Prüfung, Widerrufsbutton, Barrierefreiheitserklärung, GPSR, Button-Lösung), Preisverlauf, Nummernkreise nach Buchhaltungsregeln, Sicherungen und Wiederherstellungstests, Zwei-Faktor zurücksetzen, E-Mail-Hinweise aller Art, Ablaufdaten für Token, Better-Auth-Updates ohne Sicherheitsgrund, Dependabot-Vorschläge mit großem Versionssprung. Aus M2: Unterkategorien, Produkt in mehreren Kategorien, Varianten, Produkte archivieren, Bestand mit Reservierungen beim Ändern prüfen, eigenes Ereignis für Preisänderungen. Aus M1: Ereignisse `platform.tenant.created/suspended` und Eintrag im Änderungsprotokoll, Shop-Adressen (`tenant_domain`), Grund der Sperre, Inhaberin wechseln, mehrere Shops je Händler.
 
 ## Nachzutragen
 

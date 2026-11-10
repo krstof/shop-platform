@@ -295,6 +295,39 @@ describe.skipIf(adminUrl === undefined)("withTenantTransaction (echte Datenbank)
     });
     for (const { tenantId, seen } of await Promise.all(jobs)) expect(seen).toEqual([tenantId]);
   });
+
+  it("verschachtelte Aufrufe für denselben Shop laufen in derselben Transaktion (M2)", async () => {
+    const name = `Verschachtelt ${uuidv7()}`;
+    // Der innere Aufruf (wie eine Fassade) schreibt, danach scheitert der äußere: nichts bleibt.
+    await expect(
+      withTenantTransaction(
+        database,
+        async () => {
+          await withTenantTransaction(
+            database,
+            (trx) => trx.insertInto(TABLE).values({ tenant_id: TENANT_A, name }).execute(),
+            { tenantId: TENANT_A },
+          );
+          throw new Error("äußerer Fehler");
+        },
+        { tenantId: TENANT_A },
+      ),
+    ).rejects.toThrow("äußerer Fehler");
+    const left = await withTenantTransaction(
+      database,
+      (trx) => trx.selectFrom(TABLE).select("id").where("name", "=", name).execute(),
+      { tenantId: TENANT_A },
+    );
+    expect(left).toHaveLength(0);
+    // Ein anderer Shop innerhalb der Transaktion wird abgelehnt.
+    await expect(
+      withTenantTransaction(
+        database,
+        () => withTenantTransaction(database, async () => 1, { tenantId: TENANT_B }),
+        { tenantId: TENANT_A },
+      ),
+    ).rejects.toThrow(/anderen Shop/);
+  });
 });
 
 describe("withTenantTransaction ohne Datenbankkontakt", () => {

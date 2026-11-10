@@ -17,4 +17,46 @@ export const manufacturerUpdated = defineEvent(
   z.strictObject({ id: z.uuid(), changes: z.record(z.string(), z.tuple([value, value])) }),
 );
 
-export const catalogEvents = [manufacturerCreated, manufacturerUpdated] as const;
+// Produkte und Kategorien (M2). `changes` nennt Felder der API (name, slug, price …), Werte als Text.
+export const productCreated = defineEvent(
+  "catalog.product.created.v1",
+  z.strictObject({ id: z.uuid(), name: z.string() }),
+);
+
+export const productUpdated = defineEvent(
+  "catalog.product.updated.v1",
+  z.strictObject({ id: z.uuid(), changes: z.record(z.string(), z.tuple([value, value])) }),
+);
+
+export const categoryCreated = defineEvent(
+  "catalog.category.created.v1",
+  z.strictObject({ id: z.uuid(), name: z.string() }),
+);
+
+export const categoryUpdated = defineEvent(
+  "catalog.category.updated.v1",
+  z.strictObject({ id: z.uuid(), changes: z.record(z.string(), z.tuple([value, value])) }),
+);
+
+export const catalogEvents = [
+  manufacturerCreated,
+  manufacturerUpdated,
+  productCreated,
+  productUpdated,
+  categoryCreated,
+  categoryUpdated,
+] as const;
+
+/** Unterschiede zweier Stände als { feld: [alt, neu] }; Zahlen werden zu Text. */
+export function diff(
+  before: Readonly<Record<string, string | number | null>>,
+  after: Readonly<Record<string, string | number | null>>,
+): Record<string, [string | null, string | null]> {
+  const out: Record<string, [string | null, string | null]> = {};
+  for (const key of Object.keys(after)) {
+    const a = before[key] ?? null;
+    const b = after[key] ?? null;
+    if (a !== b) out[key] = [a === null ? null : String(a), b === null ? null : String(b)];
+  }
+  return out;
+}

@@ -1,4 +1,5 @@
-// Testdaten (MVP-Etappe M1): legt die Testshops Teeladen und Modeladen mit je einem Inhaberkonto an.
+// Testdaten (MVP-Etappen M1 und M2): legt die Testshops Teeladen und Modeladen mit je einem
+// Inhaberkonto an, dazu Kategorien und Produkte mit Preis und Bestand (seed-catalog.ts).
 // Läuft im Container der API (`pnpm dev:seed`) mit denselben Einstellungen wie die API.
 // Mehrfach ausführen schadet nicht: Was es schon gibt, bleibt unverändert.
 //
@@ -9,6 +10,8 @@ import { createIdentityService, createMemberService } from "@shop/identity";
 import { ConfigError, connectDatabase, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
 import { createShopAdministration } from "@shop/platform";
 import { loadApiConfig } from "./config.js";
+import { allEndpoints } from "./endpoints.js";
+import { seedCatalog } from "./seed-catalog.js";
 
 const SEED_SHOPS = [
   { handle: "teeladen", name: "Teeladen", ownerEmail: "inhaberin@teeladen.example", ownerName: "Ina Tee" },
@@ -67,6 +70,14 @@ async function main(): Promise<void> {
         `${seed.name}: angelegt. Inhaberkonto ${seed.ownerEmail}` +
           (fixedPassword === undefined ? `, Passwort ${password}` : ", Passwort aus SHOP_SEED_PASSWORD"),
       );
+    }
+    // Produkte (M2): nur in Shops, die noch keine haben.
+    const endpoints = allEndpoints({ database, identity, members });
+    for (const shop of await shops.list({ limit: 100 })) {
+      const seed = SEED_SHOPS.find((s) => s.handle === shop.handle);
+      if (seed === undefined) continue;
+      const result = await seedCatalog({ database, endpoints, tenantId: shop.id, handle: shop.handle });
+      console.log(`${seed.name}: ${result}.`);
     }
   } finally {
     await identity.close();

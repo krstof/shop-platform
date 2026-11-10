@@ -14,6 +14,7 @@ import {
   type IdentityService,
   type ShopOfUser,
 } from "@shop/identity";
+import { createInventory } from "@shop/inventory";
 import type { Database } from "@shop/kernel";
 import {
   createShopAdministration,
@@ -21,6 +22,7 @@ import {
   type OperatorDirectory,
   type ShopAdministration,
 } from "@shop/platform";
+import { createPricing } from "@shop/pricing";
 
 export interface EndpointDependencies {
   readonly database: Database<unknown>;
@@ -47,7 +49,12 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       baseUrl: "https://admin.localhost",
     });
   return [
-    ...catalogEndpoints(deps),
+    // Katalog mit Preisen und Bestand aus den Modulen pricing und inventory (M2).
+    ...catalogEndpoints({
+      database: deps.database,
+      prices: createPricing({ database: deps.database }),
+      stock: createInventory({ database: deps.database }),
+    }),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...memberEndpoints({ members }),

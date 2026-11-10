@@ -4,6 +4,7 @@
 // werden nicht exportiert. Zugriff gibt es nur über `withTenantTransaction`, das in
 // einer Transaktion als Erstes den Mandanten mit `set_config(..., true)` setzt. Der Wert
 // gilt nur für diese Transaktion. Ohne Mandant greift die RLS-Regel geschlossen: keine Zeilen.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Kysely, PostgresDialect, sql, type IsolationLevel, type Transaction } from "kysely";
 import pg from "pg";
 import { getContext } from "../context.js";
@@ -123,8 +124,28 @@ export async function withTenantTransaction<DB, T>(
   const tenantId = options.tenantId ?? getContext()?.tenantId;
   if (tenantId === undefined || tenantId === "") throw new MissingTenantError();
   if (!isUuid(tenantId)) throw new TypeError("tenantId muss eine UUID sein");
-  return run(database, tenantId, resolveActor(options.actorId), options.isolationLevel, fn);
+  // Fassaden-Aufruf innerhalb einer laufenden Transaktion (Architektur 3.5, Weg 1): Dieselbe
+  // Datenbank und derselbe Shop laufen in derselben Transaktion weiter, alles gelingt oder nichts.
+  const outer = openTenantTransaction.getStore();
+  if (outer !== undefined && outer.db === handles.get(database)) {
+    if (outer.tenantId !== tenantId)
+      throw new Error("Verschachtelte Transaktion für einen anderen Shop ist nicht erlaubt");
+    return fn(outer.trx as Transaction<DB>);
+  }
+  return run(database, tenantId, resolveActor(options.actorId), options.isolationLevel, async (trx) =>
+    openTenantTransaction.run(
+      { db: handles.get(database), tenantId, trx: trx as unknown as Transaction<unknown> },
+      () => fn(trx),
+    ),
+  );
 }
+
+/** Laufende Mandanten-Transaktion je Datenbank, damit verschachtelte Aufrufe sie mitbenutzen. */
+const openTenantTransaction = new AsyncLocalStorage<{
+  readonly db: Kysely<unknown> | undefined;
+  readonly tenantId: string;
+  readonly trx: Transaction<unknown>;
+}>();
 
 /**
  * Transaktion ohne Mandant: für die Plattform-Verwaltung mit der Rolle `shop_platform`

@@ -59,12 +59,27 @@ describe("Hersteller in der Admin-API", () => {
   });
 
   it("alle Endpunkte des Moduls verlangen eine Berechtigung", () => {
-    const endpoints = catalogEndpoints({ database: { destroy: async () => undefined } as Database<unknown> });
+    const unused = async (): Promise<never> => {
+      throw new Error("nicht verbunden");
+    };
+    const endpoints = catalogEndpoints({
+      database: { destroy: async () => undefined } as Database<unknown>,
+      prices: { setBasePrice: unused, getBasePrices: unused },
+      stock: { setOnHand: unused, getAvailable: unused },
+    });
     expect(endpoints.map((e) => e.operationId)).toEqual([
       "listManufacturers",
       "getManufacturer",
       "createManufacturer",
       "updateManufacturer",
+      "listCategories",
+      "getCategory",
+      "createCategory",
+      "updateCategory",
+      "listProducts",
+      "getProduct",
+      "createProduct",
+      "updateProduct",
     ]);
     for (const e of endpoints) expect("scopes" in e.access && e.access.scopes.length > 0).toBe(true);
   });

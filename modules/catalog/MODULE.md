@@ -15,7 +15,9 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Ereignisse (umgesetzt, `src/catalog.events.ts`):** `catalog.manufacturer.created.v1` (`id`, `name`), `catalog.manufacturer.updated.v1` (`id`, `changes` mit nur den geänderten Spalten als `[alt, neu]`; kein Ereignis, wenn sich nichts ändert).
 
-**Ereignisse (geplant):** catalog.product.created.v1, catalog.product.published.v1, catalog.product.updated.v1, catalog.product.archived.v1
+**Ereignisse (umgesetzt seit M2):** `catalog.product.created.v1` / `.updated.v1`, `catalog.category.created.v1` / `.updated.v1` (`changes` mit API-Feldnamen, Werte als Text).
+
+**Ereignisse (geplant):** catalog.product.archived.v1
 
 **Stand Code (03.11.2026):**
 
@@ -23,3 +25,5 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 - Seit E5 (05.11.2026) schreiben Anlegen und Ändern ihr Ereignis in derselben Transaktion in die Outbox.
 - `src/http/admin/manufacturers.ts`: `GET /admin/v1/manufacturers` (`listManufacturers`, Cursor-Liste ohne archivierte) und `GET /admin/v1/manufacturers/{manufacturerId}` (`getManufacturer`) mit `products:read`; `POST /admin/v1/manufacturers` (`createManufacturer`, Idempotency-Key möglich) und `PATCH /admin/v1/manufacturers/{manufacturerId}` (`updateManufacturer`, If-Match Pflicht) mit `products:write`.
 - `src/internal/manufacturer-repository.ts`: Abfragen mit Kysely, nur in `withTenantTransaction`.
+
+**Stand M2 (10.11.2026):** Produkte und Kategorien in der Admin-API (`/products`, `/categories`: auflisten, lesen, anlegen, ändern mit If-Match). Ein Produkt hat Standardvariante, deutschen Text (Sprache „de“), Steuerklasse `standard`/`reduced`, höchstens eine Hauptkategorie, optional Artikelnummer. Preis und Bestand liefern die Module pricing und inventory über die Schnittstellen in `src/ports.ts`, zusammengesteckt in `apps/api/src/endpoints.ts` (catalog kennt die Module nicht); sie schreiben in derselben Transaktion mit. Doppelte Adresse oder Artikelnummer: 409 (`internal/conflicts.ts`). Bilder fehlen noch (M2 Teil 2).

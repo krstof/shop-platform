@@ -14,6 +14,29 @@ export const T08_FIXTURES: Readonly<Record<string, Fixture>> = {
     );
     return rows[0]?.id ?? "";
   },
+  // Kategorie mit deutschem Namen (ohne Übersetzung ist sie in der API unsichtbar).
+  categoryId: async (db, tenantId) => {
+    const { rows } = await db.query<{ id: string }>(
+      `WITH c AS (INSERT INTO catalog.category (tenant_id) VALUES ($1) RETURNING id),
+            t AS (INSERT INTO catalog.category_translation (tenant_id, category_id, locale, name, slug)
+                  SELECT $1, id, 'de', 'T-08 Kategorie', $2 FROM c)
+       SELECT id FROM c`,
+      [tenantId, `t08-${randomBytes(6).toString("hex")}`],
+    );
+    return rows[0]?.id ?? "";
+  },
+  // Produkt mit Standardvariante und Text in einer Anweisung (Prüfung A-05 am Ende der Transaktion).
+  productId: async (db, tenantId) => {
+    const { rows } = await db.query<{ id: string }>(
+      `WITH p AS (INSERT INTO catalog.product (tenant_id) VALUES ($1) RETURNING id),
+            v AS (INSERT INTO catalog.variant (tenant_id, product_id, is_default) SELECT $1, id, true FROM p),
+            t AS (INSERT INTO catalog.product_translation (tenant_id, product_id, locale, name, slug)
+                  SELECT $1, id, 'de', 'T-08 Produkt', $2 FROM p)
+       SELECT id FROM p`,
+      [tenantId, `t08-${randomBytes(6).toString("hex")}`],
+    );
+    return rows[0]?.id ?? "";
+  },
   apiTokenId: async (db, tenantId) => {
     const token = `shp_at_${randomBytes(32).toString("base64url")}`;
     const { rows } = await db.query<{ id: string }>(
