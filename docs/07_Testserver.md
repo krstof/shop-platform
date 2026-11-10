@@ -13,7 +13,7 @@
 | Kostenwarnung | Budget `Kostenwarnung_1_Euro`, Mail bei 1 € tatsächlichen Kosten |
 | GitHub | Secrets `TESTSERVER_SSH_KEY`, `TESTSERVER_PASSWORD`, Variable `TESTSERVER_HOST` |
 | Einrichtung | `.github/workflows/testserver.yml` mit `infra/testserver/` (setup.sh, compose.yaml, Caddyfile) |
-| Inhalt | seit 04.11.2026 die Vorschau der Storefront (`apps/storefront`, fertige Seiten mit Beispieldaten), bei jeder Änderung an Storefront oder Kernel neu gebaut und ausgeliefert |
+| Inhalt | seit M5 (10.11.2026) die ganze Plattform wie lokal: Shops unter `https://shop.<Adresse>/teeladen` und `/modeladen`, Backoffice unter `https://admin.<Adresse>`, Test-Mails unter `https://mail.<Adresse>`, Bilder unter `https://media.<Adresse>` (ohne Passwort). Bei jeder Änderung am Programm neu gebaut (auf dem Server, arm64) und gestartet. Anmeldung im Backoffice: `inhaberin@teeladen.example` bzw. `inhaber@modeladen.example` mit dem Seitenpasswort. |
 
 Was der Ablauf macht: Pakete aktualisieren, automatische Sicherheitsupdates inkl. Docker mit nächtlichem Neustart bei Bedarf (04:30), SSH nur mit Schlüssel, iptables zusätzlich 80/443 (Oracle-Regeln bleiben, kein ufw), Docker aus der offiziellen Quelle, Caddy gehärtet wie lokal mit echtem Zertifikat, HSTS und `noindex`. Danach Rauchtest: ohne Passwort 401, mit Passwort 200, HTTP leitet auf HTTPS um, SSH ohne Passwortanmeldung.
 
@@ -21,7 +21,9 @@ Serverschlüssel: Der erste Lauf (03.11.2026) hat den SSH-Schlüssel des Servers
 
 Budget: `Kostenwarnung_1_Euro` (ganzes Konto, monatlich 1 €, Warnung bei 100 % tatsächlicher Kosten per E-Mail an Kristof), angelegt 03.11.2026.
 
-Offen: Gegenmittel gegen das Abschalten ungenutzter Gratis-Server (spätestens wenn die Anwendung läuft); API, Datenbank und Backoffice kommen mit E18.
+**Seit M5 (10.11.2026):** Der Ablauf lädt den Quellstand (`git archive`) und `setup.sh` hoch. Der Server baut die fünf Abbilder selbst, legt beim ersten Mal `/opt/shop-testserver/.env` mit Zufallswerten an (danach bleibt sie), setzt `SHOP_ENV=test` und die Adresse, startet `infra/compose.yaml` mit `infra/testserver/compose.testserver.yaml` (Caddy mit echten Zertifikaten, HSTS und Passwort aus `infra/testserver/profile.caddy`), richtet Garage ein und legt die Testshops an. Das Seitenpasswort ist zugleich Passwort der Inhaberkonten und von Mailpit. Caddy entfernt das Seitenpasswort (Kopfzeile `Authorization`) vor der API, sonst hielte die API es für ein API-Token; API-Token sind auf dem Testserver deshalb nicht nutzbar. Die Daten (Datenbank, Bilder) liegen in Docker-Volumes und bleiben bei Updates erhalten.
+
+Offen: Gegenmittel gegen das Abschalten ungenutzter Gratis-Server.
 
 Entscheidung Kristof 03.11.2026: öffentlicher Testserver, damit Kollegen per Link zuschauen können. Anbieter: Oracle Cloud, Gratisangebot („Always Free“). Das Konto hat Kristof selbst angelegt.
 

@@ -1,0 +1,34 @@
+# Umgebung „Testserver“ (M5, docs/07_Testserver.md): echte Zertifikate (Let's Encrypt), HSTS,
+# keine Suchmaschinen, und alles außer den Bildern hinter einem Passwort (Benutzer team).
+# Benutzer und Prüfwert des Passworts kommen aus secrets.env (TESTSERVER_USER, TESTSERVER_PASSWORD_HASH).
+
+(server_headers) {
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Robots-Tag "noindex, nofollow"
+	}
+}
+
+(guard) {
+	import server_headers
+	basic_auth {
+		{$TESTSERVER_USER} {$TESTSERVER_PASSWORD_HASH}
+	}
+}
+
+# Wie guard, aber das Passwort der Seite (Kopfzeile Authorization) geht nicht an die API weiter,
+# sonst hielte die API es für ein API-Token. Angemeldet wird dort mit dem Sitzungs-Cookie.
+(guard_api) {
+	import guard
+	request_header -Authorization
+}
+
+# Bilder: ohne Passwort, weil Browser fremde Bilder nicht mit Passwort laden (nur Testdaten).
+(public_guard) {
+	import server_headers
+}
+
+(root_site) {
+	import server_headers
+	redir https://shop.{$SHOP_DOMAIN}/ 308
+}

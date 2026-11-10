@@ -1,0 +1,26 @@
+# Umgebung „lokal“ (M5): eigene Zertifikate, kein Passwort vor den Seiten.
+# Gegenstück auf dem Testserver: infra/testserver/profile.caddy.
+
+(guard) {
+	tls internal
+}
+
+(guard_api) {
+	tls internal
+}
+
+(public_guard) {
+	tls internal
+}
+
+(root_site) {
+	tls internal
+	import security_headers
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+	header Cross-Origin-Resource-Policy "same-site"
+	header Cache-Control "no-store"
+	request_body {
+		max_size 1MB
+	}
+	respond "Shop-Plattform läuft." 200
+}

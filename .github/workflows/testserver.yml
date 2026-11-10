@@ -1,7 +1,8 @@
 # Richtet den öffentlichen Testserver ein und aktualisiert ihn (docs/07_Testserver.md).
-# Läuft von Hand (Actions → Testserver → Run workflow) und bei Änderungen an
-# infra/testserver oder an der Storefront. Der Server liegt bei Oracle Cloud (Always Free).
-# Zurzeit liefert er die Vorschau der Storefront als fertige Seiten aus (ohne API und Datenbank).
+# Läuft von Hand (Actions → Testserver → Run workflow) und bei jeder Änderung am Programm.
+# Der Server liegt bei Oracle Cloud (Always Free, arm64). Seit M5 läuft dort die ganze Plattform
+# wie lokal (infra/compose.yaml plus infra/testserver/compose.testserver.yaml); die Abbilder baut
+# der Server selbst aus dem Quellstand, den dieser Ablauf hochlädt.
 #
 # Braucht in den Repository-Einstellungen:
 #   Secret   TESTSERVER_SSH_KEY   privater SSH-Schlüssel (Benutzer ubuntu)
@@ -15,10 +16,13 @@ on:
   push:
     branches: [main]
     paths:
-      - infra/testserver/**
+      - apps/**
+      - modules/**
+      - packages/**
+      - infra/**
+      - db/**
       - .github/workflows/testserver.yml
-      - apps/storefront/**
-      - packages/kernel/src/**
+      - .env.example
       - pnpm-lock.yaml
 
 permissions:
@@ -32,7 +36,7 @@ jobs:
   setup:
     name: Einrichten und prüfen
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 60
     env:
       HOST: ${{ vars.TESTSERVER_HOST }}
       DOMAIN_OVERRIDE: ${{ vars.TESTSERVER_DOMAIN }}
@@ -43,20 +47,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-
-      - name: Storefront bauen und prüfen
-        env:
-          ASTRO_TELEMETRY_DISABLED: "1"
+      - name: Quellstand verpacken
         run: |
-          pnpm install --frozen-lockfile
-          pnpm turbo run build test --filter=@shop/storefront
-          tar -czf "$RUNNER_TEMP/site.tar.gz" -C apps/storefront/dist .
-          echo "Seiten: $(find apps/storefront/dist -name '*.html' | wc -l)"
+          git archive --format=tar.gz -o "$RUNNER_TEMP/source.tar.gz" HEAD
+          echo "Quellstand $(git rev-parse --short HEAD): $(du -h "$RUNNER_TEMP/source.tar.gz" | cut -f1)"
 
       - name: Einstellungen prüfen
         env:
@@ -116,47 +110,69 @@ jobs:
             echo "TESTSERVER_USER='$SITE_USER'"
             echo "TESTSERVER_PASSWORD_HASH='$hash'"
           } > "$RUNNER_TEMP/secrets.env"
+          printf '%s' "$SITE_PASSWORD" > "$RUNNER_TEMP/site-password"
 
       - name: Server einrichten
         run: |
           upload=/tmp/shop-testserver-upload
           ssh testserver "rm -rf $upload && mkdir -m 700 $upload"
-          scp -q infra/testserver/compose.yaml infra/testserver/Caddyfile infra/testserver/setup.sh \
-            "$RUNNER_TEMP/secrets.env" "$RUNNER_TEMP/site.tar.gz" "testserver:$upload/"
+          scp -q infra/testserver/setup.sh "$RUNNER_TEMP/secrets.env" "$RUNNER_TEMP/site-password" \
+            "$RUNNER_TEMP/source.tar.gz" "testserver:$upload/"
+          rm -f "$RUNNER_TEMP/secrets.env" "$RUNNER_TEMP/site-password"
           ssh testserver "sudo bash $upload/setup.sh; rc=\$?; rm -rf $upload; exit \$rc"
-          rm -f "$RUNNER_TEMP/secrets.env"
 
       - name: Rauchtest
         env:
           SITE_PASSWORD: ${{ secrets.TESTSERVER_PASSWORD }}
         run: |
           url="https://$DOMAIN/"
-          # Das Zertifikat kann beim ersten Start ein bis zwei Minuten brauchen.
+          # Die Zertifikate können beim ersten Start ein paar Minuten brauchen.
           for i in $(seq 1 30); do
-            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://shop.$DOMAIN/" || true)"
             [ "$code" = 401 ] && break
             echo "Versuch $i: $code"; sleep 10
           done
-          [ "$code" = 401 ] || { echo "::error::Ohne Passwort erwartet 401, bekommen $code"; exit 1; }
-          code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -u "$SITE_USER:$SITE_PASSWORD" "$url")"
-          [ "$code" = 200 ] || { echo "::error::Mit Passwort erwartet 200, bekommen $code"; exit 1; }
-          code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$DOMAIN/")"
+          [ "$code" = 401 ] || { echo "::error::Shops ohne Passwort: erwartet 401, bekommen $code"; exit 1; }
+          # Startseite leitet zu den Shops weiter, HTTP leitet auf HTTPS um.
+          loc="$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 10 "$url")"
+          [ "$loc" = "308 https://shop.$DOMAIN/" ] || { echo "::error::Startseite: $loc"; exit 1; }
+          code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://shop.$DOMAIN/")"
           case "$code" in 301|308) ;; *) echo "::error::HTTP sollte auf HTTPS umleiten, bekommen $code"; exit 1 ;; esac
-          curl -sI --max-time 10 -u "$SITE_USER:$SITE_PASSWORD" "$url" | grep -qi '^strict-transport-security:' \
-            || { echo "::error::HSTS-Header fehlt"; exit 1; }
-          # Vorschau der Storefront
-          auth=(-s --max-time 10 -u "$SITE_USER:$SITE_PASSWORD")
-          curl "${auth[@]}" "$url" | grep -q 'Teeladen Morgentau' \
-            || { echo "::error::Startseite der Vorschau fehlt"; exit 1; }
-          code="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' "${url}produkt/jasmin-perlen/")"
-          [ "$code" = 200 ] || { echo "::error::Produktseite erwartet 200, bekommen $code"; exit 1; }
-          code="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' "${url}gibt-es-nicht/")"
-          [ "$code" = 404 ] || { echo "::error::Unbekannte Seite erwartet 404, bekommen $code"; exit 1; }
-          css="$(curl "${auth[@]}" "$url" | grep -o '/_assets/[^"]*\.css' | head -1)"
-          code="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' "https://$DOMAIN$css")"
-          [ "$code" = 200 ] || { echo "::error::Stylesheet $css erwartet 200, bekommen $code"; exit 1; }
-          curl -sI "${auth[@]}" "$url" | grep -qi "^content-security-policy:.*default-src 'none'" \
-            || { echo "::error::Content-Security-Policy fehlt"; exit 1; }
+          curl -sI --max-time 10 -u "$SITE_USER:$SITE_PASSWORD" "https://shop.$DOMAIN/teeladen" \
+            | grep -qi '^strict-transport-security:' || { echo "::error::HSTS-Header fehlt"; exit 1; }
+          auth=(-s --max-time 20 -u "$SITE_USER:$SITE_PASSWORD")
+          expect() { # expect CODE URL [curl-Optionen …]
+            local want="$1" u="$2"; shift 2
+            local got; got="$(curl "$@" -o /dev/null -w '%{http_code}' "$u" || true)"
+            [ "$got" = "$want" ] || { echo "::error::$u: erwartet $want, bekommen $got"; exit 1; }
+          }
+          # Shops (M4): Teeladen mit Produkten und Bildern
+          shop="https://shop.$DOMAIN"
+          for i in $(seq 1 30); do
+            code="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' "$shop/teeladen" || true)"
+            [ "$code" = 200 ] && break
+            echo "Shop, Versuch $i: $code"; sleep 10
+          done
+          page="$(curl "${auth[@]}" "$shop/teeladen")"
+          grep -q 'Sencha Frühlingshauch' <<<"$page" || { echo "::error::Teeladen ohne Produkte"; exit 1; }
+          img="$(grep -o "https://media.$DOMAIN/[^\"]*w400.webp" <<<"$page" | head -1)"
+          [ -n "$img" ] || { echo "::error::Teeladen ohne Bilder"; exit 1; }
+          expect 200 "$img" -s --max-time 20
+          expect 401 "$shop/teeladen" -s --max-time 20
+          expect 404 "$shop/gibt-es-nicht" "${auth[@]}"
+          # Backoffice (M3) mit der API unter derselben Adresse; das Seitenpasswort darf die API nicht
+          # für ein Token halten (sonst 401 mit anderem Code).
+          expect 200 "https://admin.$DOMAIN/teeladen/produkte" "${auth[@]}"
+          session="$(curl "${auth[@]}" "https://admin.$DOMAIN/auth/v1/session")"
+          grep -q '"code":"unauthorized"' <<<"$session" || { echo "::error::Auth-API: $session"; exit 1; }
+          # Anmelden als Inhaberin des Teeladens (Passwort = Seitenpasswort)
+          signin="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' -H 'content-type: application/json' \
+            -H "origin: https://admin.$DOMAIN" \
+            --data "$(jq -cn --arg p "$SITE_PASSWORD" '{email:"inhaberin@teeladen.example",password:$p}')" \
+            "https://admin.$DOMAIN/auth/v1/sign-in")"
+          [ "$signin" = 200 ] || { echo "::error::Anmelden als Inhaberin: $signin"; exit 1; }
+          expect 401 "https://mail.$DOMAIN/" -s --max-time 20
+          expect 200 "https://mail.$DOMAIN/" "${auth[@]}"
           ssh testserver 'sudo sshd -T' | grep -qx 'passwordauthentication no' \
             || { echo "::error::SSH nimmt Passwörter an"; exit 1; }
-          echo "Alles in Ordnung: $url (Benutzer $SITE_USER)"
+          echo "Alles in Ordnung: https://shop.$DOMAIN/teeladen und https://admin.$DOMAIN (Benutzer $SITE_USER)"

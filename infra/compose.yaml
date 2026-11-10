@@ -84,6 +84,8 @@ services:
       - "127.0.0.1:${SHOP_HTTPS_PORT:-443}:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Unterschiede je Umgebung; der Testserver tauscht diese Datei aus (infra/testserver).
+      - ./caddy/profile.local.caddy:/etc/caddy/profile.caddy:ro
       - caddy-data:/data
       - caddy-config:/config
     tmpfs: [/tmp]

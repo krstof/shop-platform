@@ -1,0 +1,16 @@
+# =============================================================================
+# Ergänzung für den öffentlichen Testserver (M5, docs/07_Testserver.md).
+# Auf dem Server: docker compose -f infra/compose.yaml -f infra/testserver/compose.testserver.yaml
+# Alles andere (Härtung, Netze, Dienste) kommt unverändert aus infra/compose.yaml.
+# =============================================================================
+services:
+  caddy:
+    # Benutzer und Prüfwert des Seitenpassworts (TESTSERVER_USER, TESTSERVER_PASSWORD_HASH).
+    env_file: [/opt/shop-testserver/secrets.env]
+    # Auf dem Server von außen erreichbar (lokal nur 127.0.0.1).
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Echte Zertifikate, HSTS und Passwortschutz statt der lokalen Einstellungen.
+      - ./testserver/profile.caddy:/etc/caddy/profile.caddy:ro

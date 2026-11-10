@@ -7,8 +7,7 @@
 {
 	# Keine Verwaltungsschnittstelle im Container (Härtung).
 	admin off
-	# Lokale Zertifikate statt Let's Encrypt (Antwort Kristof: kein öffentlicher Server).
-	local_certs
+	# Lokal: eigene Zertifikate (tls internal in profile.local.caddy), nichts im System installieren.
 	skip_install_trust
 	servers {
 		timeouts {
@@ -36,16 +35,14 @@
 	}
 }
 
-# Startseite: zeigt nur, dass die Plattform läuft.
+# Unterschiede je Umgebung (M5): profile.caddy kommt lokal aus profile.local.caddy (eigene
+# Zertifikate, kein Passwort) und auf dem Testserver aus infra/testserver/profile.caddy (echte
+# Zertifikate, HSTS, Passwortschutz). Darin: guard, guard_api, public_guard, root_site.
+import profile.caddy
+
+# Startseite der Plattform (lokal ein Lebenszeichen, auf dem Testserver Weiterleitung zu den Shops).
 {$SHOP_DOMAIN} {
-	import security_headers
-	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
-	header Cross-Origin-Resource-Policy "same-site"
-	header Cache-Control "no-store"
-	request_body {
-		max_size 1MB
-	}
-	respond "Shop-Plattform läuft." 200
+	import root_site
 }
 
 # Grenzen für Anfragen an die API, gemeinsam für api.<Domain> und admin.<Domain>.
@@ -90,6 +87,7 @@
 # gemeinsamen, etwa Referrer-Policy no-referrer). Caddy entfernt nur verräterische Header und setzt
 # X-Forwarded-For neu: Was ein Besucher selbst mitschickt, übernimmt Caddy nicht.
 api.{$SHOP_DOMAIN} {
+	import guard_api
 	header {
 		-Server
 		-Via
@@ -106,6 +104,7 @@ api.{$SHOP_DOMAIN} {
 # /auth/v1), so passt das Sitzungs-Cookie __Host-shop_session ohne CORS. Alles andere sind die
 # statischen Dateien aus dem Container backoffice, mit strenger Inhalts-Sicherheitsregel.
 admin.{$SHOP_DOMAIN} {
+	import guard_api
 	header {
 		-Server
 		-Via
@@ -137,6 +136,7 @@ admin.{$SHOP_DOMAIN} {
 # Shops für Kundinnen und Kunden (M4): shop.<Domain>/<Kürzel>. Seiten ohne JavaScript, Formulare
 # nur an die eigene Adresse, Bilder nur von media.<Domain>.
 shop.{$SHOP_DOMAIN} {
+	import guard
 	import security_headers
 	header {
 		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' https://media.{$SHOP_DOMAIN}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
@@ -157,6 +157,7 @@ shop.{$SHOP_DOMAIN} {
 
 # Test-Mails (Mailpit). Zusätzlich durch Mailpit selbst mit Passwort geschützt.
 mail.{$SHOP_DOMAIN} {
+	import guard
 	import security_headers
 	header Cache-Control "no-store"
 	header Cross-Origin-Resource-Policy "same-site"
@@ -165,6 +166,7 @@ mail.{$SHOP_DOMAIN} {
 
 # Bilder und Dokumente: eigene Adresse ohne Cookies (Sicherheit 5.7).
 media.{$SHOP_DOMAIN} {
+	import public_guard
 	import security_headers
 	header {
 		Cross-Origin-Resource-Policy "cross-origin"

@@ -4,7 +4,9 @@
 # Server, aufgerufen vom GitHub-Ablauf `.github/workflows/testserver.yml`.
 # Darf beliebig oft laufen: Jeder Schritt prüft erst, ob er schon erledigt ist.
 #
-# Erwartet im selben Ordner: compose.yaml, Caddyfile, secrets.env, site.tar.gz (gebaute Storefront)
+# Erwartet im selben Ordner: source.tar.gz (Stand des Repositorys), secrets.env (für Caddy:
+# TESTSERVER_DOMAIN, TESTSERVER_USER, TESTSERVER_PASSWORD_HASH) und site-password (Klartext,
+# nur für Testdaten und Mailpit; liegt danach mit Rechten 600 in /opt/shop-testserver).
 # =============================================================================
 set -euo pipefail
 
@@ -15,7 +17,7 @@ export DEBIAN_FRONTEND=noninteractive
 log() { printf '\n==> %s\n' "$*"; }
 
 [ "$(id -u)" -eq 0 ] || { echo "Muss als root laufen." >&2; exit 1; }
-for f in compose.yaml Caddyfile secrets.env site.tar.gz; do
+for f in secrets.env site-password source.tar.gz; do
   [ -s "$SRC/$f" ] || { echo "Datei fehlt: $f" >&2; exit 1; }
 done
 
@@ -105,28 +107,95 @@ else
   rm /etc/docker/daemon.json.new
 fi
 
-# --- 5. Anwendung (Caddy liefert die Vorschau der Storefront aus) -------------
-log "Dateien nach $APP_DIR"
+# --- 5. Anwendung: ganze Plattform wie lokal (M5) ---------------------------
+log "Quellstand nach $APP_DIR/src"
 install -d -m 0750 "$APP_DIR"
-install -m 0644 "$SRC/compose.yaml" "$APP_DIR/compose.yaml"
-install -m 0644 "$SRC/Caddyfile" "$APP_DIR/Caddyfile"
 install -m 0600 "$SRC/secrets.env" "$APP_DIR/secrets.env"
+install -m 0600 "$SRC/site-password" "$APP_DIR/site-password"
+rm -rf "$APP_DIR/src.new"
+install -d -m 0755 "$APP_DIR/src.new"
+tar -xzf "$SRC/source.tar.gz" -C "$APP_DIR/src.new" --no-same-owner
+[ -s "$APP_DIR/src.new/infra/compose.yaml" ] || { echo "infra/compose.yaml fehlt im Paket" >&2; exit 1; }
+rm -rf "$APP_DIR/src"
+mv "$APP_DIR/src.new" "$APP_DIR/src"
 
-log "Storefront-Vorschau auspacken"
-# Erst in einen neuen Ordner auspacken und prüfen, dann den Inhalt austauschen. Der Ordner selbst
-# bleibt derselbe, weil Caddy ihn eingebunden hat (ein umbenannter Ordner wäre für Caddy unsichtbar).
-rm -rf "$APP_DIR/site.new"
-install -d -m 0755 "$APP_DIR/site.new" "$APP_DIR/site"
-tar -xzf "$SRC/site.tar.gz" -C "$APP_DIR/site.new" --no-same-owner --no-same-permissions
-[ -s "$APP_DIR/site.new/index.html" ] || { echo "index.html fehlt im Paket" >&2; exit 1; }
-chown -R root:root "$APP_DIR/site.new"
-chmod -R u=rwX,go=rX "$APP_DIR/site.new"
-find "$APP_DIR/site" -mindepth 1 -delete
-cp -a "$APP_DIR/site.new/." "$APP_DIR/site/"
-rm -rf "$APP_DIR/site.new"
+# shellcheck source=/dev/null
+. "$APP_DIR/secrets.env"
+DOMAIN="$TESTSERVER_DOMAIN"
+# Seitenpasswort (Klartext) nur hier lesen, nie ausgeben.
+SITE_PASSWORD="$(cat "$APP_DIR/site-password")"
+
+log "Einstellungen (.env): Geheimnisse einmal erzeugen, danach behalten"
+ENV_FILE="$APP_DIR/.env"
+touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
+gen() {
+  case "$1" in
+    __SECRET__) openssl rand -base64 36 | tr '+/' '-_' | tr -d '=\n' ;;
+    __HEX32__) openssl rand -hex 32 ;;
+    __KEY32__) openssl rand -base64 32 | tr -d '\n' ;;
+    __S3_KEY_ID__) printf 'GK%s' "$(openssl rand -hex 12)" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+setenv() { # setenv NAME WERT: Eintrag ersetzen oder anhängen
+  grep -v "^$1=" "$ENV_FILE" > "$ENV_FILE.new" || true
+  printf '%s=%s\n' "$1" "$2" >> "$ENV_FILE.new"
+  mv "$ENV_FILE.new" "$ENV_FILE"; chmod 600 "$ENV_FILE"
+}
+while IFS='=' read -r name value; do
+  [[ "$name" =~ ^[A-Z0-9_]+$ ]] || continue
+  grep -q "^$name=" "$ENV_FILE" || setenv "$name" "$(gen "$value")"
+done < "$APP_DIR/src/.env.example"
+# Feste Werte für den Testserver (bei jedem Lauf gesetzt).
+setenv SHOP_ENV test
+setenv SHOP_DOMAIN "$DOMAIN"
+setenv MAILPIT_UI_USER "$TESTSERVER_USER"
+setenv MAILPIT_UI_PASSWORD "$SITE_PASSWORD"
+
+log "Abbilder bauen (arm64, auf dem Server)"
+for target in migrate api worker backoffice storefront; do
+  docker build -q -f "$APP_DIR/src/infra/docker/Dockerfile" --target "$target" \
+    -t "shop-platform/$target:local" "$APP_DIR/src" >/dev/null
+done
+
+# Vor M5 lief hier nur Caddy mit der Vorschau (Projekt shop-testserver). Es belegt 80/443.
+if docker compose -p shop-testserver ps -q 2>/dev/null | grep -q .; then
+  log "Alte Vorschau anhalten"
+  docker compose -p shop-testserver down --remove-orphans
+fi
+rm -rf "$APP_DIR/site" "$APP_DIR/compose.yaml" "$APP_DIR/Caddyfile"
+
+COMPOSE=(docker compose --project-directory "$APP_DIR/src/infra" -f "$APP_DIR/src/infra/compose.yaml"
+  -f "$APP_DIR/src/infra/testserver/compose.testserver.yaml" --env-file "$ENV_FILE")
 
 log "Container starten"
-docker compose -f "$APP_DIR/compose.yaml" --project-directory "$APP_DIR" up -d --wait --remove-orphans
-docker compose -f "$APP_DIR/compose.yaml" --project-directory "$APP_DIR" ps
+"${COMPOSE[@]}" up -d --no-build --wait --remove-orphans
 
+log "Objektspeicher einrichten"
+envget() { grep "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2-; }
+garage() { "${COMPOSE[@]}" exec -T garage /garage "$@"; }
+# Wie tools/dev.mjs (initGarage): Knoten einmal einteilen, dann Schlüssel und Bereiche.
+node_id="$(garage status | grep -oE '^[0-9a-f]{16}' | head -1)"
+[ -n "$node_id" ] || { echo "Garage: Knoten-ID nicht gefunden" >&2; exit 1; }
+layout="$(garage layout show)"
+if grep -qi "No nodes currently have a role" <<<"$layout" || ! grep -q "$node_id" <<<"$layout"; then
+  current="$(grep -oiE 'Current cluster layout version:[[:space:]]*[0-9]+' <<<"$layout" | grep -oE '[0-9]+$' || echo 0)"
+  garage layout assign -z server -c 20G "$node_id"
+  garage layout apply --version "$((current + 1))"
+fi
+key_id="$(envget SHOP_S3_ACCESS_KEY_ID)"
+garage key list | grep -q "$key_id" || garage key import --yes -n shop-app "$key_id" "$(envget SHOP_S3_SECRET_ACCESS_KEY)"
+for bucket in "$(envget SHOP_S3_BUCKET_PUBLIC)" "$(envget SHOP_S3_BUCKET_PRIVATE)"; do
+  garage bucket list | grep -qw "$bucket" || garage bucket create "$bucket"
+  garage bucket allow --read --write "$bucket" --key "$key_id"
+done
+garage bucket website --allow "$(envget SHOP_S3_BUCKET_PUBLIC)"
+
+log "Testshops und Testdaten (Passwort der Inhaberkonten = Seitenpasswort)"
+"${COMPOSE[@]}" exec -T -e SHOP_SEED_PASSWORD="$SITE_PASSWORD" api node dist/seed.js
+
+log "Alte Abbilder aufräumen"
+docker image prune -f >/dev/null
+
+"${COMPOSE[@]}" ps
 log "Fertig"
