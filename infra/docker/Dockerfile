@@ -78,6 +78,11 @@ FROM ${CADDY_IMAGE} AS backoffice
 # Das Caddy-Programm trägt das Sonderrecht NET_BIND_SERVICE (für Port 80/443). Hier reicht Port 8080:
 # Eine einfache Kopie ohne dieses Recht läuft dann auch mit cap_drop ALL und no-new-privileges.
 RUN cp /usr/bin/caddy /usr/bin/caddy.plain && mv /usr/bin/caddy.plain /usr/bin/caddy
+# Sicherheitskorrekturen von Alpine sofort übernehmen, nicht erst mit dem nächsten Caddy-Abbild
+# (z. B. brotli CVE-2026-111497, 10.11.2026). Der Container-Scan prüft das jede Woche.
+RUN --mount=type=secret,id=extra_ca \
+    if [ -s /run/secrets/extra_ca ]; then cp /run/secrets/extra_ca /tmp/ca.pem; export SSL_CERT_FILE=/tmp/ca.pem; fi; \
+    apk upgrade --no-cache && rm -f /tmp/ca.pem
 COPY --from=build --chown=root:root /src/apps/backoffice/dist /srv
 COPY --chown=root:root infra/backoffice/Caddyfile /etc/caddy/Caddyfile
 ENV XDG_CONFIG_HOME=/tmp/config XDG_DATA_HOME=/tmp/data
