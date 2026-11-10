@@ -164,7 +164,7 @@ jobs:
           # für ein Token halten (sonst 401 mit anderem Code).
           expect 200 "https://admin.$DOMAIN/teeladen/produkte" "${auth[@]}"
           session="$(curl "${auth[@]}" "https://admin.$DOMAIN/auth/v1/session")"
-          grep -q '"code":"unauthorized"' <<<"$session" || { echo "::error::Auth-API: $session"; exit 1; }
+          grep -q '"code":"unauthenticated"' <<<"$session" || { echo "::error::Auth-API: $session"; exit 1; }
           # Anmelden als Inhaberin des Teeladens (Passwort = Seitenpasswort)
           signin="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' -H 'content-type: application/json' \
             -H "origin: https://admin.$DOMAIN" \
