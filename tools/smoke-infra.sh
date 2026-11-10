@@ -108,6 +108,14 @@ check "Backoffice: API unter derselben Adresse (Auth-API antwortet 401)" '[[ "$(
 check "Backoffice: ändernde Anfragen an die Dateien abgelehnt" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" -X POST "https://admin.$D/index.html")" == 405 ]]'
 check "Backoffice: Container ohne Ports nach außen" '[[ -z "$(docker port shop-platform-backoffice-1)" ]]'
 
+echo "== Storefront (M4)"
+SH="$("${C[@]}" -D /tmp/smoke-sf-h -o /tmp/smoke-sf "https://shop.$D/teeladen"; cat /tmp/smoke-sf-h)"
+check "Storefront: Teeladen unter shop.$D/teeladen mit 200" '[[ "$SH" =~ ^HTTP/2\ 200 ]]'
+check "Storefront: Produkte und Bilder aus der API" 'grep -q "Sencha Frühlingshauch" /tmp/smoke-sf && grep -q "https://media.$D/tenants/" /tmp/smoke-sf'
+check "Storefront: strenge CSP ohne Skripte" 'grep -qiE "content-security-policy: default-src '"'"'none'"'"'; style-src '"'"'self'"'"'; img-src" <<<"$SH" && ! grep -qi "<script" /tmp/smoke-sf'
+check "Storefront: unbekannter Shop ergibt 404" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://shop.$D/gibt-es-nicht")" == 404 ]]'
+check "Storefront: Container ohne Datenbank-Zugang (keine Geheimnisse)" '! docker exec shop-platform-storefront-1 env | grep -qiE "DATABASE|SECRET|PASSWORD"'
+
 echo "== Worker: Hintergrunddienst (E5)"
 W=shop-platform-worker-1
 check "Worker: Container ist gesund (Lebenszeichen)" '[[ "$(docker inspect $W --format "{{.State.Health.Status}}")" == healthy ]]'

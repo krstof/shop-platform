@@ -1,34 +1,35 @@
 ---
-import Shop from "../layouts/Shop.astro";
-import Produktkarte from "../components/Produktkarte.astro";
-import { KATEGORIEN, PRODUKTE, SHOP } from "../vorschau/daten.js";
+// Startseite der Plattform (M4): führt zu den Testshops.
+import "../styles/shop.css";
+const testshops = [
+  { handle: "teeladen", name: "Teeladen", text: "Grüntee, Schwarztee und Kräuter." },
+  { handle: "modeladen", name: "Modeladen", text: "T-Shirts, Hemden und Mützen." },
+];
 ---
 
-<Shop titel={SHOP.name}>
-  <section class="buehne" aria-labelledby="willkommen">
-    <h1 id="willkommen">{SHOP.claim}</h1>
-    <p>
-      Grüntee, Schwarztee und Kräuter aus kleinen Gärten. Frisch abgefüllt und mit einer Anleitung, wie jeder
-      Tee am besten gelingt.
-    </p>
-  </section>
-
-  <h2>Unsere Sorten</h2>
-  <ul class="kategorien">
-    {KATEGORIEN.map((k) => (
-      <li>
-        <a href={`/kategorie/${k.slug}/`}>
-          <strong>{k.name}</strong>
-          <span class="klein">{k.beschreibung}</span>
-        </a>
-      </li>
-    ))}
-  </ul>
-
-  <h2>Alle Tees</h2>
-  <ul class="raster">
-    {PRODUKTE.map((p) => (
-      <Produktkarte produkt={p} />
-    ))}
-  </ul>
-</Shop>
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Shop-Plattform</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main class="breite leer">
+      <h1>Shop-Plattform</h1>
+      <p>Ein Lern-Experiment. Hier sind die Testshops:</p>
+      <ul class="kategorien">
+        {testshops.map((s) => (
+          <li>
+            <a href={`/${s.handle}`}>
+              <strong>{s.name}</strong>
+              <span class="klein">{s.text}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </main>
+  </body>
+</html>

@@ -240,6 +240,26 @@ services:
       timeout: 3s
       retries: 20
 
+  # Storefront (M4): Shops für Kundinnen und Kunden unter shop.<Domain>/<Kürzel>. Server-Rendering,
+  # holt Daten nur aus der Storefront-API im internen Netz; keine Datenbank, keine Geheimnisse.
+  storefront:
+    <<: *hardening
+    build: { <<: *build, target: storefront }
+    image: shop-platform/storefront:local
+    user: "1000:1000"
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      SHOP_STORE_API_URL: http://api:3000
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4321/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      api: { condition: service_healthy }
+
   # Hintergrunddienst (Architektur 3.5, E5): leitet Ereignisse aus der Outbox weiter, stellt sie den
   # Subscribern zu (etwa dem Änderungsprotokoll) und räumt stündlich auf. Zwei Verbindungen mit
   # getrennten Rollen: shop_app für die Verarbeitung je Shop, shop_relay für Outbox und Warteschlange.

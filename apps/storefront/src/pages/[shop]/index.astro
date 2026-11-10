@@ -1,0 +1,47 @@
+---
+// Startseite eines Shops (M4): Kategorien und alle veröffentlichten Produkte.
+import Shop from "../../layouts/Shop.astro";
+import Produktkarte from "../../components/Produktkarte.astro";
+import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
+import { warenkorbAnzahl } from "../../lib/cart.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products")).data;
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop shop={shop} categories={categories} titel={shop.name} korb={korb}>
+  <section class="buehne" aria-labelledby="willkommen">
+    <h1 id="willkommen">Willkommen bei {shop.name}</h1>
+    <p>Schön, dass du da bist. Stöbere durch unser Sortiment.</p>
+  </section>
+
+  {categories.length > 0 && (
+    <>
+      <h2>Kategorien</h2>
+      <ul class="kategorien">
+        {categories.map((k) => (
+          <li>
+            <a href={`/${shop.handle}/kategorie/${k.slug}`}>
+              <strong>{k.name}</strong>
+              {k.description && <span class="klein">{k.description}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </>
+  )}
+
+  <h2>Alle Produkte</h2>
+  {produkte.length === 0 ? (
+    <p>Hier gibt es noch keine Produkte.</p>
+  ) : (
+    <ul class="raster">
+      {produkte.map((p) => (
+        <Produktkarte produkt={p} shop={shop.handle} />
+      ))}
+    </ul>
+  )}
+</Shop>

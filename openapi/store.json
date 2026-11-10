@@ -5,7 +5,394 @@
     "description": "Öffentliche API der Shops für Endkunden. Der Shop ergibt sich aus der Domain.",
     "version": "1.0.0"
   },
-  "paths": {},
+  "paths": {
+    "/store/v1/shops/{shopHandle}": {
+      "get": {
+        "operationId": "getStoreShop",
+        "summary": "Shop lesen",
+        "description": "Name und Kürzel eines aktiven Shops. Unbekannte oder gesperrte Shops ergeben 404.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Der Shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreShop"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Jeder Besucher sieht den Namen des Shops, den er aufruft."
+      }
+    },
+    "/store/v1/shops/{shopHandle}/categories": {
+      "get": {
+        "operationId": "listStoreCategories",
+        "summary": "Kategorien des Shops",
+        "description": "Sichtbare Kategorien in der Reihenfolge des Shops.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Kategorien.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StoreCategory"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Die Storefront zeigt jedem Besucher die veröffentlichten Produkte des Shops."
+      }
+    },
+    "/store/v1/shops/{shopHandle}/products": {
+      "get": {
+        "operationId": "listStoreProducts",
+        "summary": "Produkte des Shops",
+        "description": "Veröffentlichte Produkte in Anlagereihenfolge (höchstens 200), wahlweise nur einer Kategorie.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Adresse (slug).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Produkte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StoreProduct"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Die Storefront zeigt jedem Besucher die veröffentlichten Produkte des Shops."
+      }
+    },
+    "/store/v1/shops/{shopHandle}/products/{productSlug}": {
+      "get": {
+        "operationId": "getStoreProduct",
+        "summary": "Produkt des Shops",
+        "description": "Ein veröffentlichtes Produkt zur Adresse (slug).",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          },
+          {
+            "name": "productSlug",
+            "in": "path",
+            "required": true,
+            "description": "Adresse (slug).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Das Produkt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProduct"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Die Storefront zeigt jedem Besucher die veröffentlichten Produkte des Shops."
+      }
+    }
+  },
   "components": {
     "schemas": {
       "Problem": {
@@ -66,6 +453,182 @@
         ],
         "additionalProperties": false,
         "description": "Fehler im Format Problem Details (RFC 9457)."
+      },
+      "ProductImage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Große Fassung (höchstens 1600 Pixel breit oder hoch), WebP."
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Kleine Fassung (höchstens 400 Pixel), WebP, für Listen."
+          },
+          "width": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Breite des Originals in Pixeln."
+          },
+          "height": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Höhe des Originals in Pixeln."
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "thumbnailUrl",
+          "width",
+          "height"
+        ],
+        "additionalProperties": false,
+        "description": "Produktbild, ausgeliefert über media.<Domain>."
+      },
+      "StoreCategory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "StoreProduct": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "Klartext, Absätze durch Leerzeilen getrennt."
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "currency": {
+                    "type": "string",
+                    "const": "EUR"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taxRatePercent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "19 oder 7 (Deutschland), im Preis enthalten."
+          },
+          "inStock": {
+            "type": "boolean"
+          },
+          "maxQuantity": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Höchstens so viele passen in den Warenkorb."
+          },
+          "categoryId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductImage"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "price",
+          "taxRatePercent",
+          "inStock",
+          "maxQuantity",
+          "categoryId",
+          "images"
+        ],
+        "additionalProperties": false,
+        "description": "Produkt, wie Besucher eines Shops es sehen."
+      },
+      "StoreShop": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "handle",
+          "name"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

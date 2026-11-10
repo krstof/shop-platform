@@ -2,17 +2,21 @@
   "name": "@shop/storefront",
   "version": "0.0.0",
   "private": true,
-  "description": "Storefront für Endkunden (Astro, Architektur 2). Zurzeit Vorschau mit Beispieldaten, ohne API.",
+  "description": "Storefront für Endkunden (Astro mit Server-Rendering, Architektur 2). Daten aus der Storefront-API.",
   "license": "UNLICENSED",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "astro build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "dev": "astro dev"
+    "dev": "astro dev",
+    "start": "node dist/server/entry.mjs"
   },
   "dependencies": {
-    "@shop/kernel": "workspace:*",
+    "@astrojs/node": "11.1.9",
     "astro": "7.4.2"
   },
   "devDependencies": {

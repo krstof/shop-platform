@@ -4,7 +4,8 @@
 #   docker build -f infra/docker/Dockerfile --target migrate .
 #   docker build -f infra/docker/Dockerfile --target worker  .
 #   docker build -f infra/docker/Dockerfile --target backoffice .
-# `pnpm dev` baut alle vier (tools/dev.mjs).
+#   docker build -f infra/docker/Dockerfile --target storefront .
+# `pnpm dev` baut alle fünf (tools/dev.mjs).
 #
 # Aufbau in zwei Stufen:
 # 1. build: installiert mit der Lockdatei, übersetzt TypeScript und legt mit `pnpm deploy`
@@ -36,9 +37,10 @@ RUN --mount=type=secret,id=extra_ca \
     if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
     pnpm config set store-dir /pnpm/store && \
     pnpm install --frozen-lockfile --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." \
-      --filter "@shop/backoffice..." && \
+      --filter "@shop/backoffice..." --filter "@shop/storefront..." && \
     pnpm --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." --filter "@shop/backoffice" \
-      run build && \
+      --filter "@shop/storefront" run build && \
+    pnpm --filter @shop/storefront deploy --prod --offline /out/storefront && \
     pnpm --filter @shop/api deploy --prod --offline /out/api && \
     pnpm --filter @shop/migrate deploy --prod --offline /out/migrate && \
     pnpm --filter @shop/worker deploy --prod --offline /out/worker
@@ -71,6 +73,13 @@ CMD ["node", "dist/main.js"]
 FROM runtime AS worker
 COPY --from=build --chown=root:root /out/worker /app
 CMD ["node", "dist/main.js"]
+
+# Storefront (M4): Astro mit Server-Rendering, holt alles aus der Storefront-API im internen Netz.
+FROM runtime AS storefront
+COPY --from=build --chown=root:root /out/storefront /app
+ENV HOST=0.0.0.0 PORT=4321 ASTRO_TELEMETRY_DISABLED=1
+EXPOSE 4321
+CMD ["node", "dist/server/entry.mjs"]
 
 # Backoffice (M3): nur fertige Dateien (HTML, JavaScript, CSS), kein Node, kein Quellcode.
 # Caddy liefert sie im internen Netz auf Port 8080 aus; der Haupt-Caddy leitet admin.<Domain> hierher.

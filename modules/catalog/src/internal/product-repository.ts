@@ -227,3 +227,29 @@ export async function updateProduct(
   if (row === undefined) return { kind: "not_found" };
   return { kind: "updated", row, before };
 }
+
+/** Veröffentlichtes Produkt zur Adresse (Storefront, M4). */
+export async function findPublishedProductBySlug(
+  trx: Transaction<DB>,
+  slug: string,
+): Promise<ProductRow | undefined> {
+  const r = await baseQuery(trx)
+    .where("t.slug", "=", slug)
+    .where("p.status", "=", "published")
+    .executeTakeFirst();
+  return r === undefined ? undefined : toRow(r);
+}
+
+/** Produkte zu Kennungen (Warenkorb, M6), nur veröffentlichte. */
+export async function findPublishedProductsByIds(
+  trx: Transaction<DB>,
+  ids: readonly string[],
+): Promise<ProductRow[]> {
+  if (ids.length === 0) return [];
+  return (
+    await baseQuery(trx)
+      .where("p.id", "in", [...ids])
+      .where("p.status", "=", "published")
+      .execute()
+  ).map(toRow);
+}

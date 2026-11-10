@@ -1,12 +1,23 @@
 ---
-import Shop from "../layouts/Shop.astro";
+import "../styles/shop.css";
+Astro.response.status = 404;
 ---
 
-<Shop titel="Seite nicht gefunden">
-  <div class="text">
-    <h1>Seite nicht gefunden</h1>
-    <p>
-      Diese Seite gibt es nicht (mehr). <a href="/">Zur Startseite</a>
-    </p>
-  </div>
-</Shop>
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Seite nicht gefunden</title>
+  </head>
+  <body>
+    <main class="breite leer">
+      <h1>Seite nicht gefunden</h1>
+      <p>Diese Seite gibt es nicht (mehr).</p>
+      <p>
+        <a href="/">Zur Startseite</a>
+      </p>
+    </main>
+  </body>
+</html>

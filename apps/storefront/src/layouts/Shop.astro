@@ -1,13 +1,19 @@
 ---
+// Rahmen jeder Shop-Seite (M4): Kopf mit Shopname, Kategorien und Warenkorb, Fuß mit Preishinweis.
 import "../styles/shop.css";
-import { KATEGORIEN, SHOP } from "../vorschau/daten.js";
+import type { StoreCategory, StoreShop } from "../lib/store-api.js";
 
 interface Props {
+  shop: StoreShop;
+  categories: readonly StoreCategory[];
   titel: string;
   beschreibung?: string;
+  /** Anzahl der Artikel im Warenkorb (M6). */
+  korb?: number;
 }
-const { titel, beschreibung = SHOP.claim } = Astro.props;
-const pfad = Astro.url.pathname;
+const { shop, categories, titel, beschreibung = shop.name, korb = 0 } = Astro.props;
+const pfad = Astro.url.pathname.replace(/\/+$/, "");
+const basis = `/${shop.handle}`;
 ---
 
 <!doctype html>
@@ -17,7 +23,7 @@ const pfad = Astro.url.pathname;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content={beschreibung} />
-    <title>{titel === SHOP.name ? titel : `${titel} – ${SHOP.name}`}</title>
+    <title>{titel === shop.name ? titel : `${titel} – ${shop.name}`}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
@@ -26,16 +32,16 @@ const pfad = Astro.url.pathname;
     </a>
     <header class="kopf">
       <p class="vorschau-band" role="note">
-        Vorschau mit erfundenen Beispieldaten. Hier kann noch nichts gekauft werden.
+        Testshop: Hier ist nichts echt, auch die Zahlung nicht.
       </p>
       <div class="breite kopf-innen">
-        <a href="/" class="logo">
-          {SHOP.name}
+        <a href={basis} class="logo">
+          {shop.name}
         </a>
         <nav aria-label="Kategorien">
           <ul class="nav">
-            {KATEGORIEN.map((k) => {
-              const ziel = `/kategorie/${k.slug}/`;
+            {categories.map((k) => {
+              const ziel = `${basis}/kategorie/${k.slug}`;
               return (
                 <li>
                   <a href={ziel} aria-current={pfad === ziel ? "page" : undefined}>
@@ -46,9 +52,13 @@ const pfad = Astro.url.pathname;
             })}
           </ul>
         </nav>
-        <span class="korb" title="Warenkorb folgt">
-          Warenkorb (0)
-        </span>
+        <a
+          class="korb"
+          href={`${basis}/warenkorb`}
+          aria-current={pfad === `${basis}/warenkorb` ? "page" : undefined}
+        >
+          Warenkorb ({korb})
+        </a>
       </div>
     </header>
     <main id="inhalt" class="breite" tabindex="-1">
@@ -56,37 +66,8 @@ const pfad = Astro.url.pathname;
     </main>
     <footer class="fuss">
       <div class="breite fuss-innen">
-        <div>
-          <p class="logo">{SHOP.name}</p>
-          <p class="klein">
-            {SHOP.firma}
-            <br />
-            {SHOP.ort}
-          </p>
-        </div>
-        <nav aria-label="Rechtliches">
-          <ul class="fuss-links">
-            <li>
-              <a href="/rechtliches/#impressum">Impressum</a>
-            </li>
-            <li>
-              <a href="/rechtliches/#datenschutz">Datenschutz</a>
-            </li>
-            <li>
-              <a href="/rechtliches/#agb">AGB</a>
-            </li>
-            <li>
-              <a href="/rechtliches/#widerruf">Widerrufsbelehrung</a>
-            </li>
-            <li>
-              <a href="/rechtliches/#versand">Versand und Zahlung</a>
-            </li>
-            <li>
-              <a href="/rechtliches/#barrierefreiheit">Barrierefreiheit</a>
-            </li>
-          </ul>
-        </nav>
-        <p class="klein">Alle Preise inkl. MwSt., zzgl. Versand.</p>
+        <p class="logo">{shop.name}</p>
+        <p class="klein">Ein Testshop der Shop-Plattform. Alle Preise inkl. MwSt., zzgl. Versand.</p>
       </div>
     </footer>
   </body>

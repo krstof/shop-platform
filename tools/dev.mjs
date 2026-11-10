@@ -68,7 +68,7 @@ function initGarage(env) {
  * beim Bauen eingebunden und landet nie im Abbild.
  */
 function buildImages() {
-  for (const target of ["migrate", "api", "worker", "backoffice"]) {
+  for (const target of ["migrate", "api", "worker", "backoffice", "storefront"]) {
     const args = ["build", "-f", resolve(root, "infra/docker/Dockerfile"), "--target", target];
     args.push("-t", `shop-platform/${target}:local`);
     if (process.env.SHOP_BUILD_NETWORK) args.push("--network", process.env.SHOP_BUILD_NETWORK);
@@ -105,6 +105,7 @@ if (command === "down") {
   console.log(`
 Die Plattform läuft:
   Startseite   https://${d}
+  Shops        https://shop.${d}/teeladen  und  https://shop.${d}/modeladen
   Backoffice   https://admin.${d}
   API          https://api.${d}   (Beschreibung in openapi/)
   Test-Mails   https://mail.${d}   (Anmeldung: ${env.get("MAILPIT_UI_USER")} / Passwort steht in .env)

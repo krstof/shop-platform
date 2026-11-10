@@ -30,3 +30,4 @@ export {
   type OwnerInvitationResult,
   type PlatformEndpointOptions,
 } from "./http/platform.js";
+export { storeShopEndpoints } from "./http/store.js";

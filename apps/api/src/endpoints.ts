@@ -19,7 +19,9 @@ import type { Database } from "@shop/kernel";
 import { createMedia, memoryStorage, type Media } from "@shop/media";
 import {
   createShopAdministration,
+  createShopDirectory,
   platformEndpoints,
+  storeShopEndpoints,
   type OperatorDirectory,
   type ShopAdministration,
 } from "@shop/platform";
@@ -73,6 +75,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
         remove: (ids) => media.deleteImages(ids),
       },
     }),
+    ...storeShopEndpoints(createShopDirectory({ database: deps.database })),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...memberEndpoints({ members }),

@@ -15,6 +15,7 @@ import {
   CrossOriginRejectedError,
   ForbiddenError,
   MethodNotAllowedError,
+  NotFoundError,
   IDEMPOTENCY_KEY_PATTERN,
   PreconditionRequiredError,
   RateLimitedError,
@@ -54,7 +55,15 @@ export interface RouterOptions {
   readonly rateLimiter?: RateLimiter | undefined;
   /** Oberflächen, die ändernde Anfragen schicken dürfen. Leer: jede Anfrage mit `Origin` wird abgelehnt. */
   readonly allowedOrigins?: readonly string[] | undefined;
+  /**
+   * Storefront-API (M4): Shop zum Kürzel im Pfad (`/store/v1/shops/{shopHandle}/…`). Nur aktive
+   * Shops; unbekannt oder gesperrt ergibt 404. Ohne Angabe kennt die Storefront-API keinen Shop.
+   */
+  readonly storeShops?: StoreShopResolver | undefined;
 }
+
+/** Kennung eines aktiven Shops zum Kürzel, sonst `undefined`. */
+export type StoreShopResolver = (handle: string) => Promise<string | undefined>;
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -331,6 +340,16 @@ async function handle(
     }
     const ifMatch = readIfMatch(state);
     if (endpoint.api === "admin") checkShopIdHeader(state);
+    // Storefront-API: Der Shop kommt aus dem Pfad und gilt für die ganze Anfrage (RLS wie überall).
+    if (endpoint.api === "store") {
+      const handle = (params as { shopHandle?: unknown }).shopHandle;
+      const tenantId =
+        typeof handle === "string" && options.storeShops !== undefined
+          ? await options.storeShops(handle)
+          : undefined;
+      if (tenantId === undefined) throw new NotFoundError();
+      auth = { actor: { type: "system" }, tenantId, scopes: new Set() };
+    }
 
     // 3. Idempotenz (Architektur 4.5)
     const idem = idempotencyFor(state, auth, body);

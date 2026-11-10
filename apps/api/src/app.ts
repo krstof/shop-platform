@@ -9,6 +9,7 @@ import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ActorResolver } from "./actor.js";
+import type { StoreShopResolver } from "./router.js";
 import type { IdempotencyStore } from "./idempotency-store.js";
 import { sendProblem } from "./problem-reply.js";
 import { clientNetwork, RateLimiter } from "./rate-limit.js";
@@ -50,6 +51,8 @@ export interface ApiOptions {
   readonly rateLimiter?: RateLimiter;
   /** Oberflächen, die ändernde Anfragen schicken dürfen (CSRF, Sicherheit 5.5). Standard: keine. */
   readonly allowedOrigins?: readonly string[];
+  /** Storefront-API (M4): aktiver Shop zum Kürzel im Pfad. */
+  readonly storeShops?: StoreShopResolver;
 }
 
 // NestJS braucht eine Klasse als Kennung des Moduls; der Inhalt steht in rootModule().

@@ -7,6 +7,7 @@ import { categoryEndpoints } from "./http/admin/categories.js";
 import { manufacturerEndpoints } from "./http/admin/manufacturers.js";
 import { productImageEndpoints } from "./http/admin/product-images.js";
 import { productEndpoints } from "./http/admin/products.js";
+import { storeCatalogEndpoints } from "./http/store/catalog.js";
 import type { ProductImages, ProductPrices, ProductStock } from "./ports.js";
 
 export type { Manufacturer } from "./http/admin/manufacturer.schema.js";
@@ -50,5 +51,7 @@ export function catalogEndpoints(deps: CatalogDependencies): Endpoint[] {
     ...categoryEndpoints(db),
     ...productEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
     ...productImageEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
+    // Storefront-API (M4): nur Sichtbares, öffentlich je Shop.
+    ...storeCatalogEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
   ];
 }

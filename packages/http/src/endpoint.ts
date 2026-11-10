@@ -275,6 +275,9 @@ function validateSpec(spec: EndpointSpec<AnyObject, AnyObject, z.ZodType, z.ZodT
     if (extra.length > 0) p.push(`params-Felder ohne Platzhalter im Pfad: ${extra.join(", ")}`);
   }
 
+  // Storefront-API (M4): Der Shop steht immer im Pfad, damit jede Anfrage genau einem Shop gilt.
+  if (spec.api === "store" && !spec.path.startsWith("/shops/{shopHandle}"))
+    p.push("Pfade der Storefront-API beginnen mit /shops/{shopHandle}");
   if (spec.body !== undefined && (spec.method === "GET" || spec.method === "DELETE"))
     p.push(`${spec.method} darf keinen body haben`);
 

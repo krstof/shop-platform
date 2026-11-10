@@ -16,7 +16,12 @@ export interface ShopSummary {
 export interface ShopDirectory {
   /** Shops zu diesen Kennungen, in derselben Reihenfolge. Unbekannte fehlen einfach. */
   getShops(ids: readonly string[]): Promise<readonly ShopSummary[]>;
+  /** Aktiver Shop zum Kürzel (Storefront, M4). Unbekannt oder nicht aktiv: `undefined`. */
+  findActiveByHandle(handle: string): Promise<ShopSummary | undefined>;
 }
+
+/** Kürzel wie in platform.tenant: klein, Ziffern und Bindestriche. */
+const HANDLE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export interface ShopDirectoryOptions {
   /** Verbindung als Rolle shop_app (nur lesen). */
@@ -52,6 +57,19 @@ export function createShopDirectory(options: ShopDirectoryOptions): ShopDirector
           ? []
           : [{ id: r.id, handle: r.handle, name: r.name, status: toStatus(r.status) }];
       });
+    },
+
+    async findActiveByHandle(handle) {
+      if (!HANDLE.test(handle)) return undefined;
+      const r = await withPlatformTransaction(database, (trx) =>
+        trx
+          .selectFrom("platform.tenant")
+          .select(["id", "handle", "name", "status"])
+          .where("handle", "=", handle)
+          .where("status", "=", "active")
+          .executeTakeFirst(),
+      );
+      return r === undefined ? undefined : { id: r.id, handle: r.handle, name: r.name, status: "active" };
     },
   };
 }

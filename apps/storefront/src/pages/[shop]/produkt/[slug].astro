@@ -1,0 +1,101 @@
+---
+// Produktseite (M4): Bilder, Preis mit Pflichtangaben, Beschreibung.
+import Shop from "../../../layouts/Shop.astro";
+import { absaetze, euro, steuerHinweis } from "../../../lib/format.js";
+import { loadShop, safeSlug, storeApi, StoreApiError, type StoreProduct } from "../../../lib/store-api.js";
+import { warenkorbAnzahl } from "../../../lib/cart.js";
+
+const daten = await loadShop(Astro.params.shop);
+const slug = safeSlug(Astro.params.slug);
+if (daten === undefined || slug === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+let p: StoreProduct;
+try {
+  p = await storeApi<StoreProduct>(shop.handle, `/products/${slug}`);
+} catch (e) {
+  if (e instanceof StoreApiError && e.status === 404) return Astro.rewrite("/404");
+  throw e;
+}
+const k = categories.find((c) => c.id === p.categoryId);
+const [hauptbild, ...weitere] = p.images;
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop
+  shop={shop}
+  categories={categories}
+  titel={p.name}
+  beschreibung={absaetze(p.description)[0] ?? p.name}
+  korb={korb}
+>
+  <nav class="pfadleiste" aria-label="Brotkrümelnavigation">
+    <ol>
+      <li>
+        <a href={`/${shop.handle}`}>Startseite</a>
+      </li>
+      {k && (
+        <li>
+          <a href={`/${shop.handle}/kategorie/${k.slug}`}>{k.name}</a>
+        </li>
+      )}
+      <li>
+        <a href={`/${shop.handle}/produkt/${p.slug}`} aria-current="page">
+          {p.name}
+        </a>
+      </li>
+    </ol>
+  </nav>
+  <article class="produkt">
+    <div class="galerie">
+      {hauptbild === undefined ? (
+        <span class="bild bild-leer" aria-hidden="true" />
+      ) : (
+        <img
+          class="bild"
+          src={hauptbild.url}
+          alt={p.name}
+          width={hauptbild.width}
+          height={hauptbild.height}
+        />
+      )}
+      {weitere.length > 0 && (
+        <ul class="galerie-weitere">
+          {weitere.map((b, i) => (
+            <li>
+              <img
+                class="bild"
+                src={b.thumbnailUrl}
+                alt={`${p.name}, Bild ${i + 2}`}
+                width="400"
+                height="400"
+                loading="lazy"
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+    <div>
+      <h1>{p.name}</h1>
+      {p.price !== null && (
+        <>
+          <p class="preis-gross">
+            <strong>{euro(p.price.amount)}</strong>
+          </p>
+          <p class="klein">{steuerHinweis(p.taxRatePercent)}</p>
+        </>
+      )}
+      <div class="kaufen">
+        {p.inStock ? <p>Sofort lieferbar.</p> : <p class="hinweis-aus">Zurzeit ausverkauft</p>}
+      </div>
+      {absaetze(p.description).length > 0 && (
+        <>
+          <h2>Beschreibung</h2>
+          {absaetze(p.description).map((a) => (
+            <p class="text">{a}</p>
+          ))}
+        </>
+      )}
+    </div>
+  </article>
+</Shop>

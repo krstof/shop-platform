@@ -85,6 +85,7 @@ async function main(): Promise<void> {
     logger,
     idempotency: databaseIdempotencyStore(database),
     allowedOrigins: config.SHOP_ALLOWED_ORIGINS,
+    storeShops: async (handle) => (await shops.findActiveByHandle(handle))?.id,
     ...(config.SHOP_TRUSTED_PROXY === undefined ? {} : { trustedProxy: config.SHOP_TRUSTED_PROXY }),
   });
   app.enableShutdownHooks();

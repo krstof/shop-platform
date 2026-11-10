@@ -1,0 +1,41 @@
+---
+// Kategorieseite (M4).
+import Shop from "../../../layouts/Shop.astro";
+import Produktkarte from "../../../components/Produktkarte.astro";
+import { loadShop, safeSlug, storeApi, type StoreProduct } from "../../../lib/store-api.js";
+import { warenkorbAnzahl } from "../../../lib/cart.js";
+
+const daten = await loadShop(Astro.params.shop);
+const slug = safeSlug(Astro.params.slug);
+const k = daten?.categories.find((c) => c.slug === slug);
+if (daten === undefined || k === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?category=${k.slug}`)).data;
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop shop={shop} categories={categories} titel={k.name} beschreibung={k.description || k.name} korb={korb}>
+  <nav class="pfadleiste" aria-label="Brotkrümelnavigation">
+    <ol>
+      <li>
+        <a href={`/${shop.handle}`}>Startseite</a>
+      </li>
+      <li>
+        <a href={`/${shop.handle}/kategorie/${k.slug}`} aria-current="page">
+          {k.name}
+        </a>
+      </li>
+    </ol>
+  </nav>
+  <h1>{k.name}</h1>
+  {k.description && <p class="klein">{k.description}</p>}
+  {produkte.length === 0 ? (
+    <p>In dieser Kategorie gibt es noch keine Produkte.</p>
+  ) : (
+    <ul class="raster">
+      {produkte.map((p) => (
+        <Produktkarte produkt={p} shop={shop.handle} />
+      ))}
+    </ul>
+  )}
+</Shop>
