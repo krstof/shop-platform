@@ -2,6 +2,7 @@
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@tanstack/react-router";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
 import { HomeRedirect, ShopLayout } from "./pages/layout.js";
+import { OrderPage, OrdersPage } from "./pages/orders.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
 
@@ -44,12 +45,19 @@ const productEdit = createRoute({
   component: EditProductPage,
 });
 
+const orders = createRoute({ getParentRoute: () => shop, path: "/bestellungen", component: OrdersPage });
+const order = createRoute({
+  getParentRoute: () => shop,
+  path: "/bestellungen/$orderId",
+  component: OrderPage,
+});
+
 const routeTree = root.addChildren([
   home,
   signIn,
   forgot,
   reset,
-  shop.addChildren([shopHome, products, productNew, productEdit]),
+  shop.addChildren([shopHome, products, productNew, productEdit, orders, order]),
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: "intent" });

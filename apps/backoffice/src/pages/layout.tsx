@@ -134,6 +134,14 @@ export function ShopLayout() {
               >
                 Produkte
               </Link>
+              <Link
+                to="/$shop/bestellungen"
+                params={{ shop: shop.handle }}
+                className="rounded-md px-3 py-1.5 text-stone-600 hover:bg-stone-100"
+                activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
+              >
+                Bestellungen
+              </Link>
             </nav>
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden text-sm text-stone-500 sm:inline">{session.data.user.email}</span>

@@ -163,3 +163,52 @@ export function fileToBase64(file: Blob): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+export type OrderStatus = "pending_payment" | "open" | "in_progress" | "completed" | "cancelled";
+
+export interface OrderSummary {
+  readonly id: string;
+  readonly orderNumber: string;
+  readonly placedAt: string;
+  readonly customerName: string;
+  readonly email: string;
+  readonly total: number;
+  readonly itemCount: number;
+  readonly status: OrderStatus;
+  readonly paymentStatus: string;
+  readonly fulfillmentStatus: string;
+}
+
+export interface Order {
+  readonly id: string;
+  readonly orderNumber: string;
+  readonly placedAt: string;
+  readonly status: OrderStatus;
+  readonly paymentStatus: string;
+  readonly fulfillmentStatus: string;
+  readonly email: string;
+  readonly address: {
+    readonly firstName: string;
+    readonly lastName: string;
+    readonly street: string;
+    readonly postalCode: string;
+    readonly city: string;
+    readonly countryCode: string;
+  };
+  readonly subtotal: number;
+  readonly shipping: number;
+  readonly tax: number;
+  readonly total: number;
+  readonly taxByRate: Readonly<Record<string, number>>;
+  readonly paymentMethodName: string | null;
+  readonly lines: readonly {
+    readonly position: number;
+    readonly productId: string;
+    readonly name: string;
+    readonly sku: string | null;
+    readonly quantity: number;
+    readonly unitPrice: number;
+    readonly lineTotal: number;
+    readonly taxRatePercent: number;
+  }[];
+}

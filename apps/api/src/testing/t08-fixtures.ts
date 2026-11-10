@@ -47,6 +47,19 @@ export const T08_FIXTURES: Readonly<Record<string, Fixture>> = {
     );
     return rows[0]?.id ?? "";
   },
+  // Bezahlte, offene Bestellung (M7): „versenden“ würde klappen, wenn die Mandantentrennung fehlte.
+  orderId: async (db, tenantId) => {
+    const { rows } = await db.query<{ id: string }>(
+      `WITH c AS (INSERT INTO shop_settings.sales_channel (tenant_id, code, kind, name)
+                  VALUES ($1, $2, 'storefront', 'T-08') RETURNING id)
+       INSERT INTO orders."order" (tenant_id, order_number, channel_id, email, locale, currency, tax_display,
+                                   subtotal_amount, tax_amount, total_amount, status, payment_status)
+       SELECT $1, $2, c.id, 't08@example.org', 'de', 'EUR', 'gross', 100, 0, 100, 'open', 'paid' FROM c
+       RETURNING id`,
+      [tenantId, `t08-${randomBytes(4).toString("hex")}`],
+    );
+    return rows[0]?.id ?? "";
+  },
   apiTokenId: async (db, tenantId) => {
     const token = `shp_at_${randomBytes(32).toString("base64url")}`;
     const { rows } = await db.query<{ id: string }>(

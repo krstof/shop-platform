@@ -27,7 +27,7 @@ import {
   type OperatorDirectory,
   type ShopAdministration,
 } from "@shop/platform";
-import { createOrders } from "@shop/orders";
+import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { createPricing } from "@shop/pricing";
 import { createShopSettings } from "@shop/shop-settings";
@@ -83,6 +83,8 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
   return [
     // Katalog mit Preisen, Bestand und Bildern aus den Modulen pricing, inventory und media (M2).
     ...catalogEndpoints({ database: deps.database, prices, stock, images }),
+    // Bestellungen im Backoffice (M7).
+    ...orderEndpoints({ database: deps.database, settings }),
     // Kaufen in der Storefront (M6): Warenkorb, Kasse, Testzahlung, Bestellbestätigung.
     ...checkoutEndpoints({
       database: deps.database,

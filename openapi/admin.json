@@ -3087,6 +3087,464 @@
         ]
       }
     },
+    "/admin/v1/orders": {
+      "get": {
+        "operationId": "listOrders",
+        "summary": "Bestellungen auflisten",
+        "description": "Bestellungen des Shops, neueste zuerst, seitenweise mit Cursor.",
+        "tags": [
+          "Bestellungen"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Einträge pro Seite, 1 bis 100 (Standard 25).",
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Lesemarke aus `page.nextCursor` der vorigen Seite.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eine Seite mit Bestellungen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "maxItems": 100,
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrderSummary"
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "orders:read"
+        ]
+      }
+    },
+    "/admin/v1/orders/{orderId}": {
+      "get": {
+        "operationId": "getOrder",
+        "summary": "Bestellung lesen",
+        "description": "Eine Bestellung mit Positionen, Lieferadresse und Summen.",
+        "tags": [
+          "Bestellungen"
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Bestellung.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "orders:read"
+        ]
+      }
+    },
+    "/admin/v1/orders/{orderId}/ship": {
+      "post": {
+        "operationId": "shipOrder",
+        "summary": "Bestellung als versendet markieren",
+        "description": "Markiert eine bezahlte Bestellung als versendet; damit ist sie erledigt. Nicht bezahlte oder schon versendete Bestellungen ergeben 409.",
+        "tags": [
+          "Bestellungen"
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Bestellung danach.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "orders:write"
+        ]
+      }
+    },
     "/admin/v1/products": {
       "get": {
         "operationId": "listProducts",
@@ -5331,6 +5789,290 @@
         ],
         "additionalProperties": false,
         "description": "Mitglied eines Shops."
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "orderNumber": {
+            "type": "string"
+          },
+          "placedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_payment",
+              "open",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ],
+            "description": "`pending_payment` wartet auf Zahlung, `open` bezahlt und offen, `completed` erledigt."
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "authorized",
+              "paid",
+              "partially_refunded",
+              "refunded",
+              "failed"
+            ]
+          },
+          "fulfillmentStatus": {
+            "type": "string",
+            "enum": [
+              "unfulfilled",
+              "partially_shipped",
+              "shipped",
+              "delivered",
+              "partially_returned",
+              "returned"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "firstName": {
+                "type": "string"
+              },
+              "lastName": {
+                "type": "string"
+              },
+              "street": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "countryCode": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "firstName",
+              "lastName",
+              "street",
+              "postalCode",
+              "city",
+              "countryCode"
+            ],
+            "additionalProperties": false
+          },
+          "currency": {
+            "type": "string"
+          },
+          "subtotal": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "shipping": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "tax": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "taxByRate": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "paymentMethodName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "productId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "unitPrice": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "lineTotal": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "taxRatePercent": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "position",
+                "productId",
+                "name",
+                "sku",
+                "quantity",
+                "unitPrice",
+                "lineTotal",
+                "taxRatePercent"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "orderNumber",
+          "placedAt",
+          "status",
+          "paymentStatus",
+          "fulfillmentStatus",
+          "email",
+          "address",
+          "currency",
+          "subtotal",
+          "shipping",
+          "tax",
+          "total",
+          "taxByRate",
+          "paymentMethodName",
+          "lines"
+        ],
+        "additionalProperties": false,
+        "description": "Bestellung mit Positionen, Adresse und Summen (Momentaufnahme)."
+      },
+      "OrderSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "orderNumber": {
+            "type": "string"
+          },
+          "placedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Gesamtbetrag brutto in Cent (EUR)."
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_payment",
+              "open",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ],
+            "description": "`pending_payment` wartet auf Zahlung, `open` bezahlt und offen, `completed` erledigt."
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "authorized",
+              "paid",
+              "partially_refunded",
+              "refunded",
+              "failed"
+            ]
+          },
+          "fulfillmentStatus": {
+            "type": "string",
+            "enum": [
+              "unfulfilled",
+              "partially_shipped",
+              "shipped",
+              "delivered",
+              "partially_returned",
+              "returned"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "orderNumber",
+          "placedAt",
+          "customerName",
+          "email",
+          "total",
+          "itemCount",
+          "status",
+          "paymentStatus",
+          "fulfillmentStatus"
+        ],
+        "additionalProperties": false,
+        "description": "Bestellung in der Liste."
       },
       "Price": {
         "type": "object",

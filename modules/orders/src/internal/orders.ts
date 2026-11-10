@@ -38,6 +38,19 @@ export type PaymentState = "unpaid" | "authorized" | "paid" | "partially_refunde
 export type FulfillmentState =
   "unfulfilled" | "partially_shipped" | "shipped" | "delivered" | "partially_returned" | "returned";
 
+export interface OrderSummary {
+  readonly id: string;
+  readonly orderNumber: string;
+  readonly placedAt: Date;
+  readonly customerName: string;
+  readonly email: string;
+  readonly total: number;
+  readonly status: OrderStatus;
+  readonly paymentStatus: PaymentState;
+  readonly fulfillmentStatus: FulfillmentState;
+  readonly itemCount: number;
+}
+
 export interface OrderLineView {
   readonly position: number;
   readonly productId: string;
@@ -241,6 +254,82 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
         const result = await view(trx, order.id);
         if (result === undefined) throw new Error("Bestellung nach dem Anlegen nicht lesbar");
         return result;
+      });
+    },
+
+    /** Neueste zuerst (UUIDv7 absteigend), eine Zeile mehr als verlangt (nächste Seite?). */
+    async list(f: { limit: number; beforeId?: string | undefined }): Promise<OrderSummary[]> {
+      return withTenantTransaction(db, async (trx) => {
+        let q = placed(trx)
+          .leftJoin("orders.order_address as a", (j) =>
+            j.onRef("a.order_id", "=", "orders.order.id").on("a.kind", "=", "shipping"),
+          )
+          .select([
+            "orders.order.id",
+            "orders.order.order_number",
+            "orders.order.placed_at",
+            "orders.order.email",
+            "orders.order.total_amount",
+            "orders.order.status",
+            "orders.order.payment_status",
+            "orders.order.fulfillment_status",
+            "a.first_name",
+            "a.last_name",
+          ])
+          .select((eb) =>
+            eb
+              .selectFrom("orders.order_line as l")
+              .select((e) => e.fn.coalesce(e.fn.sum<string>("l.quantity"), e.val("0")).as("n"))
+              .whereRef("l.order_id", "=", "orders.order.id")
+              .as("item_count"),
+          )
+          .orderBy("orders.order.id", "desc")
+          .limit(f.limit + 1);
+        if (f.beforeId !== undefined) q = q.where("orders.order.id", "<", f.beforeId);
+        return (await q.execute()).map((r) => ({
+          id: r.id,
+          orderNumber: r.order_number,
+          placedAt: r.placed_at,
+          customerName: `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim(),
+          email: r.email ?? "",
+          total: Number(r.total_amount),
+          status: r.status as OrderStatus,
+          paymentStatus: r.payment_status as PaymentState,
+          fulfillmentStatus: r.fulfillment_status as FulfillmentState,
+          itemCount: Number(r.item_count ?? 0),
+        }));
+      });
+    },
+
+    /**
+     * Als versendet markieren (M7): nur bezahlte, offene Bestellungen. Danach ist sie erledigt.
+     * Ergebnis: neuer Stand, `not_found` oder `not_allowed` (noch nicht bezahlt, schon versendet).
+     */
+    async markShipped(
+      id: string,
+    ): Promise<{ kind: "ok"; order: OrderView } | { kind: "not_found" | "not_allowed" }> {
+      return withTenantTransaction(db, async (trx) => {
+        const o = await placed(trx)
+          .select(["status", "payment_status", "fulfillment_status"])
+          .where("id", "=", id)
+          .forUpdate()
+          .executeTakeFirst();
+        if (o === undefined) return { kind: "not_found" as const };
+        if (o.payment_status !== "paid" || o.fulfillment_status !== "unfulfilled" || o.status === "cancelled")
+          return { kind: "not_allowed" as const };
+        await trx
+          .updateTable("orders.order")
+          .set({
+            fulfillment_status: "shipped",
+            status: "completed",
+            seen_at: new Date(),
+            updated_at: new Date(),
+          })
+          .where("id", "=", id)
+          .execute();
+        const order = await view(trx, id);
+        if (order === undefined) return { kind: "not_found" as const };
+        return { kind: "ok" as const, order };
       });
     },
 

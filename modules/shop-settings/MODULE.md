@@ -1,6 +1,6 @@
 # Modul `shop-settings`
 
-> Landkarte für spätere Läufe (Architektur 8.4). Fassade und Ereignisse sind geplant, Code entsteht ab Etappe E4.
+> Landkarte für spätere Läufe (Architektur 8.4). Code seit MVP-Etappe M6 (Paket `@shop/shop-settings`), Fassade in `src/index.ts`.
 
 **Aufgabe:** Firmendaten und Pflichtangaben, Verkaufskanäle, Länder und Zonen, Nummernkreise, Cookie-Einstellungen, Shop online/offline mit Prüfliste.
 

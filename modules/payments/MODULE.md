@@ -1,6 +1,6 @@
 # Modul `payments`
 
-> Landkarte für spätere Läufe (Architektur 8.4). Fassade und Ereignisse sind geplant, Code entsteht ab Etappe E4.
+> Landkarte für spätere Läufe (Architektur 8.4). Code seit MVP-Etappe M6 (Paket `@shop/payments`), Fassade in `src/index.ts`.
 
 **Aufgabe:** Anbieterneutrale Zahlungsabwicklung über Adapter, zuerst der eigene Test-Zahlungsanbieter, Prüfung signierter Rückmeldungen.
 
