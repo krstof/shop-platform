@@ -227,7 +227,11 @@ export interface IdentityService {
    * ohne E-Mail. Gleiche Passwortregeln; beendet alle Sitzungen und hebt eine Sperre auf.
    * `false`, wenn es das Konto nicht gibt.
    */
-  setPasswordForTestData(input: { readonly email: string; readonly newPassword: string }): Promise<boolean>;
+  setPasswordForTestData(
+    input: { readonly email: string } & (
+      { readonly newPassword: string } | { readonly passwordHash: string }
+    ),
+  ): Promise<boolean>;
   /**
    * Einladungen (E6 Teil 7, ADR-014), nur für den MemberService dieses Moduls: Konto zur E-Mail
    * suchen oder ohne Passwort anlegen. `undefined`: keine gültige E-Mail-Adresse.
@@ -833,10 +837,18 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
         .where("email", "=", email)
         .executeTakeFirst();
       if (user === undefined) return false;
-      const problem = checkNewPassword(input.newPassword, email);
-      if (problem !== undefined)
-        throw new Error(`Testpasswort erfüllt die Regeln nicht: ${PASSWORD_MESSAGES[problem]}`);
-      const passwordHash = await hashPassword(input.newPassword);
+      let passwordHash: string;
+      if ("passwordHash" in input) {
+        // Fertiger Prüfwert (Testserver): nur Argon2id mit den Werten dieses Moduls.
+        if (!/^\$argon2id\$v=19\$m=19456,t=2,p=1\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+$/.test(input.passwordHash))
+          throw new Error("Testpasswort: Prüfwert ist kein Argon2id-Hash dieses Moduls");
+        passwordHash = input.passwordHash;
+      } else {
+        const problem = checkNewPassword(input.newPassword, email);
+        if (problem !== undefined)
+          throw new Error(`Testpasswort erfüllt die Regeln nicht: ${PASSWORD_MESSAGES[problem]}`);
+        passwordHash = await hashPassword(input.newPassword);
+      }
       const at = new Date(now());
       await db.transaction().execute(async (trx) => {
         const updated = await trx

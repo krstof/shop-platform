@@ -37,7 +37,7 @@
 
 # Unterschiede je Umgebung (M5): profile.caddy kommt lokal aus profile.local.caddy (eigene
 # Zertifikate, kein Passwort) und auf dem Testserver aus infra/testserver/profile.caddy (echte
-# Zertifikate, HSTS, Passwortschutz). Darin: guard, guard_api, public_guard, root_site.
+# Zertifikate, HSTS, Passwortschutz). Darin: guard, guard_api, mail_guard, public_guard, root_site.
 import profile.caddy
 
 # Startseite der Plattform (lokal ein Lebenszeichen, auf dem Testserver Weiterleitung zu den Shops).
@@ -157,7 +157,7 @@ shop.{$SHOP_DOMAIN} {
 
 # Test-Mails (Mailpit). Zusätzlich durch Mailpit selbst mit Passwort geschützt.
 mail.{$SHOP_DOMAIN} {
-	import guard
+	import mail_guard
 	import security_headers
 	header Cache-Control "no-store"
 	header Cross-Origin-Resource-Policy "same-site"

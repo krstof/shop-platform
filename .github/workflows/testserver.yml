@@ -166,15 +166,15 @@ jobs:
           expect 200 "https://admin.$DOMAIN/teeladen/produkte" "${auth[@]}"
           session="$(curl "${auth[@]}" "https://admin.$DOMAIN/auth/v1/session")"
           grep -q '"code":"unauthenticated"' <<<"$session" || { echo "::error::Auth-API: $session"; exit 1; }
-          # Anmelden als Inhaberin des Teeladens (Passwort = Seitenpasswort)
+          # Anmelden: Das Testpasswort kennt nur Kristof (test-login.env enthält nur Prüfwerte).
+          # Geprüft wird, dass ein falsches Passwort abgelehnt wird.
           signin="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' -H 'content-type: application/json' \
             -H "origin: https://admin.$DOMAIN" \
-            --data "$(jq -cn --arg p "$SITE_PASSWORD" '{email:"inhaberin@teeladen.example",password:$p}')" \
+            --data '{"email":"inhaberin@teeladen.example","password":"falsches-passwort-rauchtest"}' \
             "https://admin.$DOMAIN/auth/v1/sign-in")"
-          [ "$signin" = 200 ] || { echo "::error::Anmelden als Inhaberin: $signin"; exit 1; }
-          # Test-Postfach: weiterhin mit eigenem Passwort (Mailpit, Benutzer team, Passwort aus dem Secret).
+          [ "$signin" = 401 ] || { echo "::error::Falsches Passwort: erwartet 401, bekommen $signin"; exit 1; }
+          # Test-Postfach nur mit dem Testpasswort.
           expect 401 "https://mail.$DOMAIN/" -s --max-time 20
-          expect 200 "https://mail.$DOMAIN/" -s --max-time 20 -u "$SITE_USER:$SITE_PASSWORD"
           ssh testserver 'sudo sshd -T' | grep -qx 'passwordauthentication no' \
             || { echo "::error::SSH nimmt Passwörter an"; exit 1; }
           echo "Alles in Ordnung: https://shop.$DOMAIN/teeladen und https://admin.$DOMAIN"

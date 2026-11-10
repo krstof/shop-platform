@@ -24,6 +24,14 @@ async function main(): Promise<void> {
   if (config.SHOP_ENV === "production")
     throw new ConfigError(["SHOP_ENV: Testdaten gibt es nicht in Produktion."]);
   const fixedPassword = process.env["SHOP_SEED_PASSWORD"];
+  // Testserver: nur der Prüfwert des Testpassworts (infra/testserver/test-login.env), nie das Passwort.
+  const fixedHash = process.env["SHOP_SEED_PASSWORD_HASH"];
+  const setFixed = async (email: string) => {
+    if (fixedHash !== undefined) await identity.setPasswordForTestData({ email, passwordHash: fixedHash });
+    else if (fixedPassword !== undefined)
+      await identity.setPasswordForTestData({ email, newPassword: fixedPassword });
+  };
+  const fixedNote = fixedHash !== undefined ? "Testpasswort des Servers" : "Passwort aus SHOP_SEED_PASSWORD";
   const database = connectDatabase<unknown>({
     connectionString: config.SHOP_APP_DATABASE_URL,
     applicationName: "seed",
@@ -53,11 +61,10 @@ async function main(): Promise<void> {
       if (existing.has(seed.handle)) {
         // Mit SHOP_SEED_PASSWORD (Testserver) folgt das Inhaberkonto immer diesem Passwort, damit ein
         // neues Passwort in GitHub auch für die Anmeldung im Backoffice gilt.
-        if (fixedPassword !== undefined)
-          await identity.setPasswordForTestData({ email: seed.ownerEmail, newPassword: fixedPassword });
+        await setFixed(seed.ownerEmail);
+        const fixed = fixedPassword !== undefined || fixedHash !== undefined;
         console.log(
-          `${seed.name}: gibt es schon, bleibt unverändert` +
-            (fixedPassword === undefined ? "." : " (Passwort aus SHOP_SEED_PASSWORD gesetzt)."),
+          `${seed.name}: gibt es schon, bleibt unverändert` + (fixed ? ` (${fixedNote} gesetzt).` : "."),
         );
         continue;
       }
@@ -74,9 +81,11 @@ async function main(): Promise<void> {
         name: seed.ownerName,
       });
       await members.addOwner({ tenantId: created.shop.id, userId });
+      if (fixedHash !== undefined) await setFixed(seed.ownerEmail);
+      const shown = fixedPassword === undefined && fixedHash === undefined;
       console.log(
         `${seed.name}: angelegt. Inhaberkonto ${seed.ownerEmail}` +
-          (fixedPassword === undefined ? `, Passwort ${password}` : ", Passwort aus SHOP_SEED_PASSWORD"),
+          (shown ? `, Passwort ${password}` : `, ${fixedNote}`),
       );
     }
     // Produkte (M2): nur in Shops, die noch keine haben.

@@ -149,6 +149,7 @@ done < "$APP_DIR/src/.env.example"
 # Feste Werte für den Testserver (bei jedem Lauf gesetzt).
 setenv SHOP_ENV test
 setenv SHOP_DOMAIN "$DOMAIN"
+# Mailpit selbst ohne eigenes Passwort; davor prüft Caddy das Testpasswort (test-login.env).
 setenv MAILPIT_UI_USER "$TESTSERVER_USER"
 setenv MAILPIT_UI_PASSWORD "$SITE_PASSWORD"
 
@@ -191,8 +192,10 @@ for bucket in "$(envget SHOP_S3_BUCKET_PUBLIC)" "$(envget SHOP_S3_BUCKET_PRIVATE
 done
 garage bucket website --allow "$(envget SHOP_S3_BUCKET_PUBLIC)"
 
-log "Testshops und Testdaten (Passwort der Inhaberkonten = Seitenpasswort)"
-"${COMPOSE[@]}" exec -T -e SHOP_SEED_PASSWORD="$SITE_PASSWORD" api node dist/seed.js
+log "Testshops und Testdaten (Inhaberkonten mit dem Testpasswort aus test-login.env)"
+# shellcheck source=/dev/null
+. "$APP_DIR/src/infra/testserver/test-login.env"
+"${COMPOSE[@]}" exec -T -e SHOP_SEED_PASSWORD_HASH="$SHOP_SEED_PASSWORD_HASH" api node dist/seed.js
 
 log "Alte Abbilder aufräumen"
 docker image prune -f >/dev/null

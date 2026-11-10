@@ -9,6 +9,11 @@
 	tls internal
 }
 
+# Test-Postfach: lokal schützt Mailpit sich selbst (MAILPIT_UI_USER/MAILPIT_UI_PASSWORD).
+(mail_guard) {
+	tls internal
+}
+
 (public_guard) {
 	tls internal
 }

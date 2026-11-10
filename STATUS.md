@@ -72,6 +72,8 @@ Stand: 10.11.2026 (nach M7, MVP-Plan bis auf M8 fertig)
 
 - **Testserver ohne Seitenpasswort (10.11.2026, Entscheidung Kristof):** Shops, Backoffice und API sind öffentlich (weiter HSTS und `noindex`); das Test-Postfach behält sein eigenes Passwort. Kristof kannte das Seitenpasswort nicht mehr. Deshalb setzt `pnpm dev:seed` mit `SHOP_SEED_PASSWORD` jetzt bei jedem Lauf auch bestehende Inhaberkonten auf dieses Passwort (neue Identity-Funktion `setPasswordForTestData`, nur für Testdaten). Ein neues Secret `TESTSERVER_PASSWORD` in GitHub gilt damit nach dem nächsten Ablauf für Backoffice und Mailpit. API-Token funktionieren auf dem Testserver jetzt auch.
 
+- **Neues Testpasswort ohne GitHub (10.11.2026, Entscheidung Kristof):** Inhaberkonten und Test-Postfach auf dem Testserver nutzen ein neues Testpasswort, das Kristof im Chat bekommen hat. Im Repository stehen nur Prüfwerte (`infra/testserver/test-login.env`: Argon2id für die Inhaberkonten, bcrypt für Caddy vor Mailpit); `pnpm dev:seed` kann mit `SHOP_SEED_PASSWORD_HASH` einen fertigen Prüfwert setzen. Mailpit hat auf dem Testserver kein eigenes Passwort mehr, Caddy prüft davor (`mail_guard`). Das Secret `TESTSERVER_PASSWORD` wird nur noch vom Ablauf selbst gebraucht. Neues Passwort: beide Prüfwerte neu erzeugen und den Ablauf laufen lassen.
+
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
 Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobieren merkt (CLAUDE.md 1a). Der alte Plan mit 26 Etappen in `docs/06_Welle1_Anforderungen.md` gilt nur noch als Nachschlagewerk. Fundament (E1 bis E6) ist fertig. Ab jetzt je Lauf eine sichtbare Etappe, API und Oberfläche zusammen, jeweils die einfachste Version:

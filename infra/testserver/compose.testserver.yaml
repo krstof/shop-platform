@@ -6,7 +6,8 @@
 services:
   caddy:
     # Adresse des Servers (TESTSERVER_DOMAIN); kein Seitenpasswort mehr.
-    env_file: [/opt/shop-testserver/secrets.env]
+    # Prüfwert des Testpassworts für das Test-Postfach (MAIL_USER, MAIL_PASSWORD_HASH).
+    env_file: [/opt/shop-testserver/secrets.env, ./testserver/test-login.env]
     # Auf dem Server von außen erreichbar (lokal nur 127.0.0.1).
     ports: !override
       - "80:80"
@@ -14,3 +15,8 @@ services:
     volumes:
       # Echte Zertifikate und HSTS statt der lokalen Einstellungen.
       - ./testserver/profile.caddy:/etc/caddy/profile.caddy:ro
+
+  # Test-Postfach: Mailpit ohne eigenes Passwort, Caddy prüft davor das Testpasswort (profile.caddy).
+  mailpit:
+    environment:
+      MP_UI_AUTH: !reset null
