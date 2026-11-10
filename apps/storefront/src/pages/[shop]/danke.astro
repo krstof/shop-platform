@@ -1,0 +1,60 @@
+---
+// Dankeseite (M6): Bestellung mit Nummer, Positionen, Summe und Lieferadresse.
+import Shop from "../../layouts/Shop.astro";
+import { euro } from "../../lib/format.js";
+import { loadPayment } from "../../lib/cart.js";
+import { loadShop } from "../../lib/store-api.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const basis = `/${shop.handle}`;
+const zahlung = await loadPayment(Astro.cookies, shop.handle);
+if (zahlung === undefined) return Astro.redirect(basis, 303);
+if (zahlung.status !== "captured") return Astro.redirect(`${basis}/testzahlung`, 303);
+const o = zahlung.order;
+---
+
+<Shop shop={shop} categories={categories} titel="Danke für deine Bestellung">
+  <section class="danke">
+    <h1>Danke, {o.address.firstName}!</h1>
+    <p>
+      Deine Bestellung <strong>{o.orderNumber}</strong> ist eingegangen und bezahlt. Eine Bestätigung ist an
+      {o.email} unterwegs.
+    </p>
+    <h2>Deine Bestellung</h2>
+    <ul class="kurz-liste">
+      {o.lines.map((l) => (
+        <li>
+          {l.quantity} × {l.name} <span>{euro(l.lineTotal)}</span>
+        </li>
+      ))}
+    </ul>
+    <dl class="summen-zeilen">
+      <dt>Versand</dt>
+      <dd>kostenlos</dd>
+      <dt class="gesamt">Gesamt</dt>
+      <dd class="gesamt">{euro(o.total)}</dd>
+      {Object.entries(o.taxByRate).map(([satz, betrag]) => (
+        <>
+          <dt class="klein">enthaltene MwSt. {satz} %</dt>
+          <dd class="klein">{euro(betrag)}</dd>
+        </>
+      ))}
+    </dl>
+    <h2>Lieferadresse</h2>
+    <address>
+      {o.address.firstName} {o.address.lastName}
+      <br />
+      {o.address.street}
+      <br />
+      {o.address.postalCode} {o.address.city}
+    </address>
+    <p>
+      <a class="knopf" href={basis}>
+        Weiter einkaufen
+      </a>
+    </p>
+    <p class="klein">Testshop: Es wird nichts geliefert und nichts berechnet.</p>
+  </section>
+</Shop>

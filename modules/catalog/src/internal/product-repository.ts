@@ -240,16 +240,26 @@ export async function findPublishedProductBySlug(
   return r === undefined ? undefined : toRow(r);
 }
 
-/** Produkte zu Kennungen (Warenkorb, M6), nur veröffentlichte. */
+/** Veröffentlichte Produkte zu Produkt- oder Variantenkennungen (Warenkorb, M6). */
 export async function findPublishedProductsByIds(
   trx: Transaction<DB>,
-  ids: readonly string[],
+  ids: {
+    readonly productIds?: readonly string[] | undefined;
+    readonly variantIds?: readonly string[] | undefined;
+  },
 ): Promise<ProductRow[]> {
-  if (ids.length === 0) return [];
+  const productIds = ids.productIds ?? [];
+  const variantIds = ids.variantIds ?? [];
+  if (productIds.length === 0 && variantIds.length === 0) return [];
   return (
     await baseQuery(trx)
-      .where("p.id", "in", [...ids])
       .where("p.status", "=", "published")
+      .where((eb) =>
+        eb.or([
+          ...(productIds.length > 0 ? [eb("p.id", "in", [...productIds])] : []),
+          ...(variantIds.length > 0 ? [eb("v.id", "in", [...variantIds])] : []),
+        ]),
+      )
       .execute()
   ).map(toRow);
 }

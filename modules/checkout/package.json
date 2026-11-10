@@ -1,0 +1,42 @@
+{
+  "name": "@shop/checkout",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modul checkout: Warenkorb, Kasse und Testzahlung in der Storefront-API (Architektur 3.2)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@shop/cart": "workspace:*",
+    "@shop/catalog": "workspace:*",
+    "@shop/http": "workspace:*",
+    "@shop/inventory": "workspace:*",
+    "@shop/kernel": "workspace:*",
+    "@shop/orders": "workspace:*",
+    "@shop/payments": "workspace:*",
+    "@shop/shop-settings": "workspace:*",
+    "kysely": "0.29.7",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@shop/config": "workspace:*",
+    "@types/node": "^24.19.2",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
+  }
+}

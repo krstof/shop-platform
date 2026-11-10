@@ -265,8 +265,13 @@ main:focus-visible {
   border: 0;
   background: var(--akzent);
   color: #fff;
-  cursor: not-allowed;
-  opacity: 0.6;
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 600;
+}
+.knopf:hover {
+  background: var(--akzent-dunkel);
 }
 .merkmale {
   display: flex;
@@ -349,4 +354,215 @@ main:focus-visible {
 }
 .leer {
   padding: 4rem 1rem;
+}
+
+/* --- Seit M6: Kaufen --- */
+.korb {
+  color: var(--text);
+}
+.kauf-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.kauf-form select,
+.korb-menge input,
+.feld input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--linie);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+.kauf-form .klein {
+  flex-basis: 100%;
+  margin: 0;
+}
+.knopf-leise {
+  font: inherit;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--linie);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+.knopf-leise:hover {
+  background: var(--flaeche);
+}
+.meldung {
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  background: #fbe9e3;
+  color: #7a2a12;
+  border: 1px solid #efc2b3;
+}
+.unsichtbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.leer-box {
+  padding: 2rem;
+  border: 1px dashed var(--linie);
+  border-radius: 8px;
+  text-align: center;
+}
+.korb-liste {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+  border-top: 1px solid var(--linie);
+}
+.korb-zeile {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--linie);
+}
+.korb-bild {
+  width: 4rem;
+  height: 4rem;
+  grid-row: span 2;
+}
+.korb-text {
+  display: flex;
+  flex-direction: column;
+}
+.korb-menge {
+  display: flex;
+  gap: 0.5rem;
+}
+.korb-menge input {
+  width: 4.5rem;
+}
+.korb-summe {
+  justify-self: end;
+}
+@media (min-width: 48rem) {
+  .korb-zeile {
+    grid-template-columns: 4rem 1fr auto auto 7rem;
+  }
+  .korb-bild {
+    grid-row: auto;
+  }
+}
+.summen {
+  max-width: 24rem;
+  margin-left: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  background: #fff;
+}
+.summen dl,
+.summen-zeilen {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem 1rem;
+  margin: 0 0 1.25rem;
+}
+.summen dd,
+.summen-zeilen dd {
+  margin: 0;
+  text-align: right;
+}
+.gesamt {
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+.kasse {
+  display: grid;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+@media (min-width: 56rem) {
+  .kasse {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+  }
+  .kasse .summen {
+    margin: 0;
+  }
+}
+.formular fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+.formular legend {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+.feld input[aria-invalid="true"] {
+  border-color: #b4441f;
+}
+.feld-fehler {
+  color: #9a3412;
+  font-size: 0.9rem;
+}
+.kurz-liste {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+.kurz-liste li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+}
+.danke {
+  max-width: 36rem;
+  margin: 2rem 0 3rem;
+}
+.danke address {
+  font-style: normal;
+  margin-bottom: 1.5rem;
+}
+/* Testzahlung: absichtlich anders als der Shop */
+.testbank {
+  background: #e8edf3;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.testbank-karte {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 24rem;
+  width: 100%;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+  font-family: system-ui, sans-serif;
+}
+.testbank-marke {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1f4f8a;
+}
+.testbank-betrag {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.5rem 0 1.5rem;
+}
+.testbank-knoepfe {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }

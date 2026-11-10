@@ -10,7 +10,20 @@ export interface InventoryDependencies {
   readonly database: Database<unknown>;
 }
 
+/** Ein Artikel fehlt im Lager (Kauf, M6). */
+export class OutOfStockError extends Error {
+  constructor(readonly variantId: string) {
+    super("Nicht genug Bestand");
+    this.name = "OutOfStockError";
+  }
+}
+
 export interface Inventory {
+  /**
+   * Nimmt Ware für eine Bestellung aus dem Lager (M6), alles oder nichts: Reicht der Bestand für eine
+   * Position nicht, wirft es OutOfStockError, und die Transaktion des Aufrufers rollt alles zurück.
+   */
+  take(lines: readonly { variantId: string; quantity: number }[], orderId: string): Promise<void>;
   /** Setzt den Bestand einer Variante im Standardlager auf genau diese Zahl. */
   setOnHand(variantId: string, quantity: number): Promise<void>;
   /** Verfügbarer Bestand (vorhanden minus reserviert) je Variante über alle Lager. Ohne Bestand: fehlt. */
@@ -81,6 +94,39 @@ export function createInventory(deps: InventoryDependencies): Inventory {
               location_id: locationId,
               quantity_delta: delta,
               reason: before === undefined ? "initial" : "adjustment",
+            })
+            .execute();
+        }
+      });
+    },
+
+    async take(lines, orderId) {
+      const tenantId = getContext()?.tenantId ?? "";
+      await withTenantTransaction(db, async (trx) => {
+        const locationId = await defaultLocationId(trx, tenantId);
+        for (const { variantId, quantity } of lines) {
+          if (!Number.isSafeInteger(quantity) || quantity < 1)
+            throw new RangeError("Menge muss ganz und ≥ 1 sein");
+          // Prüfen und Abziehen in einer Anweisung: zwei gleichzeitige Käufe können nicht beide gewinnen.
+          const row = await trx
+            .updateTable("inventory.stock_level")
+            .set((eb) => ({ on_hand: eb("on_hand", "-", quantity) }))
+            .where("variant_id", "=", variantId)
+            .where("location_id", "=", locationId)
+            .where("available", ">=", quantity)
+            .returning("variant_id")
+            .executeTakeFirst();
+          if (row === undefined) throw new OutOfStockError(variantId);
+          await trx
+            .insertInto("inventory.stock_movement")
+            .values({
+              tenant_id: tenantId,
+              variant_id: variantId,
+              location_id: locationId,
+              quantity_delta: -quantity,
+              reason: "sale",
+              reference_type: "order",
+              reference_id: orderId,
             })
             .execute();
         }

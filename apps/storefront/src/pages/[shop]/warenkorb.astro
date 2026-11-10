@@ -1,0 +1,134 @@
+---
+// Warenkorb (M6): Mengen ändern, entfernen, weiter zur Kasse. Formulare ohne JavaScript; nach jeder
+// Änderung leitet der Server zurück (POST, dann GET), damit Neuladen nichts doppelt tut.
+import Shop from "../../layouts/Shop.astro";
+import { euro } from "../../lib/format.js";
+import { loadCart, safeId, safeInt, setQuantity } from "../../lib/cart.js";
+import { loadShop, StoreApiError } from "../../lib/store-api.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const basis = `/${shop.handle}`;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const aktion = form.get("aktion");
+  const produkt = safeId(form.get("produkt"));
+  let fehler = "";
+  try {
+    if (produkt === undefined) fehler = "Unbekanntes Produkt.";
+    else if (aktion === "hinzufuegen") {
+      const menge = safeInt(form.get("menge"), 1, 99) ?? 1;
+      const vorher = (await loadCart(Astro.cookies, shop.handle))?.lines.find((l) => l.productId === produkt);
+      await setQuantity(Astro.cookies, shop.handle, produkt, Math.min(99, (vorher?.quantity ?? 0) + menge));
+    } else if (aktion === "aendern") {
+      const menge = safeInt(form.get("menge"), 0, 99);
+      if (menge === undefined) fehler = "Bitte eine Menge von 0 bis 99 angeben.";
+      else await setQuantity(Astro.cookies, shop.handle, produkt, menge);
+    } else if (aktion === "entfernen") {
+      await setQuantity(Astro.cookies, shop.handle, produkt, 0);
+    }
+  } catch (e) {
+    if (!(e instanceof StoreApiError) || e.status >= 500) throw e;
+    fehler = e.message;
+  }
+  // Hinweis für die nächste Anzeige in einem kurzlebigen Cookie, nicht in der Adresse (sonst
+  // ließen sich fremde Texte per Link in die Seite schmuggeln).
+  if (fehler)
+    Astro.cookies.set("hinweis", fehler.slice(0, 200), {
+      path: basis,
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 60,
+    });
+  return Astro.redirect(`${basis}/warenkorb`, 303);
+}
+
+const hinweis = Astro.cookies.get("hinweis")?.value;
+if (hinweis !== undefined) Astro.cookies.delete("hinweis", { path: basis });
+const korb = await loadCart(Astro.cookies, shop.handle);
+const zeilen = korb?.lines ?? [];
+---
+
+<Shop shop={shop} categories={categories} titel="Warenkorb" korb={korb?.count ?? 0}>
+  <h1>Warenkorb</h1>
+  {hinweis && (
+    <p class="meldung" role="alert">
+      {hinweis}
+    </p>
+  )}
+  {zeilen.length === 0 ? (
+    <div class="leer-box">
+      <p>Dein Warenkorb ist leer.</p>
+      <p>
+        <a href={basis}>Weiter einkaufen</a>
+      </p>
+    </div>
+  ) : (
+    <>
+      <ul class="korb-liste">
+        {zeilen.map((l) => (
+          <li class="korb-zeile">
+            {l.imageUrl ? (
+              <img class="bild korb-bild" src={l.imageUrl} alt="" width="80" height="80" />
+            ) : (
+              <span class="bild bild-leer korb-bild" aria-hidden="true" />
+            )}
+            <div class="korb-text">
+              <a href={`${basis}/produkt/${l.slug}`}>{l.name}</a>
+              <span class="klein">Je {euro(l.unitPrice)}</span>
+            </div>
+            <form method="post" class="korb-menge">
+              <input type="hidden" name="aktion" value="aendern" />
+              <input type="hidden" name="produkt" value={l.productId} />
+              <label class="unsichtbar" for={`menge-${l.productId}`}>
+                Menge {l.name}
+              </label>
+              <input
+                id={`menge-${l.productId}`}
+                name="menge"
+                type="number"
+                min="0"
+                max={l.maxQuantity}
+                value={l.quantity}
+                inputmode="numeric"
+              />
+              <button type="submit" class="knopf-leise">
+                Ändern
+              </button>
+            </form>
+            <form method="post">
+              <input type="hidden" name="aktion" value="entfernen" />
+              <input type="hidden" name="produkt" value={l.productId} />
+              <button type="submit" class="knopf-leise">
+                Entfernen
+              </button>
+            </form>
+            <strong class="korb-summe">{euro(l.lineTotal)}</strong>
+          </li>
+        ))}
+      </ul>
+      <div class="summen">
+        <dl>
+          <dt>Zwischensumme</dt>
+          <dd>{euro(korb?.subtotal ?? 0)}</dd>
+          <dt>Versand</dt>
+          <dd>kostenlos</dd>
+          <dt class="gesamt">Gesamt</dt>
+          <dd class="gesamt">{euro(korb?.total ?? 0)}</dd>
+          {Object.entries(korb?.taxByRate ?? {}).map(([satz, betrag]) => (
+            <>
+              <dt class="klein">enthaltene MwSt. {satz} %</dt>
+              <dd class="klein">{euro(betrag)}</dd>
+            </>
+          ))}
+        </dl>
+        <a class="knopf" href={`${basis}/kasse`}>
+          Zur Kasse
+        </a>
+      </div>
+    </>
+  )}
+</Shop>

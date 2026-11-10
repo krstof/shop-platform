@@ -9,7 +9,7 @@ export function euro(cents: number): string {
 
 /** Pflichtangabe neben dem Preis (Preisangabenverordnung). */
 export function steuerHinweis(prozent: number): string {
-  return `inkl. ${prozent} % MwSt., zzgl. Versand`;
+  return `inkl. ${prozent} % MwSt., versandkostenfrei`;
 }
 
 /** Absätze aus Klartext (getrennt durch Leerzeilen). Ausgabe immer als Text, nie als HTML. */

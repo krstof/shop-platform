@@ -84,8 +84,14 @@ describe("Hersteller in der Admin-API", () => {
       "addProductImage",
       "deleteProductImage",
       "reorderProductImages",
+      "listStoreCategories",
+      "listStoreProducts",
+      "getStoreProduct",
     ]);
-    for (const e of endpoints) expect("scopes" in e.access && e.access.scopes.length > 0).toBe(true);
+    // Admin-Endpunkte brauchen eine Berechtigung; die Storefront-API ist öffentlich mit Begründung.
+    for (const e of endpoints)
+      if (e.api === "admin") expect("scopes" in e.access && e.access.scopes.length > 0).toBe(true);
+      else expect(e.api === "store" && "public" in e.access).toBe(true);
   });
 });
 

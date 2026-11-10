@@ -12,6 +12,13 @@ import type { ProductImages, ProductPrices, ProductStock } from "./ports.js";
 
 export type { Manufacturer } from "./http/admin/manufacturer.schema.js";
 export type { Product } from "./http/admin/product.schema.js";
+export type { StoreProduct } from "./http/store/catalog.js";
+export {
+  createCatalogReader,
+  type CatalogReader,
+  type CatalogReaderDependencies,
+  type SellableProduct,
+} from "./catalog-reader.js";
 export type { Category } from "./http/admin/category.schema.js";
 export type {
   ImageRejection,

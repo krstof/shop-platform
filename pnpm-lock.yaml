@@ -233,9 +233,15 @@ importers:
       '@shop/audit':
         specifier: workspace:*
         version: link:../../modules/audit
+      '@shop/cart':
+        specifier: workspace:*
+        version: link:../../modules/cart
       '@shop/catalog':
         specifier: workspace:*
         version: link:../../modules/catalog
+      '@shop/checkout':
+        specifier: workspace:*
+        version: link:../../modules/checkout
       '@shop/http':
         specifier: workspace:*
         version: link:../../packages/http
@@ -251,12 +257,21 @@ importers:
       '@shop/media':
         specifier: workspace:*
         version: link:../../modules/media
+      '@shop/orders':
+        specifier: workspace:*
+        version: link:../../modules/orders
+      '@shop/payments':
+        specifier: workspace:*
+        version: link:../../modules/payments
       '@shop/platform':
         specifier: workspace:*
         version: link:../../modules/platform
       '@shop/pricing':
         specifier: workspace:*
         version: link:../../modules/pricing
+      '@shop/shop-settings':
+        specifier: workspace:*
+        version: link:../../modules/shop-settings
       fastify:
         specifier: 5.12.7
         version: 5.12.7
@@ -462,6 +477,28 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  modules/cart:
+    dependencies:
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
   modules/catalog:
     dependencies:
       '@shop/http':
@@ -470,6 +507,52 @@ importers:
       '@shop/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  modules/checkout:
+    dependencies:
+      '@shop/cart':
+        specifier: workspace:*
+        version: link:../cart
+      '@shop/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@shop/http':
+        specifier: workspace:*
+        version: link:../../packages/http
+      '@shop/inventory':
+        specifier: workspace:*
+        version: link:../inventory
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@shop/orders':
+        specifier: workspace:*
+        version: link:../orders
+      '@shop/payments':
+        specifier: workspace:*
+        version: link:../payments
+      '@shop/shop-settings':
+        specifier: workspace:*
+        version: link:../shop-settings
       kysely:
         specifier: 0.29.7
         version: 0.29.7
@@ -586,6 +669,59 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  modules/orders:
+    dependencies:
+      '@shop/http':
+        specifier: workspace:*
+        version: link:../../packages/http
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@shop/shop-settings':
+        specifier: workspace:*
+        version: link:../shop-settings
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  modules/payments:
+    dependencies:
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
   modules/platform:
     dependencies:
       '@shop/http':
@@ -615,6 +751,28 @@ importers:
         version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
 
   modules/pricing:
+    dependencies:
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  modules/shop-settings:
     dependencies:
       '@shop/kernel':
         specifier: workspace:*

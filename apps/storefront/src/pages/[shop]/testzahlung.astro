@@ -1,0 +1,61 @@
+---
+// Testzahlung (M6): sieht bewusst anders aus als der Shop, wie die Seite eines Zahlungsanbieters.
+// Zwei Knöpfe: bezahlen oder ablehnen. Nach dem Bezahlen geht es zur Dankeseite.
+import "../../styles/shop.css";
+import { euro } from "../../lib/format.js";
+import { completePayment, loadPayment } from "../../lib/cart.js";
+import { loadShop } from "../../lib/store-api.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop } = daten;
+const basis = `/${shop.handle}`;
+
+let abgelehnt = false;
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const ergebnis = form.get("ergebnis") === "bezahlen" ? "paid" : "declined";
+  const p = await completePayment(Astro.cookies, shop.handle, ergebnis);
+  if (p?.status === "captured") return Astro.redirect(`${basis}/danke`, 303);
+  abgelehnt = true;
+}
+
+const zahlung = await loadPayment(Astro.cookies, shop.handle);
+if (zahlung === undefined) return Astro.redirect(`${basis}/warenkorb`, 303);
+if (zahlung.status === "captured") return Astro.redirect(`${basis}/danke`, 303);
+---
+
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Testzahlung – {shop.name}</title>
+  </head>
+  <body class="testbank">
+    <main class="testbank-karte">
+      <p class="testbank-marke">Testbank</p>
+      <h1>Zahlung bestätigen</h1>
+      <p>
+        Händler: <strong>{shop.name}</strong>
+      </p>
+      <p>Bestellung {zahlung.order.orderNumber}</p>
+      <p class="testbank-betrag">{euro(zahlung.amount)}</p>
+      {abgelehnt && (
+        <p class="meldung" role="alert">
+          Die Zahlung wurde abgelehnt. Du kannst es noch einmal versuchen.
+        </p>
+      )}
+      <form method="post" class="testbank-knoepfe">
+        <button class="knopf" type="submit" name="ergebnis" value="bezahlen">
+          Bezahlen
+        </button>
+        <button class="knopf-leise" type="submit" name="ergebnis" value="ablehnen">
+          Ablehnen
+        </button>
+      </form>
+      <p class="klein">Dies ist eine Testzahlung. Es wird kein Geld bewegt.</p>
+    </main>
+  </body>
+</html>

@@ -77,6 +77,8 @@ async function main(): Promise<void> {
       platformShops: createShopAdministration({ database: platformDatabase }),
       shopsOfUser: shopsOfUser({ memberships, shops }),
       media: mediaFromConfig(config, database),
+      mailer,
+      logger,
     }),
     resolveActor: requestResolver(
       sessionResolver({ identity, memberships, shops, operators }),

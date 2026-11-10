@@ -24,6 +24,12 @@ const base = {
   handler: async () => ({ id: "x" }),
 } satisfies AnySpec;
 
+/** Storefront-Endpunkte haben den Shop immer im Pfad (M4). */
+const storePath = {
+  path: "/shops/{shopHandle}/things/{thingId}",
+  params: z.strictObject({ shopHandle: z.string(), thingId: idParam }),
+};
+
 function problems(overrides: Partial<Record<keyof AnySpec, unknown>>): string {
   try {
     defineEndpoint({ ...base, ...overrides } as AnySpec);
@@ -136,6 +142,7 @@ describe("defineEndpoint", () => {
     expect([post.idempotency, post.rateLimit]).toEqual(["optional", "admin"]);
     const store = defineEndpoint({
       ...base,
+      ...storePath,
       api: "store",
       access: { public: true, reason: "Für alle sichtbar." },
     } as AnySpec);
@@ -170,8 +177,18 @@ describe("defineEndpoint", () => {
 
   it("erlaubt öffentliche Endpunkte nur in der Storefront-API mit Begründung", () => {
     expect(
-      problems({ api: "store", access: { public: true, reason: "Produktseite ist für alle sichtbar." } }),
+      problems({
+        ...storePath,
+        api: "store",
+        access: { public: true, reason: "Produktseite ist für alle sichtbar." },
+      }),
     ).toBe("");
+  });
+
+  it("Storefront-API: der Shop steht immer im Pfad", () => {
+    expect(
+      problems({ api: "store", access: { public: true, reason: "Produktseite ist für alle sichtbar." } }),
+    ).toContain("/shops/{shopHandle}");
   });
 });
 

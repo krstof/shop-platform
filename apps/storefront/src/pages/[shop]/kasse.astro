@@ -1,0 +1,160 @@
+---
+// Kasse (M6): als Gast mit E-Mail und Lieferadresse (nur Deutschland), danach Testzahlung.
+// Ein Zufallsschlüssel im Formular (Idempotency-Key) verhindert doppelte Bestellungen bei
+// doppeltem Klick oder Neuladen.
+import { randomUUID } from "node:crypto";
+import Shop from "../../layouts/Shop.astro";
+import { euro } from "../../lib/format.js";
+import { checkout, loadCart } from "../../lib/cart.js";
+import { loadShop, StoreApiError } from "../../lib/store-api.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const basis = `/${shop.handle}`;
+
+const felder = ["email", "firstName", "lastName", "street", "postalCode", "city"] as const;
+type Feld = (typeof felder)[number];
+const werte: Record<Feld, string> = {
+  email: "",
+  firstName: "",
+  lastName: "",
+  street: "",
+  postalCode: "",
+  city: "",
+};
+const fehler: Partial<Record<Feld, string>> = {};
+let meldung = "";
+let schluessel = randomUUID();
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  for (const f of felder)
+    werte[f] = String(form.get(f) ?? "")
+      .trim()
+      .slice(0, 300);
+  const k = String(form.get("schluessel") ?? "");
+  if (/^[0-9a-f-]{36}$/.test(k)) schluessel = k;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(werte.email))
+    fehler.email = "Bitte eine gültige E-Mail-Adresse angeben.";
+  if (!/^\d{5}$/.test(werte.postalCode)) fehler.postalCode = "Bitte eine fünfstellige Postleitzahl angeben.";
+  for (const f of ["firstName", "lastName", "street", "city"] as const)
+    if (werte[f] === "") fehler[f] = "Bitte ausfüllen.";
+  if (Object.keys(fehler).length === 0) {
+    try {
+      await checkout(
+        Astro.cookies,
+        shop.handle,
+        {
+          email: werte.email,
+          address: {
+            firstName: werte.firstName,
+            lastName: werte.lastName,
+            street: werte.street,
+            postalCode: werte.postalCode,
+            city: werte.city,
+          },
+        },
+        schluessel,
+      );
+      return Astro.redirect(`${basis}/testzahlung`, 303);
+    } catch (e) {
+      if (!(e instanceof StoreApiError) || e.status >= 500) throw e;
+      meldung = e.message;
+      for (const f of e.fields) {
+        const name = f.path.split("/").pop() as Feld;
+        if (felder.includes(name)) fehler[name] = f.message;
+      }
+    }
+  } else meldung = "Bitte die markierten Felder prüfen.";
+}
+
+const korb = await loadCart(Astro.cookies, shop.handle);
+if ((korb === undefined || korb.count === 0) && meldung === "")
+  return Astro.redirect(`${basis}/warenkorb`, 303);
+
+const beschriftung: Record<Feld, string> = {
+  email: "E-Mail-Adresse",
+  firstName: "Vorname",
+  lastName: "Nachname",
+  street: "Straße und Hausnummer",
+  postalCode: "Postleitzahl",
+  city: "Ort",
+};
+const autocomplete: Record<Feld, string> = {
+  email: "email",
+  firstName: "given-name",
+  lastName: "family-name",
+  street: "street-address",
+  postalCode: "postal-code",
+  city: "address-level2",
+};
+---
+
+<Shop shop={shop} categories={categories} titel="Kasse" korb={korb?.count ?? 0}>
+  <h1>Kasse</h1>
+  <div class="kasse">
+    <form method="post" class="formular" novalidate>
+      {meldung && (
+        <p class="meldung" role="alert">
+          {meldung}
+        </p>
+      )}
+      <input type="hidden" name="schluessel" value={schluessel} />
+      <fieldset>
+        <legend>Deine Angaben</legend>
+        {felder.map((f) => (
+          <div class="feld">
+            <label for={f}>{beschriftung[f]}</label>
+            <input
+              id={f}
+              name={f}
+              type={f === "email" ? "email" : "text"}
+              inputmode={f === "postalCode" ? "numeric" : undefined}
+              autocomplete={autocomplete[f]}
+              value={werte[f]}
+              required
+              aria-invalid={fehler[f] ? "true" : undefined}
+              aria-describedby={fehler[f] ? `${f}-fehler` : undefined}
+            />
+            {fehler[f] && (
+              <span id={`${f}-fehler`} class="feld-fehler">
+                {fehler[f]}
+              </span>
+            )}
+          </div>
+        ))}
+        <p class="klein">Land: Deutschland. Wir liefern im Testshop nur nach Deutschland.</p>
+      </fieldset>
+      <fieldset>
+        <legend>Zahlung</legend>
+        <p>
+          Testzahlung: Du kannst auf der nächsten Seite „bezahlen“ oder „ablehnen“ wählen. Es fließt kein
+          Geld.
+        </p>
+      </fieldset>
+      <button class="knopf" type="submit">
+        Zahlungspflichtig bestellen
+      </button>
+    </form>
+    {korb && (
+      <aside class="summen" aria-label="Deine Bestellung">
+        <h2>Deine Bestellung</h2>
+        <ul class="kurz-liste">
+          {korb.lines.map((l) => (
+            <li>
+              {l.quantity} × {l.name} <span>{euro(l.lineTotal)}</span>
+            </li>
+          ))}
+        </ul>
+        <dl>
+          <dt>Versand</dt>
+          <dd>kostenlos</dd>
+          <dt class="gesamt">Gesamt</dt>
+          <dd class="gesamt">{euro(korb.total)}</dd>
+        </dl>
+        <p class="klein">Alle Preise inkl. MwSt.</p>
+      </aside>
+    )}
+  </div>
+</Shop>

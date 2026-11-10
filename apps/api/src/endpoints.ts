@@ -1,7 +1,9 @@
 // Setzt die Endpunkte aller Module zusammen (Architektur 6.1: apps/api setzt Module zusammen).
 // Neue Module tragen sich hier ein. Die Reihenfolge spielt keine Rolle.
 import { auditEndpoints } from "@shop/audit";
-import { catalogEndpoints } from "@shop/catalog";
+import { createCarts } from "@shop/cart";
+import { catalogEndpoints, createCatalogReader, type ProductImages } from "@shop/catalog";
+import { checkoutEndpoints, type MailSender } from "@shop/checkout";
 import type { Endpoint } from "@shop/http";
 import {
   apiTokenEndpoints,
@@ -15,7 +17,7 @@ import {
   type ShopOfUser,
 } from "@shop/identity";
 import { createInventory } from "@shop/inventory";
-import type { Database } from "@shop/kernel";
+import { getContext, type Database, type Logger } from "@shop/kernel";
 import { createMedia, memoryStorage, type Media } from "@shop/media";
 import {
   createShopAdministration,
@@ -25,7 +27,10 @@ import {
   type OperatorDirectory,
   type ShopAdministration,
 } from "@shop/platform";
+import { createOrders } from "@shop/orders";
+import { createPayments } from "@shop/payments";
 import { createPricing } from "@shop/pricing";
+import { createShopSettings } from "@shop/shop-settings";
 
 export interface EndpointDependencies {
   readonly database: Database<unknown>;
@@ -43,6 +48,9 @@ export interface EndpointDependencies {
   readonly platformShops?: ShopAdministration;
   /** Bilder (Modul media). Ohne Angabe: Speicher im Arbeitsspeicher, Adressen unter media.localhost. */
   readonly media?: Media;
+  /** E-Mails an Kundinnen und Kunden (Bestellbestätigung, M6). Ohne Angabe: keine E-Mail. */
+  readonly mailer?: MailSender;
+  readonly logger?: Logger;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
@@ -60,22 +68,36 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       storage: memoryStorage(),
       publicBaseUrl: "https://media.localhost",
     });
+  const prices = createPricing({ database: deps.database });
+  const stock = createInventory({ database: deps.database });
+  const images: ProductImages = {
+    prepare: async (data, filename) => {
+      const r = await media.prepareImage(data, filename);
+      return r.ok ? { ok: true, save: () => media.saveImage(r.image) } : r;
+    },
+    get: (ids) => media.getImages(ids),
+    remove: (ids) => media.deleteImages(ids),
+  };
+  const settings = createShopSettings({ database: deps.database });
+  const shops = createShopDirectory({ database: deps.database });
   return [
     // Katalog mit Preisen, Bestand und Bildern aus den Modulen pricing, inventory und media (M2).
-    ...catalogEndpoints({
+    ...catalogEndpoints({ database: deps.database, prices, stock, images }),
+    // Kaufen in der Storefront (M6): Warenkorb, Kasse, Testzahlung, Bestellbestätigung.
+    ...checkoutEndpoints({
       database: deps.database,
-      prices: createPricing({ database: deps.database }),
-      stock: createInventory({ database: deps.database }),
-      images: {
-        prepare: async (data, filename) => {
-          const r = await media.prepareImage(data, filename);
-          return r.ok ? { ok: true, save: () => media.saveImage(r.image) } : r;
-        },
-        get: (ids) => media.getImages(ids),
-        remove: (ids) => media.deleteImages(ids),
-      },
+      carts: createCarts({ database: deps.database }),
+      catalog: createCatalogReader({ database: deps.database, prices, stock, images }),
+      inventory: stock,
+      orders: createOrders({ database: deps.database, settings }),
+      payments: createPayments({ database: deps.database }),
+      settings,
+      mailer: deps.mailer,
+      shopName: async () => (await shops.getShops([getContext()?.tenantId ?? ""]))[0]?.name,
+      onMailError: (error) =>
+        deps.logger?.error({ err: error }, "Bestellbestätigung konnte nicht verschickt werden"),
     }),
-    ...storeShopEndpoints(createShopDirectory({ database: deps.database })),
+    ...storeShopEndpoints(shops),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...memberEndpoints({ members }),

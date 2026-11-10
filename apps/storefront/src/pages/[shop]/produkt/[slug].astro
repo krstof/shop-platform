@@ -86,7 +86,24 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
         </>
       )}
       <div class="kaufen">
-        {p.inStock ? <p>Sofort lieferbar.</p> : <p class="hinweis-aus">Zurzeit ausverkauft</p>}
+        {p.inStock ? (
+          <form method="post" action={`/${shop.handle}/warenkorb`} class="kauf-form">
+            <input type="hidden" name="aktion" value="hinzufuegen" />
+            <input type="hidden" name="produkt" value={p.id} />
+            <label for="menge">Menge</label>
+            <select id="menge" name="menge">
+              {Array.from({ length: Math.min(p.maxQuantity, 10) }, (_, i) => (
+                <option value={i + 1}>{i + 1}</option>
+              ))}
+            </select>
+            <button class="knopf" type="submit">
+              In den Warenkorb
+            </button>
+            <p class="klein">Sofort lieferbar.</p>
+          </form>
+        ) : (
+          <p class="hinweis-aus">Zurzeit ausverkauft</p>
+        )}
       </div>
       {absaetze(p.description).length > 0 && (
         <>

@@ -7,7 +7,7 @@ describe("Anzeige in der Storefront", () => {
     expect(euro(123456).replace(/\s/g, " ")).toBe("1.234,56 €");
   });
   it("nennt MwSt. und Versand", () => {
-    expect(steuerHinweis(7)).toBe("inkl. 7 % MwSt., zzgl. Versand");
+    expect(steuerHinweis(7)).toBe("inkl. 7 % MwSt., versandkostenfrei");
   });
   it("teilt Text in Absätze", () => {
     expect(absaetze("Eins.\n\n  Zwei.\n \nDrei.\n")).toEqual(["Eins.", "Zwei.", "Drei."]);
