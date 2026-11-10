@@ -211,6 +211,9 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
       reason: "Abmelden muss auch mit abgelaufener Sitzung gehen, damit das Cookie sicher verschwindet.",
     },
     idempotency: "none",
+    // Abmelden verrät nichts und lässt sich nicht erraten: nicht unter die strenge Anmelde-Bremse
+    // (5 je Minute und Netz), sonst bliebe man nach ein paar Versuchen angemeldet (M3).
+    rateLimit: "admin",
     response: {
       status: 200,
       description: "Abgemeldet. Set-Cookie löscht das Cookie.",

@@ -3,7 +3,8 @@
 #   docker build -f infra/docker/Dockerfile --target api     .
 #   docker build -f infra/docker/Dockerfile --target migrate .
 #   docker build -f infra/docker/Dockerfile --target worker  .
-# `pnpm dev` baut alle drei (tools/dev.mjs).
+#   docker build -f infra/docker/Dockerfile --target backoffice .
+# `pnpm dev` baut alle vier (tools/dev.mjs).
 #
 # Aufbau in zwei Stufen:
 # 1. build: installiert mit der Lockdatei, übersetzt TypeScript und legt mit `pnpm deploy`
@@ -14,6 +15,8 @@
 # Basisabbild mit fester Version UND fester Prüfsumme. Dependabot schlägt Updates vor.
 # =============================================================================
 ARG NODE_IMAGE=node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
+# Für das Backoffice (M3): statische Dateien, ausgeliefert von Caddy (dieselbe Version wie in Compose).
+ARG CADDY_IMAGE=caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
 
 FROM ${NODE_IMAGE} AS build
 ENV CI=true \
@@ -32,8 +35,10 @@ RUN --mount=type=secret,id=extra_ca \
     --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
     pnpm config set store-dir /pnpm/store && \
-    pnpm install --frozen-lockfile --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." && \
-    pnpm --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." run build && \
+    pnpm install --frozen-lockfile --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." \
+      --filter "@shop/backoffice..." && \
+    pnpm --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." --filter "@shop/backoffice" \
+      run build && \
     pnpm --filter @shop/api deploy --prod --offline /out/api && \
     pnpm --filter @shop/migrate deploy --prod --offline /out/migrate && \
     pnpm --filter @shop/worker deploy --prod --offline /out/worker
@@ -66,3 +71,15 @@ CMD ["node", "dist/main.js"]
 FROM runtime AS worker
 COPY --from=build --chown=root:root /out/worker /app
 CMD ["node", "dist/main.js"]
+
+# Backoffice (M3): nur fertige Dateien (HTML, JavaScript, CSS), kein Node, kein Quellcode.
+# Caddy liefert sie im internen Netz auf Port 8080 aus; der Haupt-Caddy leitet admin.<Domain> hierher.
+FROM ${CADDY_IMAGE} AS backoffice
+# Das Caddy-Programm trägt das Sonderrecht NET_BIND_SERVICE (für Port 80/443). Hier reicht Port 8080:
+# Eine einfache Kopie ohne dieses Recht läuft dann auch mit cap_drop ALL und no-new-privileges.
+RUN cp /usr/bin/caddy /usr/bin/caddy.plain && mv /usr/bin/caddy.plain /usr/bin/caddy
+COPY --from=build --chown=root:root /src/apps/backoffice/dist /srv
+COPY --chown=root:root infra/backoffice/Caddyfile /etc/caddy/Caddyfile
+ENV XDG_CONFIG_HOME=/tmp/config XDG_DATA_HOME=/tmp/data
+USER 1000:1000
+EXPOSE 8080

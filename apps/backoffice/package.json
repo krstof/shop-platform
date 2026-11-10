@@ -1,0 +1,32 @@
+{
+  "name": "@shop/backoffice",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Händler-Backoffice (React mit Vite, Architektur 2). Spricht nur mit Admin- und Auth-API.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.105.3",
+    "@tanstack/react-router": "^1.170.46",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@shop/config": "workspace:*",
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "tailwindcss": "^4.3.4",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vitest": "5.0.5"
+  }
+}

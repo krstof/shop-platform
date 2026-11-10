@@ -224,6 +224,22 @@ services:
       mailpit: { condition: service_healthy }
       garage: { condition: service_healthy }
 
+  # Händler-Backoffice (M3): nur statische Dateien, ausgeliefert von Caddy im internen Netz.
+  # Von außen über den Haupt-Caddy unter admin.<Domain>; dort laufen auch /admin/v1 und /auth/v1 zur API.
+  backoffice:
+    <<: *hardening
+    build: { <<: *build, target: backoffice }
+    image: shop-platform/backoffice:local
+    user: "1000:1000"
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   # Hintergrunddienst (Architektur 3.5, E5): leitet Ereignisse aus der Outbox weiter, stellt sie den
   # Subscribern zu (etwa dem Änderungsprotokoll) und räumt stündlich auf. Zwei Verbindungen mit
   # getrennten Rollen: shop_app für die Verarbeitung je Shop, shop_relay für Outbox und Warteschlange.

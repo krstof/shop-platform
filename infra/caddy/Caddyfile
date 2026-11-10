@@ -48,15 +48,9 @@
 	respond "Shop-Plattform läuft." 200
 }
 
-# Kern-Server: Admin-, Store- und Platform-API (Architektur 4). Sicherheits-Header, Fehler im Format
-# Problem Details und die Anfragebremse kommen von der API selbst (ihre Header sind strenger als die
-# gemeinsamen, etwa Referrer-Policy no-referrer). Caddy entfernt nur verräterische Header und setzt
-# X-Forwarded-For neu: Was ein Besucher selbst mitschickt, übernimmt Caddy nicht.
-api.{$SHOP_DOMAIN} {
-	header {
-		-Server
-		-Via
-	}
+# Grenzen für Anfragen an die API, gemeinsam für api.<Domain> und admin.<Domain>.
+(api_limits)
+{
 	# Bild hochladen (M2 Teil 2): bis 12 MB (Bild bis 8 MB als Base64 im JSON), alles andere 1 MB.
 	# Die API prüft dieselben Grenzen noch einmal je Endpunkt (bodyLimit).
 	@image_upload {
@@ -86,9 +80,57 @@ api.{$SHOP_DOMAIN} {
 	}
 	# Das Lebenszeichen ist nur für Docker, nicht für Besucher.
 	@liveness path /livez
-	respond @liveness 404
-	reverse_proxy api:3000 {
-		header_down -X-Powered-By
+	handle @liveness {
+		respond 404
+	}
+}
+
+# Kern-Server: Admin-, Store- und Platform-API (Architektur 4). Sicherheits-Header, Fehler im Format
+# Problem Details und die Anfragebremse kommen von der API selbst (ihre Header sind strenger als die
+# gemeinsamen, etwa Referrer-Policy no-referrer). Caddy entfernt nur verräterische Header und setzt
+# X-Forwarded-For neu: Was ein Besucher selbst mitschickt, übernimmt Caddy nicht.
+api.{$SHOP_DOMAIN} {
+	header {
+		-Server
+		-Via
+	}
+	import api_limits
+	handle {
+		reverse_proxy api:3000 {
+			header_down -X-Powered-By
+		}
+	}
+}
+
+# Händler-Backoffice (M3). Die Oberfläche ruft die API unter derselben Adresse auf (/admin/v1 und
+# /auth/v1), so passt das Sitzungs-Cookie __Host-shop_session ohne CORS. Alles andere sind die
+# statischen Dateien aus dem Container backoffice, mit strenger Inhalts-Sicherheitsregel.
+admin.{$SHOP_DOMAIN} {
+	header {
+		-Server
+		-Via
+	}
+	import api_limits
+	@api path /admin/v1/* /auth/v1/*
+	handle @api {
+		reverse_proxy api:3000 {
+			header_down -X-Powered-By
+		}
+	}
+	handle {
+		import security_headers
+		header {
+			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://media.{$SHOP_DOMAIN}; connect-src 'self'; font-src 'self'; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+			Cross-Origin-Resource-Policy "same-origin"
+		}
+		request_body {
+			max_size 1MB
+		}
+		@write not method GET HEAD
+		respond @write 405
+		reverse_proxy backoffice:8080 {
+			header_down -Server
+		}
 	}
 }
 

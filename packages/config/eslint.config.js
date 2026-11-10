@@ -67,6 +67,20 @@ export default tseslint.config(
       eqeqeq: ["error", "always"],
     },
   },
+  // Backoffice (M3): läuft im Browser. Kein HTML aus Daten einsetzen (Schutz vor XSS, Sicherheit 5.5).
+  {
+    files: ["apps/backoffice/src/**/*.ts", "apps/backoffice/src/**/*.tsx"],
+    languageOptions: { globals: { ...globals.browser } },
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: "Kein dangerouslySetInnerHTML: Texte immer als Text ausgeben (Sicherheit 5.5).",
+        },
+      ],
+    },
+  },
   // Einziger Weg zur Datenbank ist withTenantTransaction aus dem Kernel (Architektur 5.3).
   // Den Treiber direkt benutzen dürfen nur der Kernel und das Anmeldemodul (ADR-008).
   {

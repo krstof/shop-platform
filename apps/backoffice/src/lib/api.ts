@@ -1,0 +1,165 @@
+// Kleiner Client für Auth- und Admin-API (M3). Das Backoffice läuft unter derselben Adresse wie die
+// API (admin.<Domain>), das Sitzungs-Cookie geht deshalb von selbst mit; kein Token im Browser.
+// Fehler kommen als Problem Details (RFC 9457) und werden zu ApiError mit deutschem Text.
+
+export interface FieldError {
+  readonly path: string;
+  readonly code: string;
+  readonly message: string;
+}
+
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly errors: readonly FieldError[] = [],
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+
+  /** Fehlertext zu einem Feld, etwa „/price/amount“. */
+  field(path: string): string | undefined {
+    return this.errors.find((e) => e.path === path || e.path.startsWith(`${path}/`))?.message;
+  }
+}
+
+export interface RequestOptions {
+  readonly method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  readonly body?: unknown;
+  /** Shop, für den die Anfrage gilt (Kopfzeile Shop-Id, Pflicht in der Admin-API). */
+  readonly shopId?: string;
+  /** Version für If-Match bei Änderungen. */
+  readonly version?: number;
+}
+
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = { accept: "application/json", "accept-language": "de" };
+  if (options.body !== undefined) headers["content-type"] = "application/json";
+  if (options.shopId !== undefined) headers["shop-id"] = options.shopId;
+  if (options.version !== undefined) headers["if-match"] = `"${options.version}"`;
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: options.method ?? "GET",
+      headers,
+      credentials: "same-origin",
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    });
+  } catch {
+    throw new ApiError(0, "network", "Keine Verbindung zum Server. Bitte gleich noch einmal versuchen.");
+  }
+  if (response.ok) return (await response.json()) as T;
+  throw await toApiError(response);
+}
+
+async function toApiError(response: Response): Promise<ApiError> {
+  try {
+    const p = (await response.json()) as {
+      code?: string;
+      title?: string;
+      detail?: string;
+      errors?: FieldError[];
+    };
+    const message = p.detail ?? p.title ?? fallbackText(response.status);
+    return new ApiError(response.status, p.code ?? "unknown", message, p.errors ?? []);
+  } catch {
+    return new ApiError(response.status, "unknown", fallbackText(response.status));
+  }
+}
+
+function fallbackText(status: number): string {
+  if (status === 413) return "Die Datei ist zu groß.";
+  if (status === 429) return "Zu viele Versuche. Bitte kurz warten.";
+  if (status >= 500) return "Da ist etwas schiefgegangen. Bitte später noch einmal versuchen.";
+  return "Die Anfrage hat nicht geklappt.";
+}
+
+// --- Typen der API (Ausschnitt, siehe openapi/auth.json und openapi/admin.json) ---
+
+export interface ShopOfUser {
+  readonly id: string;
+  readonly handle: string;
+  readonly name: string;
+  readonly role: string;
+}
+
+export interface CurrentSession {
+  readonly user: { readonly id: string; readonly email: string };
+  readonly shops: readonly ShopOfUser[];
+  readonly secondFactor: "required" | "verified" | "not_enrolled";
+}
+
+export interface ProductImage {
+  readonly id: string;
+  readonly url: string;
+  readonly thumbnailUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface Product {
+  readonly id: string;
+  readonly status: "draft" | "published";
+  readonly name: string;
+  readonly slug: string;
+  readonly description: string;
+  readonly taxClass: "standard" | "reduced";
+  readonly price: { readonly amount: number; readonly currency: "EUR" } | null;
+  readonly stock: number;
+  readonly categoryId: string | null;
+  readonly sku: string | null;
+  readonly images: readonly ProductImage[];
+  readonly version: number;
+}
+
+export interface Category {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+}
+
+export interface Page<T> {
+  readonly data: readonly T[];
+  readonly page: { readonly nextCursor: string | null; readonly hasMore: boolean };
+}
+
+export interface ProductInput {
+  name: string;
+  description: string | null;
+  price: { amount: number };
+  taxClass: "standard" | "reduced";
+  stock: number;
+  categoryId: string | null;
+  sku: string | null;
+  status: "draft" | "published";
+}
+
+/** Alle Seiten einer Liste holen (für das MVP reichen wenige Seiten). */
+export async function listAll<T>(path: string, shopId: string): Promise<T[]> {
+  const out: T[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < 20; i++) {
+    const sep = path.includes("?") ? "&" : "?";
+    const url: string = `${path}${sep}limit=100${cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`}`;
+    const page: Page<T> = await request<Page<T>>(url, { shopId });
+    out.push(...page.data);
+    cursor = page.page.nextCursor;
+    if (cursor === null) break;
+  }
+  return out;
+}
+
+/** Datei als Base64 ohne „data:…;base64,“ davor. */
+export function fileToBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result);
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(new Error("Datei nicht lesbar"));
+    reader.readAsDataURL(file);
+  });
+}

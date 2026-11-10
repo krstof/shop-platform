@@ -99,6 +99,15 @@ IMG_H="$("${C[@]}" -D - -o /dev/null "https://media.$D/$IMG_KEY")"
 check "Bilder: über media.$D als WebP mit langer Gültigkeit" 'grep -qiE "^HTTP/2 200" <<<"$IMG_H" && grep -qi "content-type: image/webp" <<<"$IMG_H" && grep -qi "immutable" <<<"$IMG_H"'
 check "Bilder: Originale sind nicht öffentlich" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://media.$D/${IMG_KEY%w400.webp}original")" == 404 ]]'
 
+echo "== Backoffice (M3)"
+BH="$("${C[@]}" -D - -o /dev/null "https://admin.$D/teeladen/produkte")"
+check "Backoffice: Seiten unter admin.$D (auch tiefe Links) mit 200" '[[ "$BH" =~ ^HTTP/2\ 200 ]]'
+check "Backoffice: strenge CSP (nur eigene Skripte, keine fremden Rahmen)" 'grep -qiE "content-security-policy: .*script-src '"'"'self'"'"';.*frame-ancestors '"'"'none'"'"'" <<<"$BH"'
+check "Backoffice: Seite wird nicht zwischengespeichert" 'grep -qi "cache-control: no-cache" <<<"$BH"'
+check "Backoffice: API unter derselben Adresse (Auth-API antwortet 401)" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://admin.$D/auth/v1/session")" == 401 ]]'
+check "Backoffice: ändernde Anfragen an die Dateien abgelehnt" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" -X POST "https://admin.$D/index.html")" == 405 ]]'
+check "Backoffice: Container ohne Ports nach außen" '[[ -z "$(docker port shop-platform-backoffice-1)" ]]'
+
 echo "== Worker: Hintergrunddienst (E5)"
 W=shop-platform-worker-1
 check "Worker: Container ist gesund (Lebenszeichen)" '[[ "$(docker inspect $W --format "{{.State.Health.Status}}")" == healthy ]]'

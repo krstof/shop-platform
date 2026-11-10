@@ -1,0 +1,578 @@
+// Produkt anlegen und bearbeiten (M3), mit Bildern. Beim Anlegen können Bilder schon gewählt werden;
+// sie werden direkt nach dem Speichern hochgeladen. Beim Bearbeiten wirkt jede Bildaktion sofort.
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { Alert, Button, Card, Field, Input, Select, Spinner, Textarea } from "../components/ui.js";
+import { ApiError, fileToBase64, request, type Product, type ProductInput } from "../lib/api.js";
+import { centsToInput, parseEuro } from "../lib/money.js";
+import { useShop } from "./layout.js";
+import { productsKey, useCategories } from "./products.js";
+
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
+
+interface FormState {
+  name: string;
+  description: string;
+  price: string;
+  taxClass: "standard" | "reduced";
+  stock: string;
+  categoryId: string;
+  sku: string;
+  published: boolean;
+}
+
+const emptyForm: FormState = {
+  name: "",
+  description: "",
+  price: "",
+  taxClass: "standard",
+  stock: "0",
+  categoryId: "",
+  sku: "",
+  published: true,
+};
+
+function formFrom(p: Product): FormState {
+  return {
+    name: p.name,
+    description: p.description,
+    price: p.price === null ? "" : centsToInput(p.price.amount),
+    taxClass: p.taxClass,
+    stock: String(p.stock),
+    categoryId: p.categoryId ?? "",
+    sku: p.sku ?? "",
+    published: p.status === "published",
+  };
+}
+
+type Errors = Partial<Record<keyof FormState | "form", string>>;
+
+/** Prüft im Browser, was sofort klar ist; der Rest kommt von der API. */
+function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
+  const errors: Errors = {};
+  const price = parseEuro(f.price);
+  const stock = /^\d+$/.test(f.stock.trim()) ? Number(f.stock.trim()) : undefined;
+  if (f.name.trim() === "") errors.name = "Bitte einen Namen angeben.";
+  if (price === undefined) errors.price = "Bitte einen Preis wie 8,90 angeben.";
+  if (stock === undefined) errors.stock = "Bitte eine ganze Zahl ab 0 angeben.";
+  if (Object.keys(errors).length > 0 || price === undefined || stock === undefined) return { errors };
+  return {
+    errors,
+    input: {
+      name: f.name.trim(),
+      description: f.description.trim() === "" ? null : f.description,
+      price: { amount: price },
+      taxClass: f.taxClass,
+      stock,
+      categoryId: f.categoryId === "" ? null : f.categoryId,
+      sku: f.sku.trim() === "" ? null : f.sku.trim(),
+      status: f.published ? "published" : "draft",
+    },
+  };
+}
+
+/** Fehler der API den Feldern zuordnen. */
+function errorsFromApi(e: unknown): Errors {
+  if (!(e instanceof ApiError)) return { form: "Speichern hat nicht geklappt." };
+  if (e.status === 412)
+    return {
+      form: "Jemand hat das Produkt inzwischen geändert. Bitte die Seite neu laden und noch einmal ändern.",
+    };
+  const out: Errors = {};
+  const map: [string, keyof FormState][] = [
+    ["/name", "name"],
+    ["/description", "description"],
+    ["/price", "price"],
+    ["/stock", "stock"],
+    ["/categoryId", "categoryId"],
+    ["/sku", "sku"],
+    ["/slug", "name"],
+  ];
+  for (const [path, key] of map) {
+    const m = e.field(path);
+    if (m !== undefined) out[key] = m;
+  }
+  if (e.status === 409 && out.sku === undefined && out.name === undefined) out.form = e.message;
+  if (Object.keys(out).length === 0) out.form = e.message;
+  return out;
+}
+
+function validateFile(file: File): string | undefined {
+  if (!ACCEPTED.includes(file.type)) return `„${file.name}“: Bitte JPEG, PNG oder WebP wählen.`;
+  if (file.size > MAX_FILE_BYTES) return `„${file.name}“ ist größer als 8 MB.`;
+  return undefined;
+}
+
+export function NewProductPage() {
+  return <ProductEditor product={undefined} />;
+}
+
+export function EditProductPage() {
+  const shop = useShop();
+  const { productId } = useParams({ strict: false });
+  const product = useQuery({
+    queryKey: ["product", shop.id, productId],
+    queryFn: () => request<Product>(`/admin/v1/products/${productId ?? ""}`, { shopId: shop.id }),
+  });
+  if (product.isPending)
+    return (
+      <div className="flex justify-center py-16 text-stone-400" role="status">
+        <Spinner className="size-6" />
+        <span className="sr-only">Produkt wird geladen …</span>
+      </div>
+    );
+  if (product.isError)
+    return (
+      <Alert>
+        {product.error instanceof ApiError && product.error.status === 404
+          ? "Dieses Produkt gibt es nicht (mehr)."
+          : product.error.message}
+      </Alert>
+    );
+  return <ProductEditor key={product.data.id} product={product.data} />;
+}
+
+function ProductEditor({ product }: { product: Product | undefined }) {
+  const shop = useShop();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const categories = useCategories(shop.id);
+  const [form, setForm] = useState<FormState>(product ? formFrom(product) : emptyForm);
+  const [errors, setErrors] = useState<Errors>({});
+  const [saved, setSaved] = useState(false);
+  const [pending, setPending] = useState<File[]>([]);
+  const isNew = product === undefined;
+
+  const set =
+    <K extends keyof FormState>(key: K) =>
+    (value: FormState[K]) => {
+      setForm((f) => ({ ...f, [key]: value }));
+      setSaved(false);
+    };
+
+  function remember(p: Product) {
+    queryClient.setQueryData(["product", shop.id, p.id], p);
+    void queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+  }
+
+  const save = useMutation({
+    mutationFn: async (input: ProductInput) => {
+      if (product !== undefined)
+        return request<Product>(`/admin/v1/products/${product.id}`, {
+          method: "PATCH",
+          body: input,
+          shopId: shop.id,
+          version: product.version,
+        });
+      let created = await request<Product>("/admin/v1/products", {
+        method: "POST",
+        body: input,
+        shopId: shop.id,
+      });
+      for (const file of pending) created = await uploadImage(shop.id, created.id, file);
+      return created;
+    },
+    onSuccess: async (p) => {
+      remember(p);
+      setErrors({});
+      setSaved(true);
+      setPending([]);
+      if (isNew)
+        await navigate({ to: "/$shop/produkte/$productId", params: { shop: shop.handle, productId: p.id } });
+      else setForm(formFrom(p));
+    },
+    onError: (e) => setErrors(errorsFromApi(e)),
+  });
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    setSaved(false);
+    const { input, errors: local } = toInput(form);
+    setErrors(local);
+    if (input !== undefined) save.mutate(input);
+  }
+
+  return (
+    <form onSubmit={submit} noValidate>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <Link
+            to="/$shop/produkte"
+            params={{ shop: shop.handle }}
+            className="text-sm text-stone-500 hover:text-stone-800"
+          >
+            ← Alle Produkte
+          </Link>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+            {isNew ? "Neues Produkt" : form.name || "Produkt"}
+          </h1>
+        </div>
+        <Button type="submit" busy={save.isPending}>
+          {isNew ? "Produkt anlegen" : "Speichern"}
+        </Button>
+      </div>
+
+      <div className="space-y-4" aria-live="polite">
+        {errors.form && <Alert>{errors.form}</Alert>}
+        {saved && !isNew && <Alert tone="success">Gespeichert.</Alert>}
+      </div>
+
+      <div className="mt-4 grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card>
+            <div className="space-y-5">
+              <Field label="Name" error={errors.name}>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.name}
+                    maxLength={200}
+                    onChange={(e) => set("name")(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Field
+                label="Beschreibung"
+                hint="Absätze mit einer Leerzeile trennen."
+                error={errors.description}
+              >
+                {(p) => (
+                  <Textarea
+                    {...p}
+                    rows={7}
+                    maxLength={5000}
+                    value={form.description}
+                    onChange={(e) => set("description")(e.target.value)}
+                  />
+                )}
+              </Field>
+            </div>
+          </Card>
+
+          <ImagesCard
+            product={product}
+            pending={pending}
+            setPending={setPending}
+            onChanged={(p) => remember(p)}
+          />
+
+          <Card title="Preis und Lager">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Preis (brutto, inkl. MwSt.)" error={errors.price}>
+                {(p) => (
+                  <div className="relative">
+                    <Input
+                      {...p}
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={form.price}
+                      onChange={(e) => set("price")(e.target.value)}
+                      className="pr-8"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">
+                      €
+                    </span>
+                  </div>
+                )}
+              </Field>
+              <Field label="Mehrwertsteuer">
+                {(p) => (
+                  <Select
+                    {...p}
+                    value={form.taxClass}
+                    onChange={(e) => set("taxClass")(e.target.value === "reduced" ? "reduced" : "standard")}
+                  >
+                    <option value="standard">19 % (normal)</option>
+                    <option value="reduced">7 % (ermäßigt, z. B. Lebensmittel)</option>
+                  </Select>
+                )}
+              </Field>
+              <Field label="Bestand" error={errors.stock}>
+                {(p) => (
+                  <Input
+                    {...p}
+                    inputMode="numeric"
+                    value={form.stock}
+                    onChange={(e) => set("stock")(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Field label="Artikelnummer" hint="Freiwillig." error={errors.sku}>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.sku}
+                    maxLength={64}
+                    onChange={(e) => set("sku")(e.target.value)}
+                  />
+                )}
+              </Field>
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card title="Sichtbarkeit">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
+                checked={form.published}
+                onChange={(e) => set("published")(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">Im Shop sichtbar</span>
+                <span className="block text-stone-500">Sonst bleibt das Produkt ein Entwurf.</span>
+              </span>
+            </label>
+          </Card>
+          <Card>
+            <Field label="Kategorie" error={errors.categoryId}>
+              {(p) => (
+                <Select {...p} value={form.categoryId} onChange={(e) => set("categoryId")(e.target.value)}>
+                  <option value="">Keine</option>
+                  {(categories.data ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          </Card>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+async function uploadImage(shopId: string, productId: string, file: File): Promise<Product> {
+  const data = await fileToBase64(file);
+  return request<Product>(`/admin/v1/products/${productId}/images`, {
+    method: "POST",
+    body: { data, filename: file.name },
+    shopId,
+  });
+}
+
+interface ImagesCardProps {
+  product: Product | undefined;
+  pending: File[];
+  setPending: (files: File[]) => void;
+  onChanged: (p: Product) => void;
+}
+
+/** Bilder: hochladen (Knopf oder hineinziehen), Reihenfolge ändern, entfernen. Erstes = Hauptbild. */
+function ImagesCard({ product, pending, setPending, onChanged }: ImagesCardProps) {
+  const shop = useShop();
+  const input = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState<string>();
+  const [dragging, setDragging] = useState(false);
+  const previews = usePreviews(pending);
+
+  async function run(label: string, action: () => Promise<Product>) {
+    setError(undefined);
+    setBusy(label);
+    try {
+      onChanged(await action());
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Das hat nicht geklappt.");
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
+  async function add(files: File[]) {
+    const problems = files.map(validateFile).filter((m): m is string => m !== undefined);
+    const ok = files.filter((f) => validateFile(f) === undefined);
+    setError(problems.length > 0 ? problems.join(" ") : undefined);
+    if (product === undefined) {
+      setPending([...pending, ...ok]);
+      return;
+    }
+    for (const file of ok) {
+      await run("upload", () => uploadImage(shop.id, product.id, file));
+    }
+  }
+
+  function onPick(e: ChangeEvent<HTMLInputElement>) {
+    void add([...(e.target.files ?? [])]);
+    e.target.value = "";
+  }
+
+  function move(index: number, delta: number) {
+    if (product === undefined) {
+      const next = [...pending];
+      const [f] = next.splice(index, 1);
+      if (f) next.splice(index + delta, 0, f);
+      setPending(next);
+      return;
+    }
+    const ids = product.images.map((i) => i.id);
+    const [id] = ids.splice(index, 1);
+    if (id === undefined) return;
+    ids.splice(index + delta, 0, id);
+    void run("order", () =>
+      request<Product>(`/admin/v1/products/${product.id}/images`, {
+        method: "PUT",
+        body: { imageIds: ids },
+        shopId: shop.id,
+      }),
+    );
+  }
+
+  function remove(index: number) {
+    if (product === undefined) {
+      setPending(pending.filter((_, i) => i !== index));
+      return;
+    }
+    const image = product.images[index];
+    if (image === undefined) return;
+    void run("remove", () =>
+      request<Product>(`/admin/v1/products/${product.id}/images/${image.id}`, {
+        method: "DELETE",
+        shopId: shop.id,
+      }),
+    );
+  }
+
+  const items =
+    product === undefined
+      ? previews.map((url, i) => ({ key: `${i}-${url}`, url, label: pending[i]?.name ?? "" }))
+      : product.images.map((img) => ({ key: img.id, url: img.thumbnailUrl, label: "" }));
+
+  return (
+    <Card title="Bilder">
+      {error && (
+        <div className="mb-4">
+          <Alert>{error}</Alert>
+        </div>
+      )}
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Bilder des Produkts">
+        {items.map((item, i) => (
+          <li key={item.key} className="group relative">
+            <img
+              src={item.url}
+              alt={i === 0 ? "Hauptbild" : `Bild ${i + 1}`}
+              className="aspect-square w-full rounded-lg bg-stone-100 object-cover ring-1 ring-stone-200"
+            />
+            {i === 0 && (
+              <span className="absolute top-2 left-2 rounded bg-white/90 px-1.5 py-0.5 text-xs font-medium shadow-sm">
+                Hauptbild
+              </span>
+            )}
+            <div className="mt-1.5 flex justify-between gap-1">
+              <div className="flex gap-1">
+                <IconButton
+                  label="Nach vorn"
+                  disabled={i === 0 || busy !== undefined}
+                  onClick={() => move(i, -1)}
+                >
+                  ←
+                </IconButton>
+                <IconButton
+                  label="Nach hinten"
+                  disabled={i === items.length - 1 || busy !== undefined}
+                  onClick={() => move(i, 1)}
+                >
+                  →
+                </IconButton>
+              </div>
+              <IconButton label="Bild entfernen" disabled={busy !== undefined} onClick={() => remove(i)}>
+                ✕
+              </IconButton>
+            </div>
+          </li>
+        ))}
+        <li>
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              void add([...e.dataTransfer.files]);
+            }}
+            disabled={busy === "upload"}
+            className={
+              "flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed " +
+              "text-sm text-stone-500 transition-colors hover:border-emerald-600 hover:text-emerald-800 " +
+              "focus-visible:outline-2 focus-visible:outline-emerald-600 " +
+              (dragging ? "border-emerald-600 bg-emerald-50" : "border-stone-300")
+            }
+          >
+            {busy === "upload" ? (
+              <>
+                <Spinner />
+                <span>Lädt hoch …</span>
+              </>
+            ) : (
+              <>
+                <span className="text-2xl leading-none" aria-hidden="true">
+                  +
+                </span>
+                <span>Bild hinzufügen</span>
+              </>
+            )}
+          </button>
+        </li>
+      </ul>
+      <input
+        ref={input}
+        type="file"
+        accept={ACCEPTED.join(",")}
+        multiple
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={onPick}
+      />
+      <p className="mt-3 text-xs text-stone-500">
+        JPEG, PNG oder WebP, bis 8 MB. Das erste Bild ist das Hauptbild.
+        {product === undefined && pending.length > 0 && " Die Bilder werden beim Anlegen hochgeladen."}
+      </p>
+    </Card>
+  );
+}
+
+function IconButton({
+  label,
+  children,
+  ...rest
+}: {
+  label: string;
+  children: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      {...rest}
+      className="rounded-md px-2 py-1 text-xs text-stone-600 ring-1 ring-stone-200 hover:bg-stone-100 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Vorschau-Adressen für noch nicht hochgeladene Dateien (werden wieder freigegeben). */
+function usePreviews(files: File[]): string[] {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const next = files.map((f) => URL.createObjectURL(f));
+    setUrls(next);
+    return () => next.forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
+  return urls;
+}

@@ -1,0 +1,19 @@
+# Statische Dateien des Backoffice (M3) im Container `backoffice`. Nur im internen Netz; von außen
+# kommt man über den Haupt-Caddy unter admin.<Domain>, der auch die Sicherheits-Header setzt.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	# Dateien mit Prüfsumme im Namen ändern sich nie, index.html immer frisch holen.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	@page not path /assets/*
+	header @page Cache-Control "no-cache"
+	# Einzelseiten-Anwendung: unbekannte Pfade bekommen index.html (Router im Browser).
+	try_files {path} /index.html
+	file_server
+}
