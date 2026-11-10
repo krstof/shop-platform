@@ -129,18 +129,18 @@ jobs:
           # Die Zertifikate können beim ersten Start ein paar Minuten brauchen.
           for i in $(seq 1 30); do
             code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://shop.$DOMAIN/" || true)"
-            [ "$code" = 401 ] && break
+            [ "$code" = 200 ] && break
             echo "Versuch $i: $code"; sleep 10
           done
-          [ "$code" = 401 ] || { echo "::error::Shops ohne Passwort: erwartet 401, bekommen $code"; exit 1; }
+          [ "$code" = 200 ] || { echo "::error::Shops: erwartet 200, bekommen $code"; exit 1; }
           # Startseite leitet zu den Shops weiter, HTTP leitet auf HTTPS um.
           loc="$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 10 "$url")"
           [ "$loc" = "308 https://shop.$DOMAIN/" ] || { echo "::error::Startseite: $loc"; exit 1; }
           code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://shop.$DOMAIN/")"
           case "$code" in 301|308) ;; *) echo "::error::HTTP sollte auf HTTPS umleiten, bekommen $code"; exit 1 ;; esac
-          curl -sI --max-time 10 -u "$SITE_USER:$SITE_PASSWORD" "https://shop.$DOMAIN/teeladen" \
+          curl -sI --max-time 10 "https://shop.$DOMAIN/teeladen" \
             | grep -qi '^strict-transport-security:' || { echo "::error::HSTS-Header fehlt"; exit 1; }
-          auth=(-s --max-time 20 -u "$SITE_USER:$SITE_PASSWORD")
+          auth=(-s --max-time 20)
           expect() { # expect CODE URL [curl-Optionen …]
             local want="$1" u="$2"; shift 2
             local got; got="$(curl "$@" -o /dev/null -w '%{http_code}' "$u" || true)"
@@ -158,10 +158,11 @@ jobs:
           img="$(grep -o "https://media.$DOMAIN/[^\"]*w400.webp" <<<"$page" | head -1)"
           [ -n "$img" ] || { echo "::error::Teeladen ohne Bilder"; exit 1; }
           expect 200 "$img" -s --max-time 20
-          expect 401 "$shop/teeladen" -s --max-time 20
+          # Seit 10.11.2026 ohne Seitenpasswort: Shops und Backoffice sind öffentlich.
+          expect 200 "$shop/teeladen" -s --max-time 20
+          expect 200 "https://admin.$DOMAIN/teeladen/produkte" -s --max-time 20
           expect 404 "$shop/gibt-es-nicht" "${auth[@]}"
-          # Backoffice (M3) mit der API unter derselben Adresse; das Seitenpasswort darf die API nicht
-          # für ein Token halten (sonst 401 mit anderem Code).
+          # Backoffice (M3) mit der API unter derselben Adresse.
           expect 200 "https://admin.$DOMAIN/teeladen/produkte" "${auth[@]}"
           session="$(curl "${auth[@]}" "https://admin.$DOMAIN/auth/v1/session")"
           grep -q '"code":"unauthenticated"' <<<"$session" || { echo "::error::Auth-API: $session"; exit 1; }
@@ -171,8 +172,9 @@ jobs:
             --data "$(jq -cn --arg p "$SITE_PASSWORD" '{email:"inhaberin@teeladen.example",password:$p}')" \
             "https://admin.$DOMAIN/auth/v1/sign-in")"
           [ "$signin" = 200 ] || { echo "::error::Anmelden als Inhaberin: $signin"; exit 1; }
+          # Test-Postfach: weiterhin mit eigenem Passwort (Mailpit, Benutzer team, Passwort aus dem Secret).
           expect 401 "https://mail.$DOMAIN/" -s --max-time 20
-          expect 200 "https://mail.$DOMAIN/" "${auth[@]}"
+          expect 200 "https://mail.$DOMAIN/" -s --max-time 20 -u "$SITE_USER:$SITE_PASSWORD"
           ssh testserver 'sudo sshd -T' | grep -qx 'passwordauthentication no' \
             || { echo "::error::SSH nimmt Passwörter an"; exit 1; }
-          echo "Alles in Ordnung: https://shop.$DOMAIN/teeladen und https://admin.$DOMAIN (Benutzer $SITE_USER)"
+          echo "Alles in Ordnung: https://shop.$DOMAIN/teeladen und https://admin.$DOMAIN"

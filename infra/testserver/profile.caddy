@@ -1,6 +1,7 @@
-# Umgebung „Testserver“ (M5, docs/07_Testserver.md): echte Zertifikate (Let's Encrypt), HSTS,
-# keine Suchmaschinen, und alles außer den Bildern hinter einem Passwort (Benutzer team).
-# Benutzer und Prüfwert des Passworts kommen aus secrets.env (TESTSERVER_USER, TESTSERVER_PASSWORD_HASH).
+# Umgebung „Testserver“ (docs/07_Testserver.md): echte Zertifikate (Let's Encrypt), HSTS und keine
+# Suchmaschinen. Seit 10.11.2026 ohne Seitenpasswort (Entscheidung Kristof): Shops, Backoffice und
+# API sind öffentlich erreichbar; das Backoffice schützt die eigene Anmeldung, das Test-Postfach
+# (Mailpit) sein eigenes Passwort. Es gibt nur Testdaten.
 
 (server_headers) {
 	header {
@@ -11,19 +12,12 @@
 
 (guard) {
 	import server_headers
-	basic_auth {
-		{$TESTSERVER_USER} {$TESTSERVER_PASSWORD_HASH}
-	}
 }
 
-# Wie guard, aber das Passwort der Seite (Kopfzeile Authorization) geht nicht an die API weiter,
-# sonst hielte die API es für ein API-Token. Angemeldet wird dort mit dem Sitzungs-Cookie.
 (guard_api) {
-	import guard
-	request_header -Authorization
+	import server_headers
 }
 
-# Bilder: ohne Passwort, weil Browser fremde Bilder nicht mit Passwort laden (nur Testdaten).
 (public_guard) {
 	import server_headers
 }

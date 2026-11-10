@@ -223,6 +223,12 @@ export interface IdentityService {
    */
   resetPassword(input: { readonly code: string; readonly newPassword: string }): Promise<ResetPasswordResult>;
   /**
+   * Nur für Testdaten (pnpm dev:seed, Testserver): setzt das Passwort eines bestehenden Kontos direkt,
+   * ohne E-Mail. Gleiche Passwortregeln; beendet alle Sitzungen und hebt eine Sperre auf.
+   * `false`, wenn es das Konto nicht gibt.
+   */
+  setPasswordForTestData(input: { readonly email: string; readonly newPassword: string }): Promise<boolean>;
+  /**
    * Einladungen (E6 Teil 7, ADR-014), nur für den MemberService dieses Moduls: Konto zur E-Mail
    * suchen oder ohne Passwort anlegen. `undefined`: keine gültige E-Mail-Adresse.
    */
@@ -817,6 +823,46 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
       background.add(done);
       void done.finally(() => background.delete(done));
       return { done };
+    },
+
+    async setPasswordForTestData(input) {
+      const email = normalizeEmail(input.email);
+      const user = await db
+        .selectFrom("identity.user")
+        .select(["id"])
+        .where("email", "=", email)
+        .executeTakeFirst();
+      if (user === undefined) return false;
+      const problem = checkNewPassword(input.newPassword, email);
+      if (problem !== undefined)
+        throw new Error(`Testpasswort erfüllt die Regeln nicht: ${PASSWORD_MESSAGES[problem]}`);
+      const passwordHash = await hashPassword(input.newPassword);
+      const at = new Date(now());
+      await db.transaction().execute(async (trx) => {
+        const updated = await trx
+          .updateTable("identity.account")
+          .set({ password_hash: passwordHash, updated_at: at })
+          .where("user_id", "=", user.id)
+          .where("provider_id", "=", "credential")
+          .executeTakeFirst();
+        if (updated.numUpdatedRows === 0n)
+          await trx
+            .insertInto("identity.account")
+            .values({
+              user_id: user.id,
+              provider_id: "credential",
+              account_id: user.id,
+              password_hash: passwordHash,
+            })
+            .execute();
+        await trx
+          .updateTable("identity.user")
+          .set({ locked_until: null, updated_at: at })
+          .where("id", "=", user.id)
+          .execute();
+        await trx.deleteFrom("identity.session").where("user_id", "=", user.id).execute();
+      });
+      return true;
     },
 
     async resetPassword(input) {

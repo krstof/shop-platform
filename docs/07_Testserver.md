@@ -8,12 +8,12 @@
 | Größe | `VM.Standard.A1.Flex`, 2 OCPU, 12 GB, Ubuntu 24.04 (aarch64), Benutzer `ubuntu` |
 | Öffentliche IP | `130.61.18.46` (ephemeral, nachträglich an der VNIC zugewiesen, weil beim Anlegen keine vergeben wurde) |
 | Adresse | `https://130-61-18-46.sslip.io` (sslip.io löst die IP auf; eigene Domain später über Variable `TESTSERVER_DOMAIN`) |
-| Seitenschutz | Basic Auth, Benutzer `team`, Passwort im Secret `TESTSERVER_PASSWORD` |
+| Seitenschutz | keiner mehr (Entscheidung Kristof 10.11.2026): Shops, Backoffice und API sind öffentlich, nur Testdaten, keine Suchmaschinen (`X-Robots-Tag`). Das Secret `TESTSERVER_PASSWORD` ist jetzt Passwort der Inhaberkonten und des Test-Postfachs (Mailpit, Benutzer `team`); ein neues Secret gilt nach dem nächsten Lauf überall. |
 | Oracle-Firewall | Default Security List: Ingress 22, 80, 443 (TCP, 0.0.0.0/0) |
 | Kostenwarnung | Budget `Kostenwarnung_1_Euro`, Mail bei 1 € tatsächlichen Kosten |
 | GitHub | Secrets `TESTSERVER_SSH_KEY`, `TESTSERVER_PASSWORD`, Variable `TESTSERVER_HOST` |
 | Einrichtung | `.github/workflows/testserver.yml` mit `infra/testserver/` (setup.sh, compose.yaml, Caddyfile) |
-| Inhalt | seit M5 (10.11.2026) die ganze Plattform wie lokal: Shops unter `https://shop.<Adresse>/teeladen` und `/modeladen`, Backoffice unter `https://admin.<Adresse>`, Test-Mails unter `https://mail.<Adresse>`, Bilder unter `https://media.<Adresse>` (ohne Passwort). Bei jeder Änderung am Programm neu gebaut (auf dem Server, arm64) und gestartet. Anmeldung im Backoffice: `inhaberin@teeladen.example` bzw. `inhaber@modeladen.example` mit dem Seitenpasswort. |
+| Inhalt | seit M5 (10.11.2026) die ganze Plattform wie lokal: Shops unter `https://shop.<Adresse>/teeladen` und `/modeladen`, Backoffice unter `https://admin.<Adresse>`, Test-Mails unter `https://mail.<Adresse>`, Bilder unter `https://media.<Adresse>` (ohne Passwort). Bei jeder Änderung am Programm neu gebaut (auf dem Server, arm64) und gestartet. Anmeldung im Backoffice: `inhaberin@teeladen.example` bzw. `inhaber@modeladen.example` mit dem Passwort aus `TESTSERVER_PASSWORD`. |
 
 Was der Ablauf macht: Pakete aktualisieren, automatische Sicherheitsupdates inkl. Docker mit nächtlichem Neustart bei Bedarf (04:30), SSH nur mit Schlüssel, iptables zusätzlich 80/443 (Oracle-Regeln bleiben, kein ufw), Docker aus der offiziellen Quelle, Caddy gehärtet wie lokal mit echtem Zertifikat, HSTS und `noindex`. Danach Rauchtest: ohne Passwort 401, mit Passwort 200, HTTP leitet auf HTTPS um, SSH ohne Passwortanmeldung.
 

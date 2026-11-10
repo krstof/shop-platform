@@ -51,7 +51,14 @@ async function main(): Promise<void> {
     const existing = new Set((await shops.list({ limit: 100 })).map((s) => s.handle));
     for (const seed of SEED_SHOPS) {
       if (existing.has(seed.handle)) {
-        console.log(`${seed.name}: gibt es schon, bleibt unverändert.`);
+        // Mit SHOP_SEED_PASSWORD (Testserver) folgt das Inhaberkonto immer diesem Passwort, damit ein
+        // neues Passwort in GitHub auch für die Anmeldung im Backoffice gilt.
+        if (fixedPassword !== undefined)
+          await identity.setPasswordForTestData({ email: seed.ownerEmail, newPassword: fixedPassword });
+        console.log(
+          `${seed.name}: gibt es schon, bleibt unverändert` +
+            (fixedPassword === undefined ? "." : " (Passwort aus SHOP_SEED_PASSWORD gesetzt)."),
+        );
         continue;
       }
       const created = await shops.create({

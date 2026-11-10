@@ -146,6 +146,7 @@ export const unconnectedIdentity: IdentityService = {
     throw new Error("Anmeldemodul ist nicht verbunden");
   },
   resetPassword: notConnected,
+  setPasswordForTestData: notConnected,
   prepareInvitee: notConnected,
   issueInvitationCode: notConnected,
   findInvitation: notConnected,

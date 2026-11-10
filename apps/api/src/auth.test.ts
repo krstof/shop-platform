@@ -70,6 +70,7 @@ function fakeIdentity() {
     confirmPassword: async () => ({ ok: false, reason: "no_session" }),
     requestPasswordReset: () => ({ done: Promise.resolve() }),
     resetPassword: async () => ({ ok: false, reason: "invalid_code" }),
+    setPasswordForTestData: async () => false,
     prepareInvitee: async () => undefined,
     issueInvitationCode: async () => ({ code: "", expiresAt: new Date(0) }),
     findInvitation: async () => undefined,
