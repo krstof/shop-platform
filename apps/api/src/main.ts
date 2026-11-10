@@ -16,6 +16,7 @@ import { loadApiConfig } from "./config.js";
 import { databaseIdempotencyStore } from "./idempotency-store.js";
 import { createSmtpMailSender } from "./mail.js";
 import { allEndpoints } from "./endpoints.js";
+import { mediaFromConfig } from "./media.js";
 
 async function main(): Promise<void> {
   const config = loadApiConfig();
@@ -75,6 +76,7 @@ async function main(): Promise<void> {
       members,
       platformShops: createShopAdministration({ database: platformDatabase }),
       shopsOfUser: shopsOfUser({ memberships, shops }),
+      media: mediaFromConfig(config, database),
     }),
     resolveActor: requestResolver(
       sessionResolver({ identity, memberships, shops, operators }),

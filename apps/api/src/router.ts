@@ -178,6 +178,7 @@ export function registerEndpoints(fastify: FastifyInstance, options: RouterOptio
     fastify.route({
       method: endpoint.method,
       url: toFastifyPath(endpoint.fullPath),
+      ...(endpoint.bodyLimit === undefined ? {} : { bodyLimit: endpoint.bodyLimit }),
       // Fehler aus Fastify selbst (Größe, Datenformat, kaputtes JSON) ebenfalls als Problem Details.
       errorHandler: (error, request, reply) =>
         sendProblem(reply, error, request.id, pickLocale(request.headers["accept-language"]), options.logger),

@@ -109,9 +109,14 @@ function parameters(
   });
 }
 
-function problemResponse(status: number): JsonObject {
+function problemResponse(status: number, endpoint: Endpoint): JsonObject {
+  const limit = endpoint.bodyLimit;
+  const description =
+    status === 413 && limit !== undefined
+      ? `Die Anfrage ist größer als ${Math.round(limit / 1_048_576)} MB.`
+      : (PROBLEM_DESCRIPTIONS[status] ?? "Fehler");
   return {
-    description: PROBLEM_DESCRIPTIONS[status] ?? "Fehler",
+    description,
     content: { "application/problem+json": { schema: { $ref: "#/components/schemas/Problem" } } },
   };
 }
@@ -165,7 +170,7 @@ function operation(endpoint: Endpoint, collector: SchemaCollector): JsonObject {
     },
   };
   for (const s of [...statuses].sort((a, b) => a - b)) {
-    const r = problemResponse(s);
+    const r = problemResponse(s, endpoint);
     if (s === 429)
       r["headers"] = {
         "Retry-After": { description: "Sekunden bis zum nächsten Versuch.", schema: { type: "integer" } },

@@ -24,7 +24,8 @@ import {
   updateProduct,
   type ProductRow,
 } from "../../internal/product-repository.js";
-import type { ProductPrices, ProductStock } from "../../ports.js";
+import { imageIdsOf } from "../../internal/product-image-repository.js";
+import type { ProductImage, ProductImages, ProductPrices, ProductStock } from "../../ports.js";
 import {
   createProductInput,
   CURRENCY,
@@ -44,15 +45,34 @@ export interface ProductEndpointDependencies {
   readonly db: Database<DB>;
   readonly prices: ProductPrices;
   readonly stock: ProductStock;
+  readonly images: ProductImages;
 }
 
-export function productEndpoints({ db, prices, stock }: ProductEndpointDependencies): Endpoint[] {
-  /** Preise und Bestand zu den Zeilen holen (zwei Abfragen für die ganze Seite). */
-  async function withPriceAndStock(rows: readonly ProductRow[]): Promise<Product[]> {
+/** Liest Produkte vollständig: Zeilen plus Preis, Bestand und Bilder (vier Abfragen je Seite). */
+export function productReader({ prices, stock, images }: Omit<ProductEndpointDependencies, "db">) {
+  return async function withDetails(trx: Transaction<DB>, rows: readonly ProductRow[]): Promise<Product[]> {
     const ids = rows.map((r) => r.variant_id);
-    const [p, s] = await Promise.all([prices.getBasePrices(ids, CURRENCY), stock.getAvailable(ids)]);
-    return rows.map((r) => toProduct(r, p.get(r.variant_id), s.get(r.variant_id)));
-  }
+    const imageIds = await imageIdsOf(
+      trx,
+      rows.map((r) => r.id),
+    );
+    const [p, s, img] = await Promise.all([
+      prices.getBasePrices(ids, CURRENCY),
+      stock.getAvailable(ids),
+      images.get([...imageIds.values()].flat()),
+    ]);
+    return rows.map((r) => {
+      const list = (imageIds.get(r.id) ?? [])
+        .map((id) => img.get(id))
+        .filter((i): i is ProductImage => i !== undefined);
+      return toProduct(r, p.get(r.variant_id), s.get(r.variant_id), list);
+    });
+  };
+}
+
+export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] {
+  const { db, prices, stock } = deps;
+  const withDetails = productReader(deps);
 
   async function requireCategory(trx: Transaction<DB>, id: string | null | undefined): Promise<void> {
     if (id === undefined || id === null) return;
@@ -70,7 +90,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
     operationId: "listProducts",
     summary: "Produkte auflisten",
     description:
-      "Listet die Produkte des Shops mit Preis und Bestand in Anlagereihenfolge, seitenweise mit " +
+      "Listet die Produkte des Shops mit Preis, Bestand und Bildern in Anlagereihenfolge, seitenweise mit " +
       "Cursor. Filter nach Status und Kategorie möglich.",
     tags: ["Produkte"],
     access: { scopes: ["products:read"] },
@@ -89,7 +109,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
           categoryId: query.categoryId,
         });
         const visible = rows.slice(0, query.limit);
-        const items = await withPriceAndStock(visible);
+        const items = await withDetails(trx, visible);
         return { rows, items };
       });
       const byId = new Map(page.items.map((p) => [p.id, p]));
@@ -108,7 +128,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
     path: "/products/{productId}",
     operationId: "getProduct",
     summary: "Produkt lesen",
-    description: "Liest ein Produkt des Shops mit Preis und Bestand.",
+    description: "Liest ein Produkt des Shops mit Preis, Bestand und Bildern.",
     tags: ["Produkte"],
     access: { scopes: ["products:read"] },
     params: z.strictObject({ productId: idParam }),
@@ -117,7 +137,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
     handler: async ({ params }) => {
       const product = await withTenantTransaction(db, async (trx) => {
         const row = await findProductById(trx, params.productId);
-        return row === undefined ? undefined : (await withPriceAndStock([row]))[0];
+        return row === undefined ? undefined : (await withDetails(trx, [row]))[0];
       });
       if (product === undefined) throw new NotFoundError();
       return product;
@@ -161,7 +181,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
           });
           await stock.setOnHand(row.variant_id, body.stock ?? 0);
           await publishEvent(trx, productCreated, { id: row.id, name: row.name });
-          return (await withPriceAndStock([row]))[0] as Product;
+          return (await withDetails(trx, [row]))[0] as Product;
         }),
       );
     },
@@ -192,7 +212,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
           await requireCategory(trx, body.categoryId);
           const r = await updateProduct(trx, tenantId, params.productId, ifMatch ?? 0, toProductValues(body));
           if (r.kind !== "updated") return r;
-          const [before] = await withPriceAndStock([r.before]);
+          const [before] = await withDetails(trx, [r.before]);
           if (body.price !== undefined)
             await prices.setBasePrice({
               variantId: r.row.variant_id,
@@ -200,7 +220,7 @@ export function productEndpoints({ db, prices, stock }: ProductEndpointDependenc
               currency: CURRENCY,
             });
           if (body.stock !== undefined) await stock.setOnHand(r.row.variant_id, body.stock);
-          const [after] = await withPriceAndStock([r.row]);
+          const [after] = await withDetails(trx, [r.row]);
           if (before === undefined || after === undefined) throw new Error("Produkt nicht lesbar");
           const changes = diff(productFacts(before), productFacts(after));
           if (Object.keys(changes).length > 0)

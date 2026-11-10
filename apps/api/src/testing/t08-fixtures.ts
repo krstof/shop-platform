@@ -37,6 +37,16 @@ export const T08_FIXTURES: Readonly<Record<string, Fixture>> = {
     );
     return rows[0]?.id ?? "";
   },
+  // Bild am Produkt (M2 Teil 2): nur die Zeilen, ohne Dateien im Speicher.
+  imageId: async (db, tenantId) => {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO media.media_asset (tenant_id, id, kind, storage_key, mime_type, status)
+       SELECT $1::uuid, i, 'image', 'tenants/' || $1::text || '/media/' || i || '/original', 'image/png', 'ready'
+       FROM (SELECT uuidv7() AS i) x RETURNING id`,
+      [tenantId],
+    );
+    return rows[0]?.id ?? "";
+  },
   apiTokenId: async (db, tenantId) => {
     const token = `shp_at_${randomBytes(32).toString("base64url")}`;
     const { rows } = await db.query<{ id: string }>(

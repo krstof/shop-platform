@@ -66,6 +66,7 @@ describe("Hersteller in der Admin-API", () => {
       database: { destroy: async () => undefined } as Database<unknown>,
       prices: { setBasePrice: unused, getBasePrices: unused },
       stock: { setOnHand: unused, getAvailable: unused },
+      images: { prepare: unused, get: unused, remove: unused },
     });
     expect(endpoints.map((e) => e.operationId)).toEqual([
       "listManufacturers",
@@ -80,6 +81,9 @@ describe("Hersteller in der Admin-API", () => {
       "getProduct",
       "createProduct",
       "updateProduct",
+      "addProductImage",
+      "deleteProductImage",
+      "reorderProductImages",
     ]);
     for (const e of endpoints) expect("scopes" in e.access && e.access.scopes.length > 0).toBe(true);
   });

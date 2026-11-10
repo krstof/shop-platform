@@ -12,6 +12,11 @@ const base = {
   SHOP_AUTH_SECRET: randomBytes(32).toString("base64url"),
   SHOP_MASTER_KEY_V1: randomBytes(32).toString("base64"),
   SHOP_SMTP_URL: "smtp://mailpit:1025",
+  SHOP_S3_ENDPOINT: "http://garage:3900",
+  SHOP_S3_ACCESS_KEY_ID: "GK" + randomBytes(12).toString("hex"),
+  SHOP_S3_SECRET_ACCESS_KEY: randomBytes(32).toString("hex"),
+  SHOP_S3_BUCKET_PUBLIC: "media-public",
+  SHOP_S3_BUCKET_PRIVATE: "media-private",
 };
 
 describe("Einstellungen der API", () => {
@@ -98,5 +103,21 @@ describe("Einstellungen der API", () => {
     expect(() => loadApiConfig({ ...base, SHOP_ALLOWED_ORIGINS: "https://a.example/admin" })).toThrow(
       /keine Herkunft/,
     );
+  });
+
+  it("Objektspeicher (M2 Teil 2): unverschlüsselt nur zu garage oder localhost, Bilder unter media.<Domain>", () => {
+    const c = loadApiConfig(base);
+    expect(c.SHOP_S3_REGION).toBe("garage");
+    expect(c.SHOP_MEDIA_BASE_URL).toBe("https://media.localhost");
+    expect(() => loadApiConfig({ ...base, SHOP_S3_ENDPOINT: "http://s3.example.com" })).toThrow(
+      /SHOP_S3_ENDPOINT: unverschlüsselt/,
+    );
+    expect(loadApiConfig({ ...base, SHOP_S3_ENDPOINT: "https://s3.example.com" }).SHOP_S3_ENDPOINT).toBe(
+      "https://s3.example.com",
+    );
+    expect(() => loadApiConfig({ ...base, SHOP_S3_SECRET_ACCESS_KEY: "kurz" })).toThrow(
+      /SHOP_S3_SECRET_ACCESS_KEY/,
+    );
+    expect(() => loadApiConfig({ ...base, SHOP_MEDIA_BASE_URL: "http://media.example" })).toThrow(/https/);
   });
 });

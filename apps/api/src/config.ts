@@ -18,6 +18,9 @@ const originSchema = z
 /** Rechner, zu denen E-Mails unverschlüsselt gehen dürfen: Mailpit im internen Netz oder der eigene Rechner. */
 const PLAIN_SMTP_HOSTS = new Set(["mailpit", "localhost", "127.0.0.1", "[::1]"]);
 
+/** Rechner, zu denen der Objektspeicher unverschlüsselt erreichbar sein darf. */
+const PLAIN_S3_HOSTS = new Set(["garage", "localhost", "127.0.0.1", "[::1]"]);
+
 /** SMTP-Adresse: smtps:// überall, smtp:// nur zu Mailpit oder zum eigenen Rechner. */
 const smtpUrl = z
   .string()
@@ -56,6 +59,31 @@ export const apiConfigSchema = baseConfigSchema.extend({
     .max(200)
     .refine((v) => !/[\r\n]/.test(v), "darf keinen Zeilenumbruch enthalten")
     .optional(),
+  /**
+   * Objektspeicher für Bilder (M2 Teil 2, S3-Schnittstelle, lokal Garage). Adresse wie
+   * http://garage:3900; unverschlüsselt nur im internen Netz oder zum eigenen Rechner.
+   */
+  SHOP_S3_ENDPOINT: z
+    .string()
+    .refine(
+      (v) => URL.canParse(v) && ["http:", "https:"].includes(new URL(v).protocol),
+      "ist keine http(s)-Adresse",
+    )
+    .refine(
+      (v) => !URL.canParse(v) || new URL(v).protocol === "https:" || PLAIN_S3_HOSTS.has(new URL(v).hostname),
+      "unverschlüsselt (http://) nur zu garage oder localhost, sonst https://",
+    ),
+  SHOP_S3_REGION: z.string().min(1).max(64).default("garage"),
+  SHOP_S3_ACCESS_KEY_ID: z.string().min(16).max(128),
+  SHOP_S3_SECRET_ACCESS_KEY: secret(32),
+  SHOP_S3_BUCKET_PUBLIC: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, "ist kein gültiger Bereichsname"),
+  SHOP_S3_BUCKET_PRIVATE: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, "ist kein gültiger Bereichsname"),
+  /** Öffentliche Adresse der Bilder. Standard: https://media.<SHOP_DOMAIN>. */
+  SHOP_MEDIA_BASE_URL: originSchema.optional(),
   SHOP_API_HOST: z.union([z.ipv4(), z.ipv6()]).default("127.0.0.1"),
   SHOP_API_PORT: port().default(3000),
   /** Adresse des Reverse Proxy (Caddy). Nur er darf die Absenderadresse weitergeben. */
@@ -78,9 +106,13 @@ export const apiConfigSchema = baseConfigSchema.extend({
     .pipe(z.array(originSchema).min(1).optional()),
 });
 
-export type ApiConfig = Omit<z.output<typeof apiConfigSchema>, "SHOP_ALLOWED_ORIGINS" | "SHOP_MAIL_FROM"> & {
+export type ApiConfig = Omit<
+  z.output<typeof apiConfigSchema>,
+  "SHOP_ALLOWED_ORIGINS" | "SHOP_MAIL_FROM" | "SHOP_MEDIA_BASE_URL"
+> & {
   readonly SHOP_ALLOWED_ORIGINS: readonly string[];
   readonly SHOP_MAIL_FROM: string;
+  readonly SHOP_MEDIA_BASE_URL: string;
 };
 
 export function loadApiConfig(
@@ -90,6 +122,7 @@ export function loadApiConfig(
   return Object.freeze({
     ...c,
     SHOP_MAIL_FROM: c.SHOP_MAIL_FROM ?? `Shop-Plattform <no-reply@${c.SHOP_DOMAIN}>`,
+    SHOP_MEDIA_BASE_URL: c.SHOP_MEDIA_BASE_URL ?? `https://media.${c.SHOP_DOMAIN}`,
     SHOP_ALLOWED_ORIGINS: Object.freeze(
       c.SHOP_ALLOWED_ORIGINS ?? [`https://admin.${c.SHOP_DOMAIN}`, `https://platform.${c.SHOP_DOMAIN}`],
     ),

@@ -89,7 +89,15 @@ check "shop_app meldet sich mit dem Passwort aus .env an" '[[ "$(PGPASSWORD="$SH
 check "shop_app ohne richtiges Passwort: abgewiesen" '! PGPASSWORD="falsch-$RANDOM" "${PSQL[@]}" -U shop_app -c "SELECT 1" >/dev/null 2>&1'
 check "API: Anmeldemodul ist als shop_auth verbunden" '[[ "$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT count(*) FROM pg_stat_activity WHERE usename = '"'"'shop_auth'"'"' AND application_name = '"'"'identity'"'"'")" -ge 1 ]]'
 # Testdaten (M1): legt Teeladen und Modeladen an (zweiter Lauf ändert nichts), schreibt als shop_platform.
-check "Testdaten: pnpm dev:seed legt die Testshops an" 'docker exec shop-platform-api-1 node dist/seed.js >/dev/null && docker exec shop-platform-api-1 node dist/seed.js | grep -q "Teeladen: gibt es schon"'
+# Ausgabe erst ganz abwarten: grep -q beendet sich beim ersten Treffer, und mit pipefail würde der
+# abgebrochene Seed-Befehl (SIGPIPE) die Prüfung zufällig scheitern lassen.
+check "Testdaten: pnpm dev:seed legt die Testshops an" 'docker exec shop-platform-api-1 node dist/seed.js >/dev/null && SEED_OUT="$(docker exec shop-platform-api-1 node dist/seed.js)" && grep -q "Teeladen: gibt es schon" <<<"$SEED_OUT"'
+# Bilder (M2 Teil 2): Testprodukte haben Bilder, die über media.<Domain> als WebP kommen.
+IMG_KEY="$(PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "${PSQL[@]}" -U postgres -c "SELECT storage_key FROM media.media_rendition WHERE preset = 'w400' LIMIT 1")"
+check "Bilder: Testprodukte haben Bilder (pnpm dev:seed)" '[[ "$IMG_KEY" == tenants/*/w400.webp ]]'
+IMG_H="$("${C[@]}" -D - -o /dev/null "https://media.$D/$IMG_KEY")"
+check "Bilder: über media.$D als WebP mit langer Gültigkeit" 'grep -qiE "^HTTP/2 200" <<<"$IMG_H" && grep -qi "content-type: image/webp" <<<"$IMG_H" && grep -qi "immutable" <<<"$IMG_H"'
+check "Bilder: Originale sind nicht öffentlich" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://media.$D/${IMG_KEY%w400.webp}original")" == 404 ]]'
 
 echo "== Worker: Hintergrunddienst (E5)"
 W=shop-platform-worker-1

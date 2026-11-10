@@ -12,3 +12,29 @@ export interface ProductStock {
   setOnHand(variantId: string, quantity: number): Promise<void>;
   getAvailable(variantIds: readonly string[]): Promise<Map<string, number>>;
 }
+
+/** Ein fertiges Produktbild (Modul media). */
+export interface ProductImage {
+  readonly id: string;
+  readonly url: string;
+  readonly thumbnailUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Warum ein Bild abgelehnt wurde. */
+export type ImageRejection = "unsupported_format" | "too_large" | "too_small" | "unreadable";
+
+/** Geprüftes, umgerechnetes Bild, das noch gespeichert werden muss; oder die Ablehnung. */
+export type PreparedProductImage =
+  | { readonly ok: true; save(): Promise<ProductImage> }
+  | { readonly ok: false; readonly reason: ImageRejection };
+
+/** Was der Katalog von Bildern braucht (M2 Teil 2). Erfüllt das Modul media. */
+export interface ProductImages {
+  /** Prüft und rechnet um, ohne Datenbank. Gehört nicht in eine Transaktion (rechenintensiv). */
+  prepare(data: Uint8Array, filename?: string): Promise<PreparedProductImage>;
+  get(ids: readonly string[]): Promise<Map<string, ProductImage>>;
+  /** Löscht Bilder samt Dateien. Erst nach der eigenen Transaktion aufrufen. */
+  remove(ids: readonly string[]): Promise<void>;
+}

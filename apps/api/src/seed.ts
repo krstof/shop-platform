@@ -11,6 +11,7 @@ import { ConfigError, connectDatabase, createSecretBox, masterKeysFromEnv } from
 import { createShopAdministration } from "@shop/platform";
 import { loadApiConfig } from "./config.js";
 import { allEndpoints } from "./endpoints.js";
+import { mediaFromConfig } from "./media.js";
 import { seedCatalog } from "./seed-catalog.js";
 
 const SEED_SHOPS = [
@@ -72,7 +73,7 @@ async function main(): Promise<void> {
       );
     }
     // Produkte (M2): nur in Shops, die noch keine haben.
-    const endpoints = allEndpoints({ database, identity, members });
+    const endpoints = allEndpoints({ database, identity, members, media: mediaFromConfig(config, database) });
     for (const shop of await shops.list({ limit: 100 })) {
       const seed = SEED_SHOPS.find((s) => s.handle === shop.handle);
       if (seed === undefined) continue;

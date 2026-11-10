@@ -275,8 +275,13 @@ describe.skipIf(adminUrl === undefined)("Produkte und Kategorien (M2, echte Date
       [tenantId],
     );
     const options = { database, endpoints: allEndpoints({ database }), tenantId, handle: "teeladen" };
-    expect(await seedCatalog(options)).toBe("3 Kategorien und 6 Produkte angelegt");
-    expect(await seedCatalog(options)).toMatch(/schon/);
+    expect(await seedCatalog(options)).toBe("3 Kategorien und 6 Produkte angelegt, 6 Bilder hochgeladen");
+    expect(await seedCatalog(options)).toBe("Produkte gibt es schon, bleiben unverändert");
+    // Testprodukte von vor M2 Teil 2 (ohne Bilder) bekommen ihre Bilder nachträglich.
+    await inspect.query(`DELETE FROM catalog.product_media WHERE tenant_id = $1 AND position = 0`, [
+      tenantId,
+    ]);
+    expect(await seedCatalog(options)).toMatch(/schon, .*6 Bilder hochgeladen$/);
     const { rows } = await inspect.query(
       `SELECT count(*)::int AS n, sum(amount)::int AS total FROM pricing.price WHERE tenant_id = $1`,
       [tenantId],

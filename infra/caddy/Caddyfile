@@ -57,12 +57,25 @@ api.{$SHOP_DOMAIN} {
 		-Server
 		-Via
 	}
-	request_body {
+	# Bild hochladen (M2 Teil 2): bis 12 MB (Bild bis 8 MB als Base64 im JSON), alles andere 1 MB.
+	# Die API prüft dieselben Grenzen noch einmal je Endpunkt (bodyLimit).
+	@image_upload {
+		method POST
+		path_regexp ^/admin/v1/products/[0-9a-f-]{36}/images$
+	}
+	@not_image_upload not {
+		method POST
+		path_regexp ^/admin/v1/products/[0-9a-f-]{36}/images$
+	}
+	request_body @image_upload {
+		max_size 12MB
+	}
+	request_body @not_image_upload {
 		max_size 1MB
 	}
 	# Zu große Anfragen schon hier ablehnen, sobald die Länge angekündigt ist. Sonst schneiden API und
 	# Caddy gleichzeitig ab, und der Besucher sieht manchmal 502 statt 413 (Rauchtest 04.11.2026).
-	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > 1048576`
+	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > ({http.request.method} == "POST" && {http.request.uri.path}.matches("^/admin/v1/products/[0-9a-f-]{36}/images$") ? 12582912 : 1048576)`
 	handle @too_large {
 		header Content-Type "application/problem+json; charset=utf-8"
 		header Cache-Control "no-store"

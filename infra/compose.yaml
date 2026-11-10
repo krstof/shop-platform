@@ -202,6 +202,12 @@ services:
       SHOP_MASTER_KEY_V1: ${SHOP_MASTER_KEY_V1:?fehlt}
       # E-Mails („Passwort vergessen“, E6 Teil 6) gehen nur an Mailpit, nie nach außen.
       SHOP_SMTP_URL: smtp://mailpit:1025
+      # Bilder (M2 Teil 2): Objektspeicher Garage im internen Netz, ausgeliefert über media.<Domain>.
+      SHOP_S3_ENDPOINT: http://garage:3900
+      SHOP_S3_ACCESS_KEY_ID: ${SHOP_S3_ACCESS_KEY_ID:?fehlt}
+      SHOP_S3_SECRET_ACCESS_KEY: ${SHOP_S3_SECRET_ACCESS_KEY:?fehlt}
+      SHOP_S3_BUCKET_PUBLIC: ${SHOP_S3_BUCKET_PUBLIC:?fehlt}
+      SHOP_S3_BUCKET_PRIVATE: ${SHOP_S3_BUCKET_PRIVATE:?fehlt}
       # Herkunftsprüfung (CSRF): Standard sind https://admin.<Domain> und https://platform.<Domain>.
       SHOP_API_HOST: 0.0.0.0
       SHOP_API_PORT: "3000"
@@ -216,6 +222,7 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       mailpit: { condition: service_healthy }
+      garage: { condition: service_healthy }
 
   # Hintergrunddienst (Architektur 3.5, E5): leitet Ereignisse aus der Outbox weiter, stellt sie den
   # Subscribern zu (etwa dem Änderungsprotokoll) und räumt stündlich auf. Zwei Verbindungen mit

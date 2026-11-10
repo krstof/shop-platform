@@ -1,0 +1,36 @@
+{
+  "name": "@shop/media",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modul media: Bilder hochladen, prüfen, umrechnen und ausliefern (Architektur 3.2)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
+    "@shop/kernel": "workspace:*",
+    "kysely": "0.29.7",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@shop/config": "workspace:*",
+    "@types/node": "^24.19.2",
+    "typescript": "~6.0.3",
+    "vitest": "5.0.5"
+  }
+}

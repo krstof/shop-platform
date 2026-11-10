@@ -16,6 +16,7 @@ import {
 } from "@shop/identity";
 import { createInventory } from "@shop/inventory";
 import type { Database } from "@shop/kernel";
+import { createMedia, memoryStorage, type Media } from "@shop/media";
 import {
   createShopAdministration,
   platformEndpoints,
@@ -38,6 +39,8 @@ export interface EndpointDependencies {
   readonly members?: MemberService;
   /** Shops verwalten (Modul platform, Verbindung als shop_platform). Ohne Angabe: Shops über dieselbe Datenbank. */
   readonly platformShops?: ShopAdministration;
+  /** Bilder (Modul media). Ohne Angabe: Speicher im Arbeitsspeicher, Adressen unter media.localhost. */
+  readonly media?: Media;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
@@ -48,12 +51,27 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       identity: deps.identity ?? unconnectedIdentity,
       baseUrl: "https://admin.localhost",
     });
+  const media =
+    deps.media ??
+    createMedia({
+      database: deps.database,
+      storage: memoryStorage(),
+      publicBaseUrl: "https://media.localhost",
+    });
   return [
-    // Katalog mit Preisen und Bestand aus den Modulen pricing und inventory (M2).
+    // Katalog mit Preisen, Bestand und Bildern aus den Modulen pricing, inventory und media (M2).
     ...catalogEndpoints({
       database: deps.database,
       prices: createPricing({ database: deps.database }),
       stock: createInventory({ database: deps.database }),
+      images: {
+        prepare: async (data, filename) => {
+          const r = await media.prepareImage(data, filename);
+          return r.ok ? { ok: true, save: () => media.saveImage(r.image) } : r;
+        },
+        get: (ids) => media.getImages(ids),
+        remove: (ids) => media.deleteImages(ids),
+      },
     }),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),

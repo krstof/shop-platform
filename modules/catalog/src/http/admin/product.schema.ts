@@ -1,8 +1,9 @@
 // Ein- und Ausgaben für Produkte in der Admin-API (M2). Einfachste Form: ein Preis (brutto, EUR),
-// ein Steuersatz (19 % oder 7 %), Bestand als Zahl, höchstens eine Kategorie. Bilder folgen.
+// ein Steuersatz (19 % oder 7 %), Bestand als Zahl, höchstens eine Kategorie, Bilder (Teil 2).
 import { multiLineText, singleLineText, timestamp } from "@shop/http";
 import { z } from "zod";
 import type { ProductRow, ProductValues } from "../../internal/product-repository.js";
+import type { ProductImage } from "../../ports.js";
 import { slugInput } from "./category.schema.js";
 
 export const CURRENCY = "EUR";
@@ -18,6 +19,16 @@ const priceSchema = z
   })
   .meta({ id: "Price" });
 
+export const productImageSchema = z
+  .object({
+    id: z.uuid(),
+    url: z.url().meta({ description: "Große Fassung (höchstens 1600 Pixel breit oder hoch), WebP." }),
+    thumbnailUrl: z.url().meta({ description: "Kleine Fassung (höchstens 400 Pixel), WebP, für Listen." }),
+    width: z.number().int().meta({ description: "Breite des Originals in Pixeln." }),
+    height: z.number().int().meta({ description: "Höhe des Originals in Pixeln." }),
+  })
+  .meta({ id: "ProductImage", description: "Produktbild, ausgeliefert über media.<Domain>." });
+
 export const productSchema = z
   .object({
     id: z.uuid(),
@@ -32,6 +43,9 @@ export const productSchema = z
     stock: z.number().int().meta({ description: "Verfügbarer Bestand (vorhanden minus reserviert)." }),
     categoryId: z.uuid().nullable(),
     sku: z.string().nullable().meta({ description: "Artikelnummer." }),
+    images: z
+      .array(productImageSchema)
+      .meta({ description: "Bilder in Anzeigereihenfolge, das erste ist das Hauptbild." }),
     publishedAt: timestamp.nullable(),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -41,7 +55,12 @@ export const productSchema = z
 
 export type Product = z.infer<typeof productSchema>;
 
-export function toProduct(row: ProductRow, price: number | undefined, stock: number | undefined): Product {
+export function toProduct(
+  row: ProductRow,
+  price: number | undefined,
+  stock: number | undefined,
+  images: readonly ProductImage[],
+): Product {
   return {
     id: row.id,
     status: row.status,
@@ -53,6 +72,7 @@ export function toProduct(row: ProductRow, price: number | undefined, stock: num
     stock: stock ?? 0,
     categoryId: row.category_id,
     sku: row.sku,
+    images: images.map((i) => ({ ...i })),
     publishedAt: row.published_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -107,5 +127,6 @@ export function productFacts(p: Product): Record<string, string | number | null>
     stock: p.stock,
     categoryId: p.categoryId,
     sku: p.sku,
+    images: p.images.length === 0 ? null : p.images.map((i) => i.id).join(","),
   };
 }

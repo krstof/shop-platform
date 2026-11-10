@@ -133,6 +133,11 @@ export interface EndpointSpec<
   /** Nur bei PATCH, PUT und DELETE: Änderung nur mit passender Version (`If-Match`, Architektur 4.6). */
   readonly ifMatch?: "required";
   readonly rateLimit?: RateLimitCategory;
+  /**
+   * Größere Anfragen als die üblichen 1 MB erlauben, in Bytes (höchstens 16 MB). Nur für Endpunkte
+   * mit body, etwa beim Hochladen von Bildern (M2 Teil 2). Caddy braucht dafür eine passende Regel.
+   */
+  readonly bodyLimit?: number;
   readonly response: { readonly status: 200 | 201; readonly description: string; readonly schema: R };
   readonly problems?: readonly DocumentedProblem[];
   readonly handler: (ctx: HandlerContext<Infer<P>, Infer<Q>, Infer<B>>) => Promise<z.input<R>>;
@@ -159,6 +164,8 @@ export interface Endpoint {
   readonly idempotency: "optional" | "required" | "none";
   readonly ifMatch: "required" | undefined;
   readonly rateLimit: RateLimitCategory;
+  /** Eigene Höchstgröße der Anfrage in Bytes; `undefined` = Standard der API (1 MB). */
+  readonly bodyLimit: number | undefined;
   readonly response: { readonly status: 200 | 201; readonly description: string; readonly schema: z.ZodType };
   readonly problems: readonly DocumentedProblem[];
   readonly handler: (ctx: HandlerContext<unknown, unknown, unknown>) => Promise<unknown>;
@@ -176,6 +183,9 @@ export class EndpointDefinitionError extends Error {
     this.name = "EndpointDefinitionError";
   }
 }
+
+/** Obergrenze für `bodyLimit` (16 MB). */
+export const MAX_BODY_LIMIT = 16 * 1024 * 1024;
 
 const OPERATION_ID = /^[a-z][a-zA-Z0-9]{2,63}$/;
 const SEGMENT = /^([a-z0-9]+(-[a-z0-9]+)*|\{[a-z][a-zA-Z0-9]*\})$/;
@@ -205,6 +215,7 @@ export function defineEndpoint<
     idempotency: spec.method === "POST" ? (spec.idempotency ?? "optional") : "none",
     ifMatch: spec.ifMatch,
     rateLimit: spec.rateLimit ?? defaultRateLimit(spec.api, spec.method),
+    bodyLimit: spec.bodyLimit,
     response: spec.response,
     problems: Object.freeze([...(spec.problems ?? [])]),
     handler: spec.handler as Endpoint["handler"],
@@ -289,6 +300,11 @@ function validateSpec(spec: EndpointSpec<AnyObject, AnyObject, z.ZodType, z.ZodT
     p.push("ifMatch gibt es nur bei PATCH, PUT und DELETE");
   if (spec.rateLimit !== undefined && !(RATE_LIMIT_CATEGORIES as readonly string[]).includes(spec.rateLimit))
     p.push(`unbekannter Bereich der Anfragebremse „${spec.rateLimit}“`);
+  if (spec.bodyLimit !== undefined) {
+    if (spec.body === undefined) p.push("bodyLimit nur bei Endpunkten mit body");
+    if (!Number.isInteger(spec.bodyLimit) || spec.bodyLimit <= 1_048_576 || spec.bodyLimit > MAX_BODY_LIMIT)
+      p.push("bodyLimit muss eine ganze Zahl über 1 MB und höchstens 16 MB sein");
+  }
   if (spec.response.status !== 200 && spec.response.status !== 201)
     p.push("response.status muss 200 oder 201 sein");
   return p;
