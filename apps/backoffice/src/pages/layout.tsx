@@ -127,7 +127,7 @@ export function ShopLayout() {
                 </select>
               </label>
             )}
-            <nav className="ml-2 flex gap-1 text-sm" aria-label="Hauptmenü">
+            <nav className="ml-2 flex min-w-0 gap-1 overflow-x-auto text-sm" aria-label="Hauptmenü">
               <Link
                 to="/$shop/produkte"
                 params={{ shop: shop.handle }}
@@ -135,6 +135,14 @@ export function ShopLayout() {
                 activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
               >
                 Produkte
+              </Link>
+              <Link
+                to="/$shop/kategorien"
+                params={{ shop: shop.handle }}
+                className="rounded-md px-3 py-1.5 text-stone-600 hover:bg-stone-100"
+                activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
+              >
+                Kategorien
               </Link>
               <Link
                 to="/$shop/bestellungen"

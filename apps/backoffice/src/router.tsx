@@ -1,5 +1,6 @@
 // Seiten des Backoffice (M3). Pfade auf Deutsch, der Shop steht im Pfad (/<handle>/produkte).
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@tanstack/react-router";
+import { CategoriesPage, EditCategoryPage, NewCategoryPage } from "./pages/categories.js";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
 import { AcceptInvitationPage } from "./pages/invitation.js";
 import { HomeRedirect, ShopLayout } from "./pages/layout.js";
@@ -56,6 +57,22 @@ const productEdit = createRoute({
   component: EditProductPage,
 });
 
+const categories = createRoute({
+  getParentRoute: () => shop,
+  path: "/kategorien",
+  component: CategoriesPage,
+});
+const categoryNew = createRoute({
+  getParentRoute: () => shop,
+  path: "/kategorien/neu",
+  component: NewCategoryPage,
+});
+const categoryEdit = createRoute({
+  getParentRoute: () => shop,
+  path: "/kategorien/$categoryId",
+  component: EditCategoryPage,
+});
+
 const orders = createRoute({ getParentRoute: () => shop, path: "/bestellungen", component: OrdersPage });
 const order = createRoute({
   getParentRoute: () => shop,
@@ -70,7 +87,17 @@ const routeTree = root.addChildren([
   reset,
   invitation,
   platform,
-  shop.addChildren([shopHome, products, productNew, productEdit, orders, order]),
+  shop.addChildren([
+    shopHome,
+    products,
+    productNew,
+    productEdit,
+    categories,
+    categoryNew,
+    categoryEdit,
+    orders,
+    order,
+  ]),
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: "intent" });

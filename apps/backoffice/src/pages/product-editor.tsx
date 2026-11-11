@@ -329,7 +329,11 @@ function ProductEditor({ product }: { product: Product | undefined }) {
             </label>
           </Card>
           <Card>
-            <Field label="Kategorie" error={errors.categoryId}>
+            <Field
+              label="Kategorie"
+              hint="Neue Kategorien unter „Kategorien“ im Menü anlegen."
+              error={errors.categoryId}
+            >
               {(p) => (
                 <Select {...p} value={form.categoryId} onChange={(e) => set("categoryId")(e.target.value)}>
                   <option value="">Keine</option>

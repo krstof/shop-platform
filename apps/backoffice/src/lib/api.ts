@@ -120,6 +120,18 @@ export interface Category {
   readonly id: string;
   readonly name: string;
   readonly slug: string;
+  readonly description: string;
+  readonly position: number;
+  /** Im Shop sichtbar. */
+  readonly visible: boolean;
+  readonly version: number;
+}
+
+export interface CategoryInput {
+  name?: string;
+  description?: string | null;
+  position?: number;
+  visible?: boolean;
 }
 
 export interface Page<T> {
