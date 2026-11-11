@@ -31,6 +31,11 @@ export interface AuthEndpointOptions {
    * Setzt apps/api aus den Modulen identity und platform zusammen. Ohne Angabe: keine Shops.
    */
   readonly shopsOfUser?: (userId: string) => Promise<readonly ShopOfUser[]>;
+  /**
+   * Ist das Konto ein aktives Betreiberkonto (Plattform-Verwaltung, M8)? Setzt apps/api aus dem
+   * Modul platform zusammen, weil identity platform nicht aufrufen darf. Ohne Angabe: nie.
+   */
+  readonly isPlatformOperator?: (userId: string) => Promise<boolean>;
 }
 
 const shopOfUserSchema = z
@@ -75,6 +80,12 @@ export const currentSessionSchema = z
         "required: Passwort stimmt, jetzt den Code aus der Authenticator-App an " +
           "POST /auth/v1/two-factor/verify schicken (innerhalb von 10 Minuten); bis dahin gilt die " +
           "Sitzung nirgends. verified: zweiter Faktor bestätigt. not_enrolled: Konto ohne zweiten Faktor.",
+      ),
+    platformOperator: z
+      .boolean()
+      .describe(
+        "true: aktives Betreiberkonto. Die Platform-API gilt erst mit secondFactor verified; ohne " +
+          "zweiten Faktor zuerst Zwei-Faktor einrichten. Vor dem zweiten Faktor immer false.",
       ),
   })
   .meta({ id: "CurrentSession" });
@@ -140,6 +151,7 @@ function sessionBody(s: ActiveSession) {
 
 export function authEndpoints(identity: IdentityService, options: AuthEndpointOptions = {}): Endpoint[] {
   const shopsOf = async (userId: string) => [...((await options.shopsOfUser?.(userId)) ?? [])];
+  const operatorOf = async (userId: string) => (await options.isPlatformOperator?.(userId)) ?? false;
 
   const signIn = defineEndpoint({
     api: "auth",
@@ -192,6 +204,7 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
         // Vor dem zweiten Faktor verrät die Antwort keine Shops.
         shops: result.secondFactorRequired ? [] : await shopsOf(result.userId),
         secondFactor: result.secondFactorRequired ? ("required" as const) : ("not_enrolled" as const),
+        platformOperator: result.secondFactorRequired ? false : await operatorOf(result.userId),
       };
     },
   });
@@ -246,6 +259,7 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
         session: sessionBody(s),
         shops: await shopsOf(s.userId),
         secondFactor: s.secondFactor,
+        platformOperator: await operatorOf(s.userId),
       };
     },
   });
@@ -286,6 +300,7 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
         session: sessionBody(s),
         shops: await shopsOf(s.userId),
         secondFactor: s.secondFactor,
+        platformOperator: await operatorOf(s.userId),
       };
     },
   });
@@ -369,6 +384,7 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
         session: sessionBody(s),
         shops: await shopsOf(s.userId),
         secondFactor: s.secondFactor,
+        platformOperator: await operatorOf(s.userId),
       };
     },
   });
@@ -416,6 +432,7 @@ export function authEndpoints(identity: IdentityService, options: AuthEndpointOp
         session: sessionBody(s),
         shops: await shopsOf(s.userId),
         secondFactor: s.secondFactor,
+        platformOperator: await operatorOf(s.userId),
       };
     },
   });

@@ -1,8 +1,10 @@
 // Seiten des Backoffice (M3). Pfade auf Deutsch, der Shop steht im Pfad (/<handle>/produkte).
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@tanstack/react-router";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
+import { AcceptInvitationPage } from "./pages/invitation.js";
 import { HomeRedirect, ShopLayout } from "./pages/layout.js";
 import { OrderPage, OrdersPage } from "./pages/orders.js";
+import { PlatformPage } from "./pages/platform.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
 
@@ -23,6 +25,15 @@ const reset = createRoute({
   path: "/passwort-neu",
   component: ResetPasswordPage,
 });
+
+const invitation = createRoute({
+  getParentRoute: () => root,
+  path: "/einladung",
+  component: AcceptInvitationPage,
+});
+// Plattform-Verwaltung (M8). Feste Pfade gehen vor /$shop; „plattform“ und „einladung“ sind deshalb
+// als Kurznamen von Shops nicht nutzbar (reserviert im Modul platform).
+const platform = createRoute({ getParentRoute: () => root, path: "/plattform", component: PlatformPage });
 
 const shop = createRoute({ getParentRoute: () => root, path: "/$shop", component: ShopLayout });
 const shopHome = createRoute({
@@ -57,6 +68,8 @@ const routeTree = root.addChildren([
   signIn,
   forgot,
   reset,
+  invitation,
+  platform,
   shop.addChildren([shopHome, products, productNew, productEdit, orders, order]),
 ]);
 

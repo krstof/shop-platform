@@ -31,6 +31,8 @@ export function HomeRedirect() {
   if (session.isPending) return <FullPageSpinner />;
   if (!session.data) return <Navigate to="/anmelden" replace />;
   const first = session.data.shops[0];
+  // Betreiberkonto ohne eigenen Shop: gleich in die Plattform-Verwaltung (M8).
+  if (first === undefined && session.data.platformOperator) return <Navigate to="/plattform" replace />;
   if (first === undefined) return <NoShop />;
   return <Navigate to="/$shop/produkte" params={{ shop: first.handle }} replace />;
 }
@@ -48,7 +50,7 @@ function NoShop() {
   );
 }
 
-function SignOutButton({ className }: { className?: string }) {
+export function SignOutButton({ className }: { className?: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -144,6 +146,14 @@ export function ShopLayout() {
               </Link>
             </nav>
             <div className="ml-auto flex items-center gap-2">
+              {session.data.platformOperator && (
+                <Link
+                  to="/plattform"
+                  className="rounded-md px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"
+                >
+                  Plattform
+                </Link>
+              )}
               <span className="hidden text-sm text-stone-500 sm:inline">{session.data.user.email}</span>
               <SignOutButton />
             </div>

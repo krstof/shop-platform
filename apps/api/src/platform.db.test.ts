@@ -176,6 +176,8 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
     expect((await get("/platform/v1/operator", "")).statusCode).toBe(401);
     const { body, cookie } = await signIn();
     expect(body.secondFactor).toBe("not_enrolled");
+    // M8: Die Oberfläche erkennt das Betreiberkonto und bietet das Einrichten an.
+    expect(body.platformOperator).toBe(true);
     const r = await get("/platform/v1/operator", cookie);
     expect(r.statusCode).toBe(403);
   });
@@ -198,6 +200,7 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
     const enabled = await post("/auth/v1/two-factor/enable", { code: await appCode(secret) }, cookie);
     expect(enabled.statusCode).toBe(200);
     expect(enabled.json().secondFactor).toBe("verified");
+    expect(enabled.json().platformOperator).toBe(true);
 
     const me = await get("/platform/v1/operator", cookie);
     expect(me.statusCode).toBe(200);
@@ -208,6 +211,8 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
   it("Anmelden mit Zwei-Faktor: erst Passwort (gilt nirgends), dann Code", async () => {
     const { body, cookie } = await signIn();
     expect(body.secondFactor).toBe("required");
+    // Vor dem Code verrät die Antwort nichts über das Konto.
+    expect(body.platformOperator).toBe(false);
     expect(body.shops).toEqual([]);
     expect((await get("/auth/v1/session", cookie)).statusCode).toBe(401);
     expect((await get("/platform/v1/operator", cookie)).statusCode).toBe(401);
@@ -246,7 +251,9 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
   });
 
   it("Händler ohne Betreiberkonto erreicht die Platform-API nie", async () => {
-    const { cookie } = await signIn(MERCHANT);
+    const { body, cookie } = await signIn(MERCHANT);
+    expect(body.platformOperator).toBe(false);
+    expect((await get("/auth/v1/session", cookie)).json().platformOperator).toBe(false);
     expect((await get("/platform/v1/operator", cookie)).statusCode).toBe(403);
   });
 
@@ -323,6 +330,12 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
         cookie,
       );
       expect(again.statusCode).toBe(409);
+      // Kurznamen, die im Backoffice Seiten sind (M8), gibt es nicht als Shop.
+      for (const handle of ["plattform", "anmelden", "einladung"])
+        expect(
+          (await post("/platform/v1/shops", { handle, name: "X", ownerEmail: "x@y.example" }, cookie))
+            .statusCode,
+        ).toBe(409);
       for (const body of [
         { handle: "Mode Laden", name: "X", ownerEmail: "x@y.example" },
         { handle: "ok-shop", name: "", ownerEmail: "x@y.example" },

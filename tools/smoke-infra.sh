@@ -105,6 +105,7 @@ check "Backoffice: Seiten unter admin.$D (auch tiefe Links) mit 200" '[[ "$BH" =
 check "Backoffice: strenge CSP (nur eigene Skripte, keine fremden Rahmen)" 'grep -qiE "content-security-policy: .*script-src '"'"'self'"'"';.*frame-ancestors '"'"'none'"'"'" <<<"$BH"'
 check "Backoffice: Seite wird nicht zwischengespeichert" 'grep -qi "cache-control: no-cache" <<<"$BH"'
 check "Backoffice: API unter derselben Adresse (Auth-API antwortet 401)" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://admin.$D/auth/v1/session")" == 401 ]]'
+check "Plattform-Verwaltung: Platform-API unter derselben Adresse (ohne Anmeldung 401)" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://admin.$D/platform/v1/shops")" == 401 ]]'
 check "Backoffice: ändernde Anfragen an die Dateien abgelehnt" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" -X POST "https://admin.$D/index.html")" == 405 ]]'
 check "Backoffice: Container ohne Ports nach außen" '[[ -z "$(docker port shop-platform-backoffice-1)" ]]'
 

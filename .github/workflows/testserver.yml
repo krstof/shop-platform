@@ -166,6 +166,9 @@ jobs:
           expect 200 "https://admin.$DOMAIN/teeladen/produkte" "${auth[@]}"
           session="$(curl "${auth[@]}" "https://admin.$DOMAIN/auth/v1/session")"
           grep -q '"code":"unauthenticated"' <<<"$session" || { echo "::error::Auth-API: $session"; exit 1; }
+          # Plattform-Verwaltung (M8): Seite und Platform-API unter derselben Adresse.
+          expect 200 "https://admin.$DOMAIN/plattform" -s --max-time 20
+          expect 401 "https://admin.$DOMAIN/platform/v1/shops" -s --max-time 20
           # Anmelden: Das Testpasswort kennt nur Kristof (test-login.env enthält nur Prüfwerte).
           # Geprüft wird, dass ein falsches Passwort abgelehnt wird.
           signin="$(curl "${auth[@]}" -o /dev/null -w '%{http_code}' -H 'content-type: application/json' \

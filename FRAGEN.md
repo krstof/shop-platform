@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-Keine.
+1. **Was soll als Nächstes sichtbar werden? (11.11.2026)** Der MVP-Plan ist fertig: Shops anlegen, Produkte pflegen, kaufen, Bestellungen sehen. Zur Wahl stehen der Shop-Editor (Farben, Logo, Startseite des Shops ändern) oder der KI-Chat für Händler (Produkte per Chat anlegen, Welle 2). Antwort: „Editor“ oder „Chat“.
 
 ## Beantwortet
 

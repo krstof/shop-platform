@@ -89,6 +89,8 @@ export interface CurrentSession {
   readonly user: { readonly id: string; readonly email: string };
   readonly shops: readonly ShopOfUser[];
   readonly secondFactor: "required" | "verified" | "not_enrolled";
+  /** Aktives Betreiberkonto (Plattform-Verwaltung, M8). */
+  readonly platformOperator: boolean;
 }
 
 export interface ProductImage {
@@ -211,4 +213,42 @@ export interface Order {
     readonly lineTotal: number;
     readonly taxRatePercent: number;
   }[];
+}
+
+// --- Plattform-Verwaltung (M8, openapi/platform.json) ---
+
+export type OperatorRole = "owner" | "operator" | "support" | "viewer";
+
+export interface PlatformShop {
+  readonly id: string;
+  readonly handle: string;
+  readonly name: string;
+  readonly status: "provisioning" | "active" | "suspended" | "deleting" | "deleted";
+  readonly ownerEmail: string | null;
+  readonly createdAt: string;
+}
+
+export interface CreatedPlatformShop extends PlatformShop {
+  readonly invitationSent: boolean;
+  readonly invitationExpiresAt: string | null;
+}
+
+export interface TwoFactorSetup {
+  readonly secret: string;
+  readonly otpauthUri: string;
+  readonly backupCodes: readonly string[];
+}
+
+/** Alle Seiten einer Liste ohne Shop (Platform-API). */
+export async function listAllPlatform<T>(path: string): Promise<T[]> {
+  const out: T[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < 20; i++) {
+    const url: string = `${path}?limit=100${cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`}`;
+    const page: Page<T> = await request<Page<T>>(url);
+    out.push(...page.data);
+    cursor = page.page.nextCursor;
+    if (cursor === null) break;
+  }
+  return out;
 }

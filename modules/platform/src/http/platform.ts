@@ -81,6 +81,22 @@ const TEXTS = {
 
 const cursorKey = z.strictObject({ id: z.uuid() });
 
+/**
+ * Kurznamen, die als Seiten im Backoffice (`admin.<Domain>/<Kurzname>/…`) schon belegt sind (M8).
+ * Ein Shop mit diesem Namen wäre dort nicht erreichbar; die API meldet sie wie vergebene Namen.
+ */
+export const RESERVED_SHOP_HANDLES: ReadonlySet<string> = new Set([
+  "anmelden",
+  "einladung",
+  "passwort-neu",
+  "passwort-vergessen",
+  "plattform",
+  "admin",
+  "api",
+  "auth",
+  "platform",
+]);
+
 const operatorSchema = z
   .object({
     userId: z.uuid(),
@@ -151,7 +167,7 @@ export function platformEndpoints(options: PlatformEndpointOptions): Endpoint[] 
     description:
       "Legt einen Shop an, der sofort geöffnet ist, und lädt die Inhaberin per E-Mail ein. Mit dem Link " +
       "wählt sie ihr Passwort (gibt es das Konto schon, bleibt es) und kommt danach ins Backoffice. " +
-      "Kurzname schon vergeben: 409.",
+      "Kurzname schon vergeben oder für Seiten des Backoffice reserviert (etwa plattform): 409.",
     tags: ["Plattform"],
     access: { scopes: ["platform:write"] },
     body: z.strictObject({
@@ -171,6 +187,8 @@ export function platformEndpoints(options: PlatformEndpointOptions): Endpoint[] 
         throw new ValidationError({
           errors: [{ path: "/body/ownerEmail", code: "invalid_email", message: TEXTS.invalidEmail[locale] }],
         });
+      if (RESERVED_SHOP_HANDLES.has(body.handle.trim().toLowerCase()))
+        throw new ConflictError({ detail: TEXTS.handleTaken[locale] });
       const created = await shops.create({ ...body, actorId: operatorId });
       if (!created.ok) throw new ConflictError({ detail: TEXTS.handleTaken[locale] });
       const invitation =

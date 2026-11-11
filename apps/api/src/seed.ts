@@ -7,8 +7,14 @@
 // ausgegeben wird. Nur für Testsysteme gedacht; in Produktion verweigert der Befehl die Arbeit.
 import { randomBytes } from "node:crypto";
 import { createIdentityService, createMemberService } from "@shop/identity";
-import { ConfigError, connectDatabase, createSecretBox, masterKeysFromEnv } from "@shop/kernel";
-import { createShopAdministration } from "@shop/platform";
+import {
+  ConfigError,
+  ConflictError,
+  connectDatabase,
+  createSecretBox,
+  masterKeysFromEnv,
+} from "@shop/kernel";
+import { addOperatorForTestData, createShopAdministration } from "@shop/platform";
 import { loadApiConfig } from "./config.js";
 import { allEndpoints } from "./endpoints.js";
 import { mediaFromConfig } from "./media.js";
@@ -18,6 +24,9 @@ const SEED_SHOPS = [
   { handle: "teeladen", name: "Teeladen", ownerEmail: "inhaberin@teeladen.example", ownerName: "Ina Tee" },
   { handle: "modeladen", name: "Modeladen", ownerEmail: "inhaber@modeladen.example", ownerName: "Mo Mode" },
 ] as const;
+
+/** Betreiberkonto für die Plattform-Verwaltung (M8). Zwei-Faktor richtet es beim ersten Anmelden ein. */
+const SEED_OPERATOR = { email: "betreiber@plattform.example", name: "Betrieb" } as const;
 
 async function main(): Promise<void> {
   const config = loadApiConfig();
@@ -88,6 +97,38 @@ async function main(): Promise<void> {
           (shown ? `, Passwort ${password}` : `, ${fixedNote}`),
       );
     }
+    // Betreiberkonto (M8): Konto anlegen, falls neu, und als Inhaber der Plattform eintragen.
+    let operatorId: string;
+    let operatorPassword: string | undefined;
+    try {
+      operatorPassword = fixedPassword ?? `Test-${randomBytes(12).toString("base64url")}`;
+      operatorId = (
+        await identity.createUser({
+          email: SEED_OPERATOR.email,
+          password: operatorPassword,
+          name: SEED_OPERATOR.name,
+        })
+      ).userId;
+    } catch (error) {
+      if (!(error instanceof ConflictError)) throw error;
+      operatorPassword = undefined;
+      const existingUser = await identity.prepareInvitee({ email: SEED_OPERATOR.email, locale: "de" });
+      if (existingUser === undefined) throw new Error("Betreiberkonto nicht lesbar", { cause: error });
+      operatorId = existingUser.userId;
+    }
+    await addOperatorForTestData(platformDatabase, { userId: operatorId, role: "owner" });
+    await setFixed(SEED_OPERATOR.email);
+    const showOperator =
+      operatorPassword !== undefined && fixedPassword === undefined && fixedHash === undefined;
+    console.log(
+      `Plattform-Verwaltung: Betreiberkonto ${SEED_OPERATOR.email}` +
+        (showOperator
+          ? `, Passwort ${operatorPassword}`
+          : fixedPassword !== undefined || fixedHash !== undefined
+            ? `, ${fixedNote}`
+            : ", gibt es schon") +
+        ". Zwei-Faktor wird beim ersten Öffnen eingerichtet.",
+    );
     // Produkte (M2): nur in Shops, die noch keine haben.
     const endpoints = allEndpoints({ database, identity, members, media: mediaFromConfig(config, database) });
     for (const shop of await shops.list({ limit: 100 })) {

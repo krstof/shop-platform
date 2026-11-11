@@ -239,7 +239,7 @@
       "post": {
         "operationId": "createPlatformShop",
         "summary": "Shop anlegen",
-        "description": "Legt einen Shop an, der sofort geöffnet ist, und lädt die Inhaberin per E-Mail ein. Mit dem Link wählt sie ihr Passwort (gibt es das Konto schon, bleibt es) und kommt danach ins Backoffice. Kurzname schon vergeben: 409.",
+        "description": "Legt einen Shop an, der sofort geöffnet ist, und lädt die Inhaberin per E-Mail ein. Mit dem Link wählt sie ihr Passwort (gibt es das Konto schon, bleibt es) und kommt danach ins Backoffice. Kurzname schon vergeben oder für Seiten des Backoffice reserviert (etwa plattform): 409.",
         "tags": [
           "Plattform"
         ],

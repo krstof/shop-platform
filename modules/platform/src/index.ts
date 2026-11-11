@@ -9,6 +9,7 @@ export {
   type TenantStatus,
 } from "./internal/shops.js";
 export {
+  addOperatorForTestData,
   createOperatorDirectory,
   OPERATOR_ROLES,
   type Operator,

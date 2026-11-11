@@ -103,10 +103,16 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...memberEndpoints({ members }),
-    ...authEndpoints(
-      deps.identity ?? unconnectedIdentity,
-      deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser },
-    ),
+    ...authEndpoints(deps.identity ?? unconnectedIdentity, {
+      ...(deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser }),
+      // Betreiberkonto? Für die Plattform-Verwaltung im Backoffice (M8).
+      ...(deps.operators === undefined
+        ? {}
+        : {
+            isPlatformOperator: async (userId: string) =>
+              (await deps.operators?.findOperator(userId)) !== undefined,
+          }),
+    }),
     ...platformEndpoints({
       operators: deps.operators ?? { findOperator: async () => undefined },
       shops: deps.platformShops ?? createShopAdministration({ database: deps.database }),

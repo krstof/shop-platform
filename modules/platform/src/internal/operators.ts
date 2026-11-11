@@ -45,3 +45,22 @@ export function createOperatorDirectory(options: OperatorDirectoryOptions): Oper
     },
   };
 }
+
+/**
+ * Betreiberkonto für Testdaten anlegen (M8, `pnpm dev:seed`). Verbindung als Rolle shop_platform.
+ * Gibt es das Konto schon, bleibt es unverändert. Nicht für Produktion: Dort legt der Betrieb
+ * Betreiberkonten bewusst von Hand an.
+ */
+export async function addOperatorForTestData(
+  database: Database<unknown>,
+  input: { readonly userId: string; readonly role: OperatorRole },
+): Promise<void> {
+  if (!isUuid(input.userId)) throw new RangeError("Ungültige Konto-Id");
+  await withPlatformTransaction(database as Database<DB>, (trx) =>
+    trx
+      .insertInto("platform.platform_user")
+      .values({ user_id: input.userId, role: input.role })
+      .onConflict((oc) => oc.column("user_id").doNothing())
+      .execute(),
+  );
+}

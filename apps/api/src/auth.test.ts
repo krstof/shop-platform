@@ -188,6 +188,7 @@ describe("Anmelden über die Auth-API", () => {
       },
       shops: [],
       secondFactor: "not_enrolled",
+      platformOperator: false,
     });
     // Das Token steht nie im Inhalt.
     expect(r.body).not.toContain("gueltig");

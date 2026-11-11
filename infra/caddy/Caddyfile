@@ -100,9 +100,10 @@ api.{$SHOP_DOMAIN} {
 	}
 }
 
-# Händler-Backoffice (M3). Die Oberfläche ruft die API unter derselben Adresse auf (/admin/v1 und
-# /auth/v1), so passt das Sitzungs-Cookie __Host-shop_session ohne CORS. Alles andere sind die
-# statischen Dateien aus dem Container backoffice, mit strenger Inhalts-Sicherheitsregel.
+# Händler-Backoffice (M3) und Plattform-Verwaltung (M8, Seiten unter /plattform). Die Oberfläche ruft
+# die API unter derselben Adresse auf (/admin/v1, /auth/v1, /platform/v1), so passt das Sitzungs-Cookie
+# __Host-shop_session ohne CORS. Alles andere sind die statischen Dateien aus dem Container
+# backoffice, mit strenger Inhalts-Sicherheitsregel. Eigene Adresse platform.<Domain>: später.
 admin.{$SHOP_DOMAIN} {
 	import guard_api
 	header {
@@ -110,7 +111,7 @@ admin.{$SHOP_DOMAIN} {
 		-Via
 	}
 	import api_limits
-	@api path /admin/v1/* /auth/v1/*
+	@api path /admin/v1/* /auth/v1/* /platform/v1/*
 	handle @api {
 		reverse_proxy api:3000 {
 			header_down -X-Powered-By
