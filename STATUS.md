@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 12.11.2026 mittags (nach Suche und Filter in der Produktliste)
+Stand: 12.11.2026 mittags (nach Suche und Filter in der Produktliste; Antwort „Editor“ eingearbeitet)
 
 ## Erledigt
 
@@ -92,7 +92,12 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
 9. ~~Lücke 1: Kategorien im Backoffice~~ (erledigt 11.11.2026): neuer Menüpunkt „Kategorien“ mit Liste (Anzahl Produkte, sichtbar oder versteckt), Reihenfolge mit ↑/↓ (gilt auch im Menü des Shops), Kategorie anlegen und ändern (Name, Beschreibung, im Shop sichtbar). Neue Kategorien kommen ans Ende. Geprüft im Browser gegen die lokale Plattform; Einheitstest für die Reihenfolge.
 10. ~~Lücke 2: Produkt und Kategorie löschen~~ (erledigt 12.11.2026): Im Produkt-Editor neuer Kasten „Produkt löschen“ (mit Rückfrage), in der Kategorie „Kategorie löschen“. Ein gelöschtes Produkt verschwindet aus Shop und Backoffice, die Artikelnummer wird wieder frei; intern wird es nur archiviert, damit alte Bestellungen und Warenkörbe nicht ins Leere zeigen. Produkte einer gelöschten Kategorie bleiben, nur ohne Kategorie. Nur aus dem Shop nehmen ging schon vorher mit „Im Shop sichtbar“. API: `DELETE /admin/v1/products/{id}` und `DELETE /admin/v1/categories/{id}`, Ereignisse `catalog.product.deleted.v1` und `catalog.category.deleted.v1`. Getestet: 2 neue Datenbanktests (inklusive fremder Shop 404, Artikelnummer neu vergeben), alle Tests mit Datenbank, Lint, Typen, Build, OpenAPI grün.
 11. ~~Lücke 3: Suche und Filter in der Produktliste~~ (erledigt 12.11.2026, Mittagslauf): Über der Produktliste im Backoffice ein Suchfeld (Name oder Artikelnummer, Groß-/Kleinschreibung egal, Teiltreffer, sucht beim Tippen nach kurzer Pause) und zwei Auswahlen (Kategorie; Status „Im Shop“/„Entwurf“). Die Filter stehen in der Adresse (`?suche=…&kategorie=…&status=…`), bleiben also bei „Zurück“ erhalten und lassen sich als Link weitergeben. Statt „N Produkte“ steht dann „N Treffer“; findet sich nichts, gibt es „Filter zurücksetzen“. API: neuer Filter `q` bei `GET /admin/v1/products` (1 bis 100 Zeichen; `%` und `_` zählen als normale Zeichen). Getestet: neuer Datenbanktest (Name, Artikelnummer, Umlaute, Sonderzeichen, Kombination mit Status und Kategorie, leer/zu lang 422, Shop B findet nichts), 5 Oberflächentests für das Lesen der Adresse, alle Tests mit Datenbank, Lint, Modulgrenzen, Typen, Build, OpenAPI grün; Durchlauf im Browser mit nachgebildeter API (tippen, kombinieren, nichts gefunden, zurücksetzen, Direktlink, Zurück-Knopf, Handybreite ohne seitliches Scrollen, keine Fehler in der Konsole).
-12. **Nächster Lauf:** Kristof entscheidet, was als Nächstes sichtbar wird (Frage 1 in `FRAGEN.md`). Bis zur Antwort weitere kleine sichtbare Lücken schließen, als Nächstes: Bestellungen im Backoffice nach Stand filtern (offen, bezahlt, versendet) und nach Bestellnummer oder Kunde suchen.
+12. **Shop-Editor** (Entscheidung Kristof 12.11.2026: „Editor“). Im Backoffice neuer Menüpunkt „Aussehen“, der Händler sieht seine Änderungen sofort in einer Vorschau und schaltet sie mit „Veröffentlichen“ live. Einfachste Version in drei Läufen:
+    - **Nächster Lauf: Editor Teil 1, Farben und Logo.** Hauptfarbe (Auswahl aus wenigen fertigen Farbpaaren plus eigene Farbe, Kontrast wird geprüft), Logo hochladen (über das vorhandene Modul media), Schriftart (zwei bis drei Systemschriften). Storefront nutzt die Werte sofort.
+    - Editor Teil 2, Startseite: großes Bild mit Überschrift und Text, Auswahl „hervorgehobene Produkte“ und Reihenfolge der Kategorien-Kacheln.
+    - Editor Teil 3, Kopf- und Fußzeile: kurzer Text unter dem Logo, Links im Fuß (z. B. Kontakt), Vorschau auf Handybreite umschaltbar.
+13. Danach: KI-Chat für Händler (Welle 2).
+14. Kleine Lücke, wenn Zeit bleibt: Bestellungen im Backoffice nach Stand filtern (offen, bezahlt, versendet) und nach Bestellnummer oder Kunde suchen.
 
 
 ## Später (nicht fürs MVP)

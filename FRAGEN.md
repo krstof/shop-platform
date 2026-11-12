@@ -4,10 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Was soll als Nächstes sichtbar werden? (11.11.2026)** Der MVP-Plan ist fertig: Shops anlegen, Produkte pflegen, kaufen, Bestellungen sehen. Zur Wahl stehen der Shop-Editor (Farben, Logo, Startseite des Shops ändern) oder der KI-Chat für Händler (Produkte per Chat anlegen, Welle 2). Antwort: „Editor“ oder „Chat“.
+Zurzeit keine.
 
 ## Beantwortet
 
+- **Was soll als Nächstes sichtbar werden: Shop-Editor oder KI-Chat?** Editor. Der KI-Chat (Welle 2) folgt danach. (Kristof, 12.11.2026)
 - **Fragen 1 bis 9 vom 06.–09.11.2026** (gesperrter Shop lesbar, Änderungsprotokoll für Mitarbeiter, Notweg Zwei-Faktor, Zwei-Faktor für Händler, Ablaufdatum API-Token, E-Mail bei neuem Token, E-Mail „Passwort geändert“, Mitarbeiter laden ein, E-Mail bei angenommener Einladung): für das MVP egal. Es bleibt, wie es gebaut ist; nichts davon wird weiter verfolgt. Grundsatz seitdem: nur noch fragen, wenn die Antwort etwas Sichtbares ändert (CLAUDE.md 1a). (Kristof, 09.11.2026)
 - **Welle 1 komplett mit allen Rechtspflichten?** Neu entschieden: nein. Es ist nur ein Test für Kristof und Kollegen; Rechtspflichten und alles, was nur echte Händler brauchen, kommt in die Liste „Später“. (Kristof, 09.11.2026; ersetzt die Antwort vom 27.10.2026)
 
