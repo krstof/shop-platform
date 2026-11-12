@@ -7,7 +7,7 @@ import { Alert, Button, Card, Field, Input, Select, Spinner, Textarea } from "..
 import { ApiError, fileToBase64, request, type Product, type ProductInput } from "../lib/api.js";
 import { centsToInput, parseEuro } from "../lib/money.js";
 import { useShop } from "./layout.js";
-import { productsKey, useCategories } from "./products.js";
+import { categoriesKey, productsKey, useCategories } from "./products.js";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
@@ -346,9 +346,59 @@ function ProductEditor({ product }: { product: Product | undefined }) {
               )}
             </Field>
           </Card>
+          {product !== undefined && <DeleteProductCard product={product} />}
         </div>
       </div>
     </form>
+  );
+}
+
+/** Löschen mit Rückfrage. Danach zurück zur Liste. Nur aus dem Shop nehmen geht über „Sichtbarkeit“. */
+function DeleteProductCard({ product }: { product: Product }) {
+  const shop = useShop();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () =>
+      request<{ id: string; deleted: true }>(`/admin/v1/products/${product.id}`, {
+        method: "DELETE",
+        shopId: shop.id,
+      }),
+    onSuccess: async () => {
+      queryClient.removeQueries({ queryKey: ["product", shop.id, product.id] });
+      await queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+      await queryClient.invalidateQueries({ queryKey: categoriesKey(shop.id) });
+      await navigate({ to: "/$shop/produkte", params: { shop: shop.handle } });
+    },
+  });
+  return (
+    <Card title="Produkt löschen">
+      <p className="text-sm text-stone-500">
+        Verschwindet aus dem Shop und aus dieser Liste. Bestellungen behalten ihre Angaben.
+      </p>
+      {remove.isError && (
+        <div className="mt-3">
+          <Alert>{remove.error instanceof ApiError ? remove.error.message : "Das hat nicht geklappt."}</Alert>
+        </div>
+      )}
+      <div className="mt-4">
+        <Button
+          type="button"
+          variant="danger"
+          busy={remove.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                `„${product.name}“ wirklich löschen? Das lässt sich nicht rückgängig machen. Nur aus dem Shop nehmen geht oben mit „Im Shop sichtbar“.`,
+              )
+            )
+              remove.mutate();
+          }}
+        >
+          Löschen
+        </Button>
+      </div>
+    </Card>
   );
 }
 

@@ -89,7 +89,7 @@ describe.skipIf(adminUrl === undefined)("Produkte und Kategorien (M2, echte Date
   });
 
   const call = (
-    method: "GET" | "POST" | "PATCH",
+    method: "GET" | "POST" | "PATCH" | "DELETE",
     url: string,
     shop: "a" | "b",
     payload?: object,
@@ -264,6 +264,68 @@ describe.skipIf(adminUrl === undefined)("Produkte und Kategorien (M2, echte Date
     );
     expect(p.statusCode).toBe(200);
     expect(p.json().categoryId).toBeNull();
+  });
+
+  it("Produkt löschen: weg aus Liste und Shop, Artikelnummer wieder frei, fremder Shop 404", async () => {
+    const made = await call("POST", "/admin/v1/products", "b", {
+      name: "Mütze",
+      price: { amount: 1490 },
+      sku: "M-1",
+      categoryId: (await call("POST", "/admin/v1/categories", "b", { name: "Mützen" })).json().id,
+      status: "published",
+    });
+    expect(made.statusCode).toBe(201);
+    const id = made.json().id;
+    // Shop A kann das Produkt aus B nicht löschen.
+    expect((await call("DELETE", `/admin/v1/products/${id}`, "a")).statusCode).toBe(404);
+    const r = await call("DELETE", `/admin/v1/products/${id}`, "b");
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ id, deleted: true });
+    expect((await call("GET", `/admin/v1/products/${id}`, "b")).statusCode).toBe(404);
+    expect((await call("DELETE", `/admin/v1/products/${id}`, "b")).statusCode).toBe(404);
+    const names = (await call("GET", "/admin/v1/products", "b"))
+      .json()
+      .data.map((p: { name: string }) => p.name);
+    expect(names).not.toContain("Mütze");
+    const again = await call("POST", "/admin/v1/products", "b", {
+      name: "Mütze",
+      price: { amount: 1 },
+      sku: "M-1",
+    });
+    expect(again.statusCode).toBe(201);
+    expect(again.json().slug).toBe("muetze-2");
+    const { rows } = await inspect.query(
+      `SELECT (SELECT status FROM catalog.product WHERE id = $2) AS status,
+              (SELECT count(*)::int FROM catalog.product_category WHERE product_id = $2) AS links,
+              (SELECT data->>'name' FROM kernel.outbox WHERE tenant_id = $1
+                 AND type = 'catalog.product.deleted.v1') AS event`,
+      [TENANT_B, id],
+    );
+    expect(rows[0]).toEqual({ status: "archived", links: 0, event: "Mütze" });
+  });
+
+  it("Kategorie löschen: Produkte bleiben ohne Kategorie, fremder Shop 404", async () => {
+    const cat = (await call("POST", "/admin/v1/categories", "a", { name: "Schwarztee" })).json();
+    const prod = (
+      await call("POST", "/admin/v1/products", "a", {
+        name: "Ceylon",
+        price: { amount: 600 },
+        categoryId: cat.id,
+      })
+    ).json();
+    expect((await call("DELETE", `/admin/v1/categories/${cat.id}`, "b")).statusCode).toBe(404);
+    const r = await call("DELETE", `/admin/v1/categories/${cat.id}`, "a");
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ id: cat.id, deleted: true, productsWithoutCategory: 1 });
+    expect((await call("GET", `/admin/v1/categories/${cat.id}`, "a")).statusCode).toBe(404);
+    const after = await call("GET", `/admin/v1/products/${prod.id}`, "a");
+    expect(after.statusCode).toBe(200);
+    expect(after.json().categoryId).toBeNull();
+    const { rows } = await inspect.query(
+      `SELECT count(*)::int AS n FROM kernel.outbox WHERE tenant_id = $1 AND type = 'catalog.category.deleted.v1'`,
+      [TENANT_A],
+    );
+    expect(rows[0].n).toBe(1);
   });
 
   it("Testdaten: legt den Teeladen-Katalog über die API an, beim zweiten Mal nichts", async () => {

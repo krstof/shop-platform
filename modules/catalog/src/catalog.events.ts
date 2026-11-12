@@ -38,6 +38,18 @@ export const categoryUpdated = defineEvent(
   z.strictObject({ id: z.uuid(), changes: z.record(z.string(), z.tuple([value, value])) }),
 );
 
+/** Händler hat das Produkt gelöscht (intern archiviert, siehe product-repository). */
+export const productDeleted = defineEvent(
+  "catalog.product.deleted.v1",
+  z.strictObject({ id: z.uuid(), name: z.string() }),
+);
+
+/** Kategorie gelöscht; ihre Produkte bleiben ohne Kategorie. */
+export const categoryDeleted = defineEvent(
+  "catalog.category.deleted.v1",
+  z.strictObject({ id: z.uuid(), name: z.string() }),
+);
+
 export const catalogEvents = [
   manufacturerCreated,
   manufacturerUpdated,
@@ -45,6 +57,8 @@ export const catalogEvents = [
   productUpdated,
   categoryCreated,
   categoryUpdated,
+  productDeleted,
+  categoryDeleted,
 ] as const;
 
 /** Unterschiede zweier Stände als { feld: [alt, neu] }; Zahlen werden zu Text. */

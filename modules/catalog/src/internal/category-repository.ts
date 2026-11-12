@@ -181,3 +181,26 @@ export async function categoryExists(trx: Transaction<DB>, id: string): Promise<
     .executeTakeFirst();
   return r !== undefined;
 }
+
+/**
+ * Löscht eine Kategorie samt Text. Ihre Produkte bleiben und sind danach ohne Kategorie
+ * (Zuordnung fällt per ON DELETE CASCADE weg). Gibt die gelöschte Kategorie zurück.
+ */
+export async function deleteCategory(trx: Transaction<DB>, id: string): Promise<CategoryRow | undefined> {
+  const before = await findCategoryById(trx, id);
+  if (before === undefined) return undefined;
+  await trx.deleteFrom("catalog.category").where("id", "=", id).execute();
+  return before;
+}
+
+/** So viele Produkte (ohne gelöschte) hängen an der Kategorie. */
+export async function countProductsInCategory(trx: Transaction<DB>, id: string): Promise<number> {
+  const r = await trx
+    .selectFrom("catalog.product_category as pc")
+    .innerJoin("catalog.product as p", "p.id", "pc.product_id")
+    .select((eb) => eb.fn.countAll<string>().as("n"))
+    .where("pc.category_id", "=", id)
+    .where("p.status", "<>", "archived")
+    .executeTakeFirstOrThrow();
+  return Number(r.n);
+}

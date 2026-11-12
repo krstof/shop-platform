@@ -12,11 +12,12 @@ import {
   type Transaction,
 } from "@shop/kernel";
 import { z } from "zod";
-import { diff, productCreated, productUpdated } from "../../catalog.events.js";
+import { diff, productCreated, productDeleted, productUpdated } from "../../catalog.events.js";
 import type { DB } from "../../db.generated.js";
 import { categoryExists } from "../../internal/category-repository.js";
 import { withConflictMapping } from "../../internal/conflicts.js";
 import {
+  archiveProduct,
   findProductById,
   findProducts,
   freeProductSlug,
@@ -234,5 +235,35 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
     },
   });
 
-  return [list, get, create, update];
+  const remove = defineEndpoint({
+    api: "admin",
+    method: "DELETE",
+    path: "/products/{productId}",
+    operationId: "deleteProduct",
+    summary: "Produkt löschen",
+    description:
+      "Löscht ein Produkt: Es verschwindet aus dem Shop und aus allen Listen, die Artikelnummer wird " +
+      "wieder frei. Bestehende Bestellungen behalten ihre Angaben (intern wird das Produkt nur " +
+      "archiviert). Nur aus dem Shop nehmen, ohne zu löschen: `status: draft` mit PATCH.",
+    tags: ["Produkte"],
+    access: { scopes: ["products:write"] },
+    params: z.strictObject({ productId: idParam }),
+    response: { status: 200, description: "Gelöscht.", schema: deletedSchema },
+    problems: [404],
+    handler: async ({ params }) => {
+      const before = await withTenantTransaction(db, async (trx) => {
+        const row = await archiveProduct(trx, params.productId);
+        if (row !== undefined) await publishEvent(trx, productDeleted, { id: row.id, name: row.name });
+        return row;
+      });
+      if (before === undefined) throw new NotFoundError();
+      return { id: before.id, deleted: true as const };
+    },
+  });
+
+  return [list, get, create, update, remove];
 }
+
+const deletedSchema = z
+  .object({ id: z.uuid(), deleted: z.literal(true) })
+  .meta({ id: "DeletedProduct", description: "Bestätigung, dass das Produkt gelöscht ist." });

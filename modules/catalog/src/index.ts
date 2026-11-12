@@ -31,10 +31,12 @@ export type {
 export {
   catalogEvents,
   categoryCreated,
+  categoryDeleted,
   categoryUpdated,
   manufacturerCreated,
   manufacturerUpdated,
   productCreated,
+  productDeleted,
   productUpdated,
 } from "./catalog.events.js";
 

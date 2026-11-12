@@ -9,9 +9,11 @@ import {
   type Database,
 } from "@shop/kernel";
 import { z } from "zod";
-import { categoryCreated, categoryUpdated, diff } from "../../catalog.events.js";
+import { categoryCreated, categoryDeleted, categoryUpdated, diff } from "../../catalog.events.js";
 import type { DB } from "../../db.generated.js";
 import {
+  countProductsInCategory,
+  deleteCategory,
   findCategories,
   findCategoryById,
   freeCategorySlug,
@@ -138,5 +140,43 @@ export function categoryEndpoints(db: Database<DB>): Endpoint[] {
     },
   });
 
-  return [list, get, create, update];
+  const remove = defineEndpoint({
+    api: "admin",
+    method: "DELETE",
+    path: "/categories/{categoryId}",
+    operationId: "deleteCategory",
+    summary: "Kategorie löschen",
+    description:
+      "Löscht eine Kategorie. Ihre Produkte bleiben erhalten und sind danach ohne Kategorie; die Antwort " +
+      "nennt, wie viele das waren.",
+    tags: ["Kategorien"],
+    access: { scopes: ["products:write"] },
+    params: z.strictObject({ categoryId: idParam }),
+    response: { status: 200, description: "Gelöscht.", schema: deletedCategorySchema },
+    problems: [404],
+    handler: async ({ params }) => {
+      const result = await withTenantTransaction(db, async (trx) => {
+        const products = await countProductsInCategory(trx, params.categoryId);
+        const row = await deleteCategory(trx, params.categoryId);
+        if (row === undefined) return undefined;
+        await publishEvent(trx, categoryDeleted, { id: row.id, name: row.name });
+        return { id: row.id, products };
+      });
+      if (result === undefined) throw new NotFoundError();
+      return { id: result.id, deleted: true as const, productsWithoutCategory: result.products };
+    },
+  });
+
+  return [list, get, create, update, remove];
 }
+
+const deletedCategorySchema = z
+  .object({
+    id: z.uuid(),
+    deleted: z.literal(true),
+    productsWithoutCategory: z
+      .number()
+      .int()
+      .describe("So viele Produkte hatten diese Kategorie und sind jetzt ohne Kategorie."),
+  })
+  .meta({ id: "DeletedCategory", description: "Bestätigung, dass die Kategorie gelöscht ist." });

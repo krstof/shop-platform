@@ -263,3 +263,22 @@ export async function findPublishedProductsByIds(
       .execute()
   ).map(toRow);
 }
+
+/**
+ * „Löscht“ ein Produkt für den Händler: Es wird archiviert, nicht wirklich gelöscht, weil alte
+ * Bestellungen und Warenkörbe auf seine Variante zeigen. Danach taucht es nirgends mehr auf
+ * (alle Abfragen lassen `archived` weg). Artikelnummer und Kategorie werden frei, damit ein
+ * neues Produkt sie wieder nutzen kann. Bilder bleiben vorerst liegen (STATUS „Später“).
+ */
+export async function archiveProduct(trx: Transaction<DB>, id: string): Promise<ProductRow | undefined> {
+  const before = await findProductById(trx, id);
+  if (before === undefined) return undefined;
+  await trx.updateTable("catalog.variant").set({ sku: null }).where("product_id", "=", id).execute();
+  await trx.deleteFrom("catalog.product_category").where("product_id", "=", id).execute();
+  await trx
+    .updateTable("catalog.product")
+    .set({ status: "archived", archived_at: new Date(), updated_at: new Date() })
+    .where("id", "=", id)
+    .execute();
+  return before;
+}

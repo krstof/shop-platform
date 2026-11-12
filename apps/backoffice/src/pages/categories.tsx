@@ -379,7 +379,57 @@ function CategoryEditor({ category }: { category: Category | undefined }) {
             </span>
           </label>
         </Card>
+        {current !== undefined && <DeleteCategoryCard category={current} />}
       </div>
     </form>
+  );
+}
+
+/** Löschen mit Rückfrage. Die Produkte der Kategorie bleiben, nur ohne Kategorie. */
+function DeleteCategoryCard({ category }: { category: Category }) {
+  const shop = useShop();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () =>
+      request<{ id: string; deleted: true; productsWithoutCategory: number }>(
+        `/admin/v1/categories/${category.id}`,
+        { method: "DELETE", shopId: shop.id },
+      ),
+    onSuccess: async () => {
+      queryClient.removeQueries({ queryKey: ["category", shop.id, category.id] });
+      await queryClient.invalidateQueries({ queryKey: categoriesKey(shop.id) });
+      await queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+      await navigate({ to: "/$shop/kategorien", params: { shop: shop.handle } });
+    },
+  });
+  return (
+    <Card title="Kategorie löschen">
+      <p className="text-sm text-stone-500">
+        Die Produkte darin bleiben erhalten und sind danach ohne Kategorie.
+      </p>
+      {remove.isError && (
+        <div className="mt-3">
+          <Alert>{remove.error instanceof ApiError ? remove.error.message : "Das hat nicht geklappt."}</Alert>
+        </div>
+      )}
+      <div className="mt-4">
+        <Button
+          type="button"
+          variant="danger"
+          busy={remove.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                `Kategorie „${category.name}“ wirklich löschen? Die Produkte darin bleiben erhalten.`,
+              )
+            )
+              remove.mutate();
+          }}
+        >
+          Löschen
+        </Button>
+      </div>
+    </Card>
   );
 }
