@@ -8,6 +8,7 @@ import { OrderPage, OrdersPage } from "./pages/orders.js";
 import { PlatformPage } from "./pages/platform.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
+import { parseProductFilter } from "./lib/product-filter.js";
 
 const root = createRootRoute({
   component: Outlet,
@@ -45,7 +46,12 @@ const shopHome = createRoute({
     return <Navigate to="/$shop/produkte" params={{ shop: handle }} replace />;
   },
 });
-const products = createRoute({ getParentRoute: () => shop, path: "/produkte", component: ProductsPage });
+const products = createRoute({
+  getParentRoute: () => shop,
+  path: "/produkte",
+  component: ProductsPage,
+  validateSearch: parseProductFilter,
+});
 const productNew = createRoute({
   getParentRoute: () => shop,
   path: "/produkte/neu",

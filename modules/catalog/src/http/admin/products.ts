@@ -1,6 +1,15 @@
 // Produkte in der Admin-API (M2): auflisten, lesen, anlegen, ändern. Preis und Bestand schreiben
 // die Module pricing und inventory über ihre Fassaden in derselben Transaktion mit.
-import { decodeCursor, defineEndpoint, idParam, listQuery, pageOf, toPage, type Endpoint } from "@shop/http";
+import {
+  decodeCursor,
+  defineEndpoint,
+  idParam,
+  listQuery,
+  pageOf,
+  singleLineText,
+  toPage,
+  type Endpoint,
+} from "@shop/http";
 import {
   getContext,
   NotFoundError,
@@ -92,12 +101,14 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
     summary: "Produkte auflisten",
     description:
       "Listet die Produkte des Shops mit Preis, Bestand und Bildern in Anlagereihenfolge, seitenweise mit " +
-      "Cursor. Filter nach Status und Kategorie möglich.",
+      "Cursor. Filter nach Status und Kategorie möglich, `q` sucht ohne Groß-/Kleinschreibung im Namen " +
+      "und in der Artikelnummer.",
     tags: ["Produkte"],
     access: { scopes: ["products:read"] },
     query: listQuery({
       status: z.enum(["draft", "published"]).optional(),
       categoryId: z.uuid().optional(),
+      q: singleLineText(100).optional().meta({ description: "Suchtext für Name oder Artikelnummer." }),
     }),
     response: { status: 200, description: "Eine Seite mit Produkten.", schema: pageOf(productSchema) },
     handler: async ({ query, locale }) => {
@@ -108,6 +119,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           afterId: after,
           status: query.status,
           categoryId: query.categoryId,
+          search: query.q,
         });
         const visible = rows.slice(0, query.limit);
         const items = await withDetails(trx, visible);

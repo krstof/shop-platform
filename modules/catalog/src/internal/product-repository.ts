@@ -72,6 +72,13 @@ export interface ProductFilter {
   readonly afterId?: string | undefined;
   readonly status?: ProductStatus | undefined;
   readonly categoryId?: string | undefined;
+  /** Sucht ohne Groß-/Kleinschreibung im Namen und in der Artikelnummer (Teiltreffer). */
+  readonly search?: string | undefined;
+}
+
+/** Macht %, _ und \\ in einem LIKE-Muster wirkungslos, damit sie als normale Zeichen gelten. */
+export function likePattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
 /** Produkte in Anlagereihenfolge (UUIDv7), eine Zeile mehr als verlangt (nächste Seite?). */
@@ -82,6 +89,10 @@ export async function findProducts(trx: Transaction<DB>, f: ProductFilter): Prom
   if (f.afterId !== undefined) q = q.where("p.id", ">", f.afterId);
   if (f.status !== undefined) q = q.where("p.status", "=", f.status);
   if (f.categoryId !== undefined) q = q.where("pc.category_id", "=", f.categoryId);
+  if (f.search !== undefined) {
+    const pattern = likePattern(f.search);
+    q = q.where((eb) => eb.or([eb("t.name", "ilike", pattern), eb("v.sku", "ilike", pattern)]));
+  }
   return (await q.execute()).map(toRow);
 }
 

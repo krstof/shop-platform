@@ -3687,7 +3687,7 @@
       "get": {
         "operationId": "listProducts",
         "summary": "Produkte auflisten",
-        "description": "Listet die Produkte des Shops mit Preis, Bestand und Bildern in Anlagereihenfolge, seitenweise mit Cursor. Filter nach Status und Kategorie möglich.",
+        "description": "Listet die Produkte des Shops mit Preis, Bestand und Bildern in Anlagereihenfolge, seitenweise mit Cursor. Filter nach Status und Kategorie möglich, `q` sucht ohne Groß-/Kleinschreibung im Namen und in der Artikelnummer.",
         "tags": [
           "Produkte"
         ],
@@ -3736,6 +3736,17 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Suchtext für Name oder Artikelnummer.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
             }
           },
           {

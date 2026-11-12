@@ -202,6 +202,33 @@ describe.skipIf(adminUrl === undefined)("Produkte und Kategorien (M2, echte Date
     expect(drafts.json().data).toHaveLength(3);
   });
 
+  it("sucht in Name und Artikelnummer, ohne Groß-/Kleinschreibung, % und _ zählen wörtlich", async () => {
+    const skuProduct = await call("POST", "/admin/v1/products", "a", {
+      name: "Kräutermischung 50_50",
+      price: { amount: 700 },
+      sku: "TEE-KR%1",
+    });
+    expect(skuProduct.statusCode).toBe(201);
+    const names = async (q: string, extra = "") => {
+      const r = await call("GET", `/admin/v1/products?q=${encodeURIComponent(q)}${extra}`, "a");
+      expect(r.statusCode).toBe(200);
+      return r.json().data.map((p: { name: string }) => p.name);
+    };
+    expect(await names("earl")).toEqual(["Earl Grey"]);
+    expect(await names("FRÜHLING")).toEqual(["Sencha Frühlingshauch"]);
+    expect(await names("tee-kr")).toEqual(["Kräutermischung 50_50"]);
+    expect(await names("%")).toEqual(["Kräutermischung 50_50"]);
+    expect(await names("0_5")).toEqual(["Kräutermischung 50_50"]);
+    expect(await names("_")).toEqual(["Kräutermischung 50_50"]);
+    expect(await names("  rooibos  ")).toEqual(["Rooibos"]);
+    expect(await names("gibt es nicht")).toEqual([]);
+    expect(await names("a", "&status=published")).toEqual(["Sencha Frühlingshauch"]);
+    expect(await names("e", `&categoryId=${categoryId}`)).toEqual(["Sencha Frühlingshauch"]);
+    expect((await call("GET", "/admin/v1/products?q=", "a")).statusCode).toBe(422);
+    expect((await call("GET", `/admin/v1/products?q=${"x".repeat(101)}`, "a")).statusCode).toBe(422);
+    expect((await call("GET", "/admin/v1/products?q=earl", "b")).json().data).toEqual([]);
+  });
+
   it("Shop B sieht nichts von A; fremde Kategorie wird abgelehnt", async () => {
     expect((await call("GET", "/admin/v1/products", "b")).json().data).toEqual([]);
     expect((await call("GET", "/admin/v1/categories", "b")).json().data).toEqual([]);
