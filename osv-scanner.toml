@@ -1,7 +1,15 @@
 # Befristete Ausnahmen für den OSV-Scanner (T-07, SIC-08). Jede Ausnahme braucht Grund und Ablaufdatum.
-# Zurzeit keine Ausnahmen. Vorlage:
+# Vorlage:
 #
 # [[IgnoredVulns]]
 # id = "GHSA-xxxx-xxxx-xxxx"
 # ignoreUntil = 2026-12-31T00:00:00Z
 # reason = """Warum die Lücke uns nicht trifft und wann sie behoben wird."""
+
+[[IgnoredVulns]]
+id = "GHSA-r3h5-4585-7x3w"
+ignoreUntil = 2026-12-15T00:00:00Z
+reason = """Bild-Endpunkt /_image liest auf Linux Dateien aus einem Nachbarordner, der sich nur in Groß-/Kleinschreibung
+vom Ausgabeordner unterscheidet. Die Lücke steckt in astro und ist in astro 7.4.7 behoben (bei uns seit 13.11.2026
+eingebaut). OSV führt @astrojs/node nur mit, weil der Adapter diesen Endpunkt nutzt; laut Hinweis genügt das
+astro-Update ("The fix ships in astro"). Bis 15.12.2026 prüfen, ob OSV eine Adapter-Version als behoben markiert."""
