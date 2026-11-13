@@ -1,28 +1,66 @@
 ---
-// Startseite eines Shops (M4): Kategorien und alle veröffentlichten Produkte.
+// Startseite eines Shops (M4, erweitert mit Shop-Editor Teil 2): großes Bild mit Überschrift und
+// Text, hervorgehobene Produkte, Kategorien-Kacheln, danach alle Produkte. Was der Händler im
+// Editor „Aussehen“ eingestellt und veröffentlicht hat, bestimmt Bild, Texte und Reihenfolge.
 import Shop from "../../layouts/Shop.astro";
 import Produktkarte from "../../components/Produktkarte.astro";
 import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
+import { DEFAULT_HOME } from "../../lib/design.js";
 import { warenkorbAnzahl } from "../../lib/cart.js";
 
 const daten = await loadShop(Astro.params.shop);
 if (daten === undefined) return Astro.rewrite("/404");
 const { shop, categories } = daten;
+const home = shop.design?.home ?? DEFAULT_HOME;
+
 const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products")).data;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+
+// Hervorgehobene Produkte in der vom Händler gewählten Reihenfolge; nicht mehr sichtbare fallen weg.
+const nachId = new Map(produkte.map((p) => [p.id, p]));
+const empfohlen = home.featuredProductIds
+  .map((id) => nachId.get(id))
+  .filter((p): p is StoreProduct => p !== undefined);
+
+const titel = home.heroTitle !== "" ? home.heroTitle : `Willkommen bei ${shop.name}`;
+const text = home.heroText !== "" ? home.heroText : "Schön, dass du da bist. Stöbere durch unser Sortiment.";
+const sichtbareKategorien = home.showCategories ? categories : [];
 ---
 
 <Shop shop={shop} categories={categories} titel={shop.name} korb={korb}>
-  <section class="buehne" aria-labelledby="willkommen">
-    <h1 id="willkommen">Willkommen bei {shop.name}</h1>
-    <p>Schön, dass du da bist. Stöbere durch unser Sortiment.</p>
+  <section class:list={["buehne", { "buehne-bild": home.heroImage !== null }]} aria-labelledby="willkommen">
+    {home.heroImage !== null && (
+      <img
+        class="buehne-foto"
+        src={home.heroImage.url}
+        alt=""
+        width={home.heroImage.width}
+        height={home.heroImage.height}
+        fetchpriority="high"
+      />
+    )}
+    <div class="buehne-text">
+      <h1 id="willkommen">{titel}</h1>
+      <p>{text}</p>
+    </div>
   </section>
 
-  {categories.length > 0 && (
-    <>
-      <h2>Kategorien</h2>
+  {empfohlen.length > 0 && (
+    <section aria-labelledby="empfohlen">
+      <h2 id="empfohlen">Empfohlen</h2>
+      <ul class="raster">
+        {empfohlen.map((p) => (
+          <Produktkarte produkt={p} shop={shop.handle} />
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {sichtbareKategorien.length > 0 && (
+    <section aria-labelledby="kategorien-titel">
+      <h2 id="kategorien-titel">Kategorien</h2>
       <ul class="kategorien">
-        {categories.map((k) => (
+        {sichtbareKategorien.map((k) => (
           <li>
             <a href={`/${shop.handle}/kategorie/${k.slug}`}>
               <strong>{k.name}</strong>
@@ -31,7 +69,7 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
           </li>
         ))}
       </ul>
-    </>
+    </section>
   )}
 
   <h2>Alle Produkte</h2>

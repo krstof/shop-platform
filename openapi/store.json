@@ -818,7 +818,7 @@
       "get": {
         "operationId": "getStoreDesign",
         "summary": "Aussehen des Shops",
-        "description": "Veröffentlichte Hauptfarbe, Schrift und Logo. Unbekannte oder gesperrte Shops ergeben 404.",
+        "description": "Veröffentlichte Hauptfarbe, Schrift, Logo und Startseite. Unbekannte oder gesperrte Shops ergeben 404.",
         "tags": [
           "Storefront"
         ],
@@ -1646,16 +1646,86 @@
                 "type": "null"
               }
             ]
+          },
+          "home": {
+            "$ref": "#/components/schemas/StoreDesignHome"
           }
         },
         "required": [
           "accentColor",
           "accentDarkColor",
           "font",
-          "logo"
+          "logo",
+          "home"
         ],
         "additionalProperties": false,
         "description": "Veröffentlichtes Aussehen eines Shops."
+      },
+      "StoreDesignHome": {
+        "type": "object",
+        "properties": {
+          "heroImage": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "heroTitle": {
+            "type": "string",
+            "description": "Leer: der Shop zeigt seinen Standard."
+          },
+          "heroText": {
+            "type": "string",
+            "description": "Leer: der Shop zeigt seinen Standard."
+          },
+          "featuredProductIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "Hervorgehobene Produkte in dieser Reihenfolge; nicht (mehr) sichtbare einfach auslassen."
+          },
+          "showCategories": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "heroImage",
+          "heroTitle",
+          "heroText",
+          "featuredProductIds",
+          "showCategories"
+        ],
+        "additionalProperties": false,
+        "description": "Inhalt der Startseite."
       },
       "StoreOrder": {
         "type": "object",

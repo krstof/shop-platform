@@ -125,10 +125,20 @@ export interface DesignImage {
   readonly height: number;
 }
 
+/** Inhalt der Startseite (Shop-Editor Teil 2). */
+export interface DesignHome {
+  readonly heroImage: DesignImage | null;
+  readonly heroTitle: string;
+  readonly heroText: string;
+  readonly featuredProductIds: readonly string[];
+  readonly showCategories: boolean;
+}
+
 export interface Design {
   readonly accentColor: string;
   readonly font: "klassisch" | "modern" | "freundlich";
   readonly logo: DesignImage | null;
+  readonly home: DesignHome;
 }
 
 /** Aussehen des Shops: Entwurf im Editor und was der Shop gerade zeigt. */

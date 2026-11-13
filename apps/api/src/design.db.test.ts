@@ -140,6 +140,13 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       accentDarkColor: "#2f5038",
       font: "klassisch",
       logo: null,
+      home: {
+        heroImage: null,
+        heroTitle: "",
+        heroText: "",
+        featuredProductIds: [],
+        showCategories: true,
+      },
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });
@@ -242,5 +249,153 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
     await call("POST", "/admin/v1/design/publish", "a");
     expect(has(publishedLogo)).toBe(false);
     expect((await call("GET", "/store/v1/shops/design-a/design")).json().logo).toBeNull();
+  });
+
+  it("Startseite (Teil 2): Texte, Empfehlungen, Kategorien-Schalter und Bild", async () => {
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    expect(start.draft.home).toEqual({
+      heroImage: null,
+      heroTitle: "",
+      heroText: "",
+      featuredProductIds: [],
+      showCategories: true,
+    });
+
+    const featured = [uuidv7(), uuidv7()];
+    const body = {
+      accentColor: "#3f6b4a",
+      font: "klassisch",
+      logoImageId: null,
+      home: {
+        heroImageId: null,
+        heroTitle: "Frischer Tee",
+        heroText: "Lose Tees aus kleinen Gärten.",
+        featuredProductIds: featured,
+        showCategories: false,
+      },
+    };
+    const saved = await call("PUT", "/admin/v1/design/draft", "a", body, start.version);
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().draft.home).toMatchObject({
+      heroTitle: "Frischer Tee",
+      heroText: "Lose Tees aus kleinen Gärten.",
+      featuredProductIds: featured,
+      showCategories: false,
+    });
+    expect(saved.json().hasUnpublishedChanges).toBe(true);
+    // Der Shop zeigt die Startseite erst nach Veröffentlichen.
+    const storeBefore = (await call("GET", "/store/v1/shops/design-a/design")).json();
+    expect(storeBefore.home.heroTitle).toBe("");
+
+    // Bild für die Startseite hochladen.
+    const up = await call("POST", "/admin/v1/design/hero-image", "a", { data: await logo() });
+    expect(up.statusCode).toBe(201);
+    const heroId = up.json().draft.home.heroImage.id as string;
+    expect(up.json().draft.home.heroImage).toMatchObject({ width: 400, height: 120 });
+    // Texte aus dem vorher gespeicherten Entwurf bleiben erhalten.
+    expect(up.json().draft.home.heroTitle).toBe("Frischer Tee");
+
+    const pub = await call("POST", "/admin/v1/design/publish", "a");
+    expect(pub.statusCode).toBe(200);
+    const store = (await call("GET", "/store/v1/shops/design-a/design")).json();
+    expect(store.home).toMatchObject({
+      heroTitle: "Frischer Tee",
+      heroText: "Lose Tees aus kleinen Gärten.",
+      featuredProductIds: featured,
+      showCategories: false,
+    });
+    expect(store.home.heroImage.url).toMatch(/^https:\/\/media\.localhost\/tenants\//);
+
+    // Shop B sieht nichts davon.
+    expect((await call("GET", "/store/v1/shops/design-b/design")).json().home).toEqual({
+      heroImage: null,
+      heroTitle: "",
+      heroText: "",
+      featuredProductIds: [],
+      showCategories: true,
+    });
+    return heroId;
+  });
+
+  it("Startseite: zu lange Texte und fremde Bilder ergeben 422, Bilder werden aufgeräumt", async () => {
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    const has = (id: string) => [...storage.objects.keys()].some((k) => k.includes(id));
+    const publishedHero = start.published.home.heroImage.id as string;
+
+    // Zu lange Überschrift: 422 mit Feld /home/heroTitle.
+    const langerTitel = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        accentColor: "#3f6b4a",
+        font: "klassisch",
+        logoImageId: null,
+        home: {
+          heroImageId: null,
+          heroTitle: "x".repeat(81),
+          heroText: "",
+          featuredProductIds: [],
+          showCategories: true,
+        },
+      },
+      start.version,
+    );
+    expect(langerTitel.statusCode).toBe(422);
+    // Schema-Fehler tragen den Pfad mit /body-Präfix (anders als die Handler-Prüfungen weiter unten).
+    expect(langerTitel.json().errors[0].path).toBe("/body/home/heroTitle");
+
+    // Erfundenes Startseitenbild: 422 mit Feld /home/heroImageId.
+    const fremdesBild = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        accentColor: "#3f6b4a",
+        font: "klassisch",
+        logoImageId: null,
+        home: {
+          heroImageId: uuidv7(),
+          heroTitle: "",
+          heroText: "",
+          featuredProductIds: [],
+          showCategories: true,
+        },
+      },
+      start.version,
+    );
+    expect(fremdesBild.statusCode).toBe(422);
+    expect(fremdesBild.json().errors[0].path).toBe("/home/heroImageId");
+
+    // Neues Bild hochladen (ersetzt nur im Entwurf): das veröffentlichte bleibt.
+    const second = (await call("POST", "/admin/v1/design/hero-image", "a", { data: await logo() })).json();
+    expect(second.draft.home.heroImage.id).not.toBe(publishedHero);
+    expect(has(publishedHero)).toBe(true);
+
+    // Startseitenbild entfernen und veröffentlichen: beide nicht mehr genutzten Bilder weg.
+    const neuesBild = second.draft.home.heroImage.id as string;
+    const ohneBild = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        accentColor: "#3f6b4a",
+        font: "klassisch",
+        logoImageId: null,
+        home: {
+          heroImageId: null,
+          heroTitle: "",
+          heroText: "",
+          featuredProductIds: [],
+          showCategories: true,
+        },
+      },
+      second.version,
+    );
+    expect(ohneBild.statusCode).toBe(200);
+    expect(has(neuesBild)).toBe(false); // nie veröffentlicht, sofort weg
+    await call("POST", "/admin/v1/design/publish", "a");
+    expect(has(publishedHero)).toBe(false); // jetzt nicht mehr veröffentlicht
+    expect((await call("GET", "/store/v1/shops/design-a/design")).json().home.heroImage).toBeNull();
   });
 });

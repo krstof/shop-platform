@@ -1,7 +1,7 @@
-// Shop-Editor Teil 1 (12./13.11.2026): Aussehen eines Shops in Admin- und Storefront-API.
-// Der Händler ändert einen Entwurf (Farbe, Schrift, Logo); erst „Veröffentlichen“ macht ihn im Shop
+// Shop-Editor Teil 1 und 2 (12./13.11.2026): Aussehen eines Shops in Admin- und Storefront-API.
+// Der Händler ändert einen Entwurf (Farbe, Schrift, Logo, Startseite); erst „Veröffentlichen“ macht ihn im Shop
 // sichtbar. Die Storefront liest nur den veröffentlichten Stand.
-import { defineEndpoint, singleLineText, timestamp, type Endpoint } from "@shop/http";
+import { defineEndpoint, multiLineText, singleLineText, timestamp, type Endpoint } from "@shop/http";
 import {
   getContext,
   NotFoundError,
@@ -15,11 +15,16 @@ import type { DB } from "../db.generated.js";
 import {
   darker,
   FONTS,
+  imagesOf,
+  MAX_FEATURED,
+  MAX_HERO_TEXT,
+  MAX_HERO_TITLE,
   MIN_CONTRAST,
   normalizeHex,
   readableWithWhite,
   sameSettings,
   type DesignSettings,
+  type HomeSettings,
 } from "../internal/design.js";
 import {
   lockInstallation,
@@ -57,12 +62,18 @@ const MAX_LOGO_BYTES = 8 * 1024 * 1024;
 const MAX_BASE64_CHARS = Math.ceil(MAX_LOGO_BYTES / 3) * 4;
 const LOGO_BODY_LIMIT = 12 * 1024 * 1024;
 
-const REJECTION_TEXT: Record<ImageRejection, string> = {
-  unsupported_format: "Bitte das Logo als PNG, JPEG oder WebP hochladen.",
-  too_large: "Das Logo ist zu groß (höchstens 8 MB).",
-  too_small: "Das Logo ist zu klein (mindestens 32 × 32 Pixel).",
-  unreadable: "Die Datei lässt sich nicht lesen. Ist sie beschädigt?",
-};
+function rejectionText(reason: ImageRejection, what: "Das Logo" | "Das Bild"): string {
+  switch (reason) {
+    case "unsupported_format":
+      return `Bitte ${what === "Das Logo" ? "das Logo" : "das Bild"} als PNG, JPEG oder WebP hochladen.`;
+    case "too_large":
+      return `${what} ist zu groß (höchstens 8 MB).`;
+    case "too_small":
+      return `${what} ist zu klein (mindestens 32 × 32 Pixel).`;
+    case "unreadable":
+      return "Die Datei lässt sich nicht lesen. Ist sie beschädigt?";
+  }
+}
 
 const TOO_LIGHT =
   "Diese Farbe ist zu hell: Weiße Schrift auf Knöpfen wäre schlecht lesbar. Bitte eine dunklere Farbe wählen.";
@@ -88,9 +99,31 @@ const accentSchema = z
   .regex(/^#[0-9a-fA-F]{6}$/)
   .meta({ description: "Hauptfarbe als Hex, etwa `#3f6b4a`. Für Knöpfe, Links und Markierungen." });
 
+const homeViewSchema = z
+  .object({
+    heroImage: imageSchema.nullable().meta({ description: "Großes Bild oben auf der Startseite." }),
+    heroTitle: z.string().meta({ description: "Überschrift; leer heißt „Willkommen bei <Shopname>“." }),
+    heroText: z.string().meta({ description: "Text unter der Überschrift; leer heißt Standardtext." }),
+    featuredProductIds: z
+      .array(z.uuid())
+      .meta({ description: "Hervorgehobene Produkte in dieser Reihenfolge." }),
+    showCategories: z
+      .boolean()
+      .meta({ description: "Kacheln mit den Kategorien auf der Startseite zeigen." }),
+  })
+  .meta({
+    id: "DesignHome",
+    description: "Startseite: Bild mit Überschrift und Text, Empfehlungen, Kategorien.",
+  });
+
 const designViewSchema = z
-  .object({ accentColor: z.string(), font: fontSchema, logo: imageSchema.nullable() })
-  .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo." });
+  .object({
+    accentColor: z.string(),
+    font: fontSchema,
+    logo: imageSchema.nullable(),
+    home: homeViewSchema,
+  })
+  .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
 const designStateSchema = z
   .object({
@@ -102,6 +135,29 @@ const designStateSchema = z
   })
   .meta({ id: "DesignState", description: "Aussehen des Shops mit Entwurf und veröffentlichtem Stand." });
 
+const homeInput = z
+  .strictObject({
+    heroImageId: z
+      .uuid()
+      .nullable()
+      .meta({ description: "Bild-ID des großen Bildes (aus dem Hochladen) oder `null` für „kein Bild“." }),
+    heroTitle: singleLineText(MAX_HERO_TITLE)
+      .or(z.literal(""))
+      .meta({ description: `Überschrift, höchstens ${MAX_HERO_TITLE} Zeichen; leer für den Standard.` }),
+    heroText: multiLineText(MAX_HERO_TEXT)
+      .or(z.literal(""))
+      .meta({
+        description: `Text unter der Überschrift, höchstens ${MAX_HERO_TEXT} Zeichen; leer für den Standard.`,
+      }),
+    featuredProductIds: z
+      .array(z.uuid())
+      .max(MAX_FEATURED)
+      .refine((ids) => new Set(ids).size === ids.length, { message: "Jedes Produkt nur einmal." })
+      .meta({ description: `Bis zu ${MAX_FEATURED} Produkt-IDs, in der gewünschten Reihenfolge.` }),
+    showCategories: z.boolean(),
+  })
+  .meta({ id: "DesignHomeInput" });
+
 const draftInput = z.strictObject({
   accentColor: accentSchema,
   font: fontSchema,
@@ -109,6 +165,9 @@ const draftInput = z.strictObject({
     .uuid()
     .nullable()
     .meta({ description: "Bild-ID des Logos (aus dem Hochladen) oder `null` für „kein Logo“." }),
+  home: homeInput
+    .optional()
+    .meta({ description: "Startseite. Fehlt das Feld, bleibt die Startseite im Entwurf, wie sie ist." }),
 });
 
 const logoInput = z.strictObject({
@@ -119,12 +178,26 @@ const logoInput = z.strictObject({
   filename: singleLineText(200).optional().meta({ description: "Ursprünglicher Dateiname, nur zur Info." }),
 });
 
+const storeImageSchema = z.object({ url: z.url(), width: z.number().int(), height: z.number().int() });
+
 const storeDesignSchema = z
   .object({
     accentColor: z.string(),
     accentDarkColor: z.string().meta({ description: "Dunklere Fassung für Links und „Maus darüber“." }),
     font: fontSchema,
-    logo: z.object({ url: z.url(), width: z.number().int(), height: z.number().int() }).nullable(),
+    logo: storeImageSchema.nullable(),
+    home: z
+      .object({
+        heroImage: storeImageSchema.nullable(),
+        heroTitle: z.string().meta({ description: "Leer: der Shop zeigt seinen Standard." }),
+        heroText: z.string().meta({ description: "Leer: der Shop zeigt seinen Standard." }),
+        featuredProductIds: z.array(z.uuid()).meta({
+          description:
+            "Hervorgehobene Produkte in dieser Reihenfolge; nicht (mehr) sichtbare einfach auslassen.",
+        }),
+        showCategories: z.boolean(),
+      })
+      .meta({ id: "StoreDesignHome", description: "Inhalt der Startseite." }),
   })
   .meta({ id: "StoreDesign", description: "Veröffentlichtes Aussehen eines Shops." });
 
@@ -142,12 +215,17 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
   const tenant = () => getContext()?.tenantId ?? "";
 
   async function toState(i: Installation): Promise<z.infer<typeof designStateSchema>> {
-    const ids = [i.draft.logoImageId, i.published.logoImageId].filter((x): x is string => x !== null);
-    const found = await images.get(ids);
+    const found = await images.get([...new Set([...imagesOf(i.draft), ...imagesOf(i.published)])]);
+    const image = (id: string | null) => (id === null ? null : (found.get(id) ?? null));
     const view = (s: DesignSettings) => ({
       accentColor: s.accentColor,
       font: s.font,
-      logo: s.logoImageId === null ? null : (found.get(s.logoImageId) ?? null),
+      logo: image(s.logoImageId),
+      home: {
+        ...s.home,
+        featuredProductIds: [...s.home.featuredProductIds],
+        heroImage: image(s.home.heroImageId),
+      },
     });
     return {
       draft: view(i.draft),
@@ -158,12 +236,10 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     };
   }
 
-  /** Logos, die weder im Entwurf noch veröffentlicht vorkommen, samt Dateien löschen. */
+  /** Bilder (Logo, Startseite), die weder im Entwurf noch veröffentlicht vorkommen, samt Dateien löschen. */
   async function dropUnused(before: Installation, after: Installation): Promise<void> {
-    const keep = new Set([after.draft.logoImageId, after.published.logoImageId]);
-    const unused = [before.draft.logoImageId, before.published.logoImageId].filter(
-      (id): id is string => id !== null && !keep.has(id),
-    );
+    const keep = new Set([...imagesOf(after.draft), ...imagesOf(after.published)]);
+    const unused = [...imagesOf(before.draft), ...imagesOf(before.published)].filter((id) => !keep.has(id));
     if (unused.length > 0) await images.remove([...new Set(unused)]);
   }
 
@@ -194,7 +270,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     path: "/design",
     operationId: "getDesign",
     summary: "Aussehen lesen",
-    description: "Entwurf und veröffentlichten Stand des Aussehens (Hauptfarbe, Schrift, Logo).",
+    description: "Entwurf und veröffentlichten Stand des Aussehens (Hauptfarbe, Schrift, Logo, Startseite).",
     tags: ["Aussehen"],
     access: access.read,
     response: { status: 200, description: "Das Aussehen.", schema: designStateSchema },
@@ -214,7 +290,18 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     tags: ["Aussehen"],
     access: access.write,
     body: draftInput,
-    bodyExample: { accentColor: "#1f5f8b", font: "modern", logoImageId: null },
+    bodyExample: {
+      accentColor: "#1f5f8b",
+      font: "modern",
+      logoImageId: null,
+      home: {
+        heroImageId: null,
+        heroTitle: "Frischer Tee, direkt vom Garten",
+        heroText: "Lose Tees aus kleinen Teegärten, sorgfältig ausgewählt.",
+        featuredProductIds: [],
+        showCategories: true,
+      },
+    },
     ifMatch: "required",
     response: { status: 200, description: "Das Aussehen mit neuem Entwurf.", schema: designStateSchema },
     problems: [412, 428],
@@ -228,16 +315,45 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       return change(async (current) => {
         if (current.version !== ifMatch) throw new PreconditionFailedError();
         const logo = body.logoImageId;
-        // Nur ein Logo, das es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
-        if (logo !== null && !(await images.get([logo])).has(logo))
-          throw new ValidationError({
-            detail: "Dieses Logo gibt es nicht. Bitte neu hochladen.",
-            errors: [{ path: "/logoImageId", code: "unknown_image", message: "Unbekanntes Bild." }],
-          });
-        return { draft: { accentColor: accent, font: body.font, logoImageId: logo } };
+        const home: HomeSettings = body.home ?? current.draft.home;
+        // Nur Bilder, die es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
+        const wanted = [
+          { id: logo, path: "/logoImageId", detail: "Dieses Logo gibt es nicht. Bitte neu hochladen." },
+          {
+            id: home.heroImageId,
+            path: "/home/heroImageId",
+            detail: "Dieses Bild gibt es nicht. Bitte neu hochladen.",
+          },
+        ];
+        const found = await images.get(wanted.flatMap((w) => (w.id === null ? [] : [w.id])));
+        for (const w of wanted)
+          if (w.id !== null && !found.has(w.id))
+            throw new ValidationError({
+              detail: w.detail,
+              errors: [{ path: w.path, code: "unknown_image", message: "Unbekanntes Bild." }],
+            });
+        return { draft: { accentColor: accent, font: body.font, logoImageId: logo, home } };
       });
     },
   });
+
+  /** Bild hochladen (vor der Transaktion rechnen, das kann eine Sekunde dauern) und in den Entwurf setzen. */
+  async function uploadInto(
+    body: z.infer<typeof logoInput>,
+    what: "Das Logo" | "Das Bild",
+    put: (draft: DesignSettings, imageId: string) => DesignSettings,
+  ) {
+    const prepared = await images.prepare(Buffer.from(body.data, "base64"), body.filename);
+    if (!prepared.ok) {
+      const text = rejectionText(prepared.reason, what);
+      throw new ValidationError({
+        detail: text,
+        errors: [{ path: "/data", code: prepared.reason, message: text }],
+      });
+    }
+    const image = await prepared.save();
+    return change(async (current) => ({ draft: put(current.draft, image.id) }));
+  }
 
   const uploadLogo = defineEndpoint({
     api: "admin",
@@ -260,17 +376,32 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       schema: designStateSchema,
     },
     problems: [413],
-    handler: async ({ body }) => {
-      // Rechnen vor der Transaktion: Das kann eine Sekunde dauern und soll nichts sperren.
-      const prepared = await images.prepare(Buffer.from(body.data, "base64"), body.filename);
-      if (!prepared.ok)
-        throw new ValidationError({
-          detail: REJECTION_TEXT[prepared.reason],
-          errors: [{ path: "/data", code: prepared.reason, message: REJECTION_TEXT[prepared.reason] }],
-        });
-      const image = await prepared.save();
-      return change(async (current) => ({ draft: { ...current.draft, logoImageId: image.id } }));
+    handler: async ({ body }) => uploadInto(body, "Das Logo", (d, id) => ({ ...d, logoImageId: id })),
+  });
+
+  const uploadHero = defineEndpoint({
+    api: "admin",
+    method: "POST",
+    path: "/design/hero-image",
+    operationId: "uploadDesignHeroImage",
+    summary: "Bild für die Startseite hochladen",
+    description:
+      "Lädt das große Bild oben auf der Startseite hoch (PNG, JPEG oder WebP als Base64, höchstens " +
+      "8 MB, am besten im Querformat) und setzt es in den Entwurf. Ein vorheriges Bild des Entwurfs " +
+      "wird gelöscht, wenn es nicht veröffentlicht ist.",
+    tags: ["Aussehen"],
+    access: access.write,
+    body: logoInput,
+    bodyExample: { data: EXAMPLE_PNG, filename: "startseite.png" },
+    bodyLimit: LOGO_BODY_LIMIT,
+    response: {
+      status: 201,
+      description: "Das Aussehen mit neuem Startseitenbild im Entwurf.",
+      schema: designStateSchema,
     },
+    problems: [413],
+    handler: async ({ body }) =>
+      uploadInto(body, "Das Bild", (d, id) => ({ ...d, home: { ...d.home, heroImageId: id } })),
   });
 
   const publish = defineEndpoint({
@@ -308,7 +439,8 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     path: "/shops/{shopHandle}/design",
     operationId: "getStoreDesign",
     summary: "Aussehen des Shops",
-    description: "Veröffentlichte Hauptfarbe, Schrift und Logo. Unbekannte oder gesperrte Shops ergeben 404.",
+    description:
+      "Veröffentlichte Hauptfarbe, Schrift, Logo und Startseite. Unbekannte oder gesperrte Shops ergeben 404.",
     tags: ["Storefront"],
     access: { public: true, reason: "Jeder Besucher sieht das Aussehen des Shops, den er aufruft." },
     params: z.strictObject({
@@ -322,18 +454,27 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     handler: async () => {
       if (getContext()?.tenantId === undefined) throw new NotFoundError();
       const { published } = await withTenantTransaction(db, (trx) => readInstallation(trx));
-      const logo =
-        published.logoImageId === null
-          ? undefined
-          : (await images.get([published.logoImageId])).get(published.logoImageId);
+      const found = await images.get(imagesOf(published));
+      const image = (id: string | null) => {
+        const i = id === null ? undefined : found.get(id);
+        return i === undefined ? null : { url: i.url, width: i.width, height: i.height };
+      };
+      const { home } = published;
       return {
         accentColor: published.accentColor,
         accentDarkColor: darker(published.accentColor),
         font: published.font,
-        logo: logo === undefined ? null : { url: logo.url, width: logo.width, height: logo.height },
+        logo: image(published.logoImageId),
+        home: {
+          heroImage: image(home.heroImageId),
+          heroTitle: home.heroTitle,
+          heroText: home.heroText,
+          featuredProductIds: [...home.featuredProductIds],
+          showCategories: home.showCategories,
+        },
       };
     },
   });
 
-  return [get, saveDraft, uploadLogo, publish, discard, store];
+  return [get, saveDraft, uploadLogo, uploadHero, publish, discard, store];
 }

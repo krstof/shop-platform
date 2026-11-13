@@ -5,11 +5,27 @@
 
 export type Font = "klassisch" | "modern" | "freundlich";
 
+export interface StoreImageRef {
+  readonly url: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Inhalt der Startseite (Shop-Editor Teil 2): großes Bild, Überschrift, Text, Empfehlungen, Kategorien. */
+export interface StoreHome {
+  readonly heroImage: StoreImageRef | null;
+  readonly heroTitle: string;
+  readonly heroText: string;
+  readonly featuredProductIds: readonly string[];
+  readonly showCategories: boolean;
+}
+
 export interface StoreDesign {
   readonly accentColor: string;
   readonly accentDarkColor: string;
   readonly font: Font;
-  readonly logo: { readonly url: string; readonly width: number; readonly height: number } | null;
+  readonly logo: StoreImageRef | null;
+  readonly home: StoreHome;
 }
 
 const SYSTEM = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -25,11 +41,20 @@ export const FONT_STACKS: Readonly<Record<Font, { titel: string; text: string }>
   freundlich: { titel: ROUNDED, text: ROUNDED },
 };
 
+export const DEFAULT_HOME: StoreHome = {
+  heroImage: null,
+  heroTitle: "",
+  heroText: "",
+  featuredProductIds: [],
+  showCategories: true,
+};
+
 export const DEFAULT_DESIGN: StoreDesign = {
   accentColor: "#3f6b4a",
   accentDarkColor: "#2f5038",
   font: "klassisch",
   logo: null,
+  home: DEFAULT_HOME,
 };
 
 const HEX = /^#[0-9a-f]{6}$/;

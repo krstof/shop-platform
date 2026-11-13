@@ -3,6 +3,8 @@ import {
   contrast,
   darker,
   DEFAULT_DESIGN,
+  DEFAULT_HOME,
+  imagesOf,
   normalizeHex,
   readableWithWhite,
   readSettings,
@@ -33,10 +35,63 @@ describe("Aussehen: Rechenregeln", () => {
   it("liest gespeichertes JSON robust", () => {
     expect(readSettings({})).toEqual(DEFAULT_DESIGN);
     expect(readSettings(null)).toEqual(DEFAULT_DESIGN);
+    // Alte Shops (vor Teil 2) haben kein home-Feld: der Standard wird ergänzt.
     expect(readSettings({ accentColor: "kaputt", font: "comic", logoImageId: 5 })).toEqual(DEFAULT_DESIGN);
-    const s = { accentColor: "#1f5f8b", font: "modern", logoImageId: "0190a3c4-0000-7000-8000-000000000001" };
+    expect(readSettings({ accentColor: "#1f5f8b", font: "modern", logoImageId: null }).home).toEqual(
+      DEFAULT_HOME,
+    );
+    const s = {
+      accentColor: "#1f5f8b",
+      font: "modern",
+      logoImageId: "0190a3c4-0000-7000-8000-000000000001",
+      home: {
+        heroImageId: "0190a3c4-0000-7000-8000-000000000002",
+        heroTitle: "Hallo",
+        heroText: "Text",
+        featuredProductIds: ["0190a3c4-0000-7000-8000-000000000003"],
+        showCategories: false,
+      },
+    };
     expect(readSettings(s)).toEqual(s);
     expect(sameSettings(readSettings(s), readSettings(s))).toBe(true);
     expect(sameSettings(readSettings(s), DEFAULT_DESIGN)).toBe(false);
+  });
+
+  it("liest kaputte Startseiten-Felder zum Standard, Reihenfolge zählt für Gleichheit", () => {
+    // Zu lange Texte, zu viele Produkte, falsche Typen: jedes Feld fällt einzeln auf den Standard.
+    const home = readSettings({
+      accentColor: "#1f5f8b",
+      font: "modern",
+      logoImageId: null,
+      home: {
+        heroImageId: "nicht-uuid",
+        heroTitle: "x".repeat(200),
+        heroText: 42,
+        featuredProductIds: "keine-liste",
+        showCategories: "ja",
+      },
+    }).home;
+    expect(home).toEqual(DEFAULT_HOME);
+
+    const base = readSettings({ accentColor: "#1f5f8b", font: "modern", logoImageId: null });
+    const id1 = "0190a3c4-0000-7000-8000-000000000001";
+    const id2 = "0190a3c4-0000-7000-8000-000000000002";
+    const a = { ...base, home: { ...base.home, featuredProductIds: [id1, id2] } };
+    const b = { ...base, home: { ...base.home, featuredProductIds: [id2, id1] } };
+    expect(sameSettings(a, a)).toBe(true);
+    expect(sameSettings(a, b)).toBe(false); // andere Reihenfolge = andere Einstellung
+  });
+
+  it("imagesOf sammelt Logo und Startseitenbild", () => {
+    expect(imagesOf(DEFAULT_DESIGN)).toEqual([]);
+    const id1 = "0190a3c4-0000-7000-8000-000000000001";
+    const id2 = "0190a3c4-0000-7000-8000-000000000002";
+    const s = readSettings({
+      accentColor: "#1f5f8b",
+      font: "modern",
+      logoImageId: id1,
+      home: { heroImageId: id2, heroTitle: "", heroText: "", featuredProductIds: [], showCategories: true },
+    });
+    expect(imagesOf(s).sort()).toEqual([id1, id2].sort());
   });
 });

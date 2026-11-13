@@ -1,14 +1,17 @@
-// Shop-Editor Teil 1 (13.11.2026): Menüpunkt „Aussehen“. Hauptfarbe, Schrift und Logo wählen, die
-// Vorschau rechts zeigt jede Änderung sofort. Im Shop sichtbar wird erst „Veröffentlichen“.
-// Die Vorschau ist ein Nachbau des Shop-Kopfs und einiger Produktkarten mit echten Daten.
+// Shop-Editor Teil 1 und 2 (13.11.2026): Menüpunkt „Aussehen“. Hauptfarbe, Schrift und Logo
+// (Teil 1) sowie die Startseite (Teil 2: großes Bild mit Überschrift und Text, hervorgehobene
+// Produkte, Kategorien-Kacheln). Die Vorschau rechts zeigt jede Änderung sofort. Im Shop sichtbar
+// wird erst „Veröffentlichen“. Die Vorschau ist ein Nachbau des Shops mit echten Daten.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type ChangeEvent } from "react";
-import { Alert, Badge, Button, Card, Input, Spinner } from "../components/ui.js";
+import { Alert, Badge, Button, Card, Input, Spinner, Textarea } from "../components/ui.js";
 import {
   ApiError,
   fileToBase64,
   listAll,
   request,
+  type Category,
+  type DesignHome,
   type DesignImage,
   type DesignState,
   type Product,
@@ -18,6 +21,9 @@ import {
   darker,
   fontOf,
   FONTS,
+  MAX_FEATURED,
+  MAX_HERO_TEXT,
+  MAX_HERO_TITLE,
   normalizeHex,
   PRESETS,
   readableWithWhite,
@@ -28,22 +34,59 @@ import { formatEuro } from "../lib/money.js";
 import { useShop } from "./layout.js";
 import { productsKey, useCategories } from "./products.js";
 
+interface HomeForm {
+  heroImage: DesignImage | null;
+  heroTitle: string;
+  heroText: string;
+  featuredProductIds: string[];
+  showCategories: boolean;
+}
+
 interface Form {
   accentColor: string;
   font: Font;
   logo: DesignImage | null;
+  home: HomeForm;
 }
 
 const designKey = (shopId: string) => ["design", shopId] as const;
-const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+function homeOf(h: DesignHome): HomeForm {
+  return {
+    heroImage: h.heroImage,
+    heroTitle: h.heroTitle,
+    heroText: h.heroText,
+    featuredProductIds: [...h.featuredProductIds],
+    showCategories: h.showCategories,
+  };
+}
 
 function formOf(state: DesignState): Form {
-  return { accentColor: state.draft.accentColor, font: state.draft.font, logo: state.draft.logo };
+  return {
+    accentColor: state.draft.accentColor,
+    font: state.draft.font,
+    logo: state.draft.logo,
+    home: homeOf(state.draft.home),
+  };
+}
+
+function sameHome(a: HomeForm, b: HomeForm): boolean {
+  return (
+    (a.heroImage?.id ?? null) === (b.heroImage?.id ?? null) &&
+    a.heroTitle === b.heroTitle &&
+    a.heroText === b.heroText &&
+    a.showCategories === b.showCategories &&
+    a.featuredProductIds.join(",") === b.featuredProductIds.join(",")
+  );
 }
 
 function sameForm(a: Form, b: Form): boolean {
   return (
-    a.accentColor === b.accentColor && a.font === b.font && (a.logo?.id ?? null) === (b.logo?.id ?? null)
+    a.accentColor === b.accentColor &&
+    a.font === b.font &&
+    (a.logo?.id ?? null) === (b.logo?.id ?? null) &&
+    sameHome(a.home, b.home)
   );
 }
 
@@ -77,11 +120,23 @@ function DesignEditor({ initial }: { initial: DesignState }) {
   const [form, setForm] = useState<Form>(formOf(initial));
   const [hexText, setHexText] = useState(initial.draft.accentColor);
   const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | undefined>();
-  const fileInput = useRef<HTMLInputElement>(null);
+  const logoInput = useRef<HTMLInputElement>(null);
+  const heroInput = useRef<HTMLInputElement>(null);
+
+  const categories = useCategories(shop.id);
+  const products = useQuery({
+    queryKey: productsKey(shop.id),
+    queryFn: () => listAll<Product>("/admin/v1/products", shop.id),
+  });
 
   const dirty = !sameForm(form, formOf(server));
   const readable = readableWithWhite(form.accentColor);
   const unpublished = dirty || server.hasUnpublishedChanges;
+
+  function setHome(change: Partial<HomeForm>) {
+    setForm((f) => ({ ...f, home: { ...f.home, ...change } }));
+    setMessage(undefined);
+  }
 
   function accept(state: DesignState, keepLocal = false) {
     setServer(state);
@@ -103,7 +158,18 @@ function DesignEditor({ initial }: { initial: DesignState }) {
       method: "PUT",
       shopId: shop.id,
       version: server.version,
-      body: { accentColor: form.accentColor, font: form.font, logoImageId: form.logo?.id ?? null },
+      body: {
+        accentColor: form.accentColor,
+        font: form.font,
+        logoImageId: form.logo?.id ?? null,
+        home: {
+          heroImageId: form.home.heroImage?.id ?? null,
+          heroTitle: form.home.heroTitle.trim(),
+          heroText: form.home.heroText.trim(),
+          featuredProductIds: form.home.featuredProductIds,
+          showCategories: form.home.showCategories,
+        },
+      },
     });
 
   const save = useMutation({
@@ -142,19 +208,22 @@ function DesignEditor({ initial }: { initial: DesignState }) {
     onError: (e) => setMessage({ tone: "error", text: errorText(e) }),
   });
 
-  const upload = useMutation({
-    mutationFn: async (file: File) => {
-      if (!LOGO_TYPES.includes(file.type))
-        throw new Error("Bitte das Logo als PNG, JPEG oder WebP hochladen (SVG geht noch nicht).");
-      const data = await fileToBase64(file);
-      return request<DesignState>("/admin/v1/design/logo", {
-        method: "POST",
-        shopId: shop.id,
-        body: { data, filename: file.name },
-      });
-    },
+  // Hochladen von Logo (Teil 1) und Startseitenbild (Teil 2): gleiche Prüfung, anderer Endpunkt.
+  // Noch nicht gespeicherte Eingaben bleiben stehen (keepLocal), nur das neue Bild wird übernommen.
+  const uploadFile = async (path: string, file: File): Promise<DesignState> => {
+    if (!IMAGE_TYPES.includes(file.type))
+      throw new Error("Bitte das Bild als PNG, JPEG oder WebP hochladen (SVG geht noch nicht).");
+    const data = await fileToBase64(file);
+    return request<DesignState>(path, {
+      method: "POST",
+      shopId: shop.id,
+      body: { data, filename: file.name },
+    });
+  };
+
+  const uploadLogo = useMutation({
+    mutationFn: (file: File) => uploadFile("/admin/v1/design/logo", file),
     onSuccess: (s) => {
-      // Farbe und Schrift, die noch nicht gespeichert sind, bleiben stehen; nur das Logo ist neu.
       accept(s, true);
       setForm((f) => ({ ...f, logo: s.draft.logo }));
       setMessage(undefined);
@@ -162,14 +231,31 @@ function DesignEditor({ initial }: { initial: DesignState }) {
     onError: (e) => setMessage({ tone: "error", text: errorText(e) }),
   });
 
-  function onFile(e: ChangeEvent<HTMLInputElement>) {
+  const uploadHero = useMutation({
+    mutationFn: (file: File) => uploadFile("/admin/v1/design/hero-image", file),
+    onSuccess: (s) => {
+      accept(s, true);
+      setHome({ heroImage: s.draft.home.heroImage });
+      setMessage(undefined);
+    },
+    onError: (e) => setMessage({ tone: "error", text: errorText(e) }),
+  });
+
+  function onLogoFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file !== undefined) upload.mutate(file);
+    if (file !== undefined) uploadLogo.mutate(file);
+  }
+  function onHeroFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file !== undefined) uploadHero.mutate(file);
   }
 
-  const busy = save.isPending || publish.isPending || discard.isPending || upload.isPending;
+  const busy =
+    save.isPending || publish.isPending || discard.isPending || uploadLogo.isPending || uploadHero.isPending;
   const presetName = PRESETS.find((p) => p.color === form.accentColor)?.name;
+  const published = (products.data ?? []).filter((p) => p.status === "published");
 
   return (
     <div>
@@ -228,7 +314,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
         {message && <Alert tone={message.tone}>{message.text}</Alert>}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
         <div className="space-y-6">
           <Card title="Hauptfarbe">
             <p className="mb-3 text-sm text-stone-500">Für Knöpfe, Links und Markierungen im Shop.</p>
@@ -333,19 +419,19 @@ function DesignEditor({ initial }: { initial: DesignState }) {
               </p>
             )}
             <input
-              ref={fileInput}
+              ref={logoInput}
               type="file"
-              accept={LOGO_TYPES.join(",")}
+              accept={IMAGE_TYPES.join(",")}
               className="sr-only"
               tabIndex={-1}
-              onChange={onFile}
+              onChange={onLogoFile}
             />
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="secondary"
-                busy={upload.isPending}
+                busy={uploadLogo.isPending}
                 disabled={busy}
-                onClick={() => fileInput.current?.click()}
+                onClick={() => logoInput.current?.click()}
               >
                 {form.logo ? "Anderes Logo" : "Logo hochladen"}
               </Button>
@@ -363,14 +449,269 @@ function DesignEditor({ initial }: { initial: DesignState }) {
               PNG, JPEG oder WebP, am besten mit durchsichtigem Hintergrund.
             </p>
           </Card>
+
+          <Card title="Startseite">
+            <p className="mb-3 text-sm text-stone-500">
+              Das Erste, was Besucher sehen: ein großes Bild mit Begrüßung, deine Empfehlungen und die
+              Kategorien.
+            </p>
+
+            {form.home.heroImage ? (
+              <div className="mb-3 overflow-hidden rounded-lg ring-1 ring-stone-200">
+                <img
+                  src={form.home.heroImage.thumbnailUrl}
+                  alt="Startseitenbild"
+                  className="h-32 w-full object-cover"
+                />
+              </div>
+            ) : (
+              <p className="mb-3 text-sm text-stone-500">
+                Ohne Bild zeigt die Startseite nur die Begrüßung auf hellem Grund.
+              </p>
+            )}
+            <input
+              ref={heroInput}
+              type="file"
+              accept={IMAGE_TYPES.join(",")}
+              className="sr-only"
+              tabIndex={-1}
+              onChange={onHeroFile}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                busy={uploadHero.isPending}
+                disabled={busy}
+                onClick={() => heroInput.current?.click()}
+              >
+                {form.home.heroImage ? "Anderes Bild" : "Bild hochladen"}
+              </Button>
+              {form.home.heroImage && (
+                <Button variant="ghost" disabled={busy} onClick={() => setHome({ heroImage: null })}>
+                  Bild entfernen
+                </Button>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-stone-500">
+              Am besten ein breites Foto (Querformat), PNG, JPEG oder WebP.
+            </p>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label htmlFor="hero-titel" className="block text-sm font-medium text-stone-800">
+                  Überschrift
+                </label>
+                <Input
+                  id="hero-titel"
+                  value={form.home.heroTitle}
+                  maxLength={MAX_HERO_TITLE}
+                  placeholder={`Willkommen bei ${shop.name}`}
+                  onChange={(e) => setHome({ heroTitle: e.target.value })}
+                  className="mt-1.5"
+                />
+                <p className="mt-1 text-xs text-stone-500">Leer lassen für die Standardbegrüßung.</p>
+              </div>
+              <div>
+                <label htmlFor="hero-text" className="block text-sm font-medium text-stone-800">
+                  Text darunter
+                </label>
+                <Textarea
+                  id="hero-text"
+                  value={form.home.heroText}
+                  maxLength={MAX_HERO_TEXT}
+                  placeholder="Schön, dass du da bist. Stöbere durch unser Sortiment."
+                  onChange={(e) => setHome({ heroText: e.target.value })}
+                  className="mt-1.5 min-h-20"
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  {form.home.heroText.length}/{MAX_HERO_TEXT} Zeichen. Leer lassen für den Standardtext.
+                </p>
+              </div>
+            </div>
+
+            <FeaturedPicker
+              products={published}
+              loading={products.isPending}
+              selected={form.home.featuredProductIds}
+              onChange={(ids) => setHome({ featuredProductIds: ids })}
+            />
+
+            <label className="mt-5 flex items-start gap-2.5 text-sm text-stone-800">
+              <input
+                type="checkbox"
+                checked={form.home.showCategories}
+                onChange={(e) => setHome({ showCategories: e.target.checked })}
+                className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              />
+              <span>
+                Kategorien als Kacheln auf der Startseite zeigen
+                <span className="block text-xs text-stone-500">
+                  Aus bedeutet: Kategorien bleiben oben im Menü, aber nicht als Kacheln.
+                </span>
+              </span>
+            </label>
+          </Card>
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
           <p className="mb-2 text-sm font-medium text-stone-700">Vorschau</p>
-          <Preview form={form} />
+          <Preview
+            form={form}
+            products={published}
+            categories={(categories.data ?? []).filter((c) => c.visible)}
+          />
         </div>
       </div>
     </div>
+  );
+}
+
+/** Auswahl und Reihenfolge der hervorgehobenen Produkte (bis zu MAX_FEATURED). */
+function FeaturedPicker({
+  products,
+  loading,
+  selected,
+  onChange,
+}: {
+  products: Product[];
+  loading: boolean;
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const chosen = selected.filter((id) => byId.has(id));
+  const available = products.filter((p) => !selected.includes(p.id));
+  const full = chosen.length >= MAX_FEATURED;
+
+  function move(index: number, delta: number) {
+    const next = [...chosen];
+    const target = index + delta;
+    const a = next[index];
+    const b = next[target];
+    if (a === undefined || b === undefined) return;
+    next[index] = b;
+    next[target] = a;
+    onChange(next);
+  }
+
+  return (
+    <div className="mt-5">
+      <p className="text-sm font-medium text-stone-800">Hervorgehobene Produkte</p>
+      <p className="mt-0.5 text-xs text-stone-500">
+        Diese Produkte stehen oben auf der Startseite, in der Reihenfolge von oben nach unten.
+      </p>
+
+      {loading ? (
+        <p className="mt-3 text-sm text-stone-400">Produkte werden geladen …</p>
+      ) : products.length === 0 ? (
+        <p className="mt-3 text-sm text-stone-500">
+          Noch keine veröffentlichten Produkte. Sobald welche im Shop sind, kannst du sie hier hervorheben.
+        </p>
+      ) : (
+        <>
+          {chosen.length > 0 && (
+            <ol className="mt-3 space-y-2">
+              {chosen.map((id, i) => {
+                const p = byId.get(id);
+                if (p === undefined) return null;
+                return (
+                  <li
+                    key={id}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 ring-1 ring-stone-200"
+                  >
+                    {p.images[0] ? (
+                      <img
+                        src={p.images[0].thumbnailUrl}
+                        alt=""
+                        className="size-8 shrink-0 rounded object-cover"
+                      />
+                    ) : (
+                      <span className="size-8 shrink-0 rounded bg-stone-100" aria-hidden="true" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm text-stone-800">{p.name}</span>
+                    <span className="flex shrink-0 gap-1">
+                      <IconButton
+                        label={`„${p.name}“ nach oben`}
+                        disabled={i === 0}
+                        onClick={() => move(i, -1)}
+                      >
+                        ↑
+                      </IconButton>
+                      <IconButton
+                        label={`„${p.name}“ nach unten`}
+                        disabled={i === chosen.length - 1}
+                        onClick={() => move(i, 1)}
+                      >
+                        ↓
+                      </IconButton>
+                      <IconButton
+                        label={`„${p.name}“ entfernen`}
+                        onClick={() => onChange(chosen.filter((x) => x !== id))}
+                      >
+                        ✕
+                      </IconButton>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
+          <div className="mt-3">
+            <label htmlFor="produkt-hinzu" className="sr-only">
+              Produkt hervorheben
+            </label>
+            <select
+              id="produkt-hinzu"
+              value=""
+              disabled={full || available.length === 0}
+              onChange={(e) => {
+                if (e.target.value !== "") onChange([...chosen, e.target.value]);
+              }}
+              className="w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-stone-800 ring-1 ring-stone-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:text-stone-400"
+            >
+              <option value="">
+                {full
+                  ? `Höchstens ${MAX_FEATURED} Produkte`
+                  : available.length === 0
+                    ? "Alle Produkte schon hervorgehoben"
+                    : "+ Produkt hinzufügen …"}
+              </option>
+              {!full &&
+                available.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function IconButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex size-7 items-center justify-center rounded-md text-stone-600 ring-1 ring-stone-200 transition hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:text-stone-300 disabled:hover:bg-transparent"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -384,33 +725,43 @@ function Swatch({ color }: { color: string }) {
   );
 }
 
-/** Nachbau des Shops mit den Farben der Storefront (shop.css) und echten Kategorien und Produkten. */
-function Preview({ form }: { form: Form }) {
+/** Nachbau der Startseite mit den Farben der Storefront (shop.css) und echten Daten. */
+function Preview({
+  form,
+  products,
+  categories,
+}: {
+  form: Form;
+  products: Product[];
+  categories: Category[];
+}) {
   const shop = useShop();
-  const categories = useCategories(shop.id);
-  const products = useQuery({
-    queryKey: productsKey(shop.id),
-    queryFn: () => listAll<Product>("/admin/v1/products", shop.id),
-  });
   const font = fontOf(form.font);
   const accent = form.accentColor;
   const dark = darker(accent);
-  const published = (products.data ?? []).filter((p) => p.status === "published").slice(0, 3);
-  const shown: PreviewProduct[] =
-    published.length > 0
-      ? published.map((p) => ({
-          id: p.id,
-          name: p.name,
-          price: p.price?.amount ?? null,
-          image: p.images[0]?.thumbnailUrl,
-        }))
-      : placeholders;
-  const cats = (categories.data ?? []).filter((c) => c.visible).slice(0, 4);
   const titel = { fontFamily: font.titel, fontWeight: 400 } as const;
+
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const featured = form.home.featuredProductIds
+    .map((id) => byId.get(id))
+    .filter((p): p is Product => p !== undefined);
+  const shown: PreviewProduct[] =
+    featured.length > 0
+      ? featured.slice(0, 3).map(toPreview)
+      : products.length > 0
+        ? products.slice(0, 3).map(toPreview)
+        : placeholders;
+  const cats = categories.slice(0, 4);
+  const heroTitle =
+    form.home.heroTitle.trim() !== "" ? form.home.heroTitle.trim() : `Willkommen bei ${shop.name}`;
+  const heroText =
+    form.home.heroText.trim() !== ""
+      ? form.home.heroText.trim()
+      : "Schön, dass du da bist. Stöbere durch unser Sortiment.";
 
   return (
     <div
-      aria-label="Vorschau des Shops"
+      aria-label="Vorschau der Startseite"
       role="img"
       className="overflow-hidden rounded-xl shadow-sm ring-1 ring-stone-200"
       style={{ background: "#fbf8f3", color: "#26221e", fontFamily: font.text }}
@@ -438,15 +789,42 @@ function Preview({ form }: { form: Form }) {
         </span>
         <span className="ml-auto text-sm">Warenkorb (0)</span>
       </div>
+
       <div className="px-5 py-6">
-        <p className="text-3xl leading-tight" style={titel}>
-          Willkommen bei {shop.name}
-        </p>
-        <p className="mt-2 text-sm">
-          Schön, dass du da bist. Stöbere durch unser{" "}
-          <span style={{ color: dark, textDecoration: "underline" }}>Sortiment</span>.
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {form.home.heroImage ? (
+          <div className="relative overflow-hidden rounded-xl" style={{ minHeight: "9rem" }}>
+            <img
+              src={form.home.heroImage.thumbnailUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+            />
+            <div
+              className="relative flex min-h-36 flex-col justify-end p-4"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0))", color: "#fff" }}
+            >
+              <p className="text-2xl leading-tight" style={titel}>
+                {heroTitle}
+              </p>
+              <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.92)" }}>
+                {heroText}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-3xl leading-tight" style={titel}>
+              {heroTitle}
+            </p>
+            <p className="mt-2 text-sm">{heroText}</p>
+          </>
+        )}
+
+        {featured.length > 0 && (
+          <p className="mt-6 text-xl" style={titel}>
+            Empfohlen
+          </p>
+        )}
+        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
           {shown.map((p) => (
             <div key={p.id} className="flex flex-col gap-1.5">
               {p.image ? (
@@ -467,6 +845,25 @@ function Preview({ form }: { form: Form }) {
             </div>
           ))}
         </div>
+
+        {form.home.showCategories && cats.length > 0 && (
+          <>
+            <p className="mt-7 text-xl" style={titel}>
+              Kategorien
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {cats.map((c) => (
+                <span
+                  key={c.id}
+                  className="rounded-lg px-3 py-3 text-sm"
+                  style={{ background: "#f1ebe1", color: dark }}
+                >
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -477,6 +874,10 @@ interface PreviewProduct {
   readonly name: string;
   readonly price: number | null;
   readonly image: string | undefined;
+}
+
+function toPreview(p: Product): PreviewProduct {
+  return { id: p.id, name: p.name, price: p.price?.amount ?? null, image: p.images[0]?.thumbnailUrl };
 }
 
 /** Solange der Shop keine veröffentlichten Produkte hat. */

@@ -4,6 +4,11 @@
 
 export type Font = "klassisch" | "modern" | "freundlich";
 
+/** Grenzen der Startseite (Shop-Editor Teil 2), gleich wie in der API (Modul storefront). */
+export const MAX_HERO_TITLE = 80;
+export const MAX_HERO_TEXT = 300;
+export const MAX_FEATURED = 8;
+
 /** Fertige Farben. Alle haben mit weißer Schrift mindestens 4,5 : 1 Kontrast. */
 export const PRESETS: readonly { readonly name: string; readonly color: string }[] = [
   { name: "Salbei", color: "#3f6b4a" },

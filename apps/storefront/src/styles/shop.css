@@ -146,6 +146,38 @@ main:focus-visible {
   color: var(--text-leise);
   margin: 0;
 }
+/* Startseite mit großem Bild (Shop-Editor Teil 2): Text liegt unten links auf dem Bild. */
+.buehne-bild {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  margin-top: 2rem;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 18rem;
+  isolation: isolate;
+}
+.buehne-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+.buehne-bild .buehne-text {
+  align-self: end;
+  padding: 2.5rem 1.75rem 1.75rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+  color: #fff;
+}
+.buehne-bild .buehne-text h1 {
+  margin: 0 0 0.35rem;
+}
+.buehne-bild .buehne-text p {
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 40rem;
+}
 .kategorien {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

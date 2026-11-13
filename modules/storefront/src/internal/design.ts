@@ -1,4 +1,5 @@
-// Aussehen eines Shops (Shop-Editor Teil 1): Hauptfarbe, Schrift, Logo. Reine Rechenregeln ohne
+// Aussehen eines Shops: Hauptfarbe, Schrift, Logo (Shop-Editor Teil 1) und Startseite (Teil 2:
+// großes Bild mit Überschrift und Text, hervorgehobene Produkte, Kategorien-Kacheln). Reine Rechenregeln ohne
 // Datenbank, damit sie einzeln getestet werden können. Gespeichert wird als JSON in
 // storefront.theme_installation (settings_draft und settings_published).
 import { z } from "zod";
@@ -14,16 +15,41 @@ export const DEFAULT_FONT: Font = "klassisch";
 /** Weiße Schrift auf der Hauptfarbe (Knöpfe) braucht mindestens dieses Kontrastverhältnis (WCAG AA). */
 export const MIN_CONTRAST = 4.5;
 
+/** Höchstlängen der Texte auf der Startseite und Anzahl hervorgehobener Produkte. */
+export const MAX_HERO_TITLE = 80;
+export const MAX_HERO_TEXT = 300;
+export const MAX_FEATURED = 8;
+
+/** Startseite (Teil 2). Leere Überschrift oder leerer Text: der Shop zeigt seinen Standardtext. */
+export interface HomeSettings {
+  readonly heroImageId: string | null;
+  readonly heroTitle: string;
+  readonly heroText: string;
+  /** Produkt-IDs in der gewünschten Reihenfolge. Gelöschte oder versteckte zeigt der Shop einfach nicht. */
+  readonly featuredProductIds: readonly string[];
+  readonly showCategories: boolean;
+}
+
 export interface DesignSettings {
   readonly accentColor: string;
   readonly font: Font;
   readonly logoImageId: string | null;
+  readonly home: HomeSettings;
 }
+
+export const DEFAULT_HOME: HomeSettings = {
+  heroImageId: null,
+  heroTitle: "",
+  heroText: "",
+  featuredProductIds: [],
+  showCategories: true,
+};
 
 export const DEFAULT_DESIGN: DesignSettings = {
   accentColor: DEFAULT_ACCENT,
   font: DEFAULT_FONT,
   logoImageId: null,
+  home: DEFAULT_HOME,
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -32,6 +58,15 @@ const stored = z.object({
   accentColor: z.string().regex(HEX).catch(DEFAULT_ACCENT),
   font: z.enum(FONTS).catch(DEFAULT_FONT),
   logoImageId: z.uuid().nullable().catch(null),
+  home: z
+    .object({
+      heroImageId: z.uuid().nullable().catch(null),
+      heroTitle: z.string().max(MAX_HERO_TITLE).catch(""),
+      heroText: z.string().max(MAX_HERO_TEXT).catch(""),
+      featuredProductIds: z.array(z.uuid()).max(MAX_FEATURED).catch([]),
+      showCategories: z.boolean().catch(true),
+    })
+    .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [] })),
 });
 
 /** Liest gespeichertes JSON; Fehlendes oder Kaputtes wird zum Standard (alte Shops haben `{}`). */
@@ -41,7 +76,21 @@ export function readSettings(json: unknown): DesignSettings {
 }
 
 export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
-  return a.accentColor === b.accentColor && a.font === b.font && a.logoImageId === b.logoImageId;
+  return (
+    a.accentColor === b.accentColor &&
+    a.font === b.font &&
+    a.logoImageId === b.logoImageId &&
+    a.home.heroImageId === b.home.heroImageId &&
+    a.home.heroTitle === b.home.heroTitle &&
+    a.home.heroText === b.home.heroText &&
+    a.home.showCategories === b.home.showCategories &&
+    a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",")
+  );
+}
+
+/** Alle Bilder (Logo, Startseitenbild), die ein Stand benutzt. */
+export function imagesOf(s: DesignSettings): string[] {
+  return [s.logoImageId, s.home.heroImageId].filter((x): x is string => x !== null);
 }
 
 /** `#AbC123` → `#abc123`; `undefined`, wenn es keine Farbe in dieser Form ist. */
