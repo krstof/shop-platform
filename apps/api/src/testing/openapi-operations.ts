@@ -18,6 +18,8 @@ export interface Operation {
   readonly headerParams: readonly { name: string; required: boolean }[];
   readonly bodyExample: unknown;
   readonly hasBody: boolean;
+  /** Antwort 200 ist eine Seite einer Liste (`data` und `page`). */
+  readonly isPage: boolean;
 }
 
 interface RawOp {
@@ -26,6 +28,10 @@ interface RawOp {
   requestBody?: { content: Record<string, { example?: unknown }> };
   "x-required-scopes"?: string[];
   "x-public"?: boolean;
+  responses?: Record<
+    string,
+    { content?: Record<string, { schema?: { properties?: Record<string, unknown> } }> }
+  >;
 }
 
 export function loadOperations(
@@ -52,6 +58,8 @@ export function loadOperations(
             .map((p) => ({ name: p.name, required: p.required === true })),
           bodyExample: op.requestBody?.content["application/json"]?.example,
           hasBody: op.requestBody !== undefined,
+          isPage:
+            op.responses?.["200"]?.content?.["application/json"]?.schema?.properties?.["page"] !== undefined,
         });
       }
     }

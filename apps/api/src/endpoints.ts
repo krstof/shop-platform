@@ -31,6 +31,7 @@ import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { createPricing } from "@shop/pricing";
 import { createShopSettings } from "@shop/shop-settings";
+import { storefrontEndpoints } from "@shop/storefront-design";
 
 export interface EndpointDependencies {
   readonly database: Database<unknown>;
@@ -100,6 +101,8 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
         deps.logger?.error({ err: error }, "Bestellbestätigung konnte nicht verschickt werden"),
     }),
     ...storeShopEndpoints(shops),
+    // Aussehen des Shops (Shop-Editor Teil 1): Farbe, Schrift, Logo; dieselben Bildfunktionen.
+    ...storefrontEndpoints({ database: deps.database, images }),
     ...auditEndpoints(deps),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...memberEndpoints({ members }),

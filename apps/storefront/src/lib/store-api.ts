@@ -1,9 +1,12 @@
 // Zugriff auf die Storefront-API (M4) vom Server der Storefront aus, nie aus dem Browser.
 // Adresse: SHOP_STORE_API_URL, im Container http://api:3000 (internes Netz).
+import { DEFAULT_DESIGN, type StoreDesign } from "./design.js";
 
 export interface StoreShop {
   readonly handle: string;
   readonly name: string;
+  /** Veröffentlichtes Aussehen (Shop-Editor Teil 1). Fehlt es, gilt der Standard. */
+  readonly design?: StoreDesign;
 }
 
 export interface StoreCategory {
@@ -101,13 +104,24 @@ export async function loadShop(
   const h = safeHandle(handle);
   if (h === undefined) return undefined;
   try {
-    const [shop, categories] = await Promise.all([
+    const [shop, categories, design] = await Promise.all([
       storeApi<StoreShop>(h, ""),
       storeApi<{ data: StoreCategory[] }>(h, "/categories"),
+      loadDesign(h),
     ]);
-    return { shop, categories: categories.data };
+    return { shop: { ...shop, design }, categories: categories.data };
   } catch (e) {
     if (e instanceof StoreApiError && e.status === 404) return undefined;
     throw e;
+  }
+}
+
+/** Veröffentlichtes Aussehen. Klappt das nicht, sieht der Shop aus wie vorher (Standard). */
+export async function loadDesign(handle: string): Promise<StoreDesign> {
+  try {
+    return await storeApi<StoreDesign>(handle, "/design");
+  } catch (e) {
+    if (e instanceof StoreApiError && e.status === 404) throw e;
+    return DEFAULT_DESIGN;
   }
 }

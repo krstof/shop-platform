@@ -2,6 +2,7 @@
 // Rahmen jeder Shop-Seite (M4): Kopf mit Shopname, Kategorien und Warenkorb, Fuß mit Preishinweis.
 import "../styles/shop.css";
 import type { StoreCategory, StoreShop } from "../lib/store-api.js";
+import { DEFAULT_DESIGN, designVersion } from "../lib/design.js";
 
 interface Props {
   shop: StoreShop;
@@ -14,6 +15,7 @@ interface Props {
 const { shop, categories, titel, beschreibung = shop.name, korb = 0 } = Astro.props;
 const pfad = Astro.url.pathname.replace(/\/+$/, "");
 const basis = `/${shop.handle}`;
+const design = shop.design ?? DEFAULT_DESIGN;
 ---
 
 <!doctype html>
@@ -25,6 +27,7 @@ const basis = `/${shop.handle}`;
     <meta name="description" content={beschreibung} />
     <title>{titel === shop.name ? titel : `${titel} – ${shop.name}`}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href={`${basis}/design.css?v=${designVersion(design)}`} />
   </head>
   <body>
     <a class="sprung" href="#inhalt">
@@ -36,7 +39,17 @@ const basis = `/${shop.handle}`;
       </p>
       <div class="breite kopf-innen">
         <a href={basis} class="logo">
-          {shop.name}
+          {design.logo === null ? (
+            shop.name
+          ) : (
+            <img
+              class="logo-bild"
+              src={design.logo.url}
+              alt={shop.name}
+              width={design.logo.width}
+              height={design.logo.height}
+            />
+          )}
         </a>
         <nav aria-label="Kategorien">
           <ul class="nav">

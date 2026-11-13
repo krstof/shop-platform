@@ -116,6 +116,30 @@ export interface Product {
   readonly version: number;
 }
 
+/** Bild des Logos (Shop-Editor Teil 1). */
+export interface DesignImage {
+  readonly id: string;
+  readonly url: string;
+  readonly thumbnailUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface Design {
+  readonly accentColor: string;
+  readonly font: "klassisch" | "modern" | "freundlich";
+  readonly logo: DesignImage | null;
+}
+
+/** Aussehen des Shops: Entwurf im Editor und was der Shop gerade zeigt. */
+export interface DesignState {
+  readonly draft: Design;
+  readonly published: Design;
+  readonly hasUnpublishedChanges: boolean;
+  readonly publishedAt: string | null;
+  readonly version: number;
+}
+
 export interface Category {
   readonly id: string;
   readonly name: string;

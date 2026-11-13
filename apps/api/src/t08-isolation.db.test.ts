@@ -30,7 +30,9 @@ const TENANT_B = uuidv7();
 const USER_A = uuidv7();
 const operations = loadOperations(["admin"]);
 const withId = operations.filter((o) => o.pathParams.length > 0);
-const lists = operations.filter((o) => o.method === "GET" && o.pathParams.length === 0);
+const lists = operations.filter((o) => o.method === "GET" && o.pathParams.length === 0 && o.isPage);
+/** Einzelne Datensätze des Shops ohne ID im Pfad, etwa das Aussehen (GET /admin/v1/design). */
+const singles = operations.filter((o) => o.method === "GET" && o.pathParams.length === 0 && !o.isPage);
 
 /** Shop A mit allen Berechtigungen: Nur die Mandantentrennung darf B schützen, nicht fehlende Rechte. */
 const resolver: ActorResolver = async ({ headers }) => {
@@ -147,6 +149,17 @@ describe.skipIf(adminUrl === undefined)("T-08: Mandantentrennung für jeden Endp
       const r = await app.getHttpAdapter().getInstance().inject(req);
       expect(r.statusCode).toBe(200);
       expect(r.json().data.length).toBeGreaterThan(0);
+      for (const id of Object.values(idsB)) expect(r.body).not.toContain(id);
+    },
+  );
+
+  it.each(singles.map((o) => [`${o.method} ${o.path}`, o] as const))(
+    "%s: Antwort in Shop A enthält nichts aus Shop B",
+    async (_name, op) => {
+      const req = buildRequest(op);
+      req.headers["x-test-shop"] = "a";
+      const r = await app.getHttpAdapter().getInstance().inject(req);
+      expect(r.statusCode).toBe(200);
       for (const id of Object.values(idsB)) expect(r.body).not.toContain(id);
     },
   );

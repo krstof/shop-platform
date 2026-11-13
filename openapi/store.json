@@ -814,6 +814,91 @@
         "x-public-reason": "Die Storefront zeigt jedem Besucher die veröffentlichten Produkte des Shops."
       }
     },
+    "/store/v1/shops/{shopHandle}/design": {
+      "get": {
+        "operationId": "getStoreDesign",
+        "summary": "Aussehen des Shops",
+        "description": "Veröffentlichte Hauptfarbe, Schrift und Logo. Unbekannte oder gesperrte Shops ergeben 404.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Das Aussehen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreDesign"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Jeder Besucher sieht das Aussehen des Shops, den er aufruft."
+      }
+    },
     "/store/v1/shops/{shopHandle}/products": {
       "get": {
         "operationId": "listStoreProducts",
@@ -1510,6 +1595,67 @@
           "description"
         ],
         "additionalProperties": false
+      },
+      "StoreDesign": {
+        "type": "object",
+        "properties": {
+          "accentColor": {
+            "type": "string"
+          },
+          "accentDarkColor": {
+            "type": "string",
+            "description": "Dunklere Fassung für Links und „Maus darüber“."
+          },
+          "font": {
+            "type": "string",
+            "enum": [
+              "klassisch",
+              "modern",
+              "freundlich"
+            ],
+            "description": "Schriftart (nur Systemschriften): `klassisch` (Überschriften mit Serifen), `modern` (alles ohne Serifen), `freundlich` (abgerundet)."
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accentColor",
+          "accentDarkColor",
+          "font",
+          "logo"
+        ],
+        "additionalProperties": false,
+        "description": "Veröffentlichtes Aussehen eines Shops."
       },
       "StoreOrder": {
         "type": "object",

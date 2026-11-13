@@ -272,6 +272,9 @@ importers:
       '@shop/shop-settings':
         specifier: workspace:*
         version: link:../../modules/shop-settings
+      '@shop/storefront-design':
+        specifier: workspace:*
+        version: link:../../modules/storefront
       fastify:
         specifier: 5.12.7
         version: 5.12.7
@@ -783,6 +786,34 @@ importers:
       kysely:
         specifier: 0.29.7
         version: 0.29.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  modules/storefront:
+    dependencies:
+      '@shop/http':
+        specifier: workspace:*
+        version: link:../../packages/http
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@shop/config':
         specifier: workspace:*

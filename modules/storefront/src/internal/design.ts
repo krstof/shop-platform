@@ -1,0 +1,85 @@
+// Aussehen eines Shops (Shop-Editor Teil 1): Hauptfarbe, Schrift, Logo. Reine Rechenregeln ohne
+// Datenbank, damit sie einzeln getestet werden können. Gespeichert wird als JSON in
+// storefront.theme_installation (settings_draft und settings_published).
+import { z } from "zod";
+
+/** Schriftarten: nur Systemschriften, keine Dienste von außen (Stil „schlicht“, 29.10.2026). */
+export const FONTS = ["klassisch", "modern", "freundlich"] as const;
+export type Font = (typeof FONTS)[number];
+
+/** Standard: wie der Shop vor dem Editor aussah (Salbeigrün, Überschriften mit Serifen). */
+export const DEFAULT_ACCENT = "#3f6b4a";
+export const DEFAULT_FONT: Font = "klassisch";
+
+/** Weiße Schrift auf der Hauptfarbe (Knöpfe) braucht mindestens dieses Kontrastverhältnis (WCAG AA). */
+export const MIN_CONTRAST = 4.5;
+
+export interface DesignSettings {
+  readonly accentColor: string;
+  readonly font: Font;
+  readonly logoImageId: string | null;
+}
+
+export const DEFAULT_DESIGN: DesignSettings = {
+  accentColor: DEFAULT_ACCENT,
+  font: DEFAULT_FONT,
+  logoImageId: null,
+};
+
+const HEX = /^#[0-9a-f]{6}$/;
+
+const stored = z.object({
+  accentColor: z.string().regex(HEX).catch(DEFAULT_ACCENT),
+  font: z.enum(FONTS).catch(DEFAULT_FONT),
+  logoImageId: z.uuid().nullable().catch(null),
+});
+
+/** Liest gespeichertes JSON; Fehlendes oder Kaputtes wird zum Standard (alte Shops haben `{}`). */
+export function readSettings(json: unknown): DesignSettings {
+  const r = stored.safeParse(typeof json === "object" && json !== null ? json : {});
+  return r.success ? r.data : DEFAULT_DESIGN;
+}
+
+export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
+  return a.accentColor === b.accentColor && a.font === b.font && a.logoImageId === b.logoImageId;
+}
+
+/** `#AbC123` → `#abc123`; `undefined`, wenn es keine Farbe in dieser Form ist. */
+export function normalizeHex(value: string): string | undefined {
+  const v = value.trim().toLowerCase();
+  return HEX.test(v) ? v : undefined;
+}
+
+function channels(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function toHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b].map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Relative Leuchtdichte nach WCAG 2.2. */
+export function luminance(hex: string): number {
+  const [r, g, b] = channels(hex).map((c) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Kontrastverhältnis zweier Farben (1 bis 21). */
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Ist weiße Schrift auf dieser Farbe gut lesbar? */
+export function readableWithWhite(hex: string): boolean {
+  return contrast(hex, "#ffffff") >= MIN_CONTRAST;
+}
+
+/** Dunklere Fassung für „Maus darüber“ und Links: 25 % Richtung Schwarz. */
+export function darker(hex: string): string {
+  return toHex(channels(hex).map((c) => c * 0.75) as [number, number, number]);
+}
