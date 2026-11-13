@@ -139,6 +139,15 @@ export interface Design {
   readonly font: "klassisch" | "modern" | "freundlich";
   readonly logo: DesignImage | null;
   readonly home: DesignHome;
+  /** Text unter dem Logo (Teil 3). */
+  readonly tagline: string;
+  readonly footer: DesignFooter;
+}
+
+/** Fußzeile (Shop-Editor Teil 3). */
+export interface DesignFooter {
+  readonly text: string;
+  readonly links: readonly { readonly label: string; readonly url: string }[];
 }
 
 /** Aussehen des Shops: Entwurf im Editor und was der Shop gerade zeigt. */

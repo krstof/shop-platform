@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DESIGN, designCss, designVersion } from "./design.js";
+import { DEFAULT_DESIGN, designCss, designVersion, isExternal, safeLink } from "./design.js";
 
 describe("Aussehen in der Storefront", () => {
   it("schreibt Farbe und Schrift als CSS-Variablen", () => {
@@ -30,5 +30,19 @@ describe("Aussehen in der Storefront", () => {
   it("ändert die Version, wenn sich das Aussehen ändert", () => {
     expect(designVersion(DEFAULT_DESIGN)).toBe(designVersion({ ...DEFAULT_DESIGN }));
     expect(designVersion(DEFAULT_DESIGN)).not.toBe(designVersion({ ...DEFAULT_DESIGN, font: "modern" }));
+  });
+});
+
+describe("Links im Fuß (Shop-Editor Teil 3)", () => {
+  it("lässt nur https/http, mailto und tel durch", () => {
+    expect(safeLink("https://teeladen.example/kontakt")).toBe("https://teeladen.example/kontakt");
+    expect(safeLink("mailto:hallo@teeladen.example")).toBe("mailto:hallo@teeladen.example");
+    expect(safeLink("tel:+49 40 123456")).toBe("tel:+49 40 123456");
+    expect(safeLink("javascript:alert(1)")).toBeUndefined();
+    expect(safeLink("data:text/html,<b>x</b>")).toBeUndefined();
+    expect(safeLink('https://x.example/"><script>')).toBeUndefined();
+    expect(safeLink("//evil.example")).toBeUndefined();
+    expect(isExternal("https://a.example")).toBe(true);
+    expect(isExternal("mailto:a@b.example")).toBe(false);
   });
 });

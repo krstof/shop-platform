@@ -98,6 +98,21 @@ main:focus-visible {
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
+/* Logo mit Slogan darunter (Shop-Editor Teil 3) */
+.marke {
+  display: grid;
+  gap: 0.15rem;
+}
+.slogan {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-leise);
+}
+.fuss-text {
+  margin: 0.5rem 0 0;
+  white-space: pre-line;
+  color: var(--text-leise);
+}
 .logo-bild {
   display: block;
   height: auto;

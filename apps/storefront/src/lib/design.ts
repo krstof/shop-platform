@@ -20,12 +20,31 @@ export interface StoreHome {
   readonly showCategories: boolean;
 }
 
+/** Kopf- und Fußzeile (Shop-Editor Teil 3). */
+export interface StoreFooter {
+  readonly text: string;
+  readonly links: readonly { readonly label: string; readonly url: string }[];
+}
+
 export interface StoreDesign {
   readonly accentColor: string;
   readonly accentDarkColor: string;
   readonly font: Font;
   readonly logo: StoreImageRef | null;
   readonly home: StoreHome;
+  readonly tagline: string;
+  readonly footer: StoreFooter;
+}
+
+/** Nur sichere Linkziele ausgeben (https/http, mailto, tel), auch wenn die API schon prüft. */
+export function safeLink(url: string): string | undefined {
+  const ok = /^(https?:\/\/[^\s<>"]+|mailto:[^\s<>"]+|tel:\+?[0-9 ()/-]+)$/i.test(url) && url.length <= 300;
+  return ok ? url : undefined;
+}
+
+/** Externe Webseite? Dann in neuem Tab mit rel="noopener noreferrer". */
+export function isExternal(url: string): boolean {
+  return /^https?:\/\//i.test(url);
 }
 
 const SYSTEM = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -55,6 +74,8 @@ export const DEFAULT_DESIGN: StoreDesign = {
   font: "klassisch",
   logo: null,
   home: DEFAULT_HOME,
+  tagline: "",
+  footer: { text: "", links: [] },
 };
 
 const HEX = /^#[0-9a-f]{6}$/;

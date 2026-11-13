@@ -5,6 +5,7 @@ import {
   DEFAULT_DESIGN,
   DEFAULT_HOME,
   imagesOf,
+  isSafeLinkUrl,
   normalizeHex,
   readableWithWhite,
   readSettings,
@@ -51,6 +52,8 @@ describe("Aussehen: Rechenregeln", () => {
         featuredProductIds: ["0190a3c4-0000-7000-8000-000000000003"],
         showCategories: false,
       },
+      tagline: "Tee mit Herz",
+      footer: { text: "Mo–Fr", links: [{ label: "Kontakt", url: "mailto:a@b.example" }] },
     };
     expect(readSettings(s)).toEqual(s);
     expect(sameSettings(readSettings(s), readSettings(s))).toBe(true);
@@ -93,5 +96,23 @@ describe("Aussehen: Rechenregeln", () => {
       home: { heroImageId: id2, heroTitle: "", heroText: "", featuredProductIds: [], showCategories: true },
     });
     expect(imagesOf(s).sort()).toEqual([id1, id2].sort());
+  });
+
+  it("Kopf- und Fußzeile: fehlt bei alten Shops, gefährliche Links fallen weg", () => {
+    const alt = readSettings({ accentColor: "#1f5f8b", font: "modern", logoImageId: null });
+    expect(alt.tagline).toBe("");
+    expect(alt.footer).toEqual({ text: "", links: [] });
+    const boese = readSettings({
+      accentColor: "#1f5f8b",
+      font: "modern",
+      logoImageId: null,
+      footer: { text: "x", links: [{ label: "Klick", url: "javascript:alert(1)" }] },
+    });
+    expect(boese.footer.links).toEqual([]);
+    expect(isSafeLinkUrl("https://a.example/kontakt")).toBe(true);
+    expect(isSafeLinkUrl("tel:+49 40 123")).toBe(true);
+    expect(isSafeLinkUrl("javascript:alert(1)")).toBe(false);
+    expect(isSafeLinkUrl("data:text/html,x")).toBe(false);
+    expect(isSafeLinkUrl('https://a.example/"><script>')).toBe(false);
   });
 });

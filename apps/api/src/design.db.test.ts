@@ -147,6 +147,8 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
         featuredProductIds: [],
         showCategories: true,
       },
+      tagline: "",
+      footer: { text: "", links: [] },
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });
@@ -397,5 +399,65 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
     await call("POST", "/admin/v1/design/publish", "a");
     expect(has(publishedHero)).toBe(false); // jetzt nicht mehr veröffentlicht
     expect((await call("GET", "/store/v1/shops/design-a/design")).json().home.heroImage).toBeNull();
+  });
+
+  it("Kopf- und Fußzeile (Teil 3): Slogan, Text, Links; gefährliche Links ergeben 422", async () => {
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    expect(start.draft.tagline).toBe("");
+    expect(start.draft.footer).toEqual({ text: "", links: [] });
+    const base = { accentColor: "#3f6b4a", font: "klassisch", logoImageId: null };
+
+    // javascript:-Link: 422, nichts gespeichert.
+    const boese = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      { ...base, footer: { text: "", links: [{ label: "Klick", url: "javascript:alert(1)" }] } },
+      start.version,
+    );
+    expect(boese.statusCode).toBe(422);
+    expect(boese.json().errors[0].path).toBe("/body/footer/links/0/url");
+
+    // Sechs Links: zu viele.
+    const sechs = Array.from({ length: 6 }, (_, i) => ({ label: `L${i}`, url: "https://a.example" }));
+    const zuViele = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      { ...base, footer: { text: "", links: sechs } },
+      start.version,
+    );
+    expect(zuViele.statusCode).toBe(422);
+
+    const footer = {
+      text: "Mo–Fr 9–18 Uhr.",
+      links: [
+        { label: "Kontakt", url: "mailto:hallo@teeladen.example" },
+        { label: "Anrufen", url: "tel:+49 40 123456" },
+        { label: "Blog", url: "https://blog.teeladen.example" },
+      ],
+    };
+    const saved = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      { ...base, tagline: "Tee mit Herz", footer },
+      start.version,
+    );
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().draft).toMatchObject({ tagline: "Tee mit Herz", footer });
+    // Ohne tagline/footer im Körper bleiben sie im Entwurf stehen.
+    const ohne = await call("PUT", "/admin/v1/design/draft", "a", base, saved.json().version);
+    expect(ohne.json().draft).toMatchObject({ tagline: "Tee mit Herz", footer });
+    expect((await call("GET", "/store/v1/shops/design-a/design")).json().tagline).toBe("");
+
+    await call("POST", "/admin/v1/design/publish", "a");
+    const store = (await call("GET", "/store/v1/shops/design-a/design")).json();
+    expect(store).toMatchObject({ tagline: "Tee mit Herz", footer });
+    // Shop B sieht nichts davon.
+    expect((await call("GET", "/store/v1/shops/design-b/design")).json().footer).toEqual({
+      text: "",
+      links: [],
+    });
   });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  completeLinkUrl,
   contrastWithWhite,
+  isSafeLinkUrl,
   darker,
   normalizeHex,
   PRESETS,
@@ -28,5 +30,19 @@ describe("Shop-Editor: Farben", () => {
     expect(storefrontUrl("teeladen", { protocol: "https:", host: "admin.example.org" })).toBe(
       "https://shop.example.org/teeladen",
     );
+  });
+});
+
+describe("Links im Fuß", () => {
+  it("ergänzt E-Mail, Telefon und Webseite und prüft wie die API", () => {
+    expect(completeLinkUrl("hallo@teeladen.example")).toBe("mailto:hallo@teeladen.example");
+    expect(completeLinkUrl("+49 40 123456")).toBe("tel:+49 40 123456");
+    expect(completeLinkUrl("www.teeladen.example")).toBe("https://www.teeladen.example");
+    expect(completeLinkUrl("https://a.example")).toBe("https://a.example");
+    expect(isSafeLinkUrl("javascript:alert(1)")).toBe(false);
+    expect(completeLinkUrl("javascript:alert(1)")).toBe("javascript:alert(1)");
+    expect(isSafeLinkUrl(completeLinkUrl("javascript:alert(1)"))).toBe(false);
+    expect(completeLinkUrl("www.teeladen.example:8080")).toBe("https://www.teeladen.example:8080");
+    expect(isSafeLinkUrl("mailto:a@b.example")).toBe(true);
   });
 });

@@ -1980,6 +1980,24 @@
                   "home": {
                     "description": "Startseite. Fehlt das Feld, bleibt die Startseite im Entwurf, wie sie ist.",
                     "$ref": "#/components/schemas/DesignHomeInput"
+                  },
+                  "tagline": {
+                    "description": "Text unter dem Logo, höchstens 80 Zeichen. Fehlt das Feld, bleibt er.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      {
+                        "type": "string",
+                        "const": ""
+                      }
+                    ]
+                  },
+                  "footer": {
+                    "description": "Fußzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist.",
+                    "$ref": "#/components/schemas/DesignFooterInput"
                   }
                 },
                 "required": [
@@ -1999,6 +2017,16 @@
                   "heroText": "Lose Tees aus kleinen Teegärten, sorgfältig ausgewählt.",
                   "featuredProductIds": [],
                   "showCategories": true
+                },
+                "tagline": "Tee mit Herz seit 1998",
+                "footer": {
+                  "text": "Mo–Fr 9–18 Uhr erreichbar.",
+                  "links": [
+                    {
+                      "label": "Kontakt",
+                      "url": "mailto:hallo@teeladen.example"
+                    }
+                  ]
                 }
               }
             }
@@ -6843,16 +6871,113 @@
           },
           "home": {
             "$ref": "#/components/schemas/DesignHome"
+          },
+          "tagline": {
+            "type": "string",
+            "description": "Kurzer Text unter dem Logo; leer heißt keiner."
+          },
+          "footer": {
+            "$ref": "#/components/schemas/DesignFooter"
           }
         },
         "required": [
           "accentColor",
           "font",
           "logo",
-          "home"
+          "home",
+          "tagline",
+          "footer"
         ],
         "additionalProperties": false,
         "description": "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite."
+      },
+      "DesignFooter": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Kurzer Text im Fuß; leer heißt Standardhinweis."
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesignFooterLink"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "links"
+        ],
+        "additionalProperties": false,
+        "description": "Fußzeile: Text und Links."
+      },
+      "DesignFooterInput": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              {
+                "type": "string",
+                "const": ""
+              }
+            ],
+            "description": "Text im Fuß, höchstens 300 Zeichen; leer für den Standard."
+          },
+          "links": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40,
+                  "description": "Beschriftung, etwa „Kontakt“."
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "description": "Ziel: `https://…`, `mailto:…` oder `tel:…`."
+                }
+              },
+              "required": [
+                "label",
+                "url"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Bis zu 5 Links in dieser Reihenfolge."
+          }
+        },
+        "required": [
+          "text",
+          "links"
+        ],
+        "additionalProperties": false
+      },
+      "DesignFooterLink": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "additionalProperties": false,
+        "description": "Link im Fuß des Shops."
       },
       "DesignHome": {
         "type": "object",

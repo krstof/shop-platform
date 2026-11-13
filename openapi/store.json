@@ -1360,6 +1360,44 @@
   },
   "components": {
     "schemas": {
+      "DesignFooter": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Kurzer Text im Fuß; leer heißt Standardhinweis."
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesignFooterLink"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "links"
+        ],
+        "additionalProperties": false,
+        "description": "Fußzeile: Text und Links."
+      },
+      "DesignFooterLink": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "additionalProperties": false,
+        "description": "Link im Fuß des Shops."
+      },
       "Problem": {
         "type": "object",
         "properties": {
@@ -1649,6 +1687,13 @@
           },
           "home": {
             "$ref": "#/components/schemas/StoreDesignHome"
+          },
+          "tagline": {
+            "type": "string",
+            "description": "Text unter dem Logo; leer heißt keiner."
+          },
+          "footer": {
+            "$ref": "#/components/schemas/DesignFooter"
           }
         },
         "required": [
@@ -1656,7 +1701,9 @@
           "accentDarkColor",
           "font",
           "logo",
-          "home"
+          "home",
+          "tagline",
+          "footer"
         ],
         "additionalProperties": false,
         "description": "Veröffentlichtes Aussehen eines Shops."

@@ -16,7 +16,13 @@ import {
   darker,
   FONTS,
   imagesOf,
+  isSafeLinkUrl,
   MAX_FEATURED,
+  MAX_FOOTER_LINKS,
+  MAX_FOOTER_TEXT,
+  MAX_LINK_LABEL,
+  MAX_LINK_URL,
+  MAX_TAGLINE,
   MAX_HERO_TEXT,
   MAX_HERO_TITLE,
   MIN_CONTRAST,
@@ -24,6 +30,7 @@ import {
   readableWithWhite,
   sameSettings,
   type DesignSettings,
+  type FooterSettings,
   type HomeSettings,
 } from "../internal/design.js";
 import {
@@ -116,12 +123,25 @@ const homeViewSchema = z
     description: "Startseite: Bild mit Überschrift und Text, Empfehlungen, Kategorien.",
   });
 
+const footerLinkSchema = z
+  .object({ label: z.string(), url: z.string() })
+  .meta({ id: "DesignFooterLink", description: "Link im Fuß des Shops." });
+
+const footerViewSchema = z
+  .object({
+    text: z.string().meta({ description: "Kurzer Text im Fuß; leer heißt Standardhinweis." }),
+    links: z.array(footerLinkSchema),
+  })
+  .meta({ id: "DesignFooter", description: "Fußzeile: Text und Links." });
+
 const designViewSchema = z
   .object({
     accentColor: z.string(),
     font: fontSchema,
     logo: imageSchema.nullable(),
     home: homeViewSchema,
+    tagline: z.string().meta({ description: "Kurzer Text unter dem Logo; leer heißt keiner." }),
+    footer: footerViewSchema,
   })
   .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
@@ -158,6 +178,28 @@ const homeInput = z
   })
   .meta({ id: "DesignHomeInput" });
 
+const footerInput = z
+  .strictObject({
+    text: multiLineText(MAX_FOOTER_TEXT)
+      .or(z.literal(""))
+      .meta({ description: `Text im Fuß, höchstens ${MAX_FOOTER_TEXT} Zeichen; leer für den Standard.` }),
+    links: z
+      .array(
+        z.strictObject({
+          label: singleLineText(MAX_LINK_LABEL).meta({ description: "Beschriftung, etwa „Kontakt“." }),
+          url: z
+            .string()
+            .trim()
+            .max(MAX_LINK_URL)
+            .refine(isSafeLinkUrl, "Bitte eine Adresse mit https://, mailto: oder tel: angeben.")
+            .meta({ description: "Ziel: `https://…`, `mailto:…` oder `tel:…`." }),
+        }),
+      )
+      .max(MAX_FOOTER_LINKS)
+      .meta({ description: `Bis zu ${MAX_FOOTER_LINKS} Links in dieser Reihenfolge.` }),
+  })
+  .meta({ id: "DesignFooterInput" });
+
 const draftInput = z.strictObject({
   accentColor: accentSchema,
   font: fontSchema,
@@ -168,6 +210,15 @@ const draftInput = z.strictObject({
   home: homeInput
     .optional()
     .meta({ description: "Startseite. Fehlt das Feld, bleibt die Startseite im Entwurf, wie sie ist." }),
+  tagline: singleLineText(MAX_TAGLINE)
+    .or(z.literal(""))
+    .optional()
+    .meta({
+      description: `Text unter dem Logo, höchstens ${MAX_TAGLINE} Zeichen. Fehlt das Feld, bleibt er.`,
+    }),
+  footer: footerInput
+    .optional()
+    .meta({ description: "Fußzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist." }),
 });
 
 const logoInput = z.strictObject({
@@ -198,6 +249,8 @@ const storeDesignSchema = z
         showCategories: z.boolean(),
       })
       .meta({ id: "StoreDesignHome", description: "Inhalt der Startseite." }),
+    tagline: z.string().meta({ description: "Text unter dem Logo; leer heißt keiner." }),
+    footer: footerViewSchema,
   })
   .meta({ id: "StoreDesign", description: "Veröffentlichtes Aussehen eines Shops." });
 
@@ -205,6 +258,11 @@ const storeDesignSchema = z
 const EXAMPLE_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAA1BMVEV6mluJCzqwAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEkl" +
   "EQVQ4y2NgGAWjYBSMAuwAAAQgAAFWu83mAAAAAElFTkSuQmCC";
+
+/** Fußzeile für Antworten: frische Arrays statt readonly. */
+function footerView(f: FooterSettings) {
+  return { text: f.text, links: f.links.map((l) => ({ label: l.label, url: l.url })) };
+}
 
 export interface DesignEndpointDependencies {
   readonly db: Database<DB>;
@@ -226,6 +284,8 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         featuredProductIds: [...s.home.featuredProductIds],
         heroImage: image(s.home.heroImageId),
       },
+      tagline: s.tagline,
+      footer: footerView(s.footer),
     });
     return {
       draft: view(i.draft),
@@ -301,6 +361,11 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         featuredProductIds: [],
         showCategories: true,
       },
+      tagline: "Tee mit Herz seit 1998",
+      footer: {
+        text: "Mo–Fr 9–18 Uhr erreichbar.",
+        links: [{ label: "Kontakt", url: "mailto:hallo@teeladen.example" }],
+      },
     },
     ifMatch: "required",
     response: { status: 200, description: "Das Aussehen mit neuem Entwurf.", schema: designStateSchema },
@@ -332,7 +397,9 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
               detail: w.detail,
               errors: [{ path: w.path, code: "unknown_image", message: "Unbekanntes Bild." }],
             });
-        return { draft: { accentColor: accent, font: body.font, logoImageId: logo, home } };
+        const tagline = body.tagline ?? current.draft.tagline;
+        const footer: FooterSettings = body.footer ?? current.draft.footer;
+        return { draft: { accentColor: accent, font: body.font, logoImageId: logo, home, tagline, footer } };
       });
     },
   });
@@ -472,6 +539,8 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           featuredProductIds: [...home.featuredProductIds],
           showCategories: home.showCategories,
         },
+        tagline: published.tagline,
+        footer: footerView(published.footer),
       };
     },
   });

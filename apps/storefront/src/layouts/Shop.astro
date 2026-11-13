@@ -2,7 +2,7 @@
 // Rahmen jeder Shop-Seite (M4): Kopf mit Shopname, Kategorien und Warenkorb, Fuß mit Preishinweis.
 import "../styles/shop.css";
 import type { StoreCategory, StoreShop } from "../lib/store-api.js";
-import { DEFAULT_DESIGN, designVersion } from "../lib/design.js";
+import { DEFAULT_DESIGN, designVersion, isExternal, safeLink } from "../lib/design.js";
 
 interface Props {
   shop: StoreShop;
@@ -16,6 +16,13 @@ const { shop, categories, titel, beschreibung = shop.name, korb = 0 } = Astro.pr
 const pfad = Astro.url.pathname.replace(/\/+$/, "");
 const basis = `/${shop.handle}`;
 const design = shop.design ?? DEFAULT_DESIGN;
+// Kopf- und Fußzeile (Shop-Editor Teil 3). Ältere Antworten ohne diese Felder: Standard.
+const slogan = design.tagline ?? "";
+const fussText = design.footer?.text ?? "";
+const fussLinks = (design.footer?.links ?? []).flatMap((l) => {
+  const url = safeLink(l.url);
+  return url === undefined ? [] : [{ label: l.label, url, extern: isExternal(url) }];
+});
 ---
 
 <!doctype html>
@@ -38,19 +45,22 @@ const design = shop.design ?? DEFAULT_DESIGN;
         Testshop: Hier ist nichts echt, auch die Zahlung nicht.
       </p>
       <div class="breite kopf-innen">
-        <a href={basis} class="logo">
-          {design.logo === null ? (
-            shop.name
-          ) : (
-            <img
-              class="logo-bild"
-              src={design.logo.url}
-              alt={shop.name}
-              width={design.logo.width}
-              height={design.logo.height}
-            />
-          )}
-        </a>
+        <div class="marke">
+          <a href={basis} class="logo">
+            {design.logo === null ? (
+              shop.name
+            ) : (
+              <img
+                class="logo-bild"
+                src={design.logo.url}
+                alt={shop.name}
+                width={design.logo.width}
+                height={design.logo.height}
+              />
+            )}
+          </a>
+          {slogan !== "" && <p class="slogan">{slogan}</p>}
+        </div>
         <nav aria-label="Kategorien">
           <ul class="nav">
             {categories.map((k) => {
@@ -79,7 +89,27 @@ const design = shop.design ?? DEFAULT_DESIGN;
     </main>
     <footer class="fuss">
       <div class="breite fuss-innen">
-        <p class="logo">{shop.name}</p>
+        <div>
+          <p class="logo">{shop.name}</p>
+          {fussText !== "" && <p class="fuss-text">{fussText}</p>}
+        </div>
+        {fussLinks.length > 0 && (
+          <nav aria-label="Weitere Links">
+            <ul class="fuss-links">
+              {fussLinks.map((l) => (
+                <li>
+                  <a
+                    href={l.url}
+                    target={l.extern ? "_blank" : undefined}
+                    rel={l.extern ? "noopener noreferrer" : undefined}
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
         <p class="klein">Ein Testshop der Shop-Plattform. Alle Preise inkl. MwSt., Versand kostenlos.</p>
       </div>
     </footer>

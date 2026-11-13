@@ -30,11 +30,39 @@ export interface HomeSettings {
   readonly showCategories: boolean;
 }
 
+/** Kopf- und Fußzeile (Teil 3). */
+export const MAX_TAGLINE = 80;
+export const MAX_FOOTER_TEXT = 300;
+export const MAX_FOOTER_LINKS = 5;
+export const MAX_LINK_LABEL = 40;
+export const MAX_LINK_URL = 300;
+
+/** Erlaubte Linkziele: Webseiten (https/http), E-Mail, Telefon. Nie javascript: oder data:. */
+const LINK_URL = /^(https?:\/\/[^\s<>"]+|mailto:[^\s<>"]+|tel:\+?[0-9 ()/-]+)$/i;
+
+export function isSafeLinkUrl(url: string): boolean {
+  return url.length <= MAX_LINK_URL && LINK_URL.test(url);
+}
+
+export interface FooterLink {
+  readonly label: string;
+  readonly url: string;
+}
+
+export interface FooterSettings {
+  /** Kurzer Text im Fuß (etwa Öffnungszeiten); leer heißt Standardhinweis. */
+  readonly text: string;
+  readonly links: readonly FooterLink[];
+}
+
 export interface DesignSettings {
   readonly accentColor: string;
   readonly font: Font;
   readonly logoImageId: string | null;
   readonly home: HomeSettings;
+  /** Kurzer Text unter dem Logo (Slogan); leer heißt keiner. */
+  readonly tagline: string;
+  readonly footer: FooterSettings;
 }
 
 export const DEFAULT_HOME: HomeSettings = {
@@ -45,11 +73,15 @@ export const DEFAULT_HOME: HomeSettings = {
   showCategories: true,
 };
 
+export const DEFAULT_FOOTER: FooterSettings = { text: "", links: [] };
+
 export const DEFAULT_DESIGN: DesignSettings = {
   accentColor: DEFAULT_ACCENT,
   font: DEFAULT_FONT,
   logoImageId: null,
   home: DEFAULT_HOME,
+  tagline: "",
+  footer: DEFAULT_FOOTER,
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -67,6 +99,21 @@ const stored = z.object({
       showCategories: z.boolean().catch(true),
     })
     .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [] })),
+  tagline: z.string().max(MAX_TAGLINE).catch(""),
+  footer: z
+    .object({
+      text: z.string().max(MAX_FOOTER_TEXT).catch(""),
+      links: z
+        .array(
+          z.object({
+            label: z.string().min(1).max(MAX_LINK_LABEL),
+            url: z.string().refine(isSafeLinkUrl),
+          }),
+        )
+        .max(MAX_FOOTER_LINKS)
+        .catch([]),
+    })
+    .catch(() => ({ text: "", links: [] })),
 });
 
 /** Liest gespeichertes JSON; Fehlendes oder Kaputtes wird zum Standard (alte Shops haben `{}`). */
@@ -84,7 +131,10 @@ export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
     a.home.heroTitle === b.home.heroTitle &&
     a.home.heroText === b.home.heroText &&
     a.home.showCategories === b.home.showCategories &&
-    a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",")
+    a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",") &&
+    a.tagline === b.tagline &&
+    a.footer.text === b.footer.text &&
+    JSON.stringify(a.footer.links) === JSON.stringify(b.footer.links)
   );
 }
 

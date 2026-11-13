@@ -24,6 +24,12 @@ import {
   MAX_FEATURED,
   MAX_HERO_TEXT,
   MAX_HERO_TITLE,
+  MAX_FOOTER_LINKS,
+  MAX_FOOTER_TEXT,
+  MAX_LINK_LABEL,
+  MAX_TAGLINE,
+  completeLinkUrl,
+  isSafeLinkUrl,
   normalizeHex,
   PRESETS,
   readableWithWhite,
@@ -42,11 +48,19 @@ interface HomeForm {
   showCategories: boolean;
 }
 
+interface FooterLinkForm {
+  label: string;
+  url: string;
+}
+
 interface Form {
   accentColor: string;
   font: Font;
   logo: DesignImage | null;
   home: HomeForm;
+  tagline: string;
+  footerText: string;
+  footerLinks: FooterLinkForm[];
 }
 
 const designKey = (shopId: string) => ["design", shopId] as const;
@@ -68,7 +82,28 @@ function formOf(state: DesignState): Form {
     font: state.draft.font,
     logo: state.draft.logo,
     home: homeOf(state.draft.home),
+    tagline: state.draft.tagline,
+    footerText: state.draft.footer.text,
+    footerLinks: state.draft.footer.links.map((l) => ({ label: l.label, url: l.url })),
   };
+}
+
+/** Links fürs Speichern: leere Zeilen weglassen, Adresse ergänzen (E-Mail → mailto: usw.). */
+function cleanLinks(links: FooterLinkForm[]): FooterLinkForm[] {
+  return links
+    .map((l) => ({ label: l.label.trim(), url: completeLinkUrl(l.url) }))
+    .filter((l) => l.label !== "" || l.url !== "");
+}
+
+/** Fehlertext für eine Linkzeile oder `undefined`, wenn sie passt. */
+function linkProblem(l: FooterLinkForm): string | undefined {
+  const label = l.label.trim();
+  const url = completeLinkUrl(l.url);
+  if (label === "" && url === "") return undefined;
+  if (label === "") return "Bitte eine Beschriftung eingeben.";
+  if (url === "") return "Bitte eine Adresse eingeben.";
+  if (!isSafeLinkUrl(url)) return "Diese Adresse geht nicht. Erlaubt: Webseite, E-Mail oder Telefonnummer.";
+  return undefined;
 }
 
 function sameHome(a: HomeForm, b: HomeForm): boolean {
@@ -86,7 +121,10 @@ function sameForm(a: Form, b: Form): boolean {
     a.accentColor === b.accentColor &&
     a.font === b.font &&
     (a.logo?.id ?? null) === (b.logo?.id ?? null) &&
-    sameHome(a.home, b.home)
+    sameHome(a.home, b.home) &&
+    a.tagline.trim() === b.tagline.trim() &&
+    a.footerText.trim() === b.footerText.trim() &&
+    JSON.stringify(cleanLinks(a.footerLinks)) === JSON.stringify(cleanLinks(b.footerLinks))
   );
 }
 
@@ -131,6 +169,9 @@ function DesignEditor({ initial }: { initial: DesignState }) {
 
   const dirty = !sameForm(form, formOf(server));
   const readable = readableWithWhite(form.accentColor);
+  const linksOk = form.footerLinks.every((l) => linkProblem(l) === undefined);
+  const valid = readable && linksOk;
+  const [mobile, setMobile] = useState(false);
   const unpublished = dirty || server.hasUnpublishedChanges;
 
   function setHome(change: Partial<HomeForm>) {
@@ -169,6 +210,8 @@ function DesignEditor({ initial }: { initial: DesignState }) {
           featuredProductIds: form.home.featuredProductIds,
           showCategories: form.home.showCategories,
         },
+        tagline: form.tagline.trim(),
+        footer: { text: form.footerText.trim(), links: cleanLinks(form.footerLinks) },
       },
     });
 
@@ -294,14 +337,14 @@ function DesignEditor({ initial }: { initial: DesignState }) {
           )}
           <Button
             variant="secondary"
-            disabled={!dirty || !readable || busy}
+            disabled={!dirty || !valid || busy}
             busy={save.isPending}
             onClick={() => save.mutate()}
           >
             Entwurf speichern
           </Button>
           <Button
-            disabled={!unpublished || !readable || busy}
+            disabled={!unpublished || !valid || busy}
             busy={publish.isPending}
             onClick={() => publish.mutate()}
           >
@@ -551,11 +594,139 @@ function DesignEditor({ initial }: { initial: DesignState }) {
               </span>
             </label>
           </Card>
+
+          <Card title="Kopf- und Fußzeile">
+            <div>
+              <label htmlFor="slogan" className="block text-sm font-medium text-stone-800">
+                Text unter dem Logo
+              </label>
+              <Input
+                id="slogan"
+                value={form.tagline}
+                maxLength={MAX_TAGLINE}
+                placeholder="z. B. Tee mit Herz seit 1998"
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, tagline: e.target.value }));
+                  setMessage(undefined);
+                }}
+                className="mt-1.5"
+              />
+              <p className="mt-1 text-xs text-stone-500">Kurz halten. Leer lassen für keinen Text.</p>
+            </div>
+
+            <div className="mt-5">
+              <label htmlFor="fuss-text" className="block text-sm font-medium text-stone-800">
+                Text im Fuß
+              </label>
+              <Textarea
+                id="fuss-text"
+                value={form.footerText}
+                maxLength={MAX_FOOTER_TEXT}
+                placeholder="z. B. Mo–Fr 9–18 Uhr für dich da."
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, footerText: e.target.value }));
+                  setMessage(undefined);
+                }}
+                className="mt-1.5 min-h-20"
+              />
+            </div>
+
+            <div className="mt-5">
+              <p className="text-sm font-medium text-stone-800">Links im Fuß</p>
+              <p className="mt-0.5 text-xs text-stone-500">
+                Zum Beispiel „Kontakt“ mit deiner E-Mail-Adresse, eine Telefonnummer oder eine Webseite.
+              </p>
+              <div className="mt-3 space-y-3">
+                {form.footerLinks.map((l, i) => {
+                  const problem = linkProblem(l);
+                  const setLink = (change: Partial<FooterLinkForm>) => {
+                    setForm((f) => ({
+                      ...f,
+                      footerLinks: f.footerLinks.map((x, j) => (j === i ? { ...x, ...change } : x)),
+                    }));
+                    setMessage(undefined);
+                  };
+                  return (
+                    <div key={i} className="rounded-lg p-2.5 ring-1 ring-stone-200">
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <Input
+                            aria-label={`Link ${i + 1}: Beschriftung`}
+                            value={l.label}
+                            maxLength={MAX_LINK_LABEL}
+                            placeholder="Beschriftung, z. B. Kontakt"
+                            onChange={(e) => setLink({ label: e.target.value })}
+                          />
+                          <Input
+                            aria-label={`Link ${i + 1}: Adresse`}
+                            aria-invalid={problem === undefined ? undefined : true}
+                            value={l.url}
+                            maxLength={300}
+                            placeholder="E-Mail, Telefon oder Webseite"
+                            onChange={(e) => setLink({ url: e.target.value })}
+                          />
+                        </div>
+                        <IconButton
+                          label={`Link ${i + 1} entfernen`}
+                          onClick={() => {
+                            setForm((f) => ({ ...f, footerLinks: f.footerLinks.filter((_, j) => j !== i) }));
+                            setMessage(undefined);
+                          }}
+                        >
+                          ✕
+                        </IconButton>
+                      </div>
+                      {problem && <p className="mt-1.5 text-xs text-red-700">{problem}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+              <Button
+                variant="secondary"
+                className="mt-3"
+                disabled={form.footerLinks.length >= MAX_FOOTER_LINKS}
+                onClick={() =>
+                  setForm((f) => ({ ...f, footerLinks: [...f.footerLinks, { label: "", url: "" }] }))
+                }
+              >
+                {form.footerLinks.length >= MAX_FOOTER_LINKS
+                  ? `Höchstens ${MAX_FOOTER_LINKS} Links`
+                  : "+ Link hinzufügen"}
+              </Button>
+            </div>
+          </Card>
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <p className="mb-2 text-sm font-medium text-stone-700">Vorschau</p>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-stone-700">Vorschau</p>
+            <div
+              role="radiogroup"
+              aria-label="Vorschau-Breite"
+              className="flex rounded-lg p-0.5 ring-1 ring-stone-200"
+            >
+              {[
+                { id: false, name: "Computer" },
+                { id: true, name: "Handy" },
+              ].map((o) => (
+                <button
+                  key={o.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={mobile === o.id}
+                  onClick={() => setMobile(o.id)}
+                  className={
+                    "rounded-md px-3 py-1 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
+                    (mobile === o.id ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50")
+                  }
+                >
+                  {o.name}
+                </button>
+              ))}
+            </div>
+          </div>
           <Preview
+            mobile={mobile}
             form={form}
             products={published}
             categories={(categories.data ?? []).filter((c) => c.visible)}
@@ -727,10 +898,12 @@ function Swatch({ color }: { color: string }) {
 
 /** Nachbau der Startseite mit den Farben der Storefront (shop.css) und echten Daten. */
 function Preview({
+  mobile,
   form,
   products,
   categories,
 }: {
+  mobile: boolean;
   form: Form;
   products: Product[];
   categories: Category[];
@@ -763,7 +936,10 @@ function Preview({
     <div
       aria-label="Vorschau der Startseite"
       role="img"
-      className="overflow-hidden rounded-xl shadow-sm ring-1 ring-stone-200"
+      className={
+        "overflow-hidden rounded-xl shadow-sm ring-1 ring-stone-200 " +
+        (mobile ? "mx-auto w-full max-w-[375px]" : "")
+      }
       style={{ background: "#fbf8f3", color: "#26221e", fontFamily: font.text }}
     >
       <div className="px-4 py-1.5 text-center text-xs" style={{ background: "#2f3a33", color: "#f4efe6" }}>
@@ -773,13 +949,20 @@ function Preview({
         className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4"
         style={{ borderBottom: "1px solid #e2d9cb" }}
       >
-        {form.logo ? (
-          <img src={form.logo.thumbnailUrl} alt="" className="block max-h-10 w-auto max-w-40" />
-        ) : (
-          <span className="text-xl" style={titel}>
-            {shop.name}
-          </span>
-        )}
+        <span className="flex flex-col gap-0.5">
+          {form.logo ? (
+            <img src={form.logo.thumbnailUrl} alt="" className="block max-h-10 w-auto max-w-40" />
+          ) : (
+            <span className="text-xl" style={titel}>
+              {shop.name}
+            </span>
+          )}
+          {form.tagline.trim() !== "" && (
+            <span className="text-xs" style={{ color: "#5e554c" }}>
+              {form.tagline.trim()}
+            </span>
+          )}
+        </span>
         <span className="flex flex-wrap gap-4 text-sm">
           {cats.map((c, i) => (
             <span key={c.id} style={i === 0 ? { borderBottom: `2px solid ${accent}` } : undefined}>
@@ -824,7 +1007,7 @@ function Preview({
             Empfohlen
           </p>
         )}
-        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className={"mt-3 grid gap-4 " + (mobile ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
           {shown.map((p) => (
             <div key={p.id} className="flex flex-col gap-1.5">
               {p.image ? (
@@ -851,7 +1034,7 @@ function Preview({
             <p className="mt-7 text-xl" style={titel}>
               Kategorien
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className={"mt-3 grid gap-3 " + (mobile ? "grid-cols-1" : "grid-cols-2")}>
               {cats.map((c) => (
                 <span
                   key={c.id}
@@ -864,6 +1047,30 @@ function Preview({
             </div>
           </>
         )}
+      </div>
+      <div className="px-5 py-5 text-sm" style={{ background: "#f1ebe1", borderTop: "1px solid #e2d9cb" }}>
+        <p className="text-lg" style={titel}>
+          {shop.name}
+        </p>
+        {form.footerText.trim() !== "" && (
+          <p className="mt-1 whitespace-pre-line" style={{ color: "#5e554c" }}>
+            {form.footerText.trim()}
+          </p>
+        )}
+        {cleanLinks(form.footerLinks).filter((l) => l.label !== "").length > 0 && (
+          <ul className="mt-3 space-y-1">
+            {cleanLinks(form.footerLinks)
+              .filter((l) => l.label !== "")
+              .map((l, i) => (
+                <li key={i} style={{ color: dark, textDecoration: "underline" }}>
+                  {l.label}
+                </li>
+              ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs" style={{ color: "#5e554c" }}>
+          Ein Testshop der Shop-Plattform. Alle Preise inkl. MwSt., Versand kostenlos.
+        </p>
       </div>
     </div>
   );

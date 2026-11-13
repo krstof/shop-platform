@@ -9,6 +9,29 @@ export const MAX_HERO_TITLE = 80;
 export const MAX_HERO_TEXT = 300;
 export const MAX_FEATURED = 8;
 
+/** Grenzen der Kopf- und Fußzeile (Teil 3), gleich wie in der API. */
+export const MAX_TAGLINE = 80;
+export const MAX_FOOTER_TEXT = 300;
+export const MAX_FOOTER_LINKS = 5;
+export const MAX_LINK_LABEL = 40;
+
+/** Erlaubte Linkziele wie in der API: https/http, mailto, tel. */
+export function isSafeLinkUrl(url: string): boolean {
+  return url.length <= 300 && /^(https?:\/\/[^\s<>"]+|mailto:[^\s<>"]+|tel:\+?[0-9 ()/-]+)$/i.test(url);
+}
+
+/** Eingabe ergänzen: „hallo@x.de“ → mailto:, „+49 40 …“ → tel:, „www.x.de“ → https://. */
+export function completeLinkUrl(input: string): string {
+  const v = input.trim();
+  if (v === "" || /^(https?:|mailto:|tel:)/i.test(v)) return v;
+  // Andere Schemata (javascript:, data: …) nicht „reparieren“: so sieht der Editor den Fehler.
+  // Ausnahme: Port nach dem Rechnernamen, etwa „www.x.de:8080“.
+  if (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(v)) return v;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return `mailto:${v}`;
+  if (/^\+?[0-9][0-9 ()/-]{4,}$/.test(v)) return `tel:${v}`;
+  return `https://${v}`;
+}
+
 /** Fertige Farben. Alle haben mit weißer Schrift mindestens 4,5 : 1 Kontrast. */
 export const PRESETS: readonly { readonly name: string; readonly color: string }[] = [
   { name: "Salbei", color: "#3f6b4a" },

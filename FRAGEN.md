@@ -4,7 +4,8 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-Zurzeit keine.
+1. **Schreibweise des Namens:** Du schreibst „Sloppify“ (zwei p), im Logo-Bild steht „slopify“ (ein p). Welche Schreibweise soll überall in der Plattform stehen? *Antwort: „Sloppify“ oder „Slopify“.*
+2. **Eigenes Logo:** Das geschickte Bild ist praktisch das Shopify-Logo (grüne Tasche mit „S“, gleiche Schrift), das baue ich nicht ein. Soll ich stattdessen ein eigenes, schlichtes Logo entwerfen und oben im Backoffice und in der Plattform-Verwaltung zeigen? *Antwort: „Ja“ oder „Nein“.*
 
 ## Beantwortet
 
