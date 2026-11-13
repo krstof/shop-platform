@@ -69,7 +69,8 @@ describe("Bilder prüfen und umrechnen (M2 Teil 2)", () => {
     });
   });
 
-  it("lehnt Pixelbomben ab (kleine Datei, riesiges Bild)", async () => {
+  // Das Testbild (48 Megapixel) zu erzeugen dauert auf den CI-Rechnern mehrere Sekunden.
+  it("lehnt Pixelbomben ab (kleine Datei, riesiges Bild)", { timeout: 30_000 }, async () => {
     const bomb = await sharp({ create: { width: 8000, height: 6000, channels: 3, background: "#000" } })
       .png({ compressionLevel: 9 })
       .toBuffer();
