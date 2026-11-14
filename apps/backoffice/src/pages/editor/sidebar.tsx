@@ -886,26 +886,53 @@ function Sketch({ id }: { id: Template }) {
           </span>
         </>
       )}
-      {id === "zentriert" && (
+      {id === "modern" && (
         <>
-          <span className="mx-auto h-1.5 w-5 rounded-sm bg-gray-500" />
-          <span className={bar + " mx-auto h-1 w-8"} />
-          <span className="mx-auto mt-0.5 h-1.5 w-10 rounded-sm bg-brand-300" />
-          <span className="mt-0.5 flex justify-center gap-1">
-            <span className="size-4 rounded-full bg-gray-200" />
-            <span className="size-4 rounded-full bg-gray-200" />
-            <span className="size-4 rounded-full bg-gray-200" />
+          <span className="flex items-center justify-between">
+            <span className={bar + " h-1 w-3"} />
+            <span className="h-1.5 w-5 rounded-sm bg-gray-500" />
+            <span className={bar + " h-1 w-3"} />
+          </span>
+          <span className={bar + " mx-auto h-0.5 w-9"} />
+          <span className="-mx-1.5 h-6 bg-brand-200" />
+          <span className="grid grid-cols-4 gap-0.5">
+            <span className="h-3 rounded-[1px] bg-gray-200" />
+            <span className="h-3 rounded-[1px] bg-gray-200" />
+            <span className="h-3 rounded-[1px] bg-gray-200" />
+            <span className="h-3 rounded-[1px] bg-gray-200" />
           </span>
         </>
       )}
-      {id === "boutique" && (
+      {id === "galerie" && (
         <>
-          <span className="-mx-1.5 -mt-1.5 flex items-center gap-1 bg-gray-800 px-1.5 py-1">
-            <span className="h-1.5 w-4 rounded-sm bg-white" />
-            <span className="h-0.5 w-6 rounded-sm bg-gray-400" />
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-4 rounded-sm bg-gray-500" />
+            <span className={bar + " h-1 w-5"} />
           </span>
-          <span className="-mx-1.5 h-6 bg-brand-200" />
-          <span className="grid grid-cols-3 gap-0.5">
+          <span className="-mx-1.5 flex h-8 items-end justify-center bg-brand-200 pb-1">
+            <span className="h-1.5 w-9 rounded-sm bg-white/90" />
+          </span>
+          <span className="-mx-1 grid grid-cols-2 gap-0.5">
+            <span className="h-4 bg-gray-200" />
+            <span className="h-4 bg-gray-200" />
+          </span>
+        </>
+      )}
+      {id === "editorial" && (
+        <>
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-sm bg-gray-500" />
+            <span className="h-0.5 w-8 rounded-sm bg-gray-400" />
+          </span>
+          <span className="-mx-1.5 grid h-6 grid-cols-2 bg-gray-200">
+            <span className="flex flex-col justify-center gap-0.5 px-1">
+              <span className="h-1 w-6 rounded-sm bg-gray-500" />
+              <span className="h-0.5 w-5 rounded-sm bg-gray-400" />
+            </span>
+            <span className="bg-brand-200" />
+          </span>
+          <span className="mx-auto mt-0.5 h-1 w-8 rounded-sm bg-gray-400" />
+          <span className="grid grid-cols-3 gap-1">
             <span className="h-4 bg-gray-200" />
             <span className="h-4 bg-gray-200" />
             <span className="h-4 bg-gray-200" />

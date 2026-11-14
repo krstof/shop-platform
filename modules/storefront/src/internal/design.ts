@@ -89,8 +89,12 @@ export const webFontSchema = z.strictObject({
   category: z.enum(FONT_CATEGORIES),
 });
 
-/** Design-Vorlagen: ändern nur die Anordnung (Kopf, Menü, Bühne, Kacheln), nie Farben oder Schriften. */
-export const TEMPLATES = ["klassisch", "zentriert", "boutique"] as const;
+/**
+ * Design-Vorlagen: ändern nur die Anordnung (Kopf, Menü, Bühne, Kacheln), nie Farben oder Schriften.
+ * „zentriert“ und „boutique“ (14.11.2026) bleiben gültig, damit alte Anfragen nicht scheitern; Shop und
+ * Editor zeigen dafür „modern“ bzw. „editorial“ (15.11.2026).
+ */
+export const TEMPLATES = ["klassisch", "zentriert", "boutique", "modern", "galerie", "editorial"] as const;
 export type Template = (typeof TEMPLATES)[number];
 
 /** Hintergrund des Shops: hell genug, damit der dunkle Text (#26221e) gut lesbar bleibt. */

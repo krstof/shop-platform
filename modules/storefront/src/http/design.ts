@@ -366,10 +366,10 @@ const draftInput = z.strictObject({
     .nullable()
     .optional()
     .meta({ description: "Schrift des Fließtexts (Google Fonts) oder null. Fehlt das Feld, bleibt sie." }),
-  template: z
-    .enum(TEMPLATES)
-    .optional()
-    .meta({ description: "Design-Vorlage (klassisch, zentriert, boutique). Fehlt das Feld, bleibt sie." }),
+  template: z.enum(TEMPLATES).optional().meta({
+    description:
+      "Design-Vorlage: klassisch, modern, galerie oder editorial (zentriert und boutique sind veraltet). Fehlt das Feld, bleibt sie.",
+  }),
   pages: pagesSchema.optional().meta({
     description: `Eigene Inhaltsseiten (bis zu ${MAX_PAGES}), nur freie Bausteine. Fehlt das Feld, bleiben sie.`,
   }),

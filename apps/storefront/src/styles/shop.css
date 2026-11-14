@@ -1201,6 +1201,10 @@ main h2 {
   min-height: clamp(20rem, 42vw, 30rem);
   border-radius: 16px;
 }
+/* Die Bühne mit Bild hat keinen Innenabstand (sonst bleibt unten ein Streifen Bild ohne Verlauf). */
+.buehne.buehne-bild {
+  padding: 0;
+}
 .buehne-bild .buehne-text {
   padding: 4rem 2.5rem 2.25rem;
 }
@@ -1278,100 +1282,278 @@ main h2 {
   transform: scale(1.04);
 }
 
-/* Vorlage „Zentriert“: Logo, Menü und Suche mittig untereinander, Texte zentriert. */
-.vorlage-zentriert .kopf-innen {
-  flex-direction: column;
+/* ------------------------------------------------------------------------------------------------
+   Design-Vorlagen (15.11.2026, nach Shopifys aktuellen Gratis-Themes der Horizon-Familie): nur Anordnung,
+   Abstände, Bildformate und Schreibweise; Farben und Schriften wählt der Händler. „Zentriert“ und
+   „Boutique“ (14.11.2026) gibt es nicht mehr, gespeicherte Werte zeigen „Modern“ bzw. „Editorial“.
+   ------------------------------------------------------------------------------------------------ */
+.kopf-links {
+  display: flex;
   align-items: center;
-  text-align: center;
-  gap: 0.9rem;
+  gap: 0.5rem 1.25rem;
 }
-.vorlage-zentriert .marke {
-  justify-items: center;
+body.vorlage-modern,
+body.vorlage-galerie,
+body.vorlage-editorial {
+  overflow-x: clip;
 }
-.vorlage-zentriert .nav {
-  justify-content: center;
-}
-.vorlage-zentriert .kopf-aktionen {
-  margin-left: 0;
-  justify-content: center;
-}
-.vorlage-zentriert .buehne {
-  justify-items: center;
-  text-align: center;
-}
-.vorlage-zentriert .buehne p {
-  margin-inline: auto;
-}
-.vorlage-zentriert .buehne-bild .buehne-text {
-  text-align: center;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.15));
-  align-self: stretch;
-  display: grid;
-  align-content: center;
-}
-.vorlage-zentriert main h2 {
-  text-align: center;
-}
-.vorlage-zentriert .karte {
-  text-align: center;
-}
-.vorlage-zentriert .kategorien a {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  border-radius: 999px;
-  aspect-ratio: 1;
-}
-
-/* Vorlage „Boutique“: dunkler Kopf, Menü in Großbuchstaben, Bühne über die ganze Breite, hohe Bilder. */
-.vorlage-boutique .kopf {
-  background: var(--text);
-  border-bottom: 0;
-}
-.vorlage-boutique .kopf .logo,
-.vorlage-boutique .kopf .nav a,
-.vorlage-boutique .kopf .merk-link,
-.vorlage-boutique .kopf .korb {
-  color: var(--grund);
-}
-.vorlage-boutique .kopf .slogan {
-  color: color-mix(in srgb, var(--grund) 75%, transparent);
-}
-.vorlage-boutique .nav a {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.85rem;
-}
-.vorlage-boutique .buehne-bild {
+/* Bühne mit Bild über die ganze Fensterbreite; Text bündig mit dem Inhalt darunter. */
+.vorlage-modern .buehne-bild,
+.vorlage-galerie .buehne-bild {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-top: 0;
   border-radius: 0;
-  min-height: clamp(24rem, 55vw, 38rem);
 }
-.vorlage-boutique .buehne-bild .buehne-text {
-  padding-inline: max(1.5rem, calc(50vw - 34rem));
+.vorlage-modern .buehne-bild .buehne-text {
+  padding-inline: max(1rem, calc(50vw - var(--breite) / 2 + 1rem));
 }
-.vorlage-boutique main h2 {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 1.1rem;
-  font-family: var(--schrift-text);
-  font-weight: 600;
+.vorlage-galerie .buehne-bild .buehne-text {
+  padding-inline: clamp(1rem, 3vw, 2.5rem);
 }
-.vorlage-boutique .bild {
+
+/* Vorlage „Modern“ (wie Horizon): Logo mittig, Suche links, Merkzettel und Warenkorb rechts, Menü in
+   einer zweiten Zeile; Kopf bleibt beim Scrollen oben; Bühne randlos; ruhige Karten mit kleinen Ecken. */
+@media (min-width: 48rem) {
+  .vorlage-modern .kopf {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .vorlage-modern .kopf-innen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem 2rem;
+    padding-bottom: 0;
+  }
+  .vorlage-modern .kopf-aktionen {
+    display: contents;
+  }
+  .vorlage-modern .suchfeld {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+  .vorlage-modern .marke {
+    grid-column: 2;
+    grid-row: 1;
+    justify-items: center;
+    text-align: center;
+  }
+  .vorlage-modern .kopf-links {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .vorlage-modern .kopf-innen > nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid var(--linie);
+    padding: 0.7rem 0 0.8rem;
+  }
+  .vorlage-modern .nav {
+    justify-content: center;
+    gap: 0.25rem 2.25rem;
+  }
+}
+.vorlage-modern .logo {
+  font-size: 2rem;
+}
+.vorlage-modern .buehne-bild {
+  min-height: clamp(24rem, 48vw, 40rem);
+}
+.vorlage-modern .buehne-bild .buehne-text {
+  padding-bottom: 3rem;
+}
+.vorlage-modern .raster {
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 2.25rem 1.25rem;
+}
+.vorlage-modern .karte .bild {
+  border-radius: 6px;
+}
+.vorlage-modern .karte-name {
+  font-size: 1.15rem;
+}
+.vorlage-modern .kategorien {
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+.vorlage-modern .kategorien a {
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+}
+
+/* Vorlage „Galerie“ (wie Fabric): Bilder zuerst. Breiter Inhalt fast bis zum Rand, sehr hohe Bühne mit
+   großer Schrift mittig, Produktbilder im Hochformat ohne Ecken, große Kategorie-Flächen. */
+.vorlage-galerie {
+  --breite: 96rem;
+}
+.vorlage-galerie .kopf-innen {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+  max-width: none;
+}
+.vorlage-galerie .breite {
+  padding-inline: clamp(1rem, 3vw, 2.5rem);
+}
+.vorlage-galerie .buehne-bild {
+  min-height: clamp(28rem, 78vh, 50rem);
+}
+.vorlage-galerie .buehne-bild .buehne-text {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding-top: 6rem;
+  padding-bottom: 4.5rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0) 75%);
+}
+.vorlage-galerie .buehne h1,
+.vorlage-galerie .buehne h2 {
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+}
+.vorlage-galerie main h2 {
+  font-size: clamp(1.9rem, 3.5vw, 2.7rem);
+}
+.vorlage-galerie .raster {
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 2rem 0.75rem;
+}
+.vorlage-galerie .karte .bild {
   aspect-ratio: 4 / 5;
   border-radius: 0;
 }
-.vorlage-boutique .kategorien a {
+.vorlage-galerie .karte-name {
+  font-size: 1.05rem;
+}
+.vorlage-galerie .kategorien {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 0.75rem;
+}
+.vorlage-galerie .kategorien a {
+  aspect-ratio: 16 / 11;
   border-radius: 0;
-  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
-.vorlage-boutique .kategorien strong {
+.vorlage-galerie .kategorien a.mit-bild::before {
+  background: rgb(0 0 0 / 0.32);
+}
+.vorlage-galerie .kategorien strong {
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
+}
+.vorlage-galerie .kategorien strong::after {
+  content: none;
+}
+
+/* Vorlage „Editorial“ (wie Ritual und Dwell): ruhig und hochwertig. Menü in kleinen Großbuchstaben,
+   Bühne geteilt (Text links auf heller Fläche, Bild rechts), Überschriften und Karten mittig,
+   Bilder im Hochformat, viel Luft. */
+.vorlage-editorial .kopf-innen {
+  padding-top: 1.6rem;
+  padding-bottom: 1.6rem;
+  gap: 0.75rem 2.75rem;
+}
+.vorlage-editorial .nav a,
+.vorlage-editorial .kopf-links a {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 1.15rem;
+  letter-spacing: 0.14em;
+  font-size: 0.8rem;
 }
-body.vorlage-boutique {
-  overflow-x: clip;
+.vorlage-editorial .buehne {
+  justify-items: center;
+  text-align: center;
+  padding: 6rem 0 2rem;
+}
+.vorlage-editorial .buehne p {
+  margin-inline: auto;
+}
+.vorlage-editorial .buehne-bild {
+  border-radius: 0;
+  padding: 0;
+}
+@media (min-width: 48rem) {
+  .vorlage-editorial .buehne-bild {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    justify-items: stretch;
+    text-align: left;
+    min-height: clamp(26rem, 42vw, 36rem);
+    background: var(--flaeche);
+    margin-top: 2.5rem;
+  }
+  .vorlage-editorial .buehne-foto {
+    position: relative;
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 0;
+  }
+  .vorlage-editorial .buehne-bild .buehne-text {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    padding: 3rem clamp(2rem, 5vw, 4.5rem);
+    background: none;
+    color: var(--text);
+  }
+  .vorlage-editorial .buehne-bild .buehne-text p {
+    color: var(--text-leise);
+    margin-inline: 0;
+  }
+}
+.vorlage-editorial main h2 {
+  text-align: center;
+  margin-top: 5rem;
+  margin-bottom: 2rem;
+}
+.vorlage-editorial .raster {
+  gap: 3rem 2rem;
+}
+.vorlage-editorial .karte {
+  text-align: center;
+}
+.vorlage-editorial .karte-preis {
+  justify-content: center;
+}
+.vorlage-editorial .karte .bild {
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
+}
+.vorlage-editorial .kategorien a {
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
+  align-items: center;
+  text-align: center;
+}
+.vorlage-editorial .kategorien strong::after {
+  content: none;
+}
+
+/* Handy (alle Vorlagen): Suche in eigener Zeile über die ganze Breite, Merkzettel und Warenkorb darunter;
+   Kategorie-Kacheln im Hochformat zweispaltig statt riesig. */
+@media (max-width: 47.99rem) {
+  .kopf-aktionen {
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+  }
+  .kopf-aktionen .suchfeld {
+    flex: 1 1 100%;
+  }
+  .vorlage-modern .kategorien,
+  .vorlage-editorial .kategorien {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .vorlage-modern .kategorien a,
+  .vorlage-editorial .kategorien a {
+    padding: 1rem;
+  }
+  .vorlage-modern .kategorien strong,
+  .vorlage-editorial .kategorien strong {
+    font-size: 1.25rem;
+  }
+  .vorlage-modern .kategorien .klein,
+  .vorlage-editorial .kategorien .klein {
+    display: none;
+  }
 }

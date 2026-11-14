@@ -112,19 +112,33 @@ export function storefrontUrl(handle: string, location: { protocol: string; host
   return `${location.protocol}//${host}/${handle}`;
 }
 
-/** Design-Vorlagen: nur die Anordnung, nie Farben oder Schriften (wie API und Shop). */
+/**
+ * Design-Vorlagen (15.11.2026, nach Shopifys aktuellen Gratis-Themes): nur die Anordnung, nie Farben oder
+ * Schriften (wie API und Shop). Frühere Vorlagen „zentriert“ und „boutique“ zeigen „modern“ bzw. „editorial“.
+ */
 export const TEMPLATES = [
-  { id: "klassisch", name: "Klassisch", hint: "Logo links, Menü daneben, Bühne mit Bild als Karte" },
-  { id: "zentriert", name: "Zentriert", hint: "Logo und Menü mittig, Texte zentriert, runde Kacheln" },
+  { id: "klassisch", name: "Klassisch", hint: "Logo links, Menü daneben, Bühne als Karte mit runden Ecken" },
   {
-    id: "boutique",
-    name: "Boutique",
-    hint: "Dunkler Kopf, Menü in Großbuchstaben, Bühne über die ganze Breite",
+    id: "modern",
+    name: "Modern",
+    hint: "Logo mittig, Menü darunter, Bühne über die ganze Breite (wie Shopify Horizon)",
+  },
+  {
+    id: "galerie",
+    name: "Galerie",
+    hint: "Bilder zuerst: sehr große Bühne, breite Raster, große Kategorie-Flächen (wie Fabric)",
+  },
+  {
+    id: "editorial",
+    name: "Editorial",
+    hint: "Ruhig und hochwertig: geteilte Bühne, Texte mittig, Bilder im Hochformat (wie Ritual)",
   },
 ] as const;
 export type Template = (typeof TEMPLATES)[number]["id"];
+const OLD_TEMPLATES: Readonly<Record<string, Template>> = { zentriert: "modern", boutique: "editorial" };
 export function templateOf(v: string | undefined): Template {
-  return TEMPLATES.some((t) => t.id === v) ? (v as Template) : "klassisch";
+  if (TEMPLATES.some((t) => t.id === v)) return v as Template;
+  return OLD_TEMPLATES[v ?? ""] ?? "klassisch";
 }
 
 // --- Editor (14.11.2026): Hintergrund, Google-Schriften, soziale Netzwerke ---

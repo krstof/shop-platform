@@ -104,7 +104,7 @@ export function Canvas({
       <p className="sp-band">Testshop: Hier ist nichts echt, auch die Zahlung nicht.</p>
       <header className="sp-kopf">
         <div className="sp-breite sp-kopf-innen">
-          <div>
+          <div className="sp-marke">
             {shop.logo ? (
               <img className="sp-logo-bild" src={shop.logo.thumbnailUrl} alt={shop.name} />
             ) : (
@@ -122,7 +122,7 @@ export function Canvas({
               <span>Suchen …</span>
               <b>Suchen</b>
             </span>
-            <span style={{ textDecoration: "underline" }}>Warenkorb (0)</span>
+            <span className="sp-korb-link">Warenkorb (0)</span>
           </div>
         </div>
       </header>

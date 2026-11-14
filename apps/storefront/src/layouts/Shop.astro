@@ -121,20 +121,22 @@ const fussLinks = [
             <input id="suche-q" type="search" name="q" value={suche} maxlength="100" placeholder="Suchen …" />
             <button type="submit">Suchen</button>
           </form>
-          <a
-            class="merk-link"
-            href={`${basis}/merkzettel`}
-            aria-current={pfad === `${basis}/merkzettel` ? "page" : undefined}
-          >
-            Merkzettel{merkzettel > 0 && ` (${merkzettel})`}
-          </a>
-          <a
-            class="korb"
-            href={`${basis}/warenkorb`}
-            aria-current={pfad === `${basis}/warenkorb` ? "page" : undefined}
-          >
-            Warenkorb ({korb})
-          </a>
+          <div class="kopf-links">
+            <a
+              class="merk-link"
+              href={`${basis}/merkzettel`}
+              aria-current={pfad === `${basis}/merkzettel` ? "page" : undefined}
+            >
+              Merkzettel{merkzettel > 0 && ` (${merkzettel})`}
+            </a>
+            <a
+              class="korb"
+              href={`${basis}/warenkorb`}
+              aria-current={pfad === `${basis}/warenkorb` ? "page" : undefined}
+            >
+              Warenkorb ({korb})
+            </a>
+          </div>
         </div>
       </div>
     </header>

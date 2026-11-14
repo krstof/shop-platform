@@ -151,7 +151,8 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
     9. **Bestseller** als Shop-Bereich im Editor: die meistverkauften Produkte der letzten 90 Tage (Store-API `GET /shops/{h}/bestsellers`). Nebenbei behoben: Shop-Bereiche auf eigenen Seiten wurden im Shop nicht angezeigt.
     10. **Rechnung als PDF:** Knopf „Rechnung (PDF)“ auf jeder Bestellung, Absender aus „Einstellungen → Allgemein“, mit Hinweis „Testshop“. Wird im Backoffice aus den API-Daten gebaut (keine Zusatzbibliothek).
     - Getestet: Datenbanktests (Einstellungen, Bestseller inkl. Stornos, alter und fremder Bestellungen, Bausteine), Einheitstests (CSV, Merkzettel, PDF mit gültiger Querverweistabelle und mehreren Seiten), Zufallstests der API, Browser-Durchgänge am Computer und Handy, API-Vertrag ohne Bruch.
-30. **Nächste Schritte:** Kontaktformular mit Posteingang, Plattform-Kennzahlen; danach Kristofs nächste Wünsche.
+30. ~~Neue Design-Vorlagen~~ (erledigt 15.11.2026, Kristof: „Zentriert und Boutique gefallen mir nicht“, Vorbild Shopifys Gratis-Themes der Horizon-Familie): Klassisch bleibt; neu sind **Modern** (wie Horizon: Logo mittig, Suche links, Menü in zweiter Zeile, Kopf bleibt beim Scrollen oben, Bühne randlos), **Galerie** (wie Fabric: Bilder zuerst, sehr große Bühne, breites Raster, Hochformat-Bilder ohne Ecken, große Kategorie-Flächen) und **Editorial** (wie Ritual/Dwell: Menü in kleinen Großbuchstaben, geteilte Bühne mit Text links und Bild rechts, Überschriften und Karten mittig). Gespeicherte „zentriert“/„boutique“ zeigen Modern bzw. Editorial; die API nimmt die alten Werte weiter an. Nebenbei: Streifen unten in der Bühne mit Bild entfernt, Suche auf dem Handy in eigener Zeile.
+31. **Nächste Schritte:** Kontaktformular mit Posteingang, Plattform-Kennzahlen; danach Kristofs nächste Wünsche.
 
 
 ## Später (nicht fürs MVP)

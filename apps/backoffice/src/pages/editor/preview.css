@@ -450,79 +450,215 @@
   font-size: 1.25rem;
 }
 
-/* Vorlage „Zentriert“ */
-.sp.vorlage-zentriert .sp-kopf-innen {
-  flex-direction: column;
-  text-align: center;
-  gap: 0.75rem;
+/* Design-Vorlagen (15.11.2026, nach Shopifys Horizon-Familie), wie im Shop (shop.css). Breiten über
+   Container-Abfragen, randlose Bühne über 100cqw (Breite des Vorschau-Rahmens). */
+.sp-korb-link {
+  text-decoration: underline;
 }
-.sp.vorlage-zentriert .sp-nav,
-.sp.vorlage-zentriert .sp-korb {
-  justify-content: center;
-  margin-left: 0;
+.sp.vorlage-modern .sp-buehne.mit-bild,
+.sp.vorlage-galerie .sp-buehne.mit-bild {
+  width: 100cqw;
+  margin-inline: calc(50% - 50cqw);
+  border-radius: 0;
 }
-.sp.vorlage-zentriert .sp-buehne {
+.sp.vorlage-modern .sp-buehne.mit-bild .sp-buehne-text,
+.sp.vorlage-galerie .sp-buehne.mit-bild .sp-buehne-text {
+  padding-inline: max(1.25rem, calc(50cqw - 36rem + 1.25rem));
+}
+.sp.vorlage-modern .sp-main,
+.sp.vorlage-galerie .sp-main {
+  padding-top: 0;
+}
+
+/* Modern */
+@container sp (min-width: 48rem) {
+  .sp.vorlage-modern .sp-kopf-innen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem 2rem;
+    padding-bottom: 0;
+  }
+  .sp.vorlage-modern .sp-korb {
+    display: contents;
+  }
+  .sp.vorlage-modern .sp-suche {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+  .sp.vorlage-modern .sp-marke {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: center;
+  }
+  .sp.vorlage-modern .sp-korb-link {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .sp.vorlage-modern .sp-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    gap: 0.25rem 2.25rem;
+    border-top: 1px solid var(--linie);
+    padding: 0.7rem 0 0.8rem;
+  }
+}
+.sp.vorlage-modern .sp-logo {
+  font-size: 2rem;
+}
+.sp.vorlage-modern .sp-buehne.mit-bild {
+  min-height: 28rem;
+}
+.sp.vorlage-modern .sp-buehne.mit-bild .sp-buehne-text {
+  padding-bottom: 3rem;
+}
+.sp.vorlage-modern .sp-raster {
+  gap: 2.25rem 1.25rem;
+}
+.sp.vorlage-modern .sp-bild {
+  border-radius: 6px;
+}
+.sp.vorlage-modern .sp-kategorien div {
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+}
+
+/* Galerie */
+.sp.vorlage-galerie .sp-breite {
+  max-width: 96rem;
+}
+.sp.vorlage-galerie .sp-kopf-innen {
+  max-width: none;
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+.sp.vorlage-galerie .sp-buehne.mit-bild {
+  min-height: 36rem;
+  align-content: end;
+}
+.sp.vorlage-galerie .sp-buehne.mit-bild .sp-buehne-text {
+  display: grid;
   justify-items: center;
   text-align: center;
+  padding-top: 6rem;
+  padding-bottom: 4.5rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0) 75%);
 }
-.sp.vorlage-zentriert .sp-buehne.mit-bild {
-  align-content: center;
+.sp.vorlage-galerie .sp-buehne h1,
+.sp.vorlage-galerie .sp-buehne h2 {
+  font-size: clamp(2.8rem, 7cqw, 5.5rem);
 }
-.sp.vorlage-zentriert .sp-buehne.mit-bild .sp-buehne-text {
-  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.15));
+.sp.vorlage-galerie .sp-main h2 {
+  font-size: 2.4rem;
 }
-.sp.vorlage-zentriert .sp-buehne p {
-  margin-inline: auto;
+.sp.vorlage-galerie .sp-raster {
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 2rem 0.75rem;
 }
-.sp.vorlage-zentriert .sp-main h2,
-.sp.vorlage-zentriert .sp-karte {
-  text-align: center;
+.sp.vorlage-galerie .sp-bild {
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
 }
-.sp.vorlage-zentriert .sp-kategorien div {
-  border-radius: 999px;
-  aspect-ratio: 1;
+.sp.vorlage-galerie .sp-karte-name {
+  font-size: 1.05rem;
+}
+.sp.vorlage-galerie .sp-kategorien {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 0.75rem;
+}
+.sp.vorlage-galerie .sp-kategorien div {
+  aspect-ratio: 16 / 11;
+  border-radius: 0;
   align-items: center;
   justify-content: center;
   text-align: center;
 }
+.sp.vorlage-galerie .sp-kategorien .mit-bild::before {
+  background: rgb(0 0 0 / 0.32);
+}
+.sp.vorlage-galerie .sp-kategorien strong {
+  font-size: 2.3rem;
+}
+.sp.vorlage-galerie .sp-kategorien strong::after,
+.sp.vorlage-editorial .sp-kategorien strong::after {
+  content: none;
+}
 
-/* Vorlage „Boutique“ */
-.sp.vorlage-boutique .sp-kopf {
-  background: var(--text);
-  border-bottom: 0;
-  color: var(--grund);
+/* Editorial */
+.sp.vorlage-editorial .sp-kopf-innen {
+  padding-top: 1.6rem;
+  padding-bottom: 1.6rem;
+  gap: 0.75rem 2.75rem;
 }
-.sp.vorlage-boutique .sp-logo,
-.sp.vorlage-boutique .sp-korb span {
-  color: var(--grund);
-}
-.sp.vorlage-boutique .sp-nav {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.85rem;
-}
-.sp.vorlage-boutique .sp-buehne.mit-bild {
-  border-radius: 0;
-  margin-inline: -1.25rem;
-  min-height: 30rem;
-}
-.sp.vorlage-boutique .sp-main h2 {
+.sp.vorlage-editorial .sp-nav,
+.sp.vorlage-editorial .sp-korb-link {
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  font-size: 1.05rem;
-  font-family: var(--schrift-text);
-  font-weight: 600;
+  font-size: 0.8rem;
 }
-.sp.vorlage-boutique .sp-bild {
+.sp.vorlage-editorial .sp-buehne {
+  justify-items: center;
+  text-align: center;
+  padding: 5rem 0 2rem;
+}
+.sp.vorlage-editorial .sp-buehne p {
+  margin-inline: auto;
+}
+.sp.vorlage-editorial .sp-buehne.mit-bild {
+  border-radius: 0;
+  padding: 0;
+}
+@container sp (min-width: 48rem) {
+  .sp.vorlage-editorial .sp-buehne.mit-bild {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    justify-items: stretch;
+    align-content: stretch;
+    text-align: left;
+    min-height: 30rem;
+    background: var(--flaeche);
+  }
+  .sp.vorlage-editorial .sp-buehne-foto {
+    position: relative;
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 0;
+  }
+  .sp.vorlage-editorial .sp-buehne.mit-bild .sp-buehne-text {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    padding: 3rem 3.5rem;
+    background: none;
+    color: var(--text);
+  }
+  .sp.vorlage-editorial .sp-buehne.mit-bild .sp-buehne-text p {
+    color: var(--text-leise);
+    margin-inline: 0;
+  }
+}
+.sp.vorlage-editorial .sp-main h2 {
+  text-align: center;
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+.sp.vorlage-editorial .sp-raster {
+  gap: 3rem 2rem;
+}
+.sp.vorlage-editorial .sp-karte {
+  text-align: center;
+  align-items: center;
+}
+.sp.vorlage-editorial .sp-bild {
   aspect-ratio: 4 / 5;
   border-radius: 0;
 }
-.sp.vorlage-boutique .sp-kategorien div {
+.sp.vorlage-editorial .sp-kategorien div {
+  aspect-ratio: 4 / 5;
   border-radius: 0;
-  aspect-ratio: 1;
-}
-.sp.vorlage-boutique .sp-kategorien strong {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 1.1rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }

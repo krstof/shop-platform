@@ -179,12 +179,17 @@ export interface StoreDesign {
   readonly template?: string;
 }
 
-export const TEMPLATES = ["klassisch", "zentriert", "boutique"] as const;
+export const TEMPLATES = ["klassisch", "modern", "galerie", "editorial"] as const;
+/** Frühere Vorlagen (14.11.2026) und ihr Ersatz. */
+const ALTE_VORLAGEN: Readonly<Record<string, (typeof TEMPLATES)[number]>> = {
+  zentriert: "modern",
+  boutique: "editorial",
+};
 /** Vorlage für die CSS-Klasse; Unbekanntes wird „klassisch“. */
 export function vorlage(design: StoreDesign): (typeof TEMPLATES)[number] {
-  return (TEMPLATES as readonly string[]).includes(design.template ?? "")
-    ? (design.template as (typeof TEMPLATES)[number])
-    : "klassisch";
+  const t = design.template ?? "";
+  if ((TEMPLATES as readonly string[]).includes(t)) return t as (typeof TEMPLATES)[number];
+  return ALTE_VORLAGEN[t] ?? "klassisch";
 }
 
 /** Eintrag einer eigenen Seite im Aussehen (Inhalt kommt über /pages/{slug}). */

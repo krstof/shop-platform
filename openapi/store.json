@@ -2838,7 +2838,10 @@
             "x-extensible-enum": [
               "klassisch",
               "zentriert",
-              "boutique"
+              "boutique",
+              "modern",
+              "galerie",
+              "editorial"
             ],
             "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
           },
