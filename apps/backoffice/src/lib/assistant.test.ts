@@ -4,6 +4,8 @@ import {
   needsConfirmation,
   prepareForSend,
   productBody,
+  shippingBody,
+  couponBody,
   stripImages,
   type AssistantStatus,
 } from "./assistant.js";
@@ -26,6 +28,26 @@ describe("Werkzeuge des Assistenten im Backoffice", () => {
     ).toMatchObject({
       status: "published",
     });
+  });
+
+  it("Versand, Gutschein, Stornieren und Notiz", () => {
+    expect(shippingBody({ amountCents: 490, freeFromCents: 5000 })).toEqual({ amount: 490, freeFrom: 5000 });
+    expect(shippingBody({ amountCents: 0, freeFromCents: 5000 })).toEqual({ amount: 0, freeFrom: null });
+    expect(couponBody({ code: "sommer10", kind: "percent", value: 10 })).toEqual({
+      code: "sommer10",
+      kind: "percent",
+      value: 10,
+    });
+    expect(couponBody({ code: "FEST5", kind: "amount", value: 500, minOrderCents: 3000 })).toMatchObject({
+      minOrderAmount: 3000,
+    });
+    expect(describeChange("create_coupon", { code: "sommer10", kind: "percent", value: 10 }).lines).toEqual([
+      "Code: SOMMER10",
+      "Rabatt: 10 %",
+    ]);
+    expect(describeChange("cancel_order", { orderId: CAT }).title).toBe("Bestellung stornieren");
+    expect(describeChange("set_order_note", { orderId: CAT, note: " " }).lines).toEqual(["Notiz löschen"]);
+    expect(describeChange("update_shipping", { amountCents: 0 }).lines).toEqual(["Versand: kostenlos"]);
   });
 
   it("Angebotspreis setzen und beenden; Kopieren beschreiben", () => {

@@ -246,9 +246,59 @@ async function run(
       );
       return { shipped: { id: o.id, orderNumber: o.orderNumber, status: o.status } };
     }
+    case "cancel_order": {
+      const o = await request<Order>(
+        `/admin/v1/orders/${encodeURIComponent(str(input["orderId"]) ?? "")}/cancel`,
+        { method: "POST", shopId },
+      );
+      return {
+        cancelled: { id: o.id, orderNumber: o.orderNumber, status: o.status, paymentStatus: o.paymentStatus },
+      };
+    }
+    case "set_order_note": {
+      const note = (str(input["note"]) ?? "").trim();
+      const o = await request<Order>(
+        `/admin/v1/orders/${encodeURIComponent(str(input["orderId"]) ?? "")}/note`,
+        {
+          method: "PUT",
+          shopId,
+          body: { note: note === "" ? null : note },
+        },
+      );
+      return { updated: { id: o.id, orderNumber: o.orderNumber, merchantNote: o.merchantNote ?? null } };
+    }
+    case "get_shipping":
+      return request("/admin/v1/shipping", { shopId });
+    case "update_shipping":
+      return request("/admin/v1/shipping", { method: "PUT", shopId, body: shippingBody(input) });
+    case "list_coupons":
+      return request("/admin/v1/coupons", { shopId });
+    case "create_coupon":
+      return request("/admin/v1/coupons", { method: "POST", shopId, body: couponBody(input) });
     default:
       throw new ApiError(400, "unknown_tool", `Das Werkzeug „${name}“ gibt es nicht.`);
   }
+}
+
+/** Eingabe des Modells → Inhalt für PUT /admin/v1/shipping. */
+export function shippingBody(input: Readonly<Record<string, unknown>>): {
+  amount: number;
+  freeFrom: number | null;
+} {
+  const amount = int(input["amountCents"]) ?? 0;
+  const freeFrom = int(input["freeFromCents"]);
+  return { amount, freeFrom: amount === 0 || freeFrom === undefined ? null : freeFrom };
+}
+
+/** Eingabe des Modells → Inhalt für POST /admin/v1/coupons. */
+export function couponBody(input: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const min = int(input["minOrderCents"]);
+  return {
+    code: str(input["code"]) ?? "",
+    kind: input["kind"] === "amount" ? "amount" : "percent",
+    value: int(input["value"]) ?? 0,
+    ...(min === undefined ? {} : { minOrderAmount: min }),
+  };
 }
 
 /** Eingabe des Modells → Inhalt für POST/PATCH /admin/v1/products. Nur bekannte Felder. */
@@ -326,6 +376,32 @@ export function describeChange(
       return { title: "Kategorie anlegen", lines };
     case "mark_order_shipped":
       return { title: "Bestellung als versendet markieren", lines };
+    case "cancel_order":
+      lines.push("Ware zurück ins Lager, bezahlte Testzahlung gilt als erstattet");
+      return { title: "Bestellung stornieren", lines };
+    case "set_order_note": {
+      const note = (str(input["note"]) ?? "").trim();
+      lines.push(note === "" ? "Notiz löschen" : `Notiz: ${note}`);
+      return { title: "Interne Notiz setzen", lines };
+    }
+    case "update_shipping": {
+      const s = shippingBody(input);
+      lines.push(s.amount === 0 ? "Versand: kostenlos" : `Versand: ${formatEuro(s.amount)}`);
+      if (s.freeFrom !== null) lines.push(`Kostenlos ab ${formatEuro(s.freeFrom)} Warenwert`);
+      return { title: "Versandkosten ändern", lines };
+    }
+    case "create_coupon": {
+      const c = couponBody(input);
+      add("Code", String(c["code"]).toUpperCase());
+      lines.push(
+        c["kind"] === "amount"
+          ? `Rabatt: ${formatEuro(Number(c["value"]))}`
+          : `Rabatt: ${String(c["value"])} %`,
+      );
+      if (c["minOrderAmount"] !== undefined)
+        lines.push(`Ab ${formatEuro(Number(c["minOrderAmount"]))} Warenwert`);
+      return { title: "Gutschein anlegen", lines };
+    }
     default:
       return { title: `Aktion „${name}“`, lines };
   }
@@ -340,6 +416,8 @@ export function toolLabel(name: string): string {
         search_products: "Produkte durchsucht",
         search_orders: "Bestellungen durchsucht",
         get_order: "Bestellung gelesen",
+        get_shipping: "Versandkosten angesehen",
+        list_coupons: "Gutscheine angesehen",
       } as Record<string, string>
     )[name] ?? name
   );

@@ -93,6 +93,10 @@ describe("Werkzeuge", () => {
       "add_product_photo",
       "create_category",
       "mark_order_shipped",
+      "cancel_order",
+      "set_order_note",
+      "update_shipping",
+      "create_coupon",
     ]);
   });
 });

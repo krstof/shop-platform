@@ -754,7 +754,13 @@
                                       "create_category",
                                       "search_orders",
                                       "get_order",
-                                      "mark_order_shipped"
+                                      "mark_order_shipped",
+                                      "cancel_order",
+                                      "set_order_note",
+                                      "get_shipping",
+                                      "update_shipping",
+                                      "list_coupons",
+                                      "create_coupon"
                                     ]
                                   },
                                   "input": {
@@ -9024,7 +9030,13 @@
                         "create_category",
                         "search_orders",
                         "get_order",
-                        "mark_order_shipped"
+                        "mark_order_shipped",
+                        "cancel_order",
+                        "set_order_note",
+                        "get_shipping",
+                        "update_shipping",
+                        "list_coupons",
+                        "create_coupon"
                       ]
                     },
                     "input": {
