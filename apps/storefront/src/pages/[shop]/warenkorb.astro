@@ -3,7 +3,7 @@
 // Änderung leitet der Server zurück (POST, dann GET), damit Neuladen nichts doppelt tut.
 import Shop from "../../layouts/Shop.astro";
 import { euro, fehltBisKostenlos, VERSAND_KOSTENLOS } from "../../lib/format.js";
-import { loadCart, safeId, safeInt, setQuantity } from "../../lib/cart.js";
+import { loadCart, removeCoupon, safeId, safeInt, setCoupon, setQuantity } from "../../lib/cart.js";
 import { loadShop, StoreApiError } from "../../lib/store-api.js";
 
 const daten = await loadShop(Astro.params.shop);
@@ -17,7 +17,14 @@ if (Astro.request.method === "POST") {
   const produkt = safeId(form.get("produkt"));
   let fehler = "";
   try {
-    if (produkt === undefined) fehler = "Unbekanntes Produkt.";
+    if (aktion === "gutschein") {
+      const code = String(form.get("code") ?? "")
+        .trim()
+        .slice(0, 40);
+      if (code === "") fehler = "Bitte einen Gutscheincode eingeben.";
+      else await setCoupon(Astro.cookies, shop.handle, code);
+    } else if (aktion === "gutschein-entfernen") await removeCoupon(Astro.cookies, shop.handle);
+    else if (produkt === undefined) fehler = "Unbekanntes Produkt.";
     else if (aktion === "hinzufuegen") {
       const menge = safeInt(form.get("menge"), 1, 99) ?? 1;
       const vorher = (await loadCart(Astro.cookies, shop.handle))?.lines.find((l) => l.productId === produkt);
@@ -31,7 +38,7 @@ if (Astro.request.method === "POST") {
     }
   } catch (e) {
     if (!(e instanceof StoreApiError) || e.status >= 500) throw e;
-    fehler = e.message;
+    fehler = e.fields[0]?.message ?? e.message;
   }
   // Hinweis für die nächste Anzeige in einem kurzlebigen Cookie, nicht in der Adresse (sonst
   // ließen sich fremde Texte per Link in die Seite schmuggeln).
@@ -49,7 +56,10 @@ if (Astro.request.method === "POST") {
 const hinweis = Astro.cookies.get("hinweis")?.value;
 if (hinweis !== undefined) Astro.cookies.delete("hinweis", { path: basis });
 const korb = await loadCart(Astro.cookies, shop.handle);
-const fehlt = fehltBisKostenlos(korb?.subtotal ?? 0, shop.versand ?? VERSAND_KOSTENLOS);
+const fehlt = fehltBisKostenlos(
+  (korb?.subtotal ?? 0) - (korb?.discount ?? 0),
+  shop.versand ?? VERSAND_KOSTENLOS,
+);
 const zeilen = korb?.lines ?? [];
 ---
 
@@ -115,6 +125,12 @@ const zeilen = korb?.lines ?? [];
         <dl>
           <dt>Zwischensumme</dt>
           <dd>{euro(korb?.subtotal ?? 0)}</dd>
+          {(korb?.discount ?? 0) > 0 && (
+            <>
+              <dt>Gutschein {korb?.couponCode}</dt>
+              <dd class="rabatt">−{euro(korb?.discount ?? 0)}</dd>
+            </>
+          )}
           <dt>Versand</dt>
           <dd>{(korb?.shipping ?? 0) === 0 ? "kostenlos" : euro(korb?.shipping ?? 0)}</dd>
           <dt class="gesamt">Gesamt</dt>
@@ -129,6 +145,37 @@ const zeilen = korb?.lines ?? [];
             </>
           ))}
         </dl>
+        {korb?.couponProblem && (
+          <p class="meldung" role="status">
+            {korb.couponProblem}
+          </p>
+        )}
+        {korb?.couponCode ? (
+          <form method="post" class="gutschein">
+            <input type="hidden" name="aktion" value="gutschein-entfernen" />
+            <span class="klein">Gutschein {korb.couponCode} ist eingelöst.</span>
+            <button type="submit" class="knopf-leise">
+              Entfernen
+            </button>
+          </form>
+        ) : (
+          <form method="post" class="gutschein">
+            <input type="hidden" name="aktion" value="gutschein" />
+            <label for="gutschein-code">Gutscheincode</label>
+            <div class="gutschein-zeile">
+              <input
+                id="gutschein-code"
+                name="code"
+                maxlength="40"
+                autocomplete="off"
+                autocapitalize="characters"
+              />
+              <button type="submit" class="knopf-klein">
+                Einlösen
+              </button>
+            </div>
+          </form>
+        )}
         <a class="knopf" href={`${basis}/kasse`}>
           Zur Kasse
         </a>

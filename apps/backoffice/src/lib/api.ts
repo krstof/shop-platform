@@ -256,6 +256,9 @@ export interface Order {
     readonly countryCode: string;
   };
   readonly subtotal: number;
+  /** Rabatt durch Gutschein (Cent) und Code. */
+  readonly discount?: number;
+  readonly couponCode?: string | null;
   readonly shipping: number;
   readonly tax: number;
   readonly total: number;

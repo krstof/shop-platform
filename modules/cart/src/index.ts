@@ -19,6 +19,8 @@ export interface CartLine {
 export interface CartContent {
   readonly id: string;
   readonly lines: readonly CartLine[];
+  /** Eingegebener Gutscheincode (Großbuchstaben) oder `null`. Ob er gilt, prüft der Checkout. */
+  readonly couponCode: string | null;
 }
 
 export interface Carts {
@@ -28,6 +30,8 @@ export interface Carts {
   find(token: string): Promise<CartContent | undefined>;
   /** Menge einer Variante setzen; 0 entfernt sie. */
   setQuantity(cartId: string, variantId: string, quantity: number): Promise<void>;
+  /** Gutscheincode merken (`null` entfernt ihn). Erwartet die normalisierte Form. */
+  setCoupon(cartId: string, code: string | null): Promise<void>;
   /** Nach der Bestellung: Warenkorb ist verbraucht. */
   markConverted(cartId: string): Promise<void>;
 }
@@ -67,7 +71,7 @@ export function createCarts(deps: CartDependencies): Carts {
           .returning("id")
           .executeTakeFirstOrThrow(),
       );
-      return { token, cart: { id: row.id, lines: [] } };
+      return { token, cart: { id: row.id, lines: [], couponCode: null } };
     },
 
     async find(token) {
@@ -75,14 +79,14 @@ export function createCarts(deps: CartDependencies): Carts {
       const row = await withTenantTransaction(db, (trx) =>
         trx
           .selectFrom("cart.cart")
-          .select("id")
+          .select(["id", "coupon_code"])
           .where("token_hash", "=", hash(token))
           .where("status", "=", "active")
           .where("expires_at", ">", new Date())
           .executeTakeFirst(),
       );
       if (row === undefined) return undefined;
-      return { id: row.id, lines: await lines(row.id) };
+      return { id: row.id, lines: await lines(row.id), couponCode: row.coupon_code };
     },
 
     async setQuantity(cartId, variantId, quantity) {
@@ -120,6 +124,16 @@ export function createCarts(deps: CartDependencies): Carts {
           .where("id", "=", cartId)
           .execute();
       });
+    },
+
+    async setCoupon(cartId, code) {
+      await withTenantTransaction(db, (trx) =>
+        trx
+          .updateTable("cart.cart")
+          .set({ coupon_code: code, last_activity_at: new Date() })
+          .where("id", "=", cartId)
+          .execute(),
+      );
     },
 
     async markConverted(cartId) {

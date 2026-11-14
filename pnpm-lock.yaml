@@ -792,12 +792,18 @@ importers:
 
   modules/pricing:
     dependencies:
+      '@shop/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@shop/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
       kysely:
         specifier: 0.29.7
         version: 0.29.7
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@shop/config':
         specifier: workspace:*

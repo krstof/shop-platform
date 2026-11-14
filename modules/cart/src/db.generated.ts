@@ -28,6 +28,7 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 export interface CartCart {
   channel_id: string;
   country_code: Generated<string>;
+  coupon_code: string | null;
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   currency: Generated<string>;

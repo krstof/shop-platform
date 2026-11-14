@@ -5,6 +5,11 @@
 // (withTenantTransaction, Architektur 3.5 Weg 1). Jede Änderung landet per Trigger im Preisverlauf.
 import { getContext, withTenantTransaction, type Database } from "@shop/kernel";
 import type { DB } from "./db.generated.js";
+import { checkCoupon, normalizeCode, type CouponCheck } from "./internal/coupon-rules.js";
+import { findCouponByCode } from "./internal/coupons.js";
+
+export { couponEndpoints } from "./http/coupons.js";
+export { normalizeCode, type CouponCheck } from "./internal/coupon-rules.js";
 
 export interface PricingDependencies {
   /** Verbindung als Rolle shop_app. */
@@ -27,6 +32,8 @@ export interface Pricing {
   setSalePrice(variantId: string, amount: number | null, currency: string): Promise<void>;
   /** Angebotspreise der Varianten; Varianten ohne Angebot fehlen in der Antwort. */
   getSalePrices(variantIds: readonly string[], currency: string): Promise<Map<string, number>>;
+  /** Prüft einen Gutscheincode für einen Warenwert (Cent) und nennt den Rabatt. */
+  checkCoupon(code: string, subtotal: number): Promise<CouponCheck>;
 }
 
 export function createPricing(deps: PricingDependencies): Pricing {
@@ -62,6 +69,13 @@ export function createPricing(deps: PricingDependencies): Pricing {
 
     async getSalePrices(variantIds, currency) {
       return read(variantIds, "sale", currency);
+    },
+
+    async checkCoupon(code, subtotal) {
+      const normalized = normalizeCode(code);
+      if (normalized === undefined) return { ok: false, reason: "unknown" };
+      const coupon = await withTenantTransaction(db, (trx) => findCouponByCode(trx, normalized));
+      return checkCoupon(coupon, subtotal);
     },
   };
 

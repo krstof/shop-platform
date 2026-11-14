@@ -30,7 +30,7 @@ import {
 } from "@shop/platform";
 import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
-import { createPricing } from "@shop/pricing";
+import { couponEndpoints, createPricing } from "@shop/pricing";
 import { createShopSettings } from "@shop/shop-settings";
 import { createShipping, shippingEndpoints } from "@shop/shipping";
 import { storefrontEndpoints } from "@shop/storefront-design";
@@ -104,6 +104,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       carts: createCarts({ database: deps.database }),
       catalog: createCatalogReader({ database: deps.database, prices, stock, images }),
       shipping: createShipping({ database: deps.database }),
+      coupons: prices,
       inventory: stock,
       orders: createOrders({ database: deps.database, settings }),
       payments: createPayments({ database: deps.database }),
@@ -122,6 +123,8 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...storeShopEndpoints(shops),
     // Aussehen des Shops (Shop-Editor Teil 1): Farbe, Schrift, Logo; dieselben Bildfunktionen.
     ...storefrontEndpoints({ database: deps.database, images }),
+    // Gutscheincodes (Modul pricing).
+    ...couponEndpoints({ database: deps.database }),
     // Versandkosten (Pauschale, kostenlos ab Warenwert).
     ...shippingEndpoints({ database: deps.database }),
     ...auditEndpoints(deps),

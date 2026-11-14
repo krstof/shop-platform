@@ -20,6 +20,10 @@ export interface Cart {
   readonly count: number;
   readonly lines: readonly CartLine[];
   readonly subtotal: number;
+  /** Rabatt durch Gutschein (seit Etappe „Gutscheine“; ältere API-Stände ohne). */
+  readonly discount?: number;
+  readonly couponCode?: string | null;
+  readonly couponProblem?: string | null;
   readonly shipping: number;
   readonly total: number;
   readonly taxByRate: Readonly<Record<string, number>>;
@@ -41,6 +45,7 @@ export interface StoreOrder {
   };
   readonly lines: readonly { name: string; quantity: number; unitPrice: number; lineTotal: number }[];
   readonly subtotal: number;
+  readonly discount?: number;
   readonly shipping: number;
   readonly total: number;
   readonly taxByRate: Readonly<Record<string, number>>;
@@ -165,4 +170,17 @@ export async function loadPaymentByToken(shop: string, token: string): Promise<T
     if (e instanceof StoreApiError && e.status === 404) return undefined;
     throw e;
   }
+}
+
+/** Gutschein einlösen. Gilt er nicht, kommt ein StoreApiError (422) mit dem Grund. */
+export async function setCoupon(cookies: AstroCookies, shop: string, code: string): Promise<void> {
+  const token = read(cookies, cartCookie(shop));
+  if (token === undefined) throw new StoreApiError(404, "not_found", "Der Warenkorb ist leer.");
+  await storeApi<Cart>(shop, `/carts/${token}/coupon`, { method: "PUT", body: { code } });
+}
+
+export async function removeCoupon(cookies: AstroCookies, shop: string): Promise<void> {
+  const token = read(cookies, cartCookie(shop));
+  if (token === undefined) return;
+  await storeApi<Cart>(shop, `/carts/${token}/coupon`, { method: "DELETE" });
 }

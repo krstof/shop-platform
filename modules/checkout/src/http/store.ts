@@ -6,8 +6,14 @@ import type { Carts } from "@shop/cart";
 import type { CatalogReader, SellableProduct } from "@shop/catalog";
 import { defineEndpoint, idParam, multiLineText, singleLineText, type Endpoint } from "@shop/http";
 import { OutOfStockError, type Inventory } from "@shop/inventory";
-import { ConflictError, NotFoundError, withTenantTransaction, type Database } from "@shop/kernel";
-import { shippingRateBp, taxIncluded, type Orders, type OrderView } from "@shop/orders";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  withTenantTransaction,
+  type Database,
+} from "@shop/kernel";
+import { allocateDiscount, shippingRateBp, taxIncluded, type Orders, type OrderView } from "@shop/orders";
 import type { Payments } from "@shop/payments";
 import type { ShopSettings } from "@shop/shop-settings";
 import { z } from "zod";
@@ -21,6 +27,18 @@ export interface CheckoutDependencies {
   readonly orders: Orders;
   readonly payments: Payments;
   readonly settings: ShopSettings;
+  /** Gutscheine prüfen (Modul pricing). Ohne Angabe: keine Gutscheine. */
+  readonly coupons?:
+    | {
+        checkCoupon(
+          code: string,
+          subtotal: number,
+        ): Promise<
+          | { ok: true; discount: number }
+          | { ok: false; reason: "unknown" | "inactive" | "min_order"; minOrderAmount?: number }
+        >;
+      }
+    | undefined;
   /** Versandkosten (Modul shipping). Ohne Angabe: Versand kostenlos. */
   readonly shipping?: { quote(subtotal: number): Promise<{ name: string; amount: number }> } | undefined;
   /** Bestätigung per E-Mail (lokal und auf dem Testserver: Mailpit). Ohne Angabe: keine E-Mail. */
@@ -61,7 +79,8 @@ const cartLineSchema = z.object({
 });
 
 const totalsShape = {
-  subtotal: money.meta({ description: "Summe brutto in Cent." }),
+  subtotal: money.meta({ description: "Summe brutto in Cent (vor Rabatt)." }),
+  discount: money.meta({ description: "Rabatt durch Gutschein in Cent (0 = keiner)." }),
   shipping: money.meta({ description: "Versandkosten brutto in Cent (0 = kostenlos)." }),
   total: money,
   taxByRate: z.record(z.string(), money).meta({ description: "Enthaltene MwSt. je Satz in Cent." }),
@@ -73,6 +92,11 @@ const cartSchema = z
     lines: z.array(cartLineSchema),
     ...totalsShape,
     shippingName: z.string().meta({ description: "Name der Versandart, etwa „Standardversand“." }),
+    couponCode: z.string().nullable().meta({ description: "Eingelöster Gutscheincode, der gerade gilt." }),
+    couponProblem: z
+      .string()
+      .nullable()
+      .meta({ description: "Warum ein eingegebener Code gerade nicht gilt (etwa Mindestwert), sonst null." }),
   })
   .meta({
     id: "StoreCart",
@@ -144,6 +168,7 @@ function toStoreOrder(o: OrderView): z.input<typeof orderSchema> {
       lineTotal: l.lineTotal,
     })),
     subtotal: o.subtotal,
+    discount: o.discount,
     shipping: o.shipping,
     total: o.total,
     taxByRate: o.taxByRate,
@@ -152,11 +177,31 @@ function toStoreOrder(o: OrderView): z.input<typeof orderSchema> {
 
 const NO_CART = "Diesen Warenkorb gibt es nicht (mehr).";
 
+const EURO = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+
+/** Gutscheincode in gespeicherter Form (wie Modul pricing): Großbuchstaben, ohne Leerraum. */
+function normalizeCouponCode(input: string): string | undefined {
+  const code = input.trim().toUpperCase().replace(/\s+/g, "");
+  return /^[A-Z0-9][A-Z0-9-]{1,31}$/.test(code) ? code : undefined;
+}
+
+/** Warum ein Gutschein nicht gilt, in Kundensprache. */
+function couponText(check: { ok: boolean; reason?: string; minOrderAmount?: number }): string {
+  if (check.ok) return "";
+  if (check.reason === "min_order" && check.minOrderAmount !== undefined)
+    return `Dieser Gutschein gilt ab ${EURO.format(check.minOrderAmount / 100)} Warenwert.`;
+  return "Diesen Gutscheincode gibt es nicht oder er gilt nicht mehr.";
+}
+
 export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
   const { carts, catalog } = deps;
 
   /** Warenkorb mit aktuellen Daten; Positionen, die es nicht mehr gibt, fallen weg. */
-  async function cartView(lines: readonly { variantId: string; quantity: number }[]) {
+  async function cartView(cart: {
+    readonly lines: readonly { variantId: string; quantity: number }[];
+    readonly couponCode?: string | null;
+  }) {
+    const lines = cart.lines;
     const products = await catalog.sellable({ variantIds: lines.map((l) => l.variantId) });
     const byVariant = new Map(products.map((p) => [p.variantId, p]));
     const out = lines.flatMap((l) => {
@@ -166,25 +211,43 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
       return [{ product: p, quantity, total: p.price.amount * quantity }];
     });
     const subtotal = out.reduce((a, l) => a + l.total, 0);
-    const shipping = (await deps.shipping?.quote(subtotal)) ?? {
+    // Gutschein bei jeder Anzeige neu prüfen (abgeschaltet, Mindestwert nicht mehr erreicht …).
+    let discount = 0;
+    let couponProblem: string | null = null;
+    const code = cart.couponCode ?? null;
+    if (code !== null && out.length > 0) {
+      const check = (await deps.coupons?.checkCoupon(code, subtotal)) ?? {
+        ok: false as const,
+        reason: "unknown" as const,
+      };
+      if (check.ok) discount = check.discount;
+      else couponProblem = couponText(check);
+    }
+    const shares = allocateDiscount(
+      out.map((l) => l.total),
+      discount,
+    );
+    const goods = subtotal - discount;
+    const shipping = (await deps.shipping?.quote(goods)) ?? {
       name: "Standardversand (kostenlos)",
       amount: 0,
     };
     const byRate = new Map<number, { gross: number }>();
-    for (const l of out) {
+    out.forEach((l, i) => {
       const bp = l.product.taxRatePercent * 100;
-      byRate.set(bp, { gross: (byRate.get(bp)?.gross ?? 0) + l.total });
-    }
-    // Wie beim Bestellen (Modul orders): Steuer je Position, Versand zum Satz mit dem größten Warenwert.
+      byRate.set(bp, { gross: (byRate.get(bp)?.gross ?? 0) + l.total - (shares[i] ?? 0) });
+    });
+    // Wie beim Bestellen (Modul orders): Steuer je Position nach Rabatt, Versand zum Satz mit dem größten Warenwert.
     const taxByRate: Record<string, number> = {};
     const addTax = (bp: number, gross: number) => {
       const key = String(bp / 100);
       taxByRate[key] = (taxByRate[key] ?? 0) + taxIncluded(gross, bp);
     };
-    for (const l of out) addTax(l.product.taxRatePercent * 100, l.total);
+    out.forEach((l, i) => addTax(l.product.taxRatePercent * 100, l.total - (shares[i] ?? 0)));
     if (shipping.amount > 0) addTax(shippingRateBp(byRate), shipping.amount);
     return {
       shipping,
+      discount: discount > 0 && code !== null ? { code, amount: discount } : undefined,
       items: out,
       view: {
         count: out.reduce((a, l) => a + l.quantity, 0),
@@ -200,9 +263,12 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
           taxRatePercent: l.product.taxRatePercent,
         })),
         subtotal,
+        discount,
         shipping: shipping.amount,
         shippingName: shipping.name,
-        total: subtotal + shipping.amount,
+        total: goods + shipping.amount,
+        couponCode: discount > 0 ? code : null,
+        couponProblem,
         taxByRate,
       },
     };
@@ -232,7 +298,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
     },
     handler: async () => {
       const { token: t } = await carts.create(await deps.settings.storefrontChannelId());
-      return { token: t, cart: (await cartView([])).view };
+      return { token: t, cart: (await cartView({ lines: [] })).view };
     },
   });
 
@@ -248,7 +314,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
     params: z.strictObject({ shopHandle: handle, cartToken: token }),
     response: { status: 200, description: "Der Warenkorb.", schema: cartSchema },
     problems: [404],
-    handler: async ({ params }) => (await cartView((await requireCart(params.cartToken)).lines)).view,
+    handler: async ({ params }) => (await cartView(await requireCart(params.cartToken))).view,
   });
 
   const setLine = defineEndpoint({
@@ -279,7 +345,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
               : `Von „${product.name}“ sind nur noch ${product.maxQuantity} Stück da.`,
         });
       await carts.setQuantity(cart.id, product.variantId, body.quantity);
-      return (await cartView((await requireCart(params.cartToken)).lines)).view;
+      return (await cartView(await requireCart(params.cartToken))).view;
     },
   });
 
@@ -316,7 +382,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
     problems: [404, 409],
     handler: async ({ params, body }) => {
       const cart = await requireCart(params.cartToken);
-      const { items, shipping } = await cartView(cart.lines);
+      const { items, shipping, discount } = await cartView(cart);
       if (items.length === 0) throw new ConflictError({ detail: "Der Warenkorb ist leer." });
       try {
         return await withTenantTransaction(deps.database, async () => {
@@ -327,6 +393,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
             paymentProvider: "test",
             shipping,
             customerNote: body.note,
+            discount,
             lines: items.map((l) => ({
               productId: l.product.id,
               variantId: l.product.variantId,
@@ -435,5 +502,63 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
     },
   });
 
-  return [createCart, getCart, setLine, checkout, getPayment, completePayment];
+  const setCoupon = defineEndpoint({
+    api: "store",
+    method: "PUT",
+    path: "/shops/{shopHandle}/carts/{cartToken}/coupon",
+    operationId: "setStoreCartCoupon",
+    summary: "Gutschein einlösen",
+    description:
+      "Merkt sich einen Gutscheincode am Warenkorb (Groß-/Kleinschreibung egal). Gilt er nicht, kommt 422 " +
+      "am Feld `code` mit dem Grund (unbekannt oder Mindestwert nicht erreicht).",
+    tags: ["Kaufen"],
+    access: PUBLIC,
+    params: z.strictObject({ shopHandle: handle, cartToken: token }),
+    body: z.strictObject({ code: singleLineText(40) }),
+    bodyExample: { code: "SOMMER10" },
+    response: { status: 200, description: "Der Warenkorb mit Rabatt.", schema: cartSchema },
+    problems: [404],
+    handler: async ({ params, body }) => {
+      const cart = await requireCart(params.cartToken);
+      const code = normalizeCouponCode(body.code);
+      const subtotal = (await cartView({ lines: cart.lines })).view.subtotal;
+      const check =
+        code === undefined || deps.coupons === undefined
+          ? ({ ok: false, reason: "unknown" } as const)
+          : await deps.coupons.checkCoupon(code, subtotal);
+      if (!check.ok || code === undefined)
+        throw new ValidationError({
+          errors: [
+            {
+              path: "/body/code",
+              code: `coupon_${check.ok ? "unknown" : check.reason}`,
+              message: couponText(check),
+            },
+          ],
+        });
+      await carts.setCoupon(cart.id, code);
+      return (await cartView(await requireCart(params.cartToken))).view;
+    },
+  });
+
+  const removeCoupon = defineEndpoint({
+    api: "store",
+    method: "DELETE",
+    path: "/shops/{shopHandle}/carts/{cartToken}/coupon",
+    operationId: "removeStoreCartCoupon",
+    summary: "Gutschein entfernen",
+    description: "Nimmt den Gutscheincode wieder aus dem Warenkorb.",
+    tags: ["Kaufen"],
+    access: PUBLIC,
+    params: z.strictObject({ shopHandle: handle, cartToken: token }),
+    response: { status: 200, description: "Der Warenkorb ohne Rabatt.", schema: cartSchema },
+    problems: [404],
+    handler: async ({ params }) => {
+      const cart = await requireCart(params.cartToken);
+      await carts.setCoupon(cart.id, null);
+      return (await cartView(await requireCart(params.cartToken))).view;
+    },
+  });
+
+  return [createCart, getCart, setLine, checkout, getPayment, completePayment, setCoupon, removeCoupon];
 }

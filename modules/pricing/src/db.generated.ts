@@ -13,6 +13,22 @@ export type Int8 = ColumnType<string, bigint | number | string, bigint | number 
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface PricingCoupon {
+  active: Generated<boolean>;
+  code: string;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  currency: Generated<string>;
+  id: Generated<string>;
+  kind: string;
+  min_order_amount: Int8 | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: Generated<string | null>;
+  value: Int8;
+  version: Generated<number>;
+}
+
 export interface PricingPrice {
   amount: Int8;
   channel_id: string | null;
@@ -55,6 +71,7 @@ export interface PricingPriceHistory {
 }
 
 export interface DB {
+  "pricing.coupon": PricingCoupon;
   "pricing.price": PricingPrice;
   "pricing.price_history": PricingPriceHistory;
 }

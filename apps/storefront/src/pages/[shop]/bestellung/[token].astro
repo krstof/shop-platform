@@ -57,6 +57,12 @@ Astro.response.headers.set("referrer-policy", "no-referrer");
       ))}
     </ul>
     <dl class="summen-zeilen">
+      {(o.discount ?? 0) > 0 && (
+        <>
+          <dt>Gutschein</dt>
+          <dd class="rabatt">−{euro(o.discount ?? 0)}</dd>
+        </>
+      )}
       <dt>Versand</dt>
       <dd>{o.shipping === 0 ? "kostenlos" : euro(o.shipping)}</dd>
       <dt class="gesamt">Gesamt</dt>

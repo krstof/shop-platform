@@ -35,6 +35,30 @@ export interface NewOrder {
   readonly shipping?: { readonly name: string; readonly amount: number } | undefined;
   /** Anmerkung der Kundin aus der Kasse. */
   readonly customerNote?: string | undefined;
+  /** Gutschein: Code und Rabatt brutto in Cent (höchstens der Warenwert). */
+  readonly discount?: { readonly code: string; readonly amount: number } | undefined;
+}
+
+/**
+ * Verteilt einen Rabatt anteilig auf Positionen (größte Reste zuerst), damit die Summe genau stimmt.
+ * Die Steuer je Position rechnet sich danach aus dem rabattierten Betrag.
+ */
+export function allocateDiscount(lineTotals: readonly number[], discount: number): number[] {
+  const sum = lineTotals.reduce((a, t) => a + t, 0);
+  if (discount <= 0 || sum <= 0) return lineTotals.map(() => 0);
+  const d = Math.min(discount, sum);
+  const exact = lineTotals.map((t) => (t * d) / sum);
+  const out = exact.map(Math.floor);
+  let rest = d - out.reduce((a, x) => a + x, 0);
+  const order = exact
+    .map((x, i) => ({ i, frac: x - Math.floor(x) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (const { i } of order) {
+    if (rest <= 0) break;
+    out[i] = (out[i] ?? 0) + 1;
+    rest--;
+  }
+  return out;
 }
 
 /**
@@ -104,9 +128,17 @@ export interface OrderView {
   readonly customerNote: string | null;
   /** Interne Notiz des Shops (nur im Backoffice). */
   readonly merchantNote: string | null;
+  /** Rabatt durch Gutschein (Cent) und dessen Code. */
+  readonly discount: number;
+  readonly couponCode: string | null;
 }
 
 const RATE_BP = { standard: 1900, reduced: 700 } as const;
+
+function couponOf(fields: unknown): string | null {
+  const c = (fields as { couponCode?: unknown } | null)?.couponCode;
+  return typeof c === "string" ? c : null;
+}
 
 /** Suchmuster für ILIKE: `%`, `_` und `\\` zählen als normale Zeichen. */
 export function likePattern(text: string): string {
@@ -217,6 +249,8 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
       placedAt: o.placed_at,
       customerNote: o.customer_note,
       merchantNote: o.merchant_note,
+      discount: Number(o.discount_amount),
+      couponCode: couponOf(o.custom_fields),
       lines: lines.map((l) => ({
         position: l.position,
         productId: l.product_id,
@@ -224,7 +258,7 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
         sku: l.sku,
         quantity: l.quantity,
         unitPrice: Number(l.unit_price_amount),
-        lineTotal: Number(l.line_total_amount),
+        lineTotal: Number(l.line_subtotal_amount),
         taxRatePercent: l.tax_rate_bp / 100,
         imageMediaId: l.image_media_id,
       })),
@@ -240,16 +274,26 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
         if (input.lines.length === 0) throw new RangeError("Bestellung ohne Positionen");
         const channelId = await settings.storefrontChannelId();
         const orderNumber = await settings.nextOrderNumber();
+        const gross = input.lines.map((l) => l.unitPrice * l.quantity);
+        const discountAmount = Math.min(
+          input.discount?.amount ?? 0,
+          gross.reduce((a, t) => a + t, 0),
+        );
+        if (!Number.isSafeInteger(discountAmount) || discountAmount < 0)
+          throw new RangeError("Rabatt ungültig");
+        const shares = allocateDiscount(gross, discountAmount);
         const lines = input.lines.map((l, i) => {
           const rateBp = RATE_BP[l.taxClassCode];
-          const total = l.unitPrice * l.quantity;
-          return { ...l, position: i + 1, rateBp, total, tax: taxIncluded(total, rateBp) };
+          const total = gross[i] ?? 0;
+          const lineDiscount = shares[i] ?? 0;
+          const net = total - lineDiscount;
+          return { ...l, position: i + 1, rateBp, total, lineDiscount, net, tax: taxIncluded(net, rateBp) };
         });
         const subtotal = lines.reduce((a, l) => a + l.total, 0);
         const byRate = new Map<number, { gross: number; tax: number }>();
         for (const l of lines) {
           const g = byRate.get(l.rateBp) ?? { gross: 0, tax: 0 };
-          byRate.set(l.rateBp, { gross: g.gross + l.total, tax: g.tax + l.tax });
+          byRate.set(l.rateBp, { gross: g.gross + l.net, tax: g.tax + l.tax });
         }
         const shipping = input.shipping ?? { name: "Standardversand (kostenlos)", amount: 0 };
         if (!Number.isSafeInteger(shipping.amount) || shipping.amount < 0)
@@ -275,9 +319,11 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
             tax_display: "gross",
             subtotal_amount: subtotal,
             shipping_amount: shipping.amount,
-            discount_amount: 0,
+            discount_amount: discountAmount,
             tax_amount: tax,
-            total_amount: subtotal + shipping.amount,
+            total_amount: subtotal - discountAmount + shipping.amount,
+            custom_fields:
+              input.discount === undefined || discountAmount === 0 ? {} : { couponCode: input.discount.code },
             shipping_method_name: shipping.name,
             payment_method_name: input.paymentMethodName,
             customer_note:
@@ -301,11 +347,12 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
               unit_price_amount: l.unitPrice,
               unit_price_includes_tax: true,
               line_subtotal_amount: l.total,
+              discount_amount: l.lineDiscount,
               tax_class_code: l.taxClassCode,
               tax_rate_bp: l.rateBp,
               vat_category_code: "S",
               tax_amount: l.tax,
-              line_total_amount: l.total,
+              line_total_amount: l.net,
               image_media_id: l.imageMediaId,
             })),
           )

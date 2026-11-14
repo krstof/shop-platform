@@ -483,7 +483,7 @@ main:focus-visible {
 }
 .korb-zeile {
   display: grid;
-  grid-template-columns: 4rem 1fr auto;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
   gap: 0.5rem 1rem;
   align-items: center;
   padding: 1rem 0;
@@ -500,6 +500,7 @@ main:focus-visible {
 }
 .korb-menge {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 .korb-menge input {
@@ -795,7 +796,7 @@ main:focus-visible {
 }
 
 /* --- Versand: Hinweis im Warenkorb --- */
-.versand-hinweis {
+.summen .versand-hinweis {
   grid-column: 1 / -1;
   margin: 0.5rem 0 0;
   padding: 0.5rem 0.75rem;
@@ -851,4 +852,37 @@ main:focus-visible {
 .feld textarea {
   width: 100%;
   resize: vertical;
+}
+
+/* --- Gutschein im Warenkorb --- */
+.gutschein {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+}
+form.gutschein:has(.knopf-leise) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.gutschein-zeile {
+  display: flex;
+  gap: 0.5rem;
+}
+.gutschein-zeile input {
+  font: inherit;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--linie);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  text-transform: uppercase;
+}
+.rabatt {
+  color: #a3261b;
 }

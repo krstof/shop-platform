@@ -94,6 +94,7 @@ const MENU = [
   { to: "/$shop/bestellungen", label: "Bestellungen" },
   { to: "/$shop/aussehen", label: "Aussehen" },
   { to: "/$shop/versand", label: "Versand" },
+  { to: "/$shop/gutscheine", label: "Gutscheine" },
 ] as const;
 
 /** Nur Inhaber:innen verwalten das Team. */

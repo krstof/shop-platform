@@ -543,6 +543,268 @@
         "x-public-reason": "Gäste kaufen ohne Konto; Warenkorb und Zahlung schützt ein geheimes Token im Pfad."
       }
     },
+    "/store/v1/shops/{shopHandle}/carts/{cartToken}/coupon": {
+      "delete": {
+        "operationId": "removeStoreCartCoupon",
+        "summary": "Gutschein entfernen",
+        "description": "Nimmt den Gutscheincode wieder aus dem Warenkorb.",
+        "tags": [
+          "Kaufen"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          },
+          {
+            "name": "cartToken",
+            "in": "path",
+            "required": true,
+            "description": "Geheimes Token (43 Zeichen), nur der Besitzer kennt es.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Der Warenkorb ohne Rabatt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCart"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Gäste kaufen ohne Konto; Warenkorb und Zahlung schützt ein geheimes Token im Pfad."
+      },
+      "put": {
+        "operationId": "setStoreCartCoupon",
+        "summary": "Gutschein einlösen",
+        "description": "Merkt sich einen Gutscheincode am Warenkorb (Groß-/Kleinschreibung egal). Gilt er nicht, kommt 422 am Feld `code` mit dem Grund (unbekannt oder Mindestwert nicht erreicht).",
+        "tags": [
+          "Kaufen"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          },
+          {
+            "name": "cartToken",
+            "in": "path",
+            "required": true,
+            "description": "Geheimes Token (43 Zeichen), nur der Besitzer kennt es.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "code": "SOMMER10"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Der Warenkorb mit Rabatt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Gäste kaufen ohne Konto; Warenkorb und Zahlung schützt ein geheimes Token im Pfad."
+      }
+    },
     "/store/v1/shops/{shopHandle}/carts/{cartToken}/lines/{productId}": {
       "put": {
         "operationId": "setStoreCartLine",
@@ -1726,7 +1988,13 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991,
-            "description": "Summe brutto in Cent."
+            "description": "Summe brutto in Cent (vor Rabatt)."
+          },
+          "discount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Rabatt durch Gutschein in Cent (0 = keiner)."
           },
           "shipping": {
             "type": "integer",
@@ -1754,16 +2022,33 @@
           "shippingName": {
             "type": "string",
             "description": "Name der Versandart, etwa „Standardversand“."
+          },
+          "couponCode": {
+            "description": "Eingelöster Gutscheincode, der gerade gilt.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "couponProblem": {
+            "description": "Warum ein eingegebener Code gerade nicht gilt (etwa Mindestwert), sonst null.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "count",
           "lines",
           "subtotal",
+          "discount",
           "shipping",
           "total",
           "taxByRate",
-          "shippingName"
+          "shippingName",
+          "couponCode",
+          "couponProblem"
         ],
         "additionalProperties": false,
         "description": "Warenkorb mit aktuellen Preisen und Versandkosten des Shops."
@@ -2018,7 +2303,13 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991,
-            "description": "Summe brutto in Cent."
+            "description": "Summe brutto in Cent (vor Rabatt)."
+          },
+          "discount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Rabatt durch Gutschein in Cent (0 = keiner)."
           },
           "shipping": {
             "type": "integer",
@@ -2053,6 +2344,7 @@
           "address",
           "lines",
           "subtotal",
+          "discount",
           "shipping",
           "total",
           "taxByRate"

@@ -391,6 +391,12 @@ export function OrderPage() {
           <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-stone-200 pt-4 text-sm">
             <dt className="text-stone-600">Zwischensumme</dt>
             <dd className="text-right tabular-nums">{formatEuro(o.subtotal)}</dd>
+            {(o.discount ?? 0) > 0 && (
+              <>
+                <dt className="text-stone-600">Gutschein {o.couponCode}</dt>
+                <dd className="text-right text-red-700 tabular-nums">−{formatEuro(o.discount ?? 0)}</dd>
+              </>
+            )}
             <dt className="text-stone-600">Versand</dt>
             <dd className="text-right tabular-nums">
               {o.shipping === 0 ? "kostenlos" : formatEuro(o.shipping)}

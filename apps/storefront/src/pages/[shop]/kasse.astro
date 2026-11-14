@@ -158,6 +158,12 @@ const autocomplete: Record<Feld, string> = {
           ))}
         </ul>
         <dl>
+          {(korb.discount ?? 0) > 0 && (
+            <>
+              <dt>Gutschein {korb.couponCode}</dt>
+              <dd class="rabatt">−{euro(korb.discount ?? 0)}</dd>
+            </>
+          )}
           <dt>Versand</dt>
           <dd>{korb.shipping === 0 ? "kostenlos" : euro(korb.shipping)}</dd>
           <dt class="gesamt">Gesamt</dt>
