@@ -12,6 +12,7 @@ import { PlatformPage } from "./pages/platform.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
 import { CouponsPage } from "./pages/coupons.js";
+import { CustomersPage } from "./pages/customers.js";
 import { ShippingPage } from "./pages/shipping.js";
 import { TeamPage } from "./pages/team.js";
 import { parseOrderFilter } from "./lib/order-filter.js";
@@ -96,6 +97,8 @@ const design = createRoute({ getParentRoute: () => shop, path: "/aussehen", comp
 const assistant = createRoute({ getParentRoute: () => shop, path: "/assistent", component: AssistantPage });
 
 // Team: Mitglieder sehen und einladen (nur Inhaber:in).
+// Kundinnen und Kunden (aus Bestellungen).
+const customers = createRoute({ getParentRoute: () => shop, path: "/kunden", component: CustomersPage });
 // Gutscheincodes.
 const coupons = createRoute({ getParentRoute: () => shop, path: "/gutscheine", component: CouponsPage });
 // Versandkosten.
@@ -137,6 +140,7 @@ const routeTree = root.addChildren([
     team,
     shipping,
     coupons,
+    customers,
   ]),
 ]);
 

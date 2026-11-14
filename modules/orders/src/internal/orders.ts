@@ -3,6 +3,7 @@
 import { getContext, withTenantTransaction, type Database, type Transaction } from "@shop/kernel";
 import type { ShopSettings } from "@shop/shop-settings";
 import type { DB } from "../db.generated.js";
+import { summarizeCustomers, type CustomerSummary } from "./customers.js";
 
 export interface OrderAddress {
   readonly firstName: string;
@@ -392,6 +393,39 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
         const result = await view(trx, order.id);
         if (result === undefined) throw new Error("Bestellung nach dem Anlegen nicht lesbar");
         return result;
+      });
+    },
+
+    /** Kundinnen aus den letzten 5000 Bestellungen, je E-Mail zusammengefasst. */
+    async customers(): Promise<CustomerSummary[]> {
+      return withTenantTransaction(db, async (trx) => {
+        const rows = await placed(trx)
+          .leftJoin("orders.order_address as a", (j) =>
+            j.onRef("a.order_id", "=", "orders.order.id").on("a.kind", "=", "shipping"),
+          )
+          .select([
+            "orders.order.email",
+            "orders.order.total_amount",
+            "orders.order.status",
+            "orders.order.payment_status",
+            "orders.order.placed_at",
+            "a.first_name",
+            "a.last_name",
+          ])
+          .orderBy("orders.order.id", "desc")
+          .limit(5000)
+          .execute();
+        return summarizeCustomers(
+          rows.map((r) => ({
+            email: r.email ?? "",
+            firstName: r.first_name,
+            lastName: r.last_name,
+            total: Number(r.total_amount),
+            status: r.status,
+            paymentStatus: r.payment_status,
+            placedAt: r.placed_at,
+          })),
+        );
       });
     },
 

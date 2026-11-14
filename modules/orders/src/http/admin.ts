@@ -290,5 +290,44 @@ export function orderAdminEndpoints(repo: OrderRepository, restock?: Restock): E
     },
   });
 
-  return [stats, list, get, ship, cancel, note];
+  const customers = defineEndpoint({
+    api: "admin",
+    method: "GET",
+    path: "/customers",
+    operationId: "listCustomers",
+    summary: "Kundinnen und Kunden",
+    description:
+      "Alle, die im Shop bestellt haben, je E-Mail-Adresse zusammengefasst (Gäste haben kein Konto): Name " +
+      "aus der neuesten Bestellung, Zahl der Bestellungen ohne stornierte, Umsatz aus bezahlten " +
+      "Bestellungen, erste und letzte Bestellung. Zuletzt bestellende zuerst, aus den letzten 5000 Bestellungen.",
+    tags: ["Kunden"],
+    access: { scopes: ["customers:read", "orders:read"] },
+    response: {
+      status: 200,
+      description: "Die Kundinnen und Kunden.",
+      schema: z.object({
+        data: z.array(
+          z
+            .object({
+              email: z.string(),
+              name: z.string(),
+              orderCount: z.number().int(),
+              revenue: z.number().int().meta({ description: "Summe bezahlter Bestellungen in Cent." }),
+              firstOrderAt: timestamp,
+              lastOrderAt: timestamp,
+            })
+            .meta({ id: "CustomerSummary" }),
+        ),
+      }),
+    },
+    handler: async () => ({
+      data: (await repo.customers()).map((c) => ({
+        ...c,
+        firstOrderAt: c.firstOrderAt.toISOString(),
+        lastOrderAt: c.lastOrderAt.toISOString(),
+      })),
+    }),
+  });
+
+  return [stats, list, get, ship, cancel, note, customers];
 }

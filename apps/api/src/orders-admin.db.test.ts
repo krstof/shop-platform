@@ -25,7 +25,7 @@ if (process.env["SHOP_REQUIRE_DB_TESTS"] === "true" && adminUrl === undefined) {
 
 const TENANT = uuidv7();
 const SCOPES: Record<string, Scope[]> = {
-  owner: ["products:read", "products:write", "orders:read", "orders:write"],
+  owner: ["products:read", "products:write", "orders:read", "orders:write", "customers:read"],
   reader: ["orders:read"],
 };
 
@@ -274,5 +274,24 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
     expect(
       (await inject("PUT", `/admin/v1/orders/${uuidv7()}/note`, "owner", { note: null })).statusCode,
     ).toBe(404);
+  });
+  it("Kundenliste: je E-Mail zusammengefasst, Zahlen passen zur Bestellliste, nur mit Kundenrecht", async () => {
+    expect((await inject("GET", "/admin/v1/customers", "reader")).statusCode).toBe(403);
+    const r = await inject("GET", "/admin/v1/customers", "owner");
+    expect(r.statusCode).toBe(200);
+    const customers = r.json().data as { email: string; name: string; orderCount: number; revenue: number }[];
+    const orders = (await inject("GET", "/admin/v1/orders?limit=100", "reader")).json().data as {
+      email: string;
+      total: number;
+      status: string;
+      paymentStatus: string;
+    }[];
+    for (const c of customers) {
+      const mine = orders.filter((o) => o.email.toLowerCase() === c.email.toLowerCase());
+      expect(c.orderCount).toBe(mine.filter((o) => o.status !== "cancelled").length);
+      expect(c.revenue).toBe(mine.filter((o) => o.paymentStatus === "paid").reduce((a, o) => a + o.total, 0));
+    }
+    expect(new Set(customers.map((c) => c.email.toLowerCase())).size).toBe(customers.length);
+    expect(customers.find((c) => c.email === "kim@example.org")?.name).toBe("Kim Muster");
   });
 });

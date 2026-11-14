@@ -92,6 +92,7 @@ const MENU = [
   { to: "/$shop/produkte", label: "Produkte" },
   { to: "/$shop/kategorien", label: "Kategorien" },
   { to: "/$shop/bestellungen", label: "Bestellungen" },
+  { to: "/$shop/kunden", label: "Kunden" },
   { to: "/$shop/aussehen", label: "Aussehen" },
   { to: "/$shop/versand", label: "Versand" },
   { to: "/$shop/gutscheine", label: "Gutscheine" },
@@ -173,7 +174,7 @@ function ShopFrame({
                 key={m.to}
                 to={m.to}
                 params={{ shop: shop.handle }}
-                className="rounded-md px-3 py-1.5 whitespace-nowrap text-stone-600 hover:bg-stone-100"
+                className="rounded-md px-2.5 py-1.5 whitespace-nowrap text-stone-600 hover:bg-stone-100"
                 activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
               >
                 {m.label}
