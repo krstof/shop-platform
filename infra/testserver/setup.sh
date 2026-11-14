@@ -152,6 +152,16 @@ setenv SHOP_DOMAIN "$DOMAIN"
 # Mailpit selbst ohne eigenes Passwort; davor prüft Caddy das Testpasswort (test-login.env).
 setenv MAILPIT_UI_USER "$TESTSERVER_USER"
 setenv MAILPIT_UI_PASSWORD "$SITE_PASSWORD"
+# KI-Assistent (Welle 2): Schlüssel fürs Sprachmodell aus dem GitHub-Secret (leer = nicht eingerichtet).
+ASSISTANT_KEY="$(cat "$SRC/assistant-key" 2>/dev/null || true)"
+if [[ "$ASSISTANT_KEY" =~ ^[A-Za-z0-9_-]{20,300}$ ]]; then
+  setenv SHOP_ASSISTANT_API_KEY "$ASSISTANT_KEY"
+  log "KI-Assistent: Schlüssel eingetragen"
+else
+  setenv SHOP_ASSISTANT_API_KEY ""
+  log "KI-Assistent: kein gültiger Schlüssel, Assistent bleibt aus"
+fi
+unset ASSISTANT_KEY
 
 log "Abbilder bauen (arm64, auf dem Server)"
 for target in migrate api worker backoffice storefront; do
@@ -196,6 +206,12 @@ log "Testshops und Testdaten (Inhaberkonten mit dem Testpasswort aus test-login.
 # shellcheck source=/dev/null
 . "$APP_DIR/src/infra/testserver/test-login.env"
 "${COMPOSE[@]}" exec -T -e SHOP_SEED_PASSWORD_HASH="$SHOP_SEED_PASSWORD_HASH" api node dist/seed.js
+
+log "KI-Assistent: Weg nach außen prüfen (ohne Schlüssel, kostet nichts; 401 heißt: Anthropic erreicht)"
+gw_status="$("${COMPOSE[@]}" exec -T api node -e '
+fetch("http://10.213.17.200:8095/v1/messages", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+  .then((r) => console.log(r.status)).catch((e) => console.log("Fehler: " + e.message));' 2>&1 || true)"
+echo "Antwort über den Ausgang: $gw_status"
 
 log "Alte Abbilder aufräumen"
 docker image prune -f >/dev/null

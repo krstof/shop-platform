@@ -1,5 +1,6 @@
 // Setzt die Endpunkte aller Module zusammen (Architektur 6.1: apps/api setzt Module zusammen).
 // Neue Module tragen sich hier ein. Die Reihenfolge spielt keine Rolle.
+import { aiEndpoints, type AssistantModel } from "@shop/ai";
 import { auditEndpoints } from "@shop/audit";
 import { createCarts } from "@shop/cart";
 import { catalogEndpoints, createCatalogReader, type ProductImages } from "@shop/catalog";
@@ -52,6 +53,10 @@ export interface EndpointDependencies {
   /** E-Mails an Kundinnen und Kunden (Bestellbestätigung, M6). Ohne Angabe: keine E-Mail. */
   readonly mailer?: MailSender;
   readonly logger?: Logger;
+  /** Sprachmodell des KI-Assistenten (Welle 2). Ohne Angabe: „nicht eingerichtet“. */
+  readonly assistantModel?: AssistantModel | undefined;
+  /** Antworten des Assistenten je Shop und Tag. */
+  readonly assistantDailyLimit?: number | undefined;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
@@ -104,6 +109,14 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     // Aussehen des Shops (Shop-Editor Teil 1): Farbe, Schrift, Logo; dieselben Bildfunktionen.
     ...storefrontEndpoints({ database: deps.database, images }),
     ...auditEndpoints(deps),
+    // KI-Assistent (Welle 2): Übergang zum Sprachmodell, Werkzeuge laufen im Backoffice.
+    ...aiEndpoints({
+      database: deps.database,
+      model: deps.assistantModel,
+      dailyLimit: deps.assistantDailyLimit,
+      onModelError: (error) =>
+        deps.logger?.error({ err: error }, "Sprachmodell des Assistenten antwortet nicht"),
+    }),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
     ...memberEndpoints({ members }),
     ...authEndpoints(deps.identity ?? unconnectedIdentity, {

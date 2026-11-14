@@ -151,6 +151,9 @@ BEGIN
   INSERT INTO storefront.template_version (tenant_id, template_id, version_number, document)
     VALUES (t, v_tpl, 1, '{"schemaVersion":1,"sections":[]}');
 
+  -- ai: Verbrauch des Assistenten je Tag
+  INSERT INTO ai.usage_day (tenant_id, day, requests, input_tokens, output_tokens) VALUES (t, current_date, 1, 100, 20);
+
   -- orders: Bestellung als Momentaufnahme mit lückenloser Nummer
   v_order_no := shop_settings.next_number('order');
   INSERT INTO orders."order" (tenant_id, order_number, channel_id, checkout_session_id, customer_id, customer_group_id,

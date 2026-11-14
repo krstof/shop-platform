@@ -84,6 +84,33 @@ export const apiConfigSchema = baseConfigSchema.extend({
     .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, "ist kein gültiger Bereichsname"),
   /** Öffentliche Adresse der Bilder. Standard: https://media.<SHOP_DOMAIN>. */
   SHOP_MEDIA_BASE_URL: originSchema.optional(),
+  /**
+   * KI-Assistent (Welle 2): Schlüssel für die Messages-API von Anthropic. Ohne Schlüssel meldet der
+   * Assistent im Backoffice „nicht eingerichtet“. Der Schlüssel erscheint nie im Protokoll.
+   */
+  SHOP_ASSISTANT_API_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{20,300}$/, "hat nicht die Form eines API-Schlüssels")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  /** Modell des Assistenten, Standard claude-sonnet-5-5. */
+  SHOP_ASSISTANT_MODEL: z
+    .string()
+    .regex(/^[a-z0-9.-]{3,80}$/)
+    .default("claude-sonnet-5-5"),
+  /**
+   * Ausgang zum Sprachmodell. Die API hat kein Internet; auf dem Server führt Caddy genau diese
+   * eine Verbindung nach außen (http://10.213.17.200:8095). Standard: https://api.anthropic.com.
+   */
+  SHOP_ASSISTANT_BASE_URL: z
+    .string()
+    .refine(
+      (v) => URL.canParse(v) && ["http:", "https:"].includes(new URL(v).protocol),
+      "ist keine http(s)-Adresse",
+    )
+    .optional(),
+  /** Antworten des Assistenten je Shop und Tag (Kostenbremse). */
+  SHOP_ASSISTANT_DAILY_LIMIT: z.coerce.number().int().min(0).max(100_000).default(300),
   SHOP_API_HOST: z.union([z.ipv4(), z.ipv6()]).default("127.0.0.1"),
   SHOP_API_PORT: port().default(3000),
   /** Adresse des Reverse Proxy (Caddy). Nur er darf die Absenderadresse weitergeben. */

@@ -1,5 +1,6 @@
 // Seiten des Backoffice (M3). Pfade auf Deutsch, der Shop steht im Pfad (/<handle>/produkte).
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@tanstack/react-router";
+import { AssistantPage } from "./pages/assistant.js";
 import { CategoriesPage, EditCategoryPage, NewCategoryPage } from "./pages/categories.js";
 import { DesignPage } from "./pages/design.js";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
@@ -84,6 +85,9 @@ const categoryEdit = createRoute({
 // Shop-Editor (Teil 1: Farbe, Schrift, Logo).
 const design = createRoute({ getParentRoute: () => shop, path: "/aussehen", component: DesignPage });
 
+// KI-Assistent (Welle 2).
+const assistant = createRoute({ getParentRoute: () => shop, path: "/assistent", component: AssistantPage });
+
 const orders = createRoute({
   getParentRoute: () => shop,
   path: "/bestellungen",
@@ -114,6 +118,7 @@ const routeTree = root.addChildren([
     orders,
     order,
     design,
+    assistant,
   ]),
 ]);
 

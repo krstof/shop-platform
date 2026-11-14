@@ -2,6 +2,7 @@
 // Anmeldung über das Sitzungs-Cookie (E6 Teil 2), Shop und Rolle über die Kopfzeile Shop-Id und die
 // Mitgliedschaft (E6 Teil 3), Betreiber mit Zwei-Faktor (E6 Teil 4), API-Token (E6 Teil 5),
 // „Passwort vergessen“ mit E-Mail an Mailpit (E6 Teil 6), Mitarbeiter einladen und entfernen (E6 Teil 7).
+import { anthropicModel } from "@shop/ai";
 import {
   createApiTokenService,
   createIdentityService,
@@ -79,6 +80,17 @@ async function main(): Promise<void> {
       media: mediaFromConfig(config, database),
       mailer,
       logger,
+      assistantModel:
+        config.SHOP_ASSISTANT_API_KEY === undefined
+          ? undefined
+          : anthropicModel({
+              apiKey: config.SHOP_ASSISTANT_API_KEY,
+              model: config.SHOP_ASSISTANT_MODEL,
+              ...(config.SHOP_ASSISTANT_BASE_URL === undefined
+                ? {}
+                : { baseUrl: config.SHOP_ASSISTANT_BASE_URL }),
+            }),
+      assistantDailyLimit: config.SHOP_ASSISTANT_DAILY_LIMIT,
     }),
     resolveActor: requestResolver(
       sessionResolver({ identity, memberships, shops, operators }),

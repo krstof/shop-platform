@@ -163,6 +163,14 @@ export function ShopLayout() {
               >
                 Aussehen
               </Link>
+              <Link
+                to="/$shop/assistent"
+                params={{ shop: shop.handle }}
+                className="rounded-md px-3 py-1.5 text-violet-700 hover:bg-violet-50"
+                activeProps={{ className: "bg-violet-50 font-medium text-violet-800" }}
+              >
+                Assistent
+              </Link>
             </nav>
             <div className="ml-auto flex items-center gap-2">
               {session.data.platformOperator && (

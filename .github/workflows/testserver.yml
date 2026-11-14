@@ -101,6 +101,7 @@ jobs:
       - name: Zugangsdaten für die Seite erzeugen
         env:
           SITE_PASSWORD: ${{ secrets.TESTSERVER_PASSWORD }}
+          ASSISTANT_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           umask 077
           hash="$(docker run --rm --network none "$CADDY_IMAGE" caddy hash-password --plaintext "$SITE_PASSWORD")"
@@ -111,14 +112,17 @@ jobs:
             echo "TESTSERVER_PASSWORD_HASH='$hash'"
           } > "$RUNNER_TEMP/secrets.env"
           printf '%s' "$SITE_PASSWORD" > "$RUNNER_TEMP/site-password"
+          # KI-Assistent (Welle 2): Schlüssel fürs Sprachmodell. Darf fehlen, dann meldet der
+          # Assistent „nicht eingerichtet“. Eigene Datei, damit nur die API ihn bekommt.
+          printf '%s' "$ASSISTANT_API_KEY" > "$RUNNER_TEMP/assistant-key"
 
       - name: Server einrichten
         run: |
           upload=/tmp/shop-testserver-upload
           ssh testserver "rm -rf $upload && mkdir -m 700 $upload"
           scp -q infra/testserver/setup.sh "$RUNNER_TEMP/secrets.env" "$RUNNER_TEMP/site-password" \
-            "$RUNNER_TEMP/source.tar.gz" "testserver:$upload/"
-          rm -f "$RUNNER_TEMP/secrets.env" "$RUNNER_TEMP/site-password"
+            "$RUNNER_TEMP/assistant-key" "$RUNNER_TEMP/source.tar.gz" "testserver:$upload/"
+          rm -f "$RUNNER_TEMP/secrets.env" "$RUNNER_TEMP/site-password" "$RUNNER_TEMP/assistant-key"
           ssh testserver "sudo bash $upload/setup.sh; rc=\$?; rm -rf $upload; exit \$rc"
 
       - name: Rauchtest

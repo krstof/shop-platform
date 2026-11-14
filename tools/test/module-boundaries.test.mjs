@@ -84,7 +84,7 @@ async function violations(dir) {
 
 test("echte module.json im Projekt sind gültig und kreisfrei", () => {
   const mods = loadModules();
-  assert.equal(mods.filter((m) => m.kind === "module").length, 19);
+  assert.equal(mods.filter((m) => m.kind === "module").length, 20);
   assert.equal(mods.filter((m) => m.kind === "kernel").length, 1);
   assert.equal(new Set(mods.map((m) => m.schema)).size, mods.length, "jedes Schema gehört genau einem Modul");
 });

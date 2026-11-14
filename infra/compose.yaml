@@ -211,6 +211,10 @@ services:
       SHOP_S3_BUCKET_PUBLIC: ${SHOP_S3_BUCKET_PUBLIC:?fehlt}
       SHOP_S3_BUCKET_PRIVATE: ${SHOP_S3_BUCKET_PRIVATE:?fehlt}
       # Herkunftsprüfung (CSRF): Standard sind https://admin.<Domain> und https://platform.<Domain>.
+      # KI-Assistent (Welle 2): Schlüssel optional. Die API hat kein Internet; Caddy führt genau die
+      # Verbindung zum Sprachmodell nach außen (Caddyfile, Ausgang :8095 nur im internen Netz).
+      SHOP_ASSISTANT_API_KEY: ${SHOP_ASSISTANT_API_KEY:-}
+      SHOP_ASSISTANT_BASE_URL: http://10.213.17.200:8095
       SHOP_API_HOST: 0.0.0.0
       SHOP_API_PORT: "3000"
       # Nur Caddy darf die Absenderadresse weitergeben (wichtig für die Anfragebremse).

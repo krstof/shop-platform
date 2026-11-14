@@ -186,3 +186,31 @@ media.{$SHOP_DOMAIN} {
 http://:2020 {
 	respond "ok" 200
 }
+
+# Ausgang zum Sprachmodell (KI-Assistent, Welle 2). Die API sitzt im internen Netz ohne Internet;
+# Caddy leitet genau POST /v1/messages an api.anthropic.com weiter (TLS nach außen), sonst nichts.
+# Nur an der internen Adresse erreichbar, nicht von außen und ohne Protokoll der Inhalte.
+http://:8095 {
+	bind 10.213.17.200
+	request_body {
+		max_size 2MB
+	}
+	@messages {
+		method POST
+		path /v1/messages
+	}
+	handle @messages {
+		reverse_proxy https://api.anthropic.com {
+			header_up Host api.anthropic.com
+			header_up -X-Forwarded-For
+			header_up -X-Forwarded-Proto
+			header_up -X-Forwarded-Host
+			transport http {
+				response_header_timeout 90s
+			}
+		}
+	}
+	handle {
+		respond 404
+	}
+}

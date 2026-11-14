@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "ai",
+  "kind": "module",
+  "schema": "ai",
+  "wave": "2",
+  "description": "KI-Assistent für Händler: Chat mit einem Sprachmodell, Werkzeuge aus der Admin-API, Änderungen nur nach Bestätigung.",
+  "dependsOn": []
+}

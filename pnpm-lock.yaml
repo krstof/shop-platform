@@ -230,6 +230,9 @@ importers:
       '@nestjs/platform-fastify':
         specifier: 12.2.0
         version: 12.2.0(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@12.2.0(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@shop/ai':
+        specifier: workspace:*
+        version: link:../../modules/ai
       '@shop/audit':
         specifier: workspace:*
         version: link:../../modules/audit
@@ -448,6 +451,34 @@ importers:
       pg:
         specifier: 8.23.1
         version: 8.23.1
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  modules/ai:
+    dependencies:
+      '@shop/http':
+        specifier: workspace:*
+        version: link:../../packages/http
+      '@shop/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      kysely:
+        specifier: 0.29.7
+        version: 0.29.7
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@shop/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
