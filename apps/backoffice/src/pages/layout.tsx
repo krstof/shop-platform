@@ -3,16 +3,18 @@
 // damit Links und Neuladen den gewählten Shop behalten.
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
   Building2,
+  ChevronDown,
   ChevronsUpDown,
   ExternalLink,
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircle,
   Package,
-  Palette,
+  PenTool,
   ShoppingBag,
   Tags,
   TicketPercent,
@@ -50,7 +52,7 @@ export function HomeRedirect() {
   // Betreiberkonto ohne eigenen Shop: gleich in die Plattform-Verwaltung (M8).
   if (first === undefined && session.data.platformOperator) return <Navigate to="/plattform" replace />;
   if (first === undefined) return <NoShop />;
-  return <Navigate to="/$shop/uebersicht" params={{ shop: first.handle }} replace />;
+  return <Navigate to="/$shop/dashboard" params={{ shop: first.handle }} replace />;
 }
 
 function NoShop() {
@@ -112,7 +114,7 @@ type MenuItem = { readonly to: string; readonly label: string; readonly icon: Ic
 
 /** Menü in Gruppen (Reihenfolge = Reihenfolge in der Seitenleiste). Farbe = Feld hinter dem Symbol. */
 const GROUPS: readonly { readonly title?: string; readonly items: readonly MenuItem[] }[] = [
-  { items: [{ to: "/$shop/uebersicht", label: "Übersicht", icon: LayoutDashboard, color: "#5b6472" }] },
+  { items: [{ to: "/$shop/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "#5b6472" }] },
   {
     title: "Verkauf",
     items: [
@@ -129,9 +131,9 @@ const GROUPS: readonly { readonly title?: string; readonly items: readonly MenuI
     ],
   },
   {
-    title: "Online-Shop",
+    title: "Onlineshop",
     items: [
-      { to: "/$shop/aussehen", label: "Aussehen", icon: Palette, color: "#e0567a" },
+      { to: "/$shop/editor", label: "Editor", icon: PenTool, color: "#e0567a" },
       { to: "/$shop/versand", label: "Versand", icon: Truck, color: "#1d8fc4" },
     ],
   },
@@ -159,7 +161,7 @@ export function ShopLayout() {
   );
 }
 
-/** Seitenleiste, Inhalt und Seitenleiste des Assistenten. */
+/** Seitenleiste links, Kopfzeile oben, Inhalt und die Chat-Blase des Assistenten unten rechts. */
 function ShopFrame({
   shops,
   email,
@@ -176,58 +178,24 @@ function ShopFrame({
   // Nach jedem Seitenwechsel ist das Handy-Menü wieder zu.
   useEffect(() => setMenuOpen(false), [location.pathname]);
   const onAssistantPage = location.pathname.endsWith("/assistent");
-  const panelOpen = assistant.open && !onAssistantPage;
-  const toggleAssistant = () => {
-    setMenuOpen(false);
-    assistant.setOpen(!assistant.open);
-  };
-
-  const sidebar = (
-    <Sidebar
-      shops={shops}
-      email={email}
-      operator={operator}
-      assistantOpen={panelOpen}
-      assistantHidden={onAssistantPage}
-      onAssistant={toggleAssistant}
-    />
-  );
+  // Der Editor braucht die ganze Breite (eigene zweite Leiste und große Vorschau).
+  const fullBleed = location.pathname.endsWith("/editor");
+  // Dashboard: ganz sanfter blauer Verlauf im Hintergrund, damit es nicht so weiß wirkt.
+  const dashboard = location.pathname.endsWith("/dashboard");
+  const chatOpen = assistant.open && !onAssistantPage;
+  const groups = shop.role === "owner" ? [...GROUPS, { title: "Einstellungen", items: [TEAM] }] : GROUPS;
+  const current = groups
+    .flatMap((g) => g.items)
+    .find((m) => location.pathname.startsWith(m.to.replace("$shop", shop.handle)));
 
   return (
     <div className="min-h-dvh">
       {/* Computer: feste Leiste links */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 border-r border-gray-200 bg-gray-50 lg:block">
-        {sidebar}
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-gray-200 bg-gray-50 lg:block">
+        <Sidebar shops={shops} groups={groups} />
       </aside>
 
-      {/* Handy und Tablet: schmale Kopfzeile, Menü klappt als Leiste auf */}
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur lg:hidden">
-        <button
-          type="button"
-          className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600"
-          aria-expanded={menuOpen}
-          aria-controls="handy-menue"
-          aria-label={menuOpen ? "Menü schließen" : "Menü öffnen"}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          {menuOpen ? (
-            <X className="size-5" aria-hidden="true" />
-          ) : (
-            <Menu className="size-5" aria-hidden="true" />
-          )}
-        </button>
-        <Link
-          to="/$shop/uebersicht"
-          params={{ shop: shop.handle }}
-          className="flex min-w-0 items-center gap-2 font-semibold text-gray-900"
-        >
-          <SlopifyMark className="size-6 shrink-0" />
-          <span className="truncate">{shop.name}</span>
-        </Link>
-        <div className="ml-auto">
-          <AssistantToggle open={panelOpen} hidden={onAssistantPage} onClick={toggleAssistant} />
-        </div>
-      </header>
+      {/* Handy und Tablet: Menü klappt als Leiste auf */}
       {menuOpen && (
         <div className="fixed inset-0 top-14 z-30 lg:hidden">
           <button
@@ -240,23 +208,158 @@ function ShopFrame({
             id="handy-menue"
             className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-gray-200 bg-gray-50 shadow-pop"
           >
-            {sidebar}
+            <Sidebar shops={shops} groups={groups} />
           </div>
         </div>
       )}
 
-      <div className={"lg:pl-60 " + (panelOpen ? "lg:pr-[26rem]" : "")}>
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8 lg:py-8">
+      <div className={"min-h-dvh lg:pl-64 " + (dashboard ? "dashboard-bg" : "")}>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200/80 bg-white/75 px-4 backdrop-blur-md sm:px-6">
+          <button
+            type="button"
+            className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600 lg:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="handy-menue"
+            aria-label={menuOpen ? "Menü schließen" : "Menü öffnen"}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            {menuOpen ? (
+              <X className="size-5" aria-hidden="true" />
+            ) : (
+              <Menu className="size-5" aria-hidden="true" />
+            )}
+          </button>
+          <p className="flex min-w-0 items-center gap-2 text-gray-500">
+            <SlopifyMark className="size-5 shrink-0 lg:hidden" />
+            <span className="truncate font-medium text-gray-900 lg:font-normal lg:text-gray-500">
+              {shop.name}
+            </span>
+            {current && (
+              <>
+                <span aria-hidden="true" className="hidden text-gray-300 sm:inline">
+                  /
+                </span>
+                <span className="hidden truncate font-medium text-gray-900 sm:inline">{current.label}</span>
+              </>
+            )}
+          </p>
+          <div className="ml-auto flex items-center gap-2">
+            {operator && (
+              <Link
+                to="/plattform"
+                className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 md:inline-flex"
+              >
+                <Building2 className="size-4" aria-hidden="true" />
+                Plattform
+              </Link>
+            )}
+            <a
+              href={storefrontUrl(shop.handle, window.location)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-xs ring-1 ring-gray-200 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+            >
+              <ExternalLink className="size-4 text-gray-500" aria-hidden="true" />
+              <span className="hidden sm:inline">Shop ansehen</span>
+              <span className="sr-only sm:hidden">Shop ansehen</span>
+            </a>
+            <UserMenu email={email} operator={operator} />
+          </div>
+        </header>
+        <main
+          className={
+            fullBleed ? "relative isolate" : "relative isolate mx-auto max-w-6xl px-4 py-6 sm:px-8 lg:py-8"
+          }
+        >
           <Outlet />
         </main>
       </div>
-      {panelOpen && (
-        <aside
+
+      {chatOpen && (
+        <section
           aria-label="Assistent"
-          className="fixed inset-x-0 top-14 bottom-0 z-10 bg-gray-50 lg:top-0 lg:left-auto lg:w-[26rem] lg:border-l lg:border-gray-200 lg:shadow-pop"
+          className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-gray-50 sm:inset-auto sm:right-5 sm:bottom-24 sm:h-[min(42rem,calc(100dvh-8rem))] sm:w-[26rem] sm:rounded-2xl sm:shadow-pop sm:ring-1 sm:ring-gray-200"
         >
           <AssistantChat variant="panel" />
-        </aside>
+        </section>
+      )}
+      {!onAssistantPage && (
+        <button
+          type="button"
+          onClick={() => assistant.setOpen(!assistant.open)}
+          aria-pressed={chatOpen}
+          aria-label={chatOpen ? "Chat schließen" : "Assistent öffnen"}
+          title="Assistent"
+          className={
+            "fixed right-5 bottom-5 z-40 size-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-brand-600 text-white shadow-pop transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+            (chatOpen ? "hidden sm:flex" : "flex")
+          }
+        >
+          {chatOpen ? (
+            <X className="size-6" aria-hidden="true" />
+          ) : (
+            <MessageCircle className="size-6" aria-hidden="true" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Konto oben rechts: E-Mail und Abmelden. */
+function UserMenu({ email, operator }: { email: string; operator: boolean }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !box.current?.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  return (
+    <div ref={box} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label="Konto"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 rounded-full p-0.5 pr-1.5 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+      >
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-sm font-semibold text-gray-700"
+        >
+          {email.slice(0, 1).toUpperCase()}
+        </span>
+        <ChevronDown className="size-4 text-gray-500" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg bg-white p-1.5 shadow-pop ring-1 ring-gray-200">
+          <p className="px-2.5 pt-1.5 pb-2 text-xs text-gray-500">
+            Angemeldet als
+            <span className="block truncate text-sm font-medium text-gray-900">{email}</span>
+          </p>
+          {operator && (
+            <Link
+              to="/plattform"
+              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-gray-700 hover:bg-gray-100 md:hidden"
+            >
+              <Building2 className="size-4" aria-hidden="true" />
+              Plattform-Verwaltung
+            </Link>
+          )}
+          <div className="border-t border-gray-100 pt-1.5">
+            <SignOutButton className="w-full justify-start" />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -264,30 +367,21 @@ function ShopFrame({
 
 function Sidebar({
   shops,
-  email,
-  operator,
-  assistantOpen,
-  assistantHidden,
-  onAssistant,
+  groups,
 }: {
   shops: readonly ShopOfUser[];
-  email: string;
-  operator: boolean;
-  assistantOpen: boolean;
-  assistantHidden: boolean;
-  onAssistant: () => void;
+  groups: readonly { readonly title?: string; readonly items: readonly MenuItem[] }[];
 }) {
   const shop = useShop();
   const navigate = useNavigate();
-  const groups = shop.role === "owner" ? [...GROUPS, { title: "Einstellungen", items: [TEAM] }] : GROUPS;
   const item =
-    "group flex items-center gap-2.5 rounded-md px-2 py-[7px] text-[14px] text-gray-700 transition-colors hover:bg-gray-150 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600";
+    "group flex items-center gap-3 rounded-md px-2.5 py-2 text-[0.95rem] text-gray-700 transition-colors hover:bg-gray-150 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600";
   const active = "bg-white font-medium text-gray-900 shadow-xs ring-1 ring-gray-200 hover:bg-white";
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-3 pt-3 pb-2">
-        <div className="relative flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-gray-150">
+      <div className="flex h-14 items-center border-b border-gray-200 px-3">
+        <div className="relative flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-150">
           <span
             aria-hidden="true"
             className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
@@ -295,7 +389,9 @@ function Sidebar({
             {shop.name.slice(0, 1).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] font-semibold text-gray-900">{shop.name}</span>
+            <span className="block truncate text-[0.95rem] leading-tight font-semibold text-gray-900">
+              {shop.name}
+            </span>
             <span className="block truncate text-xs text-gray-500">{roleName(shop.role)}</span>
           </span>
           {shops.length > 1 && (
@@ -305,7 +401,7 @@ function Sidebar({
                 aria-label="Shop wechseln"
                 className="absolute inset-0 cursor-pointer opacity-0"
                 value={shop.handle}
-                onChange={(e) => void navigate({ to: "/$shop/uebersicht", params: { shop: e.target.value } })}
+                onChange={(e) => void navigate({ to: "/$shop/dashboard", params: { shop: e.target.value } })}
               >
                 {shops.map((s) => (
                   <option key={s.id} value={s.handle}>
@@ -318,15 +414,15 @@ function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-3" aria-label="Hauptmenü">
+      <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Hauptmenü">
         {groups.map((g, gi) => (
-          <div key={g.title ?? gi} className={gi === 0 ? "" : "mt-4"}>
+          <div key={g.title ?? gi} className={gi === 0 ? "" : "mt-5"}>
             {g.title && (
-              <p className="px-2 pb-1 text-[11px] font-semibold tracking-[0.07em] text-gray-400 uppercase">
+              <p className="px-2.5 pb-1.5 text-[0.7rem] font-semibold tracking-[0.07em] text-gray-400 uppercase">
                 {g.title}
               </p>
             )}
-            <ul className="space-y-px">
+            <ul className="space-y-0.5">
               {g.items.map((m) => (
                 <li key={m.to}>
                   <Link
@@ -340,57 +436,14 @@ function Sidebar({
                   </Link>
                 </li>
               ))}
-              {gi === 0 && !assistantHidden && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={onAssistant}
-                    aria-pressed={assistantOpen}
-                    className={item + " w-full " + (assistantOpen ? active : "")}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-violet-100"
-                    >
-                      <SlopifyMark className="size-3.5" />
-                    </span>
-                    <span className="text-violet-800">Assistent</span>
-                  </button>
-                </li>
-              )}
             </ul>
           </div>
         ))}
       </nav>
 
-      <div className="border-t border-gray-200 px-3 py-3">
-        <a
-          href={storefrontUrl(shop.handle, window.location)}
-          target="_blank"
-          rel="noreferrer"
-          className={item}
-        >
-          <ExternalLink className="size-4 text-gray-500" aria-hidden="true" />
-          Shop ansehen
-        </a>
-        {operator && (
-          <Link to="/plattform" className={item}>
-            <Building2 className="size-4 text-gray-500" aria-hidden="true" />
-            Plattform-Verwaltung
-          </Link>
-        )}
-        <div className="mt-2 flex items-center gap-2.5 rounded-md px-2 py-1.5">
-          <span
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-700"
-          >
-            {email.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[13px] text-gray-600" title={email}>
-            {email}
-          </span>
-          <SignOutButton compact />
-        </div>
+      <div className="flex items-center gap-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-400">
+        <SlopifyMark className="size-4" />
+        slopify
       </div>
     </div>
   );
@@ -405,29 +458,10 @@ function MenuIcon({ icon: I, color }: { icon: Icon; color: string }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-5 shrink-0 items-center justify-center rounded-[5px]"
+      className="flex size-6 shrink-0 items-center justify-center rounded-md"
       style={{ background: color }}
     >
-      <I className="size-3.5 text-white" aria-hidden="true" />
+      <I className="size-4 text-white" aria-hidden="true" />
     </span>
-  );
-}
-
-/** Knopf „Assistent“ in der Handy-Kopfzeile: öffnet und schließt die Seitenleiste. */
-function AssistantToggle({ open, hidden, onClick }: { open: boolean; hidden: boolean; onClick: () => void }) {
-  if (hidden) return null;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={open}
-      className={
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm whitespace-nowrap " +
-        (open ? "bg-violet-100 font-medium text-violet-900" : "text-violet-700 hover:bg-violet-50")
-      }
-    >
-      <SlopifyMark className="size-4" />
-      Assistent
-    </button>
   );
 }

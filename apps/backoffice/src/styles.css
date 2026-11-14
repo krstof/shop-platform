@@ -38,8 +38,18 @@
   --shadow-pop: 0 12px 32px -8px rgb(24 28 34 / 0.18), 0 2px 6px -2px rgb(24 28 34 / 0.08);
 }
 
+/* Dashboard: sanfter Verlauf (blau oben links, ein Hauch Violett oben rechts, unten weiß). */
+.dashboard-bg {
+  background:
+    radial-gradient(60rem 28rem at 15% -6rem, rgb(193 211 255 / 0.55), transparent 70%),
+    radial-gradient(44rem 24rem at 95% -4rem, rgb(221 208 255 / 0.45), transparent 70%),
+    linear-gradient(to bottom, #f2f5ff 0, #f8f9fe 26rem, #ffffff 48rem);
+}
+
 @layer base {
   html {
+    /* Etwas größere Schrift im ganzen Backoffice (Kristof, 14.11.2026): 17 statt 16 Pixel als Basis. */
+    font-size: 106.25%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "ss01";

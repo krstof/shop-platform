@@ -146,7 +146,7 @@ export function OrdersPage() {
       {orders.data && orders.data.length > 0 && (
         <div
           className={
-            "overflow-hidden rounded-lg bg-white ring-1 ring-gray-200 transition-opacity" +
+            "overflow-x-auto rounded-lg bg-white ring-1 ring-gray-200 transition-opacity" +
             (orders.isPlaceholderData ? " opacity-60" : "")
           }
         >

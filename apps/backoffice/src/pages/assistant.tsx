@@ -308,8 +308,8 @@ export function pageNote(pathname: string, shopId: string, queryClient: QueryCli
   }
   if (section === "bestellungen") return "Bestellliste";
   if (section === "kategorien") return "Kategorien";
-  if (section === "aussehen") return "Aussehen des Shops";
-  if (section === "uebersicht") return "Übersicht";
+  if (section === "editor" || section === "aussehen") return "Editor (Aussehen des Shops)";
+  if (section === "dashboard" || section === "uebersicht") return "Dashboard";
   return undefined;
 }
 

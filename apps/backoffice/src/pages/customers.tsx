@@ -58,7 +58,7 @@ export function CustomersPage() {
         </div>
       )}
       {shown.length > 0 && (
-        <div className="overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
+        <div className="overflow-x-auto rounded-lg bg-white ring-1 ring-gray-200">
           <table className="w-full text-left text-sm">
             <thead>
               <tr>

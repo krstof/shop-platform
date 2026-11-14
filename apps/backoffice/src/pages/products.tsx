@@ -200,7 +200,7 @@ export function ProductsPage() {
       {products.data && products.data.length > 0 && (
         <div
           className={
-            "overflow-hidden rounded-lg bg-white ring-1 ring-gray-200 transition-opacity" +
+            "overflow-x-auto rounded-lg bg-white ring-1 ring-gray-200 transition-opacity" +
             (products.isPlaceholderData ? " opacity-60" : "")
           }
         >

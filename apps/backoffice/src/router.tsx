@@ -51,11 +51,19 @@ const shopHome = createRoute({
   path: "/",
   component: function ShopHome() {
     const { shop: handle } = shop.useParams();
-    return <Navigate to="/$shop/uebersicht" params={{ shop: handle }} replace />;
+    return <Navigate to="/$shop/dashboard" params={{ shop: handle }} replace />;
   },
 });
-// Übersicht (Startseite des Shops).
-const overview = createRoute({ getParentRoute: () => shop, path: "/uebersicht", component: OverviewPage });
+// Dashboard (Startseite des Shops; früher „Übersicht“ unter /uebersicht).
+const overview = createRoute({ getParentRoute: () => shop, path: "/dashboard", component: OverviewPage });
+const overviewOld = createRoute({
+  getParentRoute: () => shop,
+  path: "/uebersicht",
+  component: function OldOverview() {
+    const { shop: handle } = shop.useParams();
+    return <Navigate to="/$shop/dashboard" params={{ shop: handle }} replace />;
+  },
+});
 
 const products = createRoute({
   getParentRoute: () => shop,
@@ -90,8 +98,16 @@ const categoryEdit = createRoute({
   component: EditCategoryPage,
 });
 
-// Shop-Editor (Teil 1: Farbe, Schrift, Logo).
-const design = createRoute({ getParentRoute: () => shop, path: "/aussehen", component: DesignPage });
+// Shop-Editor (früher „Aussehen“ unter /aussehen).
+const design = createRoute({ getParentRoute: () => shop, path: "/editor", component: DesignPage });
+const designOld = createRoute({
+  getParentRoute: () => shop,
+  path: "/aussehen",
+  component: function OldDesign() {
+    const { shop: handle } = shop.useParams();
+    return <Navigate to="/$shop/editor" params={{ shop: handle }} replace />;
+  },
+});
 
 // KI-Assistent (Welle 2).
 const assistant = createRoute({ getParentRoute: () => shop, path: "/assistent", component: AssistantPage });
@@ -127,6 +143,7 @@ const routeTree = root.addChildren([
   shop.addChildren([
     shopHome,
     overview,
+    overviewOld,
     products,
     productNew,
     productEdit,
@@ -136,6 +153,7 @@ const routeTree = root.addChildren([
     orders,
     order,
     design,
+    designOld,
     assistant,
     team,
     shipping,

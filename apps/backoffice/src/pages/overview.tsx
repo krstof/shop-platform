@@ -1,8 +1,9 @@
-// Übersicht (Startseite des Shops im Backoffice): Umsatz heute und der letzten 7 Tage, was zu tun
+// Dashboard (früher „Übersicht“; Startseite des Shops im Backoffice): Umsatz heute und der letzten 7 Tage, was zu tun
 // ist (versenden, Zahlung offen, knapper Bestand) und die letzten Bestellungen.
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Clock, Euro, PackageCheck, PenTool, Plus, TrendingUp } from "lucide-react";
 import { Alert, Card, Spinner } from "../components/ui.js";
 import { listAll, request, type OrderSummary, type Page, type Product } from "../lib/api.js";
 import { formatEuro } from "../lib/money.js";
@@ -56,7 +57,7 @@ export function OverviewPage() {
     return (
       <div className="flex justify-center py-16 text-gray-400" role="status">
         <Spinner className="size-6" />
-        <span className="sr-only">Übersicht wird geladen …</span>
+        <span className="sr-only">Dashboard wird geladen …</span>
       </div>
     );
   if (stats.isError) return <Alert>{stats.error.message}</Alert>;
@@ -70,23 +71,52 @@ export function OverviewPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Übersicht</h1>
-        <p className="text-sm text-gray-500">Was heute in {shop.name} los ist.</p>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-brand-700">{greeting()}</p>
+          <h1 className="mt-0.5 text-[1.75rem] leading-tight font-semibold tracking-[-0.015em] text-gray-900">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-gray-500">Was heute in {shop.name} los ist.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/$shop/produkte/neu"
+            params={{ shop: shop.handle }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3.5 py-2 text-sm font-medium text-white shadow-xs hover:bg-brand-700"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Produkt anlegen
+          </Link>
+          <Link
+            to="/$shop/editor"
+            params={{ shop: shop.handle }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-white/80 px-3.5 py-2 text-sm font-medium text-gray-800 shadow-xs ring-1 ring-gray-200 hover:bg-white"
+          >
+            <PenTool className="size-4 text-gray-500" aria-hidden="true" />
+            Shop gestalten
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Tile
+          icon={Euro}
+          color="#3354e0"
           label="Umsatz heute"
           value={formatEuro(today.revenue)}
           note={count(today.orders, "Bestellung")}
         />
         <Tile
+          icon={TrendingUp}
+          color="#7c3aed"
           label="Umsatz 7 Tage"
           value={formatEuro(week.revenue)}
           note={count(week.orders, "Bestellung")}
         />
         <Tile
+          icon={PackageCheck}
+          color="#0d8f7f"
           label="Zu versenden"
           value={String(s.toShip)}
           note={s.toShip > 0 ? "bezahlt, bitte versenden" : "alles verschickt"}
@@ -94,6 +124,8 @@ export function OverviewPage() {
           highlight={s.toShip > 0}
         />
         <Tile
+          icon={Clock}
+          color="#d9822b"
           label="Wartet auf Zahlung"
           value={String(s.awaitingPayment)}
           note="Testzahlung noch offen"
@@ -101,7 +133,7 @@ export function OverviewPage() {
         />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card title="Umsatz der letzten 7 Tage" className="lg:col-span-2">
           <RevenueChart days={s.days} />
         </Card>
@@ -183,13 +215,22 @@ function count(n: number, word: string): string {
   return n === 1 ? `1 ${word}` : `${n} ${word}en`;
 }
 
+function greeting(): string {
+  const h = new Date().getHours();
+  return h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend";
+}
+
 function Tile({
+  icon: I,
+  color,
   label,
   value,
   note,
   to,
   highlight = false,
 }: {
+  icon: typeof Euro;
+  color: string;
   label: string;
   value: string;
   note: string;
@@ -199,10 +240,19 @@ function Tile({
   const shop = useShop();
   const body = (
     <>
-      <p className="text-sm text-gray-500">{label}</p>
+      <p className="flex items-center gap-2 text-sm text-gray-600">
+        <span
+          aria-hidden="true"
+          className="flex size-7 items-center justify-center rounded-md"
+          style={{ background: `${color}1a`, color }}
+        >
+          <I className="size-4" aria-hidden="true" />
+        </span>
+        {label}
+      </p>
       <p
         className={
-          "mt-1 text-xl font-semibold tabular-nums sm:text-2xl " +
+          "mt-3 text-2xl font-semibold tracking-[-0.01em] tabular-nums sm:text-[1.75rem] " +
           (highlight ? "text-brand-800" : "text-gray-900")
         }
       >
@@ -211,7 +261,7 @@ function Tile({
       <p className="mt-1 text-xs text-gray-500">{note}</p>
     </>
   );
-  const box = "block rounded-lg bg-white p-4 ring-1 ring-gray-200 sm:p-5";
+  const box = "block rounded-xl bg-white/90 p-4 shadow-xs ring-1 ring-gray-200/80 backdrop-blur sm:p-5";
   if (to === undefined) return <div className={box}>{body}</div>;
   return (
     <Link

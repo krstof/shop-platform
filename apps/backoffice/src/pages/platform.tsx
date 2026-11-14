@@ -78,7 +78,7 @@ function PlatformFrame({
           </Link>
           {hasShops && firstShop !== undefined && (
             <Link
-              to="/$shop/uebersicht"
+              to="/$shop/dashboard"
               params={{ shop: firstShop }}
               className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
             >
@@ -301,7 +301,7 @@ function ShopsAdmin() {
       {shops.isError && <Alert>{shops.error.message}</Alert>}
       {operator.isError && <Alert>{operator.error.message}</Alert>}
       {shops.data && operator.data && (
-        <div className="overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
+        <div className="overflow-x-auto rounded-lg bg-white ring-1 ring-gray-200">
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
