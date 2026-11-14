@@ -952,6 +952,178 @@
         ]
       }
     },
+    "/admin/v1/assistant/product-description": {
+      "post": {
+        "operationId": "writeProductDescription",
+        "summary": "KI-Produktbeschreibung vorschlagen",
+        "description": "Macht aus Stichworten oder der bisherigen Beschreibung einen lesbaren Fließtext, ohne neue Fakten hinzuzufügen. Speichert nichts; das Backoffice übernimmt den Text erst auf Wunsch. Zählt zum Tageslimit des Assistenten (429).",
+        "tags": [
+          "Assistent"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Name des Produkts."
+                  },
+                  "category": {
+                    "description": "Name der Kategorie, freiwillig.",
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "notes": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 5000,
+                    "description": "Stichworte oder die bisherige Beschreibung; nur daraus entsteht der Text."
+                  }
+                },
+                "required": [
+                  "name",
+                  "notes"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "name": "Sencha Frühling",
+                "category": "Grüntee",
+                "notes": "Japan, erste Ernte, mild, 100 g"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Vorschlag für die Beschreibung.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDescriptionSuggestion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "products:write"
+        ]
+      }
+    },
     "/admin/v1/audit-entries": {
       "get": {
         "operationId": "listAuditEntries",
@@ -13322,6 +13494,19 @@
         ],
         "additionalProperties": false,
         "description": "Produkt mit Preis und Bestand."
+      },
+      "ProductDescriptionSuggestion": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "additionalProperties": false
       },
       "ProductImage": {
         "type": "object",

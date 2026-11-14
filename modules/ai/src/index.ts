@@ -5,6 +5,7 @@ import type { Endpoint } from "@shop/http";
 import type { Database } from "@shop/kernel";
 import type { DB } from "./db.generated.js";
 import { assistantEndpoints } from "./http/assistant.js";
+import { descriptionEndpoints } from "./http/description.js";
 import type { AssistantModel } from "./internal/model.js";
 import { usageRepository } from "./internal/usage.js";
 
@@ -33,10 +34,11 @@ export interface AiDependencies {
 }
 
 export function aiEndpoints(deps: AiDependencies): Endpoint[] {
-  return assistantEndpoints({
+  const shared = {
     model: deps.model,
     usage: usageRepository(deps.database as Database<DB>),
     dailyLimit: deps.dailyLimit ?? DEFAULT_DAILY_LIMIT,
     onModelError: deps.onModelError,
-  });
+  };
+  return [...assistantEndpoints(shared), ...descriptionEndpoints(shared)];
 }

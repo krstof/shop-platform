@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { Alert, Button, Card, Field, Input, Select, Spinner, Textarea } from "../components/ui.js";
 import { ApiError, fileToBase64, request, type Product, type ProductInput } from "../lib/api.js";
 import { centsToInput, parseEuro } from "../lib/money.js";
+import { AiDescriptionButton } from "./ai-description.js";
 import { useShop } from "./layout.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
 import { useConfirm } from "../components/dialog.js";
@@ -262,6 +263,15 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                   />
                 )}
               </Field>
+              <div className="-mb-3 flex justify-end">
+                <AiDescriptionButton
+                  shopId={shop.id}
+                  name={form.name}
+                  category={(categories.data ?? []).find((c) => c.id === form.categoryId)?.name}
+                  current={form.description}
+                  onApply={(text) => set("description")(text)}
+                />
+              </div>
               <Field
                 label="Beschreibung"
                 hint="Absätze mit einer Leerzeile trennen."

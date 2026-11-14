@@ -93,11 +93,16 @@ export function anthropicModel(options: AnthropicOptions): AssistantModel {
             model: options.model,
             max_tokens: options.maxTokens ?? 2048,
             system: request.system,
-            tools: request.tools.map((t) => ({
-              name: t.name,
-              description: t.description,
-              input_schema: t.inputSchema,
-            })),
+            // Ohne Werkzeuge (etwa für Produkttexte) das Feld weglassen.
+            ...(request.tools.length === 0
+              ? {}
+              : {
+                  tools: request.tools.map((t) => ({
+                    name: t.name,
+                    description: t.description,
+                    input_schema: t.inputSchema,
+                  })),
+                }),
             messages: request.messages,
           }),
           signal: AbortSignal.timeout(options.timeoutMs ?? 60_000),

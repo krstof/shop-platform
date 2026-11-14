@@ -49,6 +49,7 @@ describe.skipIf(adminUrl === undefined)("KI-Assistent (Welle 2, echte Datenbank)
   const seen: ModelRequest[] = [];
   const model = scriptedModel((r) => {
     seen.push(r);
+    if (r.tools.length === 0) return [{ type: "text", text: "  Ein milder Tee.\n\n\n\nAus Japan.  " }];
     const last = r.messages.at(-1)?.content[0];
     if (last?.type === "tool_result") return [{ type: "text", text: `Erledigt: ${last.content}` }];
     return [
@@ -236,5 +237,26 @@ describe.skipIf(adminUrl === undefined)("KI-Assistent (Welle 2, echte Datenbank)
     expect(limited.json().detail).toContain("Morgen");
     expect((await call(app, "POST", "/admin/v1/assistant/chat", "other", ask("x"))).statusCode).toBe(200);
     await app.close();
+  });
+
+  it("schlägt eine Produktbeschreibung nur aus den Angaben vor (KI-Beschreibung)", async () => {
+    const app = await start(true, 10);
+    const url = "/admin/v1/assistant/product-description";
+    const body = { name: "Sencha", category: "Grüntee", notes: "Japan, mild, 100 g" };
+    const r = await call(app, "POST", url, "owner", body);
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ description: "Ein milder Tee.\n\nAus Japan." });
+    const req = seen.at(-1);
+    expect(req?.tools).toEqual([]);
+    expect(req?.system).toContain("Erfinde nichts dazu");
+    const sent = req?.messages[0]?.content[0];
+    expect(sent?.type === "text" && sent.text).toContain("Japan, mild, 100 g");
+    // Nur mit Schreibrecht auf Produkte, Angaben werden geprüft.
+    expect((await call(app, "POST", url, "other", body)).statusCode).toBe(403);
+    expect((await call(app, "POST", url, "owner", { ...body, notes: "" })).statusCode).toBe(422);
+    await app.close();
+    const off = await start(false);
+    expect((await call(off, "POST", url, "owner", body)).statusCode).toBe(503);
+    await off.close();
   });
 });
