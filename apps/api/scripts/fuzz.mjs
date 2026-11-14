@@ -14,6 +14,7 @@ import { createIdentityService } from "@shop/identity";
 import { connectDatabase, createLogger, createSecretBox, uuidv7 } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
 import { roleUrl } from "@shop/testing";
+import { createShopAdministration } from "@shop/platform";
 import { SCOPES } from "@shop/http";
 import pg from "pg";
 import { createApi } from "../dist/app.js";
@@ -44,6 +45,7 @@ let status;
 let app;
 let database;
 let identity;
+let platformDatabase;
 try {
   await runMigrations({ connectionString: setupUrl.href, rootDir: repoRoot });
   const setup = new pg.Client({ connectionString: setupUrl.href });
@@ -79,6 +81,11 @@ try {
     connectionString: roleUrl(adminUrl, dbName, "shop_app"),
     applicationName: "fuzz",
   });
+  // Wie in main.ts: Plattform-Verwaltung und Umbenennen des Shops mit eigener Rolle shop_platform.
+  platformDatabase = connectDatabase({
+    connectionString: roleUrl(adminUrl, dbName, "shop_platform"),
+    applicationName: "fuzz-platform",
+  });
   // Echtes Anmeldemodul (shop_auth), ohne E-Mail-Versand: „Mitarbeiter einladen“ legt Konten und
   // Codes an und soll dabei bis in die Logik kommen (E6 Teil 7).
   identity = createIdentityService({
@@ -93,6 +100,7 @@ try {
     endpoints: allEndpoints({
       database,
       identity,
+      platformShops: createShopAdministration({ database: platformDatabase }),
       // KI-Assistent: nachgebildetes Modell (kein Netz, keine Kosten), Tageslimit praktisch aus.
       assistantModel: scriptedModel(() => [{ type: "text", text: "Alles klar." }]),
       assistantDailyLimit: 100_000,
@@ -155,6 +163,7 @@ try {
   await app?.close();
   await identity?.close();
   await database?.destroy();
+  await platformDatabase?.destroy();
   await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
   await admin.end();
 }
