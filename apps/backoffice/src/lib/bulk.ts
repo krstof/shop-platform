@@ -35,3 +35,25 @@ export function bulkMessage(action: BulkAction, done: number, failed: number): s
     ? ok
     : `${ok} ${n(failed)} ging${failed === 1 ? "" : "en"} nicht, bitte einzeln versuchen.`;
 }
+
+/** Sammelaktion „Kategorie setzen“: nur Produkte, deren Kategorie sich ändert. */
+export function categoryTargets<T extends { readonly id: string; readonly categoryId: string | null }>(
+  items: readonly T[],
+  selected: ReadonlySet<string>,
+  categoryId: string | null,
+): T[] {
+  return items.filter((p) => selected.has(p.id) && p.categoryId !== categoryId);
+}
+
+export function categoryMessage(name: string | null, done: number, failed: number): string {
+  const n = (k: number) => (k === 1 ? "1 Produkt" : `${k} Produkte`);
+  const ok =
+    done === 0
+      ? "Nichts zu ändern."
+      : name === null
+        ? `${n(done)} ohne Kategorie.`
+        : `${n(done)} jetzt in „${name}“.`;
+  return failed === 0
+    ? ok
+    : `${ok} ${n(failed)} ging${failed === 1 ? "" : "en"} nicht, bitte einzeln versuchen.`;
+}

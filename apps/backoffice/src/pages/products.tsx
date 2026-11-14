@@ -2,10 +2,12 @@
 // Suche und Filter (12.11.2026) stehen in der Adresse und gehen als Filter an die Admin-API.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Download, Upload } from "lucide-react";
 import { Alert, Badge, Button, Input, Select, Spinner } from "../components/ui.js";
 import { listAll, request, type Category, type Product } from "../lib/api.js";
-import { bulkMessage, bulkTargets, type BulkAction } from "../lib/bulk.js";
+import { bulkMessage, bulkTargets, categoryMessage, categoryTargets, type BulkAction } from "../lib/bulk.js";
+import { importBody, productsCsv, readImport, type ImportResult } from "../lib/product-csv.js";
 import { formatEuro } from "../lib/money.js";
 import {
   isFiltered,
@@ -100,6 +102,109 @@ export function ProductsPage() {
   const categories = useCategories(shop.id);
   const categoryName = new Map((categories.data ?? []).map((c) => [c.id, c.name]));
 
+  // Sammelaktion „Kategorie setzen“.
+  const setCategory = useMutation({
+    mutationFn: async (categoryId: string | null) => {
+      let done = 0;
+      let failed = 0;
+      for (const p of categoryTargets(sorted ?? [], selectedVisible, categoryId)) {
+        try {
+          await request(`/admin/v1/products/${p.id}`, {
+            method: "PATCH",
+            body: { categoryId },
+            shopId: shop.id,
+            version: p.version,
+          });
+          done++;
+        } catch {
+          failed++;
+        }
+      }
+      return categoryMessage(categoryId === null ? null : (categoryName.get(categoryId) ?? ""), done, failed);
+    },
+    onSuccess: (message) => {
+      setBulkInfo(message);
+      setSelected(new Set());
+    },
+    onSettled: () => {
+      queryClient.removeQueries({ queryKey: ["product", shop.id] });
+      void queryClient.invalidateQueries({ queryKey: categoriesKey(shop.id) });
+      return queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+    },
+  });
+
+  // Produkte als Tabelle herunterladen und hochladen.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState<ImportResult | undefined>();
+  const [importError, setImportError] = useState<string | undefined>();
+  async function download() {
+    const all = await listAll<Product>("/admin/v1/products", shop.id);
+    const blob = new Blob([productsCsv(all, (id) => (id === null ? "" : (categoryName.get(id) ?? "")))], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `produkte-${shop.handle}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  async function onImportFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file === undefined) return;
+    setImportError(undefined);
+    setBulkInfo(undefined);
+    if (file.size > 2_000_000) {
+      setImportError("Die Datei ist zu groß (höchstens 2 MB).");
+      return;
+    }
+    const all = await listAll<Product>("/admin/v1/products", shop.id);
+    setImporting(readImport(await file.text(), all, categories.data ?? []));
+  }
+  const applyImport = useMutation({
+    mutationFn: async ({ rows, columns }: ImportResult) => {
+      const all = await listAll<Product>("/admin/v1/products", shop.id);
+      const version = new Map(all.map((p) => [p.id, p.version]));
+      let created = 0;
+      let changed = 0;
+      const failed: number[] = [];
+      for (const r of rows) {
+        const body = importBody(r, columns);
+        try {
+          if (r.existingId !== null) {
+            await request(`/admin/v1/products/${r.existingId}`, {
+              method: "PATCH",
+              body,
+              shopId: shop.id,
+              version: version.get(r.existingId) ?? 0,
+            });
+            changed++;
+          } else {
+            await request("/admin/v1/products", { method: "POST", body, shopId: shop.id });
+            created++;
+          }
+        } catch {
+          failed.push(r.line);
+        }
+      }
+      const n = (k: number) => (k === 1 ? "1 Produkt" : `${k} Produkte`);
+      return (
+        `${n(created)} angelegt, ${n(changed)} geändert.` +
+        (failed.length > 0 ? ` Nicht geklappt: Zeile ${failed.join(", ")}.` : "")
+      );
+    },
+    onSuccess: (message) => {
+      setImporting(undefined);
+      setBulkInfo(message);
+    },
+    onSettled: () => {
+      queryClient.removeQueries({ queryKey: ["product", shop.id] });
+      void queryClient.invalidateQueries({ queryKey: categoriesKey(shop.id) });
+      return queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+    },
+  });
+
   const setFilter = useCallback(
     (next: FilterInput) =>
       void navigate({
@@ -128,10 +233,79 @@ export function ProductsPage() {
             </p>
           )}
         </div>
-        <Link to="/$shop/produkte/neu" params={{ shop: shop.handle }} className={newButton}>
-          <span aria-hidden="true">+</span> Produkt anlegen
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => void download()} title="Alle Produkte als Tabelle (CSV)">
+            <Download className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Herunterladen</span>
+            <span className="sr-only sm:hidden">Als Tabelle herunterladen</span>
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".csv,text/csv"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => void onImportFile(e)}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => fileInput.current?.click()}
+            title="Tabelle (CSV) hochladen"
+          >
+            <Upload className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Hochladen</span>
+            <span className="sr-only sm:hidden">Tabelle hochladen</span>
+          </Button>
+          <Link to="/$shop/produkte/neu" params={{ shop: shop.handle }} className={newButton}>
+            <span aria-hidden="true">+</span> Produkt anlegen
+          </Link>
+        </div>
       </div>
+
+      {importError && (
+        <div className="mb-3">
+          <Alert>{importError}</Alert>
+        </div>
+      )}
+      {importing && (
+        <section aria-label="Tabelle hochladen" className="mb-4 rounded-lg bg-white p-5 ring-1 ring-gray-200">
+          <h2 className="font-semibold text-gray-900">Tabelle prüfen</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            {importing.rows.filter((r) => r.existingId === null).length} neue Produkte,{" "}
+            {importing.rows.filter((r) => r.existingId !== null).length} Änderungen (gleiche Artikelnummer)
+            {importing.errors.length > 0 &&
+              `, ${importing.errors.length} Zeilen mit Fehlern (werden übersprungen)`}
+            .
+          </p>
+          {importing.errors.length > 0 && (
+            <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-sm text-red-800">
+              {importing.errors.map((e) => (
+                <li key={e.line}>
+                  Zeile {e.line}: {e.message}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-gray-500">
+            Spalten wie beim Herunterladen: Name, Artikelnummer, Preis, Angebotspreis, Bestand, Kategorie, Im
+            Shop (ja/nein), Mehrwertsteuer (7/19), Lieferzeit von/bis, Beschreibung.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              disabled={importing.rows.length === 0}
+              busy={applyImport.isPending}
+              onClick={() => applyImport.mutate(importing)}
+            >
+              {importing.rows.length === 1
+                ? "1 Zeile übernehmen"
+                : `${importing.rows.length} Zeilen übernehmen`}
+            </Button>
+            <Button variant="ghost" disabled={applyImport.isPending} onClick={() => setImporting(undefined)}>
+              Abbrechen
+            </Button>
+          </div>
+        </section>
+      )}
 
       <FilterBar filter={filter} categories={categories.data ?? []} onChange={setFilter} />
 
@@ -148,6 +322,26 @@ export function ProductsPage() {
           <Button variant="secondary" busy={bulk.isPending} onClick={() => bulk.mutate("unpublish")}>
             Aus dem Shop nehmen
           </Button>
+          <label className="inline-flex items-center">
+            <span className="sr-only">Kategorie setzen</span>
+            <select
+              value=""
+              disabled={setCategory.isPending}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v !== "") setCategory.mutate(v === "ohne" ? null : v);
+              }}
+              className="rounded-md border-0 bg-white px-2.5 py-1.5 text-sm text-gray-800 ring-1 ring-gray-300"
+            >
+              <option value="">Kategorie setzen …</option>
+              <option value="ohne">Ohne Kategorie</option>
+              {(categories.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button
             variant="danger"
             busy={bulk.isPending}
