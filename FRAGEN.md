@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(keine)
+1. **GitHub-Abrechnung (14.11.2026):** GitHub startet seit heute Abend keine automatischen Prüfungen mehr („Zahlung fehlgeschlagen oder Ausgabenlimit erreicht“). Deshalb kommen auch neue Stände nicht mehr auf den Testserver. Bitte unter GitHub → Settings → Billing and plans nachsehen. Antwort: „erledigt“ (Zahlung/Limit angepasst) oder „warten“ (bis die Freiminuten im neuen Monat wieder da sind).
 
 ## Beantwortet
 
