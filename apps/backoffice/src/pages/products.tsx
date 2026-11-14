@@ -1,10 +1,11 @@
 // Produktliste (M3): Bild, Name, Status, Kategorie, Preis, Bestand. Klick öffnet das Produkt.
 // Suche und Filter (12.11.2026) stehen in der Adresse und gehen als Filter an die Admin-API.
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Badge, Button, Input, Select, Spinner } from "../components/ui.js";
-import { listAll, type Category, type Product } from "../lib/api.js";
+import { listAll, request, type Category, type Product } from "../lib/api.js";
+import { bulkMessage, bulkTargets, type BulkAction } from "../lib/bulk.js";
 import { formatEuro } from "../lib/money.js";
 import {
   isFiltered,
@@ -50,6 +51,52 @@ export function ProductsPage() {
     placeholderData: keepPreviousData,
   });
   const sorted = products.data === undefined ? undefined : sortProducts(products.data, filter.sortierung);
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [bulkInfo, setBulkInfo] = useState<string | undefined>();
+  // Auswahl nur über sichtbare Produkte (nach Filterwechsel fallen andere heraus).
+  const visibleIds = new Set((sorted ?? []).map((p) => p.id));
+  const selectedVisible = new Set([...selected].filter((id) => visibleIds.has(id)));
+  const allSelected = (sorted ?? []).length > 0 && selectedVisible.size === (sorted ?? []).length;
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const bulk = useMutation({
+    mutationFn: async (action: BulkAction) => {
+      const targets = bulkTargets(sorted ?? [], selectedVisible, action);
+      let done = 0;
+      let failed = 0;
+      for (const p of targets) {
+        try {
+          if (action === "delete")
+            await request(`/admin/v1/products/${p.id}`, { method: "DELETE", shopId: shop.id });
+          else
+            await request(`/admin/v1/products/${p.id}`, {
+              method: "PATCH",
+              body: { status: action === "publish" ? "published" : "draft" },
+              shopId: shop.id,
+              version: p.version,
+            });
+          done++;
+        } catch {
+          failed++;
+        }
+      }
+      return bulkMessage(action, done, failed);
+    },
+    onSuccess: (message) => {
+      setBulkInfo(message);
+      setSelected(new Set());
+    },
+    onSettled: () => {
+      queryClient.removeQueries({ queryKey: ["product", shop.id] });
+      return queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+    },
+  });
   const categories = useCategories(shop.id);
   const categoryName = new Map((categories.data ?? []).map((c) => [c.id, c.name]));
 
@@ -88,6 +135,44 @@ export function ProductsPage() {
 
       <FilterBar filter={filter} categories={categories.data ?? []} onChange={setFilter} />
 
+      {selectedVisible.size > 0 && (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm text-white"
+          role="region"
+          aria-label="Sammelaktionen"
+        >
+          <span className="mr-2 font-medium">{selectedVisible.size} ausgewählt</span>
+          <Button variant="secondary" busy={bulk.isPending} onClick={() => bulk.mutate("publish")}>
+            In den Shop
+          </Button>
+          <Button variant="secondary" busy={bulk.isPending} onClick={() => bulk.mutate("unpublish")}>
+            Aus dem Shop nehmen
+          </Button>
+          <Button
+            variant="danger"
+            busy={bulk.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `${selectedVisible.size} Produkte löschen? Das lässt sich nicht rückgängig machen.`,
+                )
+              )
+                bulk.mutate("delete");
+            }}
+          >
+            Löschen
+          </Button>
+          <button type="button" className="ml-auto underline" onClick={() => setSelected(new Set())}>
+            Auswahl aufheben
+          </button>
+        </div>
+      )}
+      {bulkInfo !== undefined && selectedVisible.size === 0 && (
+        <div className="mb-3">
+          <Alert tone="success">{bulkInfo}</Alert>
+        </div>
+      )}
+
       {products.isPending && (
         <div className="flex justify-center py-16 text-stone-400" role="status">
           <Spinner className="size-6" />
@@ -122,6 +207,18 @@ export function ProductsPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-stone-50 text-xs text-stone-500 uppercase">
               <tr>
+                <th scope="col" className="w-10 py-3 pl-4">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-stone-300 text-emerald-700"
+                    aria-label="Alle auswählen"
+                    checked={allSelected}
+                    onChange={() => {
+                      setBulkInfo(undefined);
+                      setSelected(allSelected ? new Set() : new Set(visibleIds));
+                    }}
+                  />
+                </th>
                 <th scope="col" className="w-16 px-4 py-3">
                   <span className="sr-only">Bild</span>
                 </th>
@@ -151,6 +248,18 @@ export function ProductsPage() {
                     })
                   }
                 >
+                  <td className="py-2 pl-4" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-stone-300 text-emerald-700"
+                      aria-label={`„${p.name}“ auswählen`}
+                      checked={selectedVisible.has(p.id)}
+                      onChange={() => {
+                        setBulkInfo(undefined);
+                        toggle(p.id);
+                      }}
+                    />
+                  </td>
                   <td className="px-4 py-2">
                     <Thumbnail product={p} />
                   </td>
