@@ -12,6 +12,15 @@ export type ChatBlock =
       readonly input: Readonly<Record<string, unknown>>;
     }
   | {
+      /** Foto der Händlerin (nur in Nachrichten der Person). */
+      readonly type: "image";
+      readonly source: {
+        readonly type: "base64";
+        readonly media_type: "image/jpeg" | "image/png" | "image/webp";
+        readonly data: string;
+      };
+    }
+  | {
       readonly type: "tool_result";
       readonly tool_use_id: string;
       readonly content: string;

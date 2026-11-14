@@ -9,7 +9,10 @@ import { ApiError, request, type Order, type Product } from "../lib/api.js";
 import {
   describeChange,
   needsConfirmation,
+  prepareForSend,
   runTool,
+  shrinkPhoto,
+  stripImages,
   toolLabel,
   type AssistantStatus,
   type ChatBlock,
@@ -19,6 +22,20 @@ import { useShop } from "./layout.js";
 
 type ToolUse = Extract<ChatBlock, { type: "tool_use" }>;
 type Decision = "approved" | "declined";
+type ImageBlock = Extract<ChatBlock, { type: "image" }>;
+
+/** Foto, das gleich mitgeschickt wird: klein fürs Modell, groß fürs Produktbild. */
+interface Attachment {
+  readonly id: string;
+  readonly forModel: string;
+  readonly preview: Blob;
+  readonly forProduct: Blob;
+}
+
+const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_PHOTO_BYTES = 20_000_000;
+/** Größer als das lädt das Backoffice ein verkleinertes Produktbild hoch (API-Grenze 8 MB). */
+const MAX_PRODUCT_PHOTO_BYTES = 7_500_000;
 
 const SUGGESTIONS = [
   "Welche Bestellungen muss ich noch versenden?",
@@ -44,7 +61,7 @@ function loadHistory(shopId: string): ChatMessage[] {
 
 function saveHistory(shopId: string, messages: readonly ChatMessage[]) {
   try {
-    sessionStorage.setItem(storageKey(shopId), JSON.stringify(messages));
+    sessionStorage.setItem(storageKey(shopId), JSON.stringify(stripImages(messages)));
   } catch {
     // Kein Speicher (privates Fenster): Der Verlauf hält dann nur, solange die Seite offen ist.
   }
@@ -67,6 +84,10 @@ export function AssistantPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const photosRef = useRef(new Map<string, Blob>());
+  const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -111,7 +132,7 @@ export function AssistantPage() {
               setBusy(
                 needsConfirmation(u.name, status.data) ? "Wird ausgeführt …" : `${toolLabel(u.name)} …`,
               );
-              const r = await runTool(u.name, u.input, shop.id);
+              const r = await runTool(u.name, u.input, shop.id, photosRef.current);
               changed ||= needsConfirmation(u.name, status.data) && !r.isError;
               results.push({
                 type: "tool_result",
@@ -128,7 +149,7 @@ export function AssistantPage() {
           const reply = await request<{ content: ChatBlock[] }>("/admin/v1/assistant/chat", {
             method: "POST",
             shopId: shop.id,
-            body: { messages: current },
+            body: { messages: prepareForSend(current) },
           });
           current = [...current, { role: "assistant", content: reply.content }];
           update(current);
@@ -143,10 +164,29 @@ export function AssistantPage() {
     [queryClient, shop.id, status.data, update],
   );
 
+  const attach = async (file: File | undefined) => {
+    setAttachError(null);
+    if (file === undefined) return;
+    if (!PHOTO_TYPES.has(file.type)) return setAttachError("Bitte ein Foto als JPEG, PNG oder WebP.");
+    if (file.size > MAX_PHOTO_BYTES) return setAttachError("Das Foto ist zu groß (höchstens 20 MB).");
+    try {
+      const small = await shrinkPhoto(file);
+      const forProduct = file.size <= MAX_PRODUCT_PHOTO_BYTES ? file : (await shrinkPhoto(file, 2400)).blob;
+      const used = [...photosRef.current.keys()].map((k) => Number(k.slice(5)));
+      const id = `foto-${Math.max(0, ...used, ...photoNumbers(messagesRef.current)) + 1}`;
+      setAttachment({ id, forModel: small.data, preview: small.blob, forProduct });
+    } catch {
+      setAttachError("Das Foto ließ sich nicht öffnen.");
+    }
+  };
+
   const send = (value: string) => {
     const t = value.trim();
-    if (t === "" || busy !== null) return;
+    if ((t === "" && attachment === null) || busy !== null) return;
     setText("");
+    const photo = attachment;
+    setAttachment(null);
+    if (photo !== null) photosRef.current.set(photo.id, photo.forProduct);
     // Offene Rückfragen ohne Antwort gelten als abgelehnt, sonst passt der Verlauf nicht mehr.
     let base = messagesRef.current;
     const open = toolUses(base.at(-1));
@@ -162,7 +202,14 @@ export function AssistantPage() {
           })),
         },
       ];
-    const next: ChatMessage[] = [...base, { role: "user", content: [{ type: "text", text: t }] }];
+    const content: ChatBlock[] =
+      photo === null
+        ? [{ type: "text", text: t }]
+        : [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: photo.forModel } },
+            { type: "text", text: `[Foto ${photo.id}] ${t || "Bitte leg das als Produkt an."}` },
+          ];
+    const next: ChatMessage[] = [...base, { role: "user", content }];
     // Zwei Nachrichten der Person hintereinander zusammenlegen (die API erwartet abwechselnde Rollen).
     const merged = mergeUserTurns(next);
     update(merged);
@@ -177,6 +224,8 @@ export function AssistantPage() {
 
   const reset = () => {
     update([]);
+    photosRef.current.clear();
+    setAttachment(null);
     setDecisions({});
     setError(null);
   };
@@ -233,6 +282,9 @@ export function AssistantPage() {
                 </button>
               ))}
             </div>
+            <p className="mt-4 text-sm text-stone-500">
+              Tipp: Schick ein Foto von einem Produkt, ich schlage Name, Text und Preis vor und lege es an.
+            </p>
           </div>
         )}
         {messages.map((m, i) => (
@@ -241,8 +293,17 @@ export function AssistantPage() {
               if (b.type === "text")
                 return (
                   <Bubble key={j} mine={m.role === "user"}>
-                    <RichText text={b.text} />
+                    <RichText text={m.role === "user" ? b.text.replace(/^\[Foto foto-\d+\] /, "") : b.text} />
                   </Bubble>
+                );
+              if (b.type === "image")
+                return (
+                  <div key={j} className="flex justify-end">
+                    <PhotoThumb
+                      block={b}
+                      className="max-h-48 max-w-[60%] rounded-2xl ring-1 ring-stone-200"
+                    />
+                  </div>
                 );
               if (b.type === "tool_use") {
                 const result = results.get(b.id);
@@ -282,7 +343,44 @@ export function AssistantPage() {
         <label className="sr-only" htmlFor="assistent-eingabe">
           Nachricht an den Assistenten
         </label>
+        {attachment !== null && (
+          <div className="mb-2 flex items-center gap-3 rounded-lg bg-white p-2 ring-1 ring-stone-200">
+            <BlobImage
+              blob={attachment.preview}
+              className="size-12 rounded-md object-cover"
+              alt="Foto zum Mitschicken"
+            />
+            <span className="flex-1 text-sm text-stone-600">Foto wird mitgeschickt</span>
+            <Button variant="ghost" onClick={() => setAttachment(null)}>
+              Entfernen
+            </Button>
+          </div>
+        )}
+        {attachError !== null && (
+          <div className="mb-2">
+            <Alert>{attachError}</Alert>
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            void attach(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
         <div className="flex items-end gap-2">
+          <Button
+            variant="secondary"
+            aria-label="Foto anhängen"
+            title="Foto anhängen"
+            disabled={unavailable || busy !== null}
+            onClick={() => fileRef.current?.click()}
+          >
+            Foto
+          </Button>
           <Textarea
             id="assistent-eingabe"
             rows={2}
@@ -301,7 +399,10 @@ export function AssistantPage() {
               }
             }}
           />
-          <Button type="submit" disabled={unavailable || busy !== null || text.trim() === ""}>
+          <Button
+            type="submit"
+            disabled={unavailable || busy !== null || (text.trim() === "" && attachment === null)}
+          >
             Senden
           </Button>
         </div>
@@ -314,6 +415,34 @@ export function AssistantPage() {
       </form>
     </div>
   );
+}
+
+/** Nummern der Fotos, die im Verlauf schon vorkommen („[Foto foto-3]“). */
+function photoNumbers(messages: readonly ChatMessage[]): number[] {
+  return messages.flatMap((m) =>
+    m.content.flatMap((b) =>
+      b.type === "text" ? [...b.text.matchAll(/\[Foto foto-(\d+)\]/g)].map((x) => Number(x[1])) : [],
+    ),
+  );
+}
+
+/** Zeigt ein Bild aus dem Speicher des Browsers (blob:), denn die Sicherheitsregeln erlauben kein data:. */
+function BlobImage({ blob, className, alt }: { blob: Blob; className?: string | undefined; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const u = URL.createObjectURL(blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob]);
+  return url === null ? null : <img src={url} alt={alt} className={className} />;
+}
+
+function PhotoThumb({ block, className }: { block: ImageBlock; className?: string }) {
+  const [blob] = useState(() => {
+    const bytes = Uint8Array.from(atob(block.source.data), (c) => c.charCodeAt(0));
+    return new Blob([bytes], { type: block.source.media_type });
+  });
+  return <BlobImage blob={blob} className={className} alt="Geschicktes Foto" />;
 }
 
 /** Zwei Nachrichten der Person hintereinander werden zu einer. */

@@ -189,6 +189,44 @@ describe.skipIf(adminUrl === undefined)("KI-Assistent (Welle 2, echte Datenbank)
     await app.close();
   });
 
+  it("nimmt Fotos der Händlerin an und reicht sie an das Modell weiter", async () => {
+    const app = await start(true, 100);
+    const image = (
+      data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
+      type = "image/png",
+    ) => ({
+      type: "image",
+      source: { type: "base64", media_type: type, data },
+    });
+    const withPhoto = {
+      messages: [{ role: "user", content: [image(), { type: "text", text: "[Foto foto-1] Leg das an." }] }],
+    };
+    // Als anderer Shop, damit das Tageslimit des ersten Shops (nächster Test) unberührt bleibt.
+    expect((await call(app, "POST", "/admin/v1/assistant/chat", "other", withPhoto)).statusCode).toBe(200);
+    expect(seen.at(-1)?.messages[0]?.content[0]).toMatchObject({
+      type: "image",
+      source: { media_type: "image/png" },
+    });
+    expect(seen.at(-1)?.tools.find((t) => t.name === "create_product")?.inputSchema).toMatchObject({
+      properties: { photo: { pattern: "^foto-[0-9]{1,3}$" } },
+    });
+    const bad = [
+      // Foto in einer Antwort des Assistenten
+      {
+        messages: [...ask("x").messages, { role: "assistant", content: [image()] }, ...ask("y").messages],
+      },
+      // drei Fotos
+      { messages: [{ role: "user", content: [image(), image(), image(), { type: "text", text: "x" }] }] },
+      // kein Base64, falscher Typ, zu groß
+      { messages: [{ role: "user", content: [image("<script>alert(1)</script>")] }] },
+      { messages: [{ role: "user", content: [image(undefined, "image/svg+xml")] }] },
+      { messages: [{ role: "user", content: [image("A".repeat(700_004))] }] },
+    ];
+    for (const body of bad)
+      expect((await call(app, "POST", "/admin/v1/assistant/chat", "other", body)).statusCode).toBe(422);
+    await app.close();
+  });
+
   it("hält das Tageslimit je Shop ein (429)", async () => {
     const app = await start(true, 3);
     // Heute schon 2 Antworten für TENANT (Test oben): eine geht noch, dann ist Schluss.

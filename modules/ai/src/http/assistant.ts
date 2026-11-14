@@ -18,6 +18,21 @@ const toolUseBlock = z.strictObject({
   name: toolName,
   input: z.record(z.string(), z.unknown()),
 });
+// Fotos: das Backoffice verkleinert sie vorher (lange Kante 1024 px), die ganze Anfrage bleibt unter 1 MB.
+const imageBlock = z.strictObject({
+  type: z.literal("image"),
+  source: z.strictObject({
+    type: z.literal("base64"),
+    media_type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    data: z
+      .string()
+      .min(16)
+      .max(700_000)
+      .regex(/^[A-Za-z0-9+/]+={0,2}$/, "ist kein Base64"),
+  }),
+});
+const MAX_IMAGES = 2;
+
 const toolResultBlock = z.strictObject({
   type: z.literal("tool_result"),
   tool_use_id: blockId,
@@ -28,7 +43,7 @@ const toolResultBlock = z.strictObject({
 const messageSchema = z.strictObject({
   role: z.enum(["user", "assistant"]),
   content: z
-    .array(z.discriminatedUnion("type", [textBlock, toolUseBlock, toolResultBlock]))
+    .array(z.discriminatedUnion("type", [textBlock, imageBlock, toolUseBlock, toolResultBlock]))
     .min(1)
     .max(20),
 });
@@ -44,7 +59,18 @@ const chatBody = z
   .refine((b) => b.messages[0]?.role === "user" && b.messages.at(-1)?.role === "user", {
     message: "Der Verlauf beginnt und endet mit einer Nachricht der Händlerin oder des Händlers.",
     path: ["messages"],
-  });
+  })
+  .refine((b) => b.messages.every((m) => m.role === "user" || m.content.every((c) => c.type !== "image")), {
+    message: "Fotos gibt es nur in Nachrichten der Händlerin oder des Händlers.",
+    path: ["messages"],
+  })
+  .refine(
+    (b) => b.messages.flatMap((m) => m.content).filter((c) => c.type === "image").length <= MAX_IMAGES,
+    {
+      message: `Höchstens ${MAX_IMAGES} Fotos je Anfrage.`,
+      path: ["messages"],
+    },
+  );
 
 const replySchema = z
   .object({
@@ -138,7 +164,7 @@ export function assistantEndpoints(deps: AssistantDeps): Endpoint[] {
       }
       await deps.usage.record(reply.inputTokens, reply.outputTokens);
       const content = reply.content.filter(
-        (b): b is Exclude<ChatBlock, { type: "tool_result" }> =>
+        (b): b is Extract<ChatBlock, { type: "text" | "tool_use" }> =>
           b.type === "text" || (b.type === "tool_use" && TOOLS.some((t) => t.name === b.name)),
       );
       if (content.length === 0) return { content: [{ type: "text" as const, text: "…" }] };

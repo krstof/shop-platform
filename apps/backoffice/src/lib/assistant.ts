@@ -3,6 +3,7 @@
 // Seite des Backoffice). Ändernde Werkzeuge laufen erst nach Bestätigung (pages/assistant.tsx).
 import {
   ApiError,
+  fileToBase64,
   listAll,
   request,
   type Category,
@@ -21,6 +22,15 @@ export type ChatBlock =
       readonly id: string;
       readonly name: string;
       readonly input: Readonly<Record<string, unknown>>;
+    }
+  | {
+      /** Foto der Person, verkleinert (lange Kante 1024 px) als Base64. */
+      readonly type: "image";
+      readonly source: {
+        readonly type: "base64";
+        readonly media_type: "image/jpeg" | "image/png" | "image/webp";
+        readonly data: string;
+      };
     }
   | {
       readonly type: "tool_result";
@@ -79,13 +89,17 @@ const compactProduct = (p: Product) => ({
 });
 
 /** Werkzeugaufruf über die Admin-API. Fehler der API gehen als Text an das Modell zurück. */
+/** Fotos aus dem Chat in voller Größe (Kennung „foto-1“ → Datei), nur solange die Seite offen ist. */
+export type PhotoStore = ReadonlyMap<string, Blob>;
+
 export async function runTool(
   name: string,
   input: Readonly<Record<string, unknown>>,
   shopId: string,
+  photos: PhotoStore = new Map(),
 ): Promise<ToolOutcome> {
   try {
-    const result = await run(name, input, shopId);
+    const result = await run(name, input, shopId, photos);
     return { content: JSON.stringify(result).slice(0, 30_000), isError: false };
   } catch (e) {
     const message =
@@ -96,7 +110,32 @@ export async function runTool(
   }
 }
 
-async function run(name: string, input: Readonly<Record<string, unknown>>, shopId: string): Promise<unknown> {
+/** Lädt ein Foto aus dem Chat als Produktbild hoch. */
+async function uploadPhoto(productId: string, photoId: string, shopId: string, photos: PhotoStore) {
+  const file = photos.get(photoId);
+  if (file === undefined)
+    throw new ApiError(
+      400,
+      "photo_missing",
+      `Das Foto ${photoId} ist nicht mehr da (Seite neu geladen?). Bitte noch einmal schicken.`,
+    );
+  return request<Product>(`/admin/v1/products/${encodeURIComponent(productId)}/images`, {
+    method: "POST",
+    shopId,
+    body: { data: await fileToBase64(file), filename: `${photoId}.${extensionOf(file.type)}` },
+  });
+}
+
+function extensionOf(type: string): string {
+  return type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+}
+
+async function run(
+  name: string,
+  input: Readonly<Record<string, unknown>>,
+  shopId: string,
+  photos: PhotoStore,
+): Promise<unknown> {
   switch (name) {
     case "list_categories": {
       const cats = await listAll<Category>("/admin/v1/categories", shopId);
@@ -121,7 +160,23 @@ async function run(name: string, input: Readonly<Record<string, unknown>>, shopI
         shopId,
         body: productBody(input, true),
       });
-      return { created: compactProduct(p) };
+      const photo = str(input["photo"]);
+      if (photo === undefined) return { created: compactProduct(p) };
+      // Das Produkt gibt es jetzt; scheitert nur das Bild, sagt das Ergebnis es dem Modell.
+      try {
+        await uploadPhoto(p.id, photo, shopId, photos);
+        return { created: compactProduct(p), photoAdded: true };
+      } catch (e) {
+        return {
+          created: compactProduct(p),
+          photoAdded: false,
+          photoError: e instanceof ApiError ? e.message : "Foto konnte nicht hochgeladen werden",
+        };
+      }
+    }
+    case "add_product_photo": {
+      const p = await uploadPhoto(str(input["productId"]) ?? "", str(input["photo"]) ?? "", shopId, photos);
+      return { updated: compactProduct(p), images: p.images.length };
     }
     case "update_product": {
       const id = str(input["productId"]) ?? "";
@@ -233,7 +288,10 @@ export function describeChange(
       add("Bestand", stock === undefined ? undefined : String(stock));
       add("Im Shop", published === true ? "ja, sofort sichtbar" : "nein, erst als Entwurf");
       add("Beschreibung", str(input["description"]));
+      add("Bild", str(input["photo"]) === undefined ? undefined : "das Foto aus dem Chat");
       return { title: "Produkt anlegen", lines };
+    case "add_product_photo":
+      return { title: "Foto als Produktbild hinzufügen", lines };
     case "update_product":
       add("Neuer Name", str(input["name"]));
       add("Neuer Preis", price === undefined ? undefined : formatEuro(price));
@@ -267,4 +325,56 @@ export function toolLabel(name: string): string {
       } as Record<string, string>
     )[name] ?? name
   );
+}
+
+/**
+ * Was ans Modell geht: Fotos nur aus der letzten Nachricht mit Fotos (spart Kosten und bleibt unter
+ * der Größengrenze der Anfrage); ältere Fotos werden zu einem kurzen Hinweis.
+ */
+export function prepareForSend(messages: readonly ChatMessage[]): ChatMessage[] {
+  let lastWithImage = -1;
+  messages.forEach((m, i) => {
+    if (m.content.some((b) => b.type === "image")) lastWithImage = i;
+  });
+  return messages.map((m, i) =>
+    i === lastWithImage || !m.content.some((b) => b.type === "image")
+      ? m
+      : {
+          ...m,
+          content: m.content.map((b) =>
+            b.type === "image" ? { type: "text", text: "(Foto, schon angesehen)" } : b,
+          ),
+        },
+  );
+}
+
+/** Für den Speicher im Browser-Tab: Fotos durch einen Hinweis ersetzen (sonst wird es zu groß). */
+export function stripImages(messages: readonly ChatMessage[]): ChatMessage[] {
+  return messages.map((m) =>
+    m.content.some((b) => b.type === "image")
+      ? { ...m, content: m.content.map((b) => (b.type === "image" ? { type: "text", text: "(Foto)" } : b)) }
+      : m,
+  );
+}
+
+/** Verkleinert ein Foto für das Modell: lange Kante höchstens `maxEdge`, JPEG. Nur im Browser. */
+export async function shrinkPhoto(file: Blob, maxEdge = 1024): Promise<{ data: string; blob: Blob }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) throw new Error("Kein Zeichenbereich");
+  ctx.fillStyle = "#ffffff"; // transparente PNG nicht schwarz werden lassen
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  for (const quality of [0.82, 0.7, 0.55]) {
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (blob === null) continue;
+    const data = await fileToBase64(blob);
+    if (data.length <= 450_000 || quality === 0.55) return { data, blob };
+  }
+  throw new Error("Foto konnte nicht verkleinert werden");
 }

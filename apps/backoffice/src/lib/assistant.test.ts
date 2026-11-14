@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { describeChange, needsConfirmation, productBody, type AssistantStatus } from "./assistant.js";
+import {
+  describeChange,
+  needsConfirmation,
+  prepareForSend,
+  productBody,
+  stripImages,
+  type AssistantStatus,
+} from "./assistant.js";
 
 const CAT = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 
@@ -75,5 +82,46 @@ describe("Werkzeuge des Assistenten im Backoffice", () => {
     expect(needsConfirmation("create_product", status)).toBe(true);
     expect(needsConfirmation("etwas_neues", status)).toBe(true);
     expect(needsConfirmation("search_orders", undefined)).toBe(true);
+  });
+});
+
+describe("Fotos im Chat", () => {
+  const img = (data: string) => ({
+    type: "image" as const,
+    source: { type: "base64" as const, media_type: "image/jpeg" as const, data },
+  });
+  const history = [
+    { role: "user" as const, content: [img("AAAA"), { type: "text" as const, text: "[Foto foto-1] Tee" }] },
+    { role: "assistant" as const, content: [{ type: "text" as const, text: "Schön." }] },
+    { role: "user" as const, content: [img("BBBB"), { type: "text" as const, text: "[Foto foto-2] Tasse" }] },
+    { role: "assistant" as const, content: [{ type: "text" as const, text: "Ok." }] },
+    { role: "user" as const, content: [{ type: "text" as const, text: "Danke" }] },
+  ];
+
+  it("schickt nur die Fotos der letzten Nachricht mit Fotos", () => {
+    const sent = prepareForSend(history);
+    expect(sent[0]?.content[0]).toEqual({ type: "text", text: "(Foto, schon angesehen)" });
+    expect(sent[2]?.content[0]).toEqual(img("BBBB"));
+    expect(sent[4]).toEqual(history[4]);
+  });
+
+  it("speichert den Verlauf ohne Fotos", () => {
+    const stored = stripImages(history);
+    expect(JSON.stringify(stored)).not.toContain("BBBB");
+    expect(stored[2]?.content).toEqual([
+      { type: "text", text: "(Foto)" },
+      { type: "text", text: "[Foto foto-2] Tasse" },
+    ]);
+  });
+
+  it("beschreibt ein neues Produkt mit Foto", () => {
+    expect(
+      describeChange("create_product", {
+        name: "Tasse",
+        priceCents: 1200,
+        taxClass: "standard",
+        photo: "foto-2",
+      }).lines,
+    ).toContain("Bild: das Foto aus dem Chat");
   });
 });
