@@ -38,6 +38,8 @@ export interface ShopAdministration {
     readonly ownerEmail: string;
     readonly actorId?: string;
   }): Promise<CreateShopResult>;
+  /** Shop umbenennen (Einstellungen „Allgemein“ der Händlerin). */
+  rename(input: { readonly id: string; readonly name: string; readonly actorId?: string }): Promise<boolean>;
   /** Sperren (`suspended`) oder wieder freischalten (`active`). Wirkt bei der nächsten Anfrage. */
   setStatus(input: {
     readonly id: string;
@@ -147,6 +149,25 @@ export function createShopAdministration(options: ShopAdministrationOptions): Sh
         if (isUniqueViolation(error)) return { ok: false, reason: "handle_taken" };
         throw error;
       }
+    },
+
+    async rename(input) {
+      if (!isUuid(input.id)) return false;
+      const name = input.name.trim();
+      if (name === "" || name.length > 100) throw new RangeError("Ungültiger Name");
+      const row = await withPlatformTransaction(
+        database,
+        (trx) =>
+          trx
+            .updateTable("platform.tenant")
+            .set({ name })
+            .where("id", "=", input.id)
+            .where("status", "in", ["active", "suspended"])
+            .returning("id")
+            .executeTakeFirst(),
+        input.actorId === undefined ? {} : { actorId: input.actorId },
+      );
+      return row !== undefined;
     },
 
     async setStatus(input) {

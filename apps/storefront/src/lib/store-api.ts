@@ -10,6 +10,8 @@ export interface StoreShop {
   readonly design?: StoreDesign;
   /** Versandkosten des Shops. Fehlen sie, gilt kostenlos. */
   readonly versand?: Versand;
+  /** Geschlossen (Einstellungen „Allgemein“): Besucher sehen nur einen Hinweis. */
+  readonly open?: boolean;
 }
 
 export interface StoreCategory {
@@ -115,16 +117,26 @@ export async function loadShop(
   const h = safeHandle(handle);
   if (h === undefined) return undefined;
   try {
-    const [shop, categories, design, versand] = await Promise.all([
+    const [shop, categories, design, versand, offen] = await Promise.all([
       storeApi<StoreShop>(h, ""),
       storeApi<{ data: StoreCategory[] }>(h, "/categories"),
       loadDesign(h),
       loadVersand(h),
+      loadOffen(h),
     ]);
-    return { shop: { ...shop, design, versand }, categories: categories.data };
+    return { shop: { ...shop, design, versand, open: offen }, categories: categories.data };
   } catch (e) {
     if (e instanceof StoreApiError && e.status === 404) return undefined;
     throw e;
+  }
+}
+
+/** Ist der Shop geöffnet (Einstellungen „Allgemein“)? Klappt die Abfrage nicht: ja. */
+export async function loadOffen(handle: string): Promise<boolean> {
+  try {
+    return (await storeApi<{ open: boolean }>(handle, "/status")).open !== false;
+  } catch {
+    return true;
   }
 }
 

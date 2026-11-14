@@ -3,6 +3,7 @@ import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@t
 import { AssistantPage } from "./pages/assistant.js";
 import { CategoriesPage, EditCategoryPage, NewCategoryPage } from "./pages/categories.js";
 import { DesignPage } from "./pages/editor/editor.js";
+import { GeneralSettingsPage } from "./pages/settings.js";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
 import { AcceptInvitationPage } from "./pages/invitation.js";
 import { HomeRedirect, ShopLayout } from "./pages/layout.js";
@@ -120,6 +121,20 @@ const coupons = createRoute({ getParentRoute: () => shop, path: "/gutscheine", c
 // Versandkosten.
 const shipping = createRoute({ getParentRoute: () => shop, path: "/versand", component: ShippingPage });
 const team = createRoute({ getParentRoute: () => shop, path: "/team", component: TeamPage });
+// Einstellungen (14.11.2026): erste Unterseite „Allgemein“.
+const settings = createRoute({
+  getParentRoute: () => shop,
+  path: "/einstellungen",
+  component: function SettingsHome() {
+    const { shop: handle } = shop.useParams();
+    return <Navigate to="/$shop/einstellungen/allgemein" params={{ shop: handle }} replace />;
+  },
+});
+const settingsGeneral = createRoute({
+  getParentRoute: () => shop,
+  path: "/einstellungen/allgemein",
+  component: GeneralSettingsPage,
+});
 
 const orders = createRoute({
   getParentRoute: () => shop,
@@ -156,6 +171,8 @@ const routeTree = root.addChildren([
     designOld,
     assistant,
     team,
+    settings,
+    settingsGeneral,
     shipping,
     coupons,
     customers,

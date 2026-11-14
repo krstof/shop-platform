@@ -1593,6 +1593,91 @@
         "x-public-reason": "Jeder Besucher muss die Versandkosten vor dem Kauf sehen."
       }
     },
+    "/store/v1/shops/{shopHandle}/status": {
+      "get": {
+        "operationId": "getStoreStatus",
+        "summary": "Ist der Shop geöffnet?",
+        "description": "Geschlossene Shops zeigen Besuchern nur einen Hinweis.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Der Status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Jeder Besucher muss wissen, ob der Shop geöffnet ist."
+      }
+    },
     "/store/v1/shops/{shopHandle}/test-payments/{paymentToken}": {
       "get": {
         "operationId": "getStoreTestPayment",
@@ -3107,6 +3192,18 @@
         "required": [
           "handle",
           "name"
+        ],
+        "additionalProperties": false
+      },
+      "StoreStatus": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "open"
         ],
         "additionalProperties": false
       },

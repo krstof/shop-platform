@@ -9372,6 +9372,484 @@
         ]
       }
     },
+    "/admin/v1/settings/general": {
+      "get": {
+        "operationId": "getGeneralSettings",
+        "summary": "Einstellungen „Allgemein“ lesen",
+        "description": "Adresse, Geschäftsangaben, Shop-Status und Shop-Name.",
+        "tags": [
+          "Einstellungen"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Einstellungen.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "settings:read"
+        ]
+      },
+      "put": {
+        "operationId": "updateGeneralSettings",
+        "summary": "Einstellungen „Allgemein“ speichern",
+        "description": "Speichert Adresse, Geschäftsangaben, Shop-Status und Shop-Name. Ein geschlossener Shop zeigt Besuchern nur einen Hinweis. Verlangt die Version als If-Match (0 beim ersten Speichern).",
+        "tags": [
+          "Einstellungen"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Version aus dem ETag der letzten Antwort, z. B. \"3\".",
+            "schema": {
+              "type": "string",
+              "pattern": "^\"\\d{1,9}\"$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shopName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "shopOpen": {
+                    "type": "boolean"
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "company": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      "firstName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "lastName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "email": {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      "phone": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      "fax": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      "country": {
+                        "type": "string",
+                        "enum": [
+                          "DE",
+                          "AT",
+                          "CH",
+                          "NL",
+                          "BE",
+                          "LU",
+                          "FR",
+                          "DK",
+                          "PL",
+                          "CZ",
+                          "IT",
+                          "ES"
+                        ]
+                      },
+                      "street": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "addressLine2": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      "postalCode": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 10
+                      },
+                      "city": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "region": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "company",
+                      "firstName",
+                      "lastName",
+                      "email",
+                      "phone",
+                      "fax",
+                      "country",
+                      "street",
+                      "addressLine2",
+                      "postalCode",
+                      "city",
+                      "region"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "vatId": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "tradeRegister": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "string",
+                        "const": ""
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "shopName",
+                  "shopOpen",
+                  "address",
+                  "vatId",
+                  "tradeRegister"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "shopName": "Teeladen",
+                "shopOpen": true,
+                "address": {
+                  "company": "Teeladen GmbH",
+                  "firstName": "Kim",
+                  "lastName": "Muster",
+                  "email": "hallo@teeladen.example",
+                  "phone": "",
+                  "fax": "",
+                  "country": "DE",
+                  "street": "Teeweg 1",
+                  "addressLine2": "",
+                  "postalCode": "20095",
+                  "city": "Hamburg",
+                  "region": ""
+                },
+                "vatId": "DE123456789",
+                "tradeRegister": "Amtsgericht Hamburg, HRB 12345"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Die gespeicherten Einstellungen.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Der Datensatz wurde inzwischen geändert (If-Match).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "If-Match fehlt.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "settings:write"
+        ]
+      }
+    },
     "/admin/v1/shipping": {
       "get": {
         "operationId": "getShipping",
@@ -11808,6 +12286,45 @@
         "additionalProperties": false,
         "description": "Aussehen des Shops mit Entwurf und veröffentlichtem Stand."
       },
+      "GeneralSettings": {
+        "type": "object",
+        "properties": {
+          "shopName": {
+            "type": "string"
+          },
+          "shopOpen": {
+            "type": "boolean",
+            "description": "Geschlossen: Der Shop zeigt Besuchern nur einen Hinweis."
+          },
+          "address": {
+            "$ref": "#/components/schemas/ShopAddress"
+          },
+          "vatId": {
+            "type": "string",
+            "description": "USt-IdNr., etwa „DE123456789“."
+          },
+          "tradeRegister": {
+            "type": "string",
+            "description": "Handelsregister, etwa „Amtsgericht Berlin, HRB 12345“."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Für If-Match beim Speichern."
+          }
+        },
+        "required": [
+          "shopName",
+          "shopOpen",
+          "address",
+          "vatId",
+          "tradeRegister",
+          "version"
+        ],
+        "additionalProperties": false,
+        "description": "Einstellungen „Allgemein“ eines Shops."
+      },
       "InvitedMember": {
         "type": "object",
         "properties": {
@@ -12835,6 +13352,78 @@
         ],
         "additionalProperties": false,
         "description": "Standardversand: Pauschale und Grenze für kostenlosen Versand."
+      },
+      "ShopAddress": {
+        "type": "object",
+        "properties": {
+          "company": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "fax": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string",
+            "enum": [
+              "DE",
+              "AT",
+              "CH",
+              "NL",
+              "BE",
+              "LU",
+              "FR",
+              "DK",
+              "PL",
+              "CZ",
+              "IT",
+              "ES"
+            ]
+          },
+          "street": {
+            "type": "string"
+          },
+          "addressLine2": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string",
+            "description": "Bundesland, frei."
+          }
+        },
+        "required": [
+          "company",
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "fax",
+          "country",
+          "street",
+          "addressLine2",
+          "postalCode",
+          "city",
+          "region"
+        ],
+        "additionalProperties": false,
+        "description": "Adresse und Ansprechperson des Shops."
       },
       "WebFont": {
         "type": "object",

@@ -1154,3 +1154,12 @@ form.gutschein:has(.knopf-leise) {
   margin: 0;
   padding: 0;
 }
+
+/* Shop geschlossen (Einstellungen „Allgemein“) */
+.geschlossen {
+  padding: 5rem 0;
+  text-align: center;
+}
+.geschlossen p {
+  color: var(--text-leise);
+}

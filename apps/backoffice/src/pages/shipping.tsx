@@ -13,6 +13,7 @@ import {
   type ShippingSettings,
 } from "../lib/shipping.js";
 import { useShop } from "./layout.js";
+import { SettingsTabs } from "./settings.js";
 
 const shippingKey = (shopId: string) => ["shipping", shopId] as const;
 
@@ -56,9 +57,10 @@ export function ShippingPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div>
+      <SettingsTabs current="versand" />
       <div className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Versand</h1>
+        <h2 className="text-lg font-semibold text-gray-900">Versand</h2>
         <p className="text-sm text-gray-500">
           Was der Versand innerhalb Deutschlands kostet. Gilt sofort im Shop; bestehende Bestellungen bleiben,
           wie sie sind.
@@ -72,7 +74,7 @@ export function ShippingPage() {
       )}
       {settings.isError && <Alert>{settings.error.message}</Alert>}
       {settings.data && (
-        <Card title="Standardversand">
+        <Card title="Standardversand" className="max-w-2xl">
           <form onSubmit={submit} className="space-y-5" noValidate>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Versandkosten (brutto)" hint="Leer lassen = kostenlos." error={errors.amount}>

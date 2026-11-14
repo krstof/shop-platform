@@ -14,6 +14,7 @@ import {
   type Member,
 } from "../lib/team.js";
 import { useShop } from "./layout.js";
+import { SettingsTabs } from "./settings.js";
 
 const membersKey = (shopId: string) => ["members", shopId] as const;
 
@@ -22,7 +23,7 @@ export function TeamPage() {
   if (shop.role !== "owner")
     return (
       <div>
-        <h1 className="mb-4 text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Team</h1>
+        <SettingsTabs current="team" />
         <Alert>Nur die Inhaberin oder der Inhaber des Shops kann das Team verwalten.</Alert>
       </div>
     );
@@ -42,9 +43,10 @@ function TeamOwnerView() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
+      <SettingsTabs current="team" />
       <div className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Team</h1>
+        <h2 className="text-lg font-semibold text-gray-900">Team</h2>
         <p className="text-sm text-gray-500">
           Lade Kolleginnen und Kollegen ein. Sie können dann Produkte, Kategorien, Bestellungen und das
           Aussehen bearbeiten, aber kein Team verwalten.

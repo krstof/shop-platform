@@ -18,8 +18,7 @@ import {
   ShoppingBag,
   Tags,
   TicketPercent,
-  Truck,
-  UserCog,
+  Settings,
   Users,
   X,
 } from "lucide-react";
@@ -132,15 +131,17 @@ const GROUPS: readonly { readonly title?: string; readonly items: readonly MenuI
   },
   {
     title: "Onlineshop",
-    items: [
-      { to: "/$shop/editor", label: "Editor", icon: PenTool, color: "#e0567a" },
-      { to: "/$shop/versand", label: "Versand", icon: Truck, color: "#1d8fc4" },
-    ],
+    items: [{ to: "/$shop/editor", label: "Editor", icon: PenTool, color: "#e0567a" }],
   },
 ];
 
-/** Nur Inhaber:innen verwalten das Team. */
-const TEAM: MenuItem = { to: "/$shop/team", label: "Team", icon: UserCog, color: "#5b6472" };
+/** Einstellungen: Allgemein, Versand, Team (Reiter auf der Seite). */
+const SETTINGS: MenuItem = {
+  to: "/$shop/einstellungen",
+  label: "Einstellungen",
+  icon: Settings,
+  color: "#5b6472",
+};
 
 export function ShopLayout() {
   const { shop: handle } = useParams({ strict: false });
@@ -183,16 +184,19 @@ function ShopFrame({
   // Dashboard: ganz sanfter blauer Verlauf im Hintergrund, damit es nicht so weiß wirkt.
   const dashboard = location.pathname.endsWith("/dashboard");
   const chatOpen = assistant.open && !onAssistantPage;
-  const groups = shop.role === "owner" ? [...GROUPS, { title: "Einstellungen", items: [TEAM] }] : GROUPS;
-  const current = groups
-    .flatMap((g) => g.items)
-    .find((m) => location.pathname.startsWith(m.to.replace("$shop", shop.handle)));
+  const groups = [...GROUPS, { items: [SETTINGS] }];
+  const inSettings = /\/(einstellungen|versand|team)(\/|$)/.test(location.pathname);
+  const current = inSettings
+    ? SETTINGS
+    : groups
+        .flatMap((g) => g.items)
+        .find((m) => location.pathname.startsWith(m.to.replace("$shop", shop.handle)));
 
   return (
     <div className="min-h-dvh">
       {/* Computer: feste Leiste links */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-gray-200 bg-gray-50 lg:block">
-        <Sidebar shops={shops} groups={groups} />
+        <Sidebar shops={shops} groups={groups} inSettings={inSettings} />
       </aside>
 
       {/* Handy und Tablet: Menü klappt als Leiste auf */}
@@ -208,7 +212,7 @@ function ShopFrame({
             id="handy-menue"
             className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-gray-200 bg-gray-50 shadow-pop"
           >
-            <Sidebar shops={shops} groups={groups} />
+            <Sidebar shops={shops} groups={groups} inSettings={inSettings} />
           </div>
         </div>
       )}
@@ -368,9 +372,11 @@ function UserMenu({ email, operator }: { email: string; operator: boolean }) {
 function Sidebar({
   shops,
   groups,
+  inSettings,
 }: {
   shops: readonly ShopOfUser[];
   groups: readonly { readonly title?: string; readonly items: readonly MenuItem[] }[];
+  inSettings: boolean;
 }) {
   const shop = useShop();
   const navigate = useNavigate();
@@ -428,7 +434,7 @@ function Sidebar({
                   <Link
                     to={m.to}
                     params={{ shop: shop.handle }}
-                    className={item}
+                    className={item + (m === SETTINGS && inSettings ? " " + active : "")}
                     activeProps={{ className: active }}
                   >
                     <MenuIcon icon={m.icon} color={m.color} />

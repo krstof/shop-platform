@@ -31,7 +31,7 @@ import {
 import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { couponEndpoints, createPricing } from "@shop/pricing";
-import { createShopSettings } from "@shop/shop-settings";
+import { createShopSettings, generalSettingsEndpoints } from "@shop/shop-settings";
 import { createShipping, shippingEndpoints } from "@shop/shipping";
 import { storefrontEndpoints } from "@shop/storefront-design";
 
@@ -121,6 +121,20 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
         deps.logger?.error({ err: error }, "Bestellbestätigung konnte nicht verschickt werden"),
     }),
     ...storeShopEndpoints(shops),
+    // Einstellungen „Allgemein“: Adresse, Geschäftsangaben, Shop geöffnet, Shop-Name (Name in platform).
+    ...generalSettingsEndpoints({
+      database: deps.database,
+      shopName: async () => (await shops.getShops([getContext()?.tenantId ?? ""]))[0]?.name ?? "",
+      renameShop: async (name) => {
+        const admin = deps.platformShops ?? createShopAdministration({ database: deps.database });
+        const actor = getContext()?.actor;
+        await admin.rename({
+          id: getContext()?.tenantId ?? "",
+          name,
+          ...(actor?.type === "user" && actor.id !== undefined ? { actorId: actor.id } : {}),
+        });
+      },
+    }),
     // Aussehen des Shops (Shop-Editor Teil 1): Farbe, Schrift, Logo; dieselben Bildfunktionen.
     ...storefrontEndpoints({ database: deps.database, images }),
     // Gutscheincodes (Modul pricing).

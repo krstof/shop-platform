@@ -5,6 +5,8 @@
 import { getContext, withTenantTransaction, type Database } from "@shop/kernel";
 import type { DB } from "./db.generated.js";
 
+export { COUNTRIES, generalSettingsEndpoints, type GeneralSettingsDependencies } from "./http/general.js";
+
 export interface ShopSettingsDependencies {
   /** Verbindung als Rolle shop_app. */
   readonly database: Database<unknown>;

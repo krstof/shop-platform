@@ -127,7 +127,10 @@ export interface ShopSettingsShopProfile {
   custom_fields: Generated<Json>;
   dispute_resolution: Generated<string>;
   email: string | null;
+  fax: string | null;
+  first_name: string | null;
   id: Generated<string>;
+  last_name: string | null;
   legal_form: string | null;
   logo_media_id: string | null;
   online_status: Generated<string>;
@@ -143,6 +146,7 @@ export interface ShopSettingsShopProfile {
   tax_number: string | null;
   tenant_id: string;
   timezone: Generated<string>;
+  trade_register: string | null;
   updated_at: Generated<Timestamp>;
   updated_by: Generated<string | null>;
   vat_id: string | null;

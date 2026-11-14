@@ -138,7 +138,14 @@ const fussLinks = [
       </div>
     </header>
     <main id="inhalt" class="breite" tabindex="-1">
-      <slot />
+      {shop.open === false ? (
+        <section class="geschlossen" aria-labelledby="geschlossen-titel">
+          <h1 id="geschlossen-titel">Gerade geschlossen</h1>
+          <p>{shop.name} hat im Moment geschlossen. Schau bald wieder vorbei!</p>
+        </section>
+      ) : (
+        <slot />
+      )}
     </main>
     <footer class="fuss">
       <div class="breite fuss-innen">
