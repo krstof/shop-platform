@@ -138,6 +138,10 @@ export interface DesignHome {
   readonly showCategories: boolean;
   /** Abschnitt „Neu im Shop“ (ältere API-Stände ohne). */
   readonly showNew?: boolean;
+  /** Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge. */
+  readonly blocks?: readonly import("./blocks.js").Block[] | null;
+  /** Bilder, die Bausteine benutzen. */
+  readonly blockImages?: readonly DesignImage[];
 }
 
 export interface Design {

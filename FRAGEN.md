@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(keine)
+1. **Erst testen oder weiterbauen?** Das MVP ist seit dem 11.11. fertig, seitdem kam viel dazu (zuletzt der Baukasten). Soll ich nach den Inhaltsseiten eine Pause bei neuen Funktionen machen, damit du und die Kollegen auf dem Testserver ausprobieren und Fehler melden? Antwort: **Testen** oder **Weiterbauen**.
 
 ## Beantwortet
 
