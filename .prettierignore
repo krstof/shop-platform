@@ -10,3 +10,4 @@ db/
 **/db.generated.ts
 openapi/
 .schemathesis/
+apps/backoffice/src/lib/fonts.json

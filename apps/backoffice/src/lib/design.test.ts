@@ -46,3 +46,20 @@ describe("Links im Fuß", () => {
     expect(isSafeLinkUrl("mailto:a@b.example")).toBe(true);
   });
 });
+
+describe("Editor: Hintergrund, Schriften, Netzwerke", () => {
+  it("prüft Hintergründe, sucht Schriften, ergänzt Profile", async () => {
+    const d = await import("./design.js");
+    expect(d.readableBackground("#ffffff")).toBe(true);
+    expect(d.readableBackground("#333333")).toBe(false);
+    expect(d.BACKGROUNDS.every((b) => d.readableBackground(b.color))).toBe(true);
+    expect(d.mix("#ffffff", "#000000", 0.5)).toBe("#808080");
+    const all = await d.loadFontCatalog();
+    expect(all.length).toBeGreaterThan(1000);
+    expect(d.searchFonts(all, "lor")[0]?.name).toBe("Lora");
+    expect(d.SUGGESTED_FONTS.every((f) => all.some((a) => a.id === f.id && a.name === f.name))).toBe(true);
+    expect(d.webFontCssUrl([{ id: "lora", name: "Lora", category: "serif" }])).toContain("family=lora:400");
+    expect(d.completeSocialUrl("instagram.com/x")).toBe("https://instagram.com/x");
+    expect(d.isSocialUrl("javascript:alert(1)")).toBe(false);
+  });
+});

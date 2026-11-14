@@ -2,7 +2,7 @@
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@tanstack/react-router";
 import { AssistantPage } from "./pages/assistant.js";
 import { CategoriesPage, EditCategoryPage, NewCategoryPage } from "./pages/categories.js";
-import { DesignPage } from "./pages/design.js";
+import { DesignPage } from "./pages/editor/editor.js";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
 import { AcceptInvitationPage } from "./pages/invitation.js";
 import { HomeRedirect, ShopLayout } from "./pages/layout.js";

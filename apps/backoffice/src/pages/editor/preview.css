@@ -1,0 +1,398 @@
+/* Vorschau im Editor: so nah wie möglich am echten Shop (apps/storefront/src/styles/shop.css), aber
+   auf den Bereich .sp begrenzt. Farben und Schriften kommen als CSS-Variablen vom Editor. Breiten richten
+   sich nach dem Vorschau-Rahmen (Container-Abfragen), nicht nach dem Fenster. */
+.sp {
+  container: sp / inline-size;
+  background: var(--grund);
+  color: var(--text);
+  font-family: var(--schrift-text);
+  font-size: 17px;
+  line-height: 1.6;
+  text-align: left;
+}
+.sp h1,
+.sp h2,
+.sp h3,
+.sp .sp-logo,
+.sp .sp-titel {
+  font-family: var(--schrift-titel);
+  font-weight: 400;
+  line-height: 1.2;
+}
+.sp h1 {
+  font-size: 2.4rem;
+  margin: 0 0 0.5rem;
+}
+.sp h2 {
+  font-size: 1.5rem;
+  margin: 0 0 1rem;
+}
+.sp a {
+  color: var(--akzent-dunkel);
+}
+.sp-breite {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+.sp-band {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  background: #2f3a33;
+  color: #f4efe6;
+  text-align: center;
+  font-size: 0.8rem;
+}
+.sp-kopf {
+  border-bottom: 1px solid var(--linie);
+}
+.sp-kopf-innen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 2rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.sp-logo {
+  font-size: 1.4rem;
+  margin: 0;
+}
+.sp-logo-bild {
+  display: block;
+  max-height: 3rem;
+  max-width: 14rem;
+  width: auto;
+}
+.sp-slogan {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-leise);
+}
+.sp-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+.sp-nav span:first-child {
+  border-bottom: 2px solid var(--akzent);
+}
+.sp-korb {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+.sp-suche {
+  display: flex;
+}
+.sp-suche span {
+  border: 1px solid var(--linie);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  padding: 0.35rem 0.75rem;
+  color: var(--text-leise);
+  font-size: 0.85rem;
+  background: #fff;
+  min-width: 9rem;
+}
+.sp-suche b {
+  background: var(--akzent);
+  color: #fff;
+  border-radius: 0 6px 6px 0;
+  padding: 0.35rem 0.8rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+@container sp (max-width: 40rem) {
+  .sp-suche {
+    display: none;
+  }
+  .sp h1 {
+    font-size: 1.9rem;
+  }
+}
+.sp-main {
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+.sp-abschnitt {
+  padding: 1rem 0;
+}
+
+/* Bühne */
+.sp-buehne {
+  display: grid;
+  gap: 1rem;
+  padding: 2rem 0 1rem;
+}
+.sp-buehne p {
+  max-width: 38rem;
+  color: var(--text-leise);
+  margin: 0;
+}
+.sp-buehne.mit-bild {
+  position: relative;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 18rem;
+  isolation: isolate;
+  align-content: end;
+}
+.sp-buehne-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+.sp-buehne.mit-bild .sp-buehne-text {
+  padding: 2.5rem 1.75rem 1.75rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+  color: #fff;
+}
+.sp-buehne.mit-bild .sp-buehne-text p {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Produkte und Kategorien */
+.sp-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 2rem 1.5rem;
+}
+.sp-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.sp-bild {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  background: var(--flaeche);
+}
+.sp-karte-name {
+  font-family: var(--schrift-titel);
+  font-size: 1.15rem;
+}
+.sp-karte-preis {
+  font-weight: 700;
+  margin: 0;
+}
+.sp-kategorien {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+.sp-kategorien div {
+  padding: 1.25rem;
+  background: var(--flaeche);
+  border-radius: 8px;
+  font-family: var(--schrift-titel);
+  font-size: 1.2rem;
+}
+
+/* Bausteine */
+.sp-text p {
+  max-width: 44rem;
+  margin: 0 0 0.75rem;
+  white-space: pre-line;
+}
+.sp-textbild {
+  display: grid;
+  gap: 1.5rem 2.5rem;
+  align-items: center;
+}
+@container sp (min-width: 44rem) {
+  .sp-textbild {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .sp-textbild.bild-links .sp-textbild-bild {
+    order: -1;
+  }
+}
+.sp-figur img,
+.sp-textbild-bild img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+}
+.sp-figur figcaption {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-leise);
+}
+.sp-platz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-radius: 10px;
+  background: var(--flaeche);
+  border: 2px dashed var(--linie);
+  color: var(--text-leise);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+.sp-extern {
+  border-radius: 10px;
+  background: var(--flaeche);
+  padding: 1.25rem;
+}
+.sp-knopf {
+  display: inline-block;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  background: var(--akzent);
+  color: #fff;
+  font-weight: 600;
+  min-width: 6rem;
+}
+.sp-knopf.zweit {
+  background: transparent;
+  color: var(--akzent-dunkel);
+  box-shadow: inset 0 0 0 2px var(--akzent);
+}
+.sp-zitat {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1rem 0;
+  text-align: center;
+}
+.sp-zitat-text {
+  font-family: var(--schrift-titel);
+  font-size: 1.45rem;
+  line-height: 1.4;
+}
+.sp-zitat::before {
+  content: "“";
+  display: block;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--akzent);
+  font-family: var(--schrift-titel);
+}
+.sp-zitat-autor {
+  color: var(--text-leise);
+  margin-top: 0.5rem;
+}
+.sp-linie {
+  border: 0;
+  border-top: 1px solid var(--linie);
+  margin: 1rem 0;
+}
+.sp-faq-eintrag {
+  border-bottom: 1px solid var(--linie);
+  padding: 0.75rem 0;
+}
+.sp-faq-frage {
+  font-weight: 600;
+}
+.sp-faq-antwort {
+  color: var(--text-leise);
+  margin-top: 0.35rem;
+  white-space: pre-line;
+}
+.sp-galerie {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container sp (min-width: 44rem) {
+  .sp-galerie.g3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .sp-galerie.g4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.sp-galerie img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+/* Fuß */
+.sp-fuss {
+  border-top: 1px solid var(--linie);
+  background: var(--flaeche);
+  margin-top: 1rem;
+}
+.sp-fuss-innen {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  font-size: 0.95rem;
+}
+.sp-fuss-links {
+  display: grid;
+  gap: 0.25rem;
+}
+.sp-fuss-links span {
+  color: var(--akzent-dunkel);
+  text-decoration: underline;
+}
+.sp-sozial {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.sp-sozial span {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  background: var(--grund);
+  color: var(--akzent-dunkel);
+  box-shadow: inset 0 0 0 1px var(--linie);
+}
+.sp-sozial svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+.sp-klein {
+  font-size: 0.85rem;
+  color: var(--text-leise);
+}
+
+/* Direkt in der Vorschau schreiben: leere Felder zeigen einen Hinweis. */
+.sp-edit {
+  outline: none;
+  border-radius: 4px;
+  cursor: text;
+  min-width: 2ch;
+}
+.sp-edit:hover {
+  box-shadow: 0 0 0 1px rgb(51 84 224 / 0.35);
+}
+.sp-edit:focus {
+  box-shadow: 0 0 0 2px rgb(51 84 224 / 0.7);
+  background: rgb(255 255 255 / 0.35);
+}
+.sp-edit:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-leise);
+  opacity: 0.65;
+  pointer-events: none;
+}
+.sp-buehne.mit-bild .sp-edit:empty::before,
+.sp-knopf .sp-edit:empty::before {
+  color: inherit;
+}

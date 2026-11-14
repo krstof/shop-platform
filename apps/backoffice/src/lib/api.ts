@@ -138,8 +138,10 @@ export interface DesignHome {
   readonly showCategories: boolean;
   /** Abschnitt „Neu im Shop“ (ältere API-Stände ohne). */
   readonly showNew?: boolean;
-  /** Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge. */
+  /** Bausteine in Reihenfolge (Baukasten), nur Arten bis 13.11.; null = alte feste Reihenfolge. */
   readonly blocks?: readonly import("./blocks.js").Block[] | null;
+  /** Alle Bausteine mit Inhalt der Shop-Bereiche (seit 14.11.2026). */
+  readonly content?: readonly import("./blocks.js").Block[] | null;
   /** Bilder, die Bausteine benutzen. */
   readonly blockImages?: readonly DesignImage[];
 }
@@ -154,10 +156,15 @@ export interface Design {
   readonly footer: DesignFooter;
   /** Eigene Inhaltsseiten (ältere API-Stände ohne). */
   readonly pages?: readonly DesignPage[];
+  /** Hintergrundfarbe, Google-Schriften (ältere API-Stände ohne). */
+  readonly backgroundColor?: string;
+  readonly headingFont?: import("./design.js").WebFont | null;
+  readonly bodyFont?: import("./design.js").WebFont | null;
 }
 
 /** Eigene Inhaltsseite (Baukasten Teil 3). */
 export type DesignPage = import("./blocks.js").ContentPage & {
+  readonly content?: readonly import("./blocks.js").Block[];
   readonly blockImages: readonly DesignImage[];
 };
 
@@ -165,6 +172,8 @@ export type DesignPage = import("./blocks.js").ContentPage & {
 export interface DesignFooter {
   readonly text: string;
   readonly links: readonly { readonly label: string; readonly url: string }[];
+  /** Profile in sozialen Netzwerken (ältere API-Stände ohne). */
+  readonly social?: Readonly<Record<string, string | undefined>>;
 }
 
 /** Aussehen des Shops: Entwurf im Editor und was der Shop gerade zeigt. */

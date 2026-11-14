@@ -111,3 +111,136 @@ export function storefrontUrl(handle: string, location: { protocol: string; host
   const host = location.host.replace(/^admin\./, "shop.");
   return `${location.protocol}//${host}/${handle}`;
 }
+
+// --- Editor (14.11.2026): Hintergrund, Google-Schriften, soziale Netzwerke ---
+
+/** Dunkle Schrift des Shops; der Hintergrund muss dazu mindestens 4,5 : 1 Kontrast haben. */
+export const SHOP_TEXT = "#26221e";
+export const DEFAULT_BACKGROUND = "#fbf8f3";
+
+/** Kontrast zweier Farben (1 bis 21). */
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+export function readableBackground(hex: string): boolean {
+  return /^#[0-9a-f]{6}$/i.test(hex) && contrast(hex.toLowerCase(), SHOP_TEXT) >= 4.5;
+}
+
+/** Farbe `a` um `anteil` (0–1) in Richtung `b` mischen (wie die Storefront für Flächen und Linien). */
+export function mix(a: string, b: string, anteil: number): string {
+  const [x, y] = [channels(a), channels(b)];
+  return `#${x
+    .map((v, i) =>
+      Math.round(v + ((y[i] ?? v) - v) * anteil)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+export const BACKGROUNDS: readonly { readonly name: string; readonly color: string }[] = [
+  { name: "Creme", color: "#fbf8f3" },
+  { name: "Weiß", color: "#ffffff" },
+  { name: "Sand", color: "#f4eee4" },
+  { name: "Nebel", color: "#f2f4f7" },
+  { name: "Salbei", color: "#eef3ec" },
+  { name: "Rosé", color: "#fbf1f0" },
+];
+
+export type FontCategory = "serif" | "sans-serif" | "display" | "handwriting" | "monospace";
+
+/** Schrift von Google Fonts (der Shop lädt sie über Bunny Fonts, ohne Tracking). */
+export interface WebFont {
+  readonly id: string;
+  readonly name: string;
+  readonly category: FontCategory;
+}
+
+const FALLBACK: Record<FontCategory, string> = {
+  serif: 'Georgia, "Times New Roman", serif',
+  "sans-serif": "system-ui, sans-serif",
+  display: "system-ui, sans-serif",
+  handwriting: "cursive",
+  monospace: "ui-monospace, monospace",
+};
+
+export function webFontStack(f: WebFont): string {
+  return `"${f.name}", ${FALLBACK[f.category]}`;
+}
+
+/** Stildatei bei Bunny Fonts für mehrere Schriften (oder `undefined`). */
+export function webFontCssUrl(fonts: readonly WebFont[]): string | undefined {
+  const ids = [...new Set(fonts.map((f) => f.id))].filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id));
+  if (ids.length === 0) return undefined;
+  return `https://fonts.bunny.net/css?family=${ids.map((id) => `${id}:400,600,700`).join("|")}&display=swap`;
+}
+
+/** 20 bewährte Schriften als Vorschläge (alle von Google Fonts). */
+export const SUGGESTED_FONTS: readonly WebFont[] = [
+  { id: "playfair-display", name: "Playfair Display", category: "serif" },
+  { id: "lora", name: "Lora", category: "serif" },
+  { id: "merriweather", name: "Merriweather", category: "serif" },
+  { id: "libre-baskerville", name: "Libre Baskerville", category: "serif" },
+  { id: "cormorant-garamond", name: "Cormorant Garamond", category: "serif" },
+  { id: "dm-serif-display", name: "DM Serif Display", category: "serif" },
+  { id: "fraunces", name: "Fraunces", category: "serif" },
+  { id: "crimson-pro", name: "Crimson Pro", category: "serif" },
+  { id: "montserrat", name: "Montserrat", category: "sans-serif" },
+  { id: "poppins", name: "Poppins", category: "sans-serif" },
+  { id: "dm-sans", name: "DM Sans", category: "sans-serif" },
+  { id: "nunito", name: "Nunito", category: "sans-serif" },
+  { id: "work-sans", name: "Work Sans", category: "sans-serif" },
+  { id: "raleway", name: "Raleway", category: "sans-serif" },
+  { id: "manrope", name: "Manrope", category: "sans-serif" },
+  { id: "outfit", name: "Outfit", category: "sans-serif" },
+  { id: "karla", name: "Karla", category: "sans-serif" },
+  { id: "josefin-sans", name: "Josefin Sans", category: "sans-serif" },
+  { id: "space-grotesk", name: "Space Grotesk", category: "sans-serif" },
+  { id: "caveat", name: "Caveat", category: "handwriting" },
+];
+
+const CATEGORY_CODES: Record<string, FontCategory> = {
+  s: "serif",
+  a: "sans-serif",
+  d: "display",
+  h: "handwriting",
+  m: "monospace",
+};
+
+/** Alle Google-Schriften (Liste von Bunny Fonts, im Paket; erst beim Suchen geladen). */
+export async function loadFontCatalog(): Promise<WebFont[]> {
+  const list = (await import("./fonts.json")).default as [string, string, string][];
+  return list.map(([id, name, c]) => ({ id, name, category: CATEGORY_CODES[c] ?? "sans-serif" }));
+}
+
+/** Suche: Anfang des Namens zuerst, dann Treffer im Namen. */
+export function searchFonts(all: readonly WebFont[], query: string, limit = 30): WebFont[] {
+  const q = query.trim().toLowerCase();
+  if (q === "") return [];
+  const starts = all.filter((f) => f.name.toLowerCase().startsWith(q));
+  const contains = all.filter((f) => !f.name.toLowerCase().startsWith(q) && f.name.toLowerCase().includes(q));
+  return [...starts, ...contains].slice(0, limit);
+}
+
+/** Soziale Netzwerke in der Fußzeile (wie API und Shop). */
+export const SOCIAL: readonly { readonly id: string; readonly name: string; readonly example: string }[] = [
+  { id: "instagram", name: "Instagram", example: "https://instagram.com/deinshop" },
+  { id: "facebook", name: "Facebook", example: "https://facebook.com/deinshop" },
+  { id: "tiktok", name: "TikTok", example: "https://tiktok.com/@deinshop" },
+  { id: "youtube", name: "YouTube", example: "https://youtube.com/@deinshop" },
+  { id: "pinterest", name: "Pinterest", example: "https://pinterest.com/deinshop" },
+  { id: "x", name: "X", example: "https://x.com/deinshop" },
+];
+
+/** Profil-Adresse: nur https. Ergänzt „https://“, wenn es fehlt. */
+export function completeSocialUrl(input: string): string {
+  const v = input.trim();
+  if (v === "" || /^https:\/\//i.test(v)) return v;
+  if (/^http:\/\//i.test(v)) return `https://${v.slice(7)}`;
+  return `https://${v}`;
+}
+export function isSocialUrl(url: string): boolean {
+  return url.length <= 300 && /^https:\/\/[^\s<>"]+$/i.test(url);
+}
