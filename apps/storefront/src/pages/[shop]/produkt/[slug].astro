@@ -91,7 +91,17 @@ try {
       {p.price !== null && (
         <>
           <p class="preis-gross">
-            <strong>{euro(p.price.amount)}</strong>
+            <strong class:list={{ "preis-angebot": p.compareAtPrice != null }}>{euro(p.price.amount)}</strong>
+            {p.compareAtPrice != null && (
+              <>
+                {" "}
+                <s class="preis-alt">
+                  <span class="unsichtbar">statt </span>
+                  {euro(p.compareAtPrice.amount)}
+                </s>{" "}
+                <span class="angebot-marke">Angebot</span>
+              </>
+            )}
           </p>
           <p class="klein">{steuerHinweis(p.taxRatePercent)}</p>
         </>

@@ -16,6 +16,7 @@ interface FormState {
   name: string;
   description: string;
   price: string;
+  salePrice: string;
   taxClass: "standard" | "reduced";
   stock: string;
   categoryId: string;
@@ -27,6 +28,7 @@ const emptyForm: FormState = {
   name: "",
   description: "",
   price: "",
+  salePrice: "",
   taxClass: "standard",
   stock: "0",
   categoryId: "",
@@ -39,6 +41,7 @@ function formFrom(p: Product): FormState {
     name: p.name,
     description: p.description,
     price: p.price === null ? "" : centsToInput(p.price.amount),
+    salePrice: p.salePrice === null ? "" : centsToInput(p.salePrice.amount),
     taxClass: p.taxClass,
     stock: String(p.stock),
     categoryId: p.categoryId ?? "",
@@ -53,17 +56,23 @@ type Errors = Partial<Record<keyof FormState | "form", string>>;
 function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
   const errors: Errors = {};
   const price = parseEuro(f.price);
+  const sale = f.salePrice.trim() === "" ? null : parseEuro(f.salePrice);
   const stock = /^\d+$/.test(f.stock.trim()) ? Number(f.stock.trim()) : undefined;
   if (f.name.trim() === "") errors.name = "Bitte einen Namen angeben.";
   if (price === undefined) errors.price = "Bitte einen Preis wie 8,90 angeben.";
   if (stock === undefined) errors.stock = "Bitte eine ganze Zahl ab 0 angeben.";
-  if (Object.keys(errors).length > 0 || price === undefined || stock === undefined) return { errors };
+  if (sale === undefined) errors.salePrice = "Bitte einen Preis wie 6,90 angeben oder leer lassen.";
+  else if (sale !== null && price !== undefined && sale >= price)
+    errors.salePrice = "Der Angebotspreis muss kleiner als der normale Preis sein.";
+  if (Object.keys(errors).length > 0 || price === undefined || stock === undefined || sale === undefined)
+    return { errors };
   return {
     errors,
     input: {
       name: f.name.trim(),
       description: f.description.trim() === "" ? null : f.description,
       price: { amount: price },
+      salePrice: sale === null ? null : { amount: sale },
       taxClass: f.taxClass,
       stock,
       categoryId: f.categoryId === "" ? null : f.categoryId,
@@ -85,6 +94,7 @@ function errorsFromApi(e: unknown): Errors {
     ["/name", "name"],
     ["/description", "description"],
     ["/price", "price"],
+    ["/salePrice", "salePrice"],
     ["/stock", "stock"],
     ["/categoryId", "categoryId"],
     ["/sku", "sku"],
@@ -269,6 +279,27 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                       placeholder="0,00"
                       value={form.price}
                       onChange={(e) => set("price")(e.target.value)}
+                      className="pr-8"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">
+                      €
+                    </span>
+                  </div>
+                )}
+              </Field>
+              <Field
+                label="Angebotspreis"
+                hint="Freiwillig. Dann zeigt der Shop den normalen Preis durchgestrichen."
+                error={errors.salePrice}
+              >
+                {(p) => (
+                  <div className="relative">
+                    <Input
+                      {...p}
+                      inputMode="decimal"
+                      placeholder="kein Angebot"
+                      value={form.salePrice}
+                      onChange={(e) => set("salePrice")(e.target.value)}
                       className="pr-8"
                     />
                     <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">

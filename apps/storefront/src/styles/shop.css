@@ -740,3 +740,41 @@ main:focus-visible {
   border-top: 1px solid var(--linie);
   margin-bottom: 3rem;
 }
+
+/* --- Angebotspreis: alter Preis durchgestrichen, Marke „Angebot“ --- */
+.karte-link {
+  position: relative;
+}
+.karte .angebot-marke {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+}
+.angebot-marke {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #a3261b;
+  color: #fff;
+  font-family: var(--schrift-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+.karte-preis {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+}
+.preis-angebot {
+  color: #a3261b;
+}
+.preis-alt {
+  color: var(--text-leise);
+  font-size: 0.9em;
+}
+.preis-gross .preis-alt {
+  font-size: 1.1rem;
+}

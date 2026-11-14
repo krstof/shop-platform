@@ -45,14 +45,20 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
   let database: Database<unknown>;
   let app: NestFastifyApplication;
 
-  const inject = (method: "GET" | "POST" | "PATCH", url: string, shop?: "a" | "b", payload?: object) =>
+  const inject = (
+    method: "GET" | "POST" | "PATCH",
+    url: string,
+    shop?: "a" | "b",
+    payload?: object,
+    extra: Record<string, string> = {},
+  ) =>
     app
       .getHttpAdapter()
       .getInstance()
       .inject({
         method,
         url,
-        headers: shop === undefined ? {} : { "x-test-shop": shop },
+        headers: { ...(shop === undefined ? {} : { "x-test-shop": shop }), ...extra },
         ...(payload === undefined ? {} : { payload }),
       });
 
@@ -217,6 +223,75 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
         .data.map((p: { name: string }) => p.name),
     ).toEqual(["Matcha", "Sencha"]);
     expect((await inject("GET", "/store/v1/shops/tee-a/products?sort=billig")).statusCode).toBe(422);
+  });
+
+  it("Angebotspreis: Shop verkauft günstiger und nennt den alten Preis; Prüfungen 422", async () => {
+    const tooHigh = await inject("POST", "/admin/v1/products", "a", {
+      name: "Zu teuer im Angebot",
+      price: { amount: 1000 },
+      salePrice: { amount: 1000 },
+    });
+    expect(tooHigh.statusCode).toBe(422);
+    expect(tooHigh.json().errors[0].path).toBe("/salePrice/amount");
+    const made = await inject("POST", "/admin/v1/products", "a", {
+      name: "Rooibos Vanille",
+      status: "published",
+      stock: 4,
+      price: { amount: 990 },
+      salePrice: { amount: 690 },
+    });
+    expect(made.statusCode).toBe(201);
+    expect(made.json()).toMatchObject({
+      price: { amount: 990 },
+      salePrice: { amount: 690, currency: "EUR" },
+    });
+    const id = made.json().id;
+    const store = async () => (await inject("GET", "/store/v1/shops/tee-a/products/rooibos-vanille")).json();
+    expect(await store()).toMatchObject({
+      price: { amount: 690, currency: "EUR" },
+      compareAtPrice: { amount: 990, currency: "EUR" },
+    });
+    // Ohne Angebot: compareAtPrice null.
+    expect((await inject("GET", "/store/v1/shops/tee-a/products/sencha")).json().compareAtPrice).toBeNull();
+    // Sortieren nach Preis nimmt den Angebotspreis.
+    const asc = (await inject("GET", "/store/v1/shops/tee-a/products?sort=price-asc")).json().data;
+    expect(asc.findIndex((p: { name: string }) => p.name === "Rooibos Vanille")).toBeLessThan(
+      asc.findIndex((p: { name: string }) => p.name === "Sencha"),
+    );
+    // Preis unter das Angebot senken: 422; Angebot und Preis zusammen ändern geht.
+    const v = made.json().version;
+    const lower = await inject(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { price: { amount: 600 } },
+      {
+        "if-match": `"${v}"`,
+      },
+    );
+    expect(lower.statusCode).toBe(422);
+    const both = await inject(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { price: { amount: 600 }, salePrice: { amount: 500 } },
+      { "if-match": `"${v}"` },
+    );
+    expect(both.statusCode).toBe(200);
+    expect(await store()).toMatchObject({ price: { amount: 500 }, compareAtPrice: { amount: 600 } });
+    // Angebot beenden.
+    const end = await inject(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { salePrice: null },
+      {
+        "if-match": `"${both.json().version}"`,
+      },
+    );
+    expect(end.statusCode).toBe(200);
+    expect(end.json().salePrice).toBeNull();
+    expect(await store()).toMatchObject({ price: { amount: 600 }, compareAtPrice: null });
   });
 
   it("ein frisch gesperrter Shop verschwindet sofort", async () => {

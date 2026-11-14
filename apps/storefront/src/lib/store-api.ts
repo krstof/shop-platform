@@ -30,6 +30,8 @@ export interface StoreProduct {
   readonly slug: string;
   readonly description: string;
   readonly price: { readonly amount: number; readonly currency: "EUR" } | null;
+  /** Bei einem Angebot der normale Preis zum Durchstreichen (seit Etappe „Angebotspreis“). */
+  readonly compareAtPrice?: { readonly amount: number; readonly currency: "EUR" } | null;
   readonly taxRatePercent: number;
   readonly inStock: boolean;
   readonly maxQuantity: number;

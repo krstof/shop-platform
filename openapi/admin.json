@@ -5545,6 +5545,34 @@
                     ],
                     "additionalProperties": false
                   },
+                  "salePrice": {
+                    "description": "Angebotspreis in Cent, kleiner als der Preis. `null` beendet das Angebot.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "amount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000000,
+                            "description": "Bruttopreis in Cent."
+                          },
+                          "currency": {
+                            "description": "Nur EUR. Ohne Angabe EUR.",
+                            "type": "string",
+                            "const": "EUR"
+                          }
+                        },
+                        "required": [
+                          "amount"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "slug": {
                     "type": "string",
                     "minLength": 1,
@@ -6125,6 +6153,34 @@
                     ],
                     "additionalProperties": false
                   },
+                  "salePrice": {
+                    "description": "Angebotspreis in Cent, kleiner als der Preis. `null` beendet das Angebot.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "amount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000000,
+                            "description": "Bruttopreis in Cent."
+                          },
+                          "currency": {
+                            "description": "Nur EUR. Ohne Angabe EUR.",
+                            "type": "string",
+                            "const": "EUR"
+                          }
+                        },
+                        "required": [
+                          "amount"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "slug": {
                     "type": "string",
                     "minLength": 1,
@@ -6366,7 +6422,7 @@
       "post": {
         "operationId": "copyProduct",
         "summary": "Produkt kopieren",
-        "description": "Legt eine Kopie an: gleicher Text, Preis, Steuersatz, Kategorie und dieselben Bilder, Name mit „(Kopie)“, eigene Adresse, ohne Artikelnummer, Bestand 0 und als Entwurf (noch nicht im Shop). Die Bilder teilen sich Original und Kopie; entfernt man eines bei einem der beiden, bleibt es beim anderen.",
+        "description": "Legt eine Kopie an: gleicher Text, Preis (auch Angebotspreis), Steuersatz, Kategorie und dieselben Bilder, Name mit „(Kopie)“, eigene Adresse, ohne Artikelnummer, Bestand 0 und als Entwurf (noch nicht im Shop). Die Bilder teilen sich Original und Kopie; entfernt man eines bei einem der beiden, bleibt es beim anderen.",
         "tags": [
           "Produkte"
         ],
@@ -8812,6 +8868,17 @@
               }
             ]
           },
+          "salePrice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Angebotspreis (brutto). Gesetzt: Der Shop verkauft zu diesem Preis und zeigt `price` durchgestrichen."
+          },
           "stock": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -8880,6 +8947,7 @@
           "description",
           "taxClass",
           "price",
+          "salePrice",
           "stock",
           "categoryId",
           "sku",

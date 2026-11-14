@@ -40,6 +40,10 @@ export const productSchema = z
       .enum(["standard", "reduced"])
       .meta({ description: "`standard` = 19 %, `reduced` = 7 % (Deutschland)." }),
     price: priceSchema.nullable(),
+    salePrice: priceSchema.nullable().meta({
+      description:
+        "Angebotspreis (brutto). Gesetzt: Der Shop verkauft zu diesem Preis und zeigt `price` durchgestrichen.",
+    }),
     stock: z.number().int().meta({ description: "Verfügbarer Bestand (vorhanden minus reserviert)." }),
     categoryId: z.uuid().nullable(),
     sku: z.string().nullable().meta({ description: "Artikelnummer." }),
@@ -60,6 +64,7 @@ export function toProduct(
   price: number | undefined,
   stock: number | undefined,
   images: readonly ProductImage[],
+  salePrice?: number,
 ): Product {
   return {
     id: row.id,
@@ -69,6 +74,7 @@ export function toProduct(
     description: row.description,
     taxClass: row.tax_class_code,
     price: price === undefined ? null : { amount: price, currency: CURRENCY },
+    salePrice: salePrice === undefined ? null : { amount: salePrice, currency: CURRENCY },
     stock: stock ?? 0,
     categoryId: row.category_id,
     sku: row.sku,
@@ -86,6 +92,10 @@ const priceInput = z.strictObject({
 });
 
 const fields = {
+  salePrice: priceInput
+    .nullable()
+    .optional()
+    .meta({ description: "Angebotspreis in Cent, kleiner als der Preis. `null` beendet das Angebot." }),
   slug: slugInput.optional(),
   description: multiLineText(5000).nullable().optional(),
   status: z.enum(["draft", "published"]).optional(),
@@ -124,6 +134,7 @@ export function productFacts(p: Product): Record<string, string | number | null>
     status: p.status,
     taxClass: p.taxClass,
     price: p.price?.amount ?? null,
+    salePrice: p.salePrice?.amount ?? null,
     stock: p.stock,
     categoryId: p.categoryId,
     sku: p.sku,

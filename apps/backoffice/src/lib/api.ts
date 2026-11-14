@@ -109,6 +109,8 @@ export interface Product {
   readonly description: string;
   readonly taxClass: "standard" | "reduced";
   readonly price: { readonly amount: number; readonly currency: "EUR" } | null;
+  /** Angebotspreis; gesetzt verkauft der Shop dazu und streicht `price` durch. */
+  readonly salePrice: { readonly amount: number; readonly currency: "EUR" } | null;
   readonly stock: number;
   readonly categoryId: string | null;
   readonly sku: string | null;
@@ -186,6 +188,7 @@ export interface ProductInput {
   name: string;
   description: string | null;
   price: { amount: number };
+  salePrice: { amount: number } | null;
   taxClass: "standard" | "reduced";
   stock: number;
   categoryId: string | null;

@@ -1963,7 +1963,35 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Preis, zu dem der Shop verkauft (bei einem Angebot der Angebotspreis)."
+          },
+          "compareAtPrice": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "currency": {
+                    "type": "string",
+                    "const": "EUR"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bei einem Angebot der normale Preis (zum Durchstreichen), sonst null."
           },
           "taxRatePercent": {
             "type": "integer",
@@ -2005,6 +2033,7 @@
           "slug",
           "description",
           "price",
+          "compareAtPrice",
           "taxRatePercent",
           "inStock",
           "maxQuantity",

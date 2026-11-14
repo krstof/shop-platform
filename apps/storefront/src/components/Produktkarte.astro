@@ -8,6 +8,7 @@ interface Props {
 }
 const { produkt: p, shop } = Astro.props;
 const bild = p.images[0];
+const statt = p.compareAtPrice ?? null;
 ---
 
 <li class="karte">
@@ -25,8 +26,19 @@ const bild = p.images[0];
         decoding="async"
       />
     )}
+    {statt !== null && <span class="angebot-marke">Angebot</span>}
     <span class="karte-name">{p.name}</span>
   </a>
-  <p class="karte-preis">{p.price !== null && <strong>{euro(p.price.amount)}</strong>}</p>
+  <p class="karte-preis">
+    {p.price !== null && (
+      <strong class:list={{ "preis-angebot": statt !== null }}>{euro(p.price.amount)}</strong>
+    )}
+    {statt !== null && (
+      <s class="preis-alt">
+        <span class="unsichtbar">statt </span>
+        {euro(statt.amount)}
+      </s>
+    )}
+  </p>
   {!p.inStock && <p class="hinweis-aus">Zurzeit ausverkauft</p>}
 </li>

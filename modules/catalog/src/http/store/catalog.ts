@@ -37,7 +37,14 @@ export const storeProductSchema = z
     name: z.string(),
     slug: z.string(),
     description: z.string().meta({ description: "Klartext, Absätze durch Leerzeilen getrennt." }),
-    price: z.object({ amount: z.number().int(), currency: z.literal(CURRENCY) }).nullable(),
+    price: z
+      .object({ amount: z.number().int(), currency: z.literal(CURRENCY) })
+      .nullable()
+      .meta({ description: "Preis, zu dem der Shop verkauft (bei einem Angebot der Angebotspreis)." }),
+    compareAtPrice: z
+      .object({ amount: z.number().int(), currency: z.literal(CURRENCY) })
+      .nullable()
+      .meta({ description: "Bei einem Angebot der normale Preis (zum Durchstreichen), sonst null." }),
     taxRatePercent: z.number().int().meta({ description: "19 oder 7 (Deutschland), im Preis enthalten." }),
     inStock: z.boolean(),
     maxQuantity: z.number().int().meta({ description: "Höchstens so viele passen in den Warenkorb." }),
@@ -72,13 +79,18 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
       trx,
       rows.map((r) => r.id),
     );
-    const [p, s, img] = await Promise.all([
+    const [p, sale, s, img] = await Promise.all([
       prices.getBasePrices(variantIds, CURRENCY),
+      prices.getSalePrices(variantIds, CURRENCY),
       stock.getAvailable(variantIds),
       images.get([...imageIds.values()].flat()),
     ]);
     return rows.map((r) => {
-      const price = p.get(r.variant_id);
+      const base = p.get(r.variant_id);
+      const offer = sale.get(r.variant_id);
+      // Ein Angebot gilt nur unter dem normalen Preis (die Admin-API prüft das beim Speichern).
+      const onSale = base !== undefined && offer !== undefined && offer < base;
+      const price = onSale ? offer : base;
       const available = Math.max(0, s.get(r.variant_id) ?? 0);
       return {
         id: r.id,
@@ -86,6 +98,7 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
         slug: r.slug,
         description: r.description,
         price: price === undefined ? null : { amount: price, currency: CURRENCY },
+        compareAtPrice: onSale ? { amount: base, currency: CURRENCY } : null,
         taxRatePercent: r.tax_class_code === "reduced" ? 7 : 19,
         inStock: available > 0 && price !== undefined,
         maxQuantity: price === undefined ? 0 : Math.min(available, MAX_QUANTITY),

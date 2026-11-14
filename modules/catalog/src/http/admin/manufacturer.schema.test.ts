@@ -64,7 +64,7 @@ describe("Hersteller in der Admin-API", () => {
     };
     const endpoints = catalogEndpoints({
       database: { destroy: async () => undefined } as Database<unknown>,
-      prices: { setBasePrice: unused, getBasePrices: unused },
+      prices: { setBasePrice: unused, getBasePrices: unused, setSalePrice: unused, getSalePrices: unused },
       stock: { setOnHand: unused, getAvailable: unused },
       images: { prepare: unused, get: unused, remove: unused },
     });
@@ -83,6 +83,7 @@ describe("Hersteller in der Admin-API", () => {
       "createProduct",
       "updateProduct",
       "deleteProduct",
+      "copyProduct",
       "addProductImage",
       "deleteProductImage",
       "reorderProductImages",

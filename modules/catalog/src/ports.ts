@@ -6,6 +6,9 @@
 export interface ProductPrices {
   setBasePrice(price: { variantId: string; amount: number; currency: string }): Promise<void>;
   getBasePrices(variantIds: readonly string[], currency: string): Promise<Map<string, number>>;
+  /** Angebotspreis setzen; `null` entfernt ihn. */
+  setSalePrice(variantId: string, amount: number | null, currency: string): Promise<void>;
+  getSalePrices(variantIds: readonly string[], currency: string): Promise<Map<string, number>>;
 }
 
 export interface ProductStock {

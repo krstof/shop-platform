@@ -50,6 +50,16 @@ import {
 const cursorKey = z.strictObject({ id: z.uuid() });
 
 const UNKNOWN_CATEGORY = "Diese Kategorie gibt es im Shop nicht.";
+const SALE_TOO_HIGH = "Der Angebotspreis muss kleiner als der normale Preis sein.";
+
+/** Angebot nur unter dem normalen Preis; sonst 422 am Feld salePrice. */
+function requireSaleBelow(sale: number | null | undefined, price: number | undefined): void {
+  if (sale === null || sale === undefined || price === undefined || sale < price) return;
+  throw new ValidationError({
+    detail: SALE_TOO_HIGH,
+    errors: [{ path: "/salePrice/amount", code: "sale_not_below_price", message: SALE_TOO_HIGH }],
+  });
+}
 
 export interface ProductEndpointDependencies {
   readonly db: Database<DB>;
@@ -66,8 +76,9 @@ export function productReader({ prices, stock, images }: Omit<ProductEndpointDep
       trx,
       rows.map((r) => r.id),
     );
-    const [p, s, img] = await Promise.all([
+    const [p, sale, s, img] = await Promise.all([
       prices.getBasePrices(ids, CURRENCY),
+      prices.getSalePrices(ids, CURRENCY),
       stock.getAvailable(ids),
       images.get([...imageIds.values()].flat()),
     ]);
@@ -75,7 +86,7 @@ export function productReader({ prices, stock, images }: Omit<ProductEndpointDep
       const list = (imageIds.get(r.id) ?? [])
         .map((id) => img.get(id))
         .filter((i): i is ProductImage => i !== undefined);
-      return toProduct(r, p.get(r.variant_id), s.get(r.variant_id), list);
+      return toProduct(r, p.get(r.variant_id), s.get(r.variant_id), list, sale.get(r.variant_id));
     });
   };
 }
@@ -185,6 +196,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
       return withConflictMapping(() =>
         withTenantTransaction(db, async (trx) => {
           await requireCategory(trx, body.categoryId);
+          requireSaleBelow(body.salePrice?.amount, body.price.amount);
           const slug = body.slug ?? (await freeProductSlug(trx, body.name));
           const row = await insertProduct(trx, tenantId, { ...toProductValues(body), name: body.name, slug });
           await prices.setBasePrice({
@@ -192,6 +204,8 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
             amount: body.price.amount,
             currency: CURRENCY,
           });
+          if (body.salePrice !== undefined && body.salePrice !== null)
+            await prices.setSalePrice(row.variant_id, body.salePrice.amount, CURRENCY);
           await stock.setOnHand(row.variant_id, body.stock ?? 0);
           await publishEvent(trx, productCreated, { id: row.id, name: row.name });
           return (await withDetails(trx, [row]))[0] as Product;
@@ -226,6 +240,11 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           const r = await updateProduct(trx, tenantId, params.productId, ifMatch ?? 0, toProductValues(body));
           if (r.kind !== "updated") return r;
           const [before] = await withDetails(trx, [r.before]);
+          // Neues Angebot gegen den neuen Preis prüfen; neuer Preis gegen ein bestehendes Angebot.
+          const sale = body.salePrice === undefined ? before?.salePrice?.amount : body.salePrice?.amount;
+          requireSaleBelow(sale, body.price?.amount ?? before?.price?.amount);
+          if (body.salePrice !== undefined)
+            await prices.setSalePrice(r.row.variant_id, body.salePrice?.amount ?? null, CURRENCY);
           if (body.price !== undefined)
             await prices.setBasePrice({
               variantId: r.row.variant_id,
@@ -280,7 +299,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
     operationId: "copyProduct",
     summary: "Produkt kopieren",
     description:
-      "Legt eine Kopie an: gleicher Text, Preis, Steuersatz, Kategorie und dieselben Bilder, Name mit " +
+      "Legt eine Kopie an: gleicher Text, Preis (auch Angebotspreis), Steuersatz, Kategorie und dieselben Bilder, Name mit " +
       "„(Kopie)“, eigene Adresse, ohne Artikelnummer, Bestand 0 und als Entwurf (noch nicht im Shop). " +
       "Die Bilder teilen sich Original und Kopie; entfernt man eines bei einem der beiden, bleibt es beim anderen.",
     tags: ["Produkte"],
@@ -312,6 +331,8 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
             amount: source.price.amount,
             currency: CURRENCY,
           });
+        if (source.salePrice !== null)
+          await prices.setSalePrice(created.variant_id, source.salePrice.amount, CURRENCY);
         await stock.setOnHand(created.variant_id, 0);
         for (const image of source.images) await appendImage(trx, tenantId, created.id, image.id);
         await publishEvent(trx, productCreated, { id: created.id, name: created.name });

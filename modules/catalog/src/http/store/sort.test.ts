@@ -8,6 +8,7 @@ const p = (name: string, amount: number | null): StoreProduct => ({
   slug: name.toLowerCase(),
   description: "",
   price: amount === null ? null : { amount, currency: "EUR" },
+  compareAtPrice: null,
   taxRatePercent: 19,
   inStock: true,
   maxQuantity: 1,
