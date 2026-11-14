@@ -24,9 +24,9 @@ export function CustomersPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Kunden</h1>
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Kunden</h1>
         {customers.data && (
-          <p className="text-sm text-stone-500" aria-live="polite">
+          <p className="text-sm text-gray-500" aria-live="polite">
             {text.trim() === ""
               ? `${customers.data.length} ${customers.data.length === 1 ? "Kundin oder Kunde" : "Kundinnen und Kunden"}`
               : `${shown.length} Treffer`}{" "}
@@ -45,22 +45,22 @@ export function CustomersPage() {
         />
       </label>
       {customers.isPending && (
-        <div className="flex justify-center py-16 text-stone-400" role="status">
+        <div className="flex justify-center py-16 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Kunden werden geladen …</span>
         </div>
       )}
       {customers.isError && <Alert>{customers.error.message}</Alert>}
       {customers.data?.length === 0 && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 text-center">
           <p className="font-medium">Noch keine Kunden</p>
-          <p className="mt-1 text-sm text-stone-500">Sobald jemand bestellt, erscheint die Person hier.</p>
+          <p className="mt-1 text-sm text-gray-500">Sobald jemand bestellt, erscheint die Person hier.</p>
         </div>
       )}
       {shown.length > 0 && (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200">
+        <div className="overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
           <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs text-stone-500 uppercase">
+            <thead>
               <tr>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Kunde
@@ -76,7 +76,7 @@ export function CustomersPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-gray-100">
               {shown.map((c) => (
                 <tr key={c.email.toLowerCase()}>
                   <td className="px-4 py-3">
@@ -84,17 +84,17 @@ export function CustomersPage() {
                       to="/$shop/bestellungen"
                       params={{ shop: shop.handle }}
                       search={{ suche: c.email }}
-                      className="font-medium text-stone-900 hover:underline"
+                      className="font-medium text-gray-900 hover:underline"
                     >
                       {c.name || c.email}
                     </Link>
-                    <div className="truncate text-xs text-stone-500">{c.email}</div>
+                    <div className="truncate text-xs text-gray-500">{c.email}</div>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{c.orderCount}</td>
                   <td className="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
                     {formatEuro(c.revenue)}
                   </td>
-                  <td className="hidden px-4 py-3 text-stone-600 md:table-cell">
+                  <td className="hidden px-4 py-3 text-gray-600 md:table-cell">
                     {DATE.format(new Date(c.lastOrderAt))}
                   </td>
                 </tr>
@@ -104,7 +104,7 @@ export function CustomersPage() {
         </div>
       )}
       {customers.data && customers.data.length > 0 && shown.length === 0 && (
-        <p className="py-10 text-center text-sm text-stone-500">Niemand passt zur Suche.</p>
+        <p className="py-10 text-center text-sm text-gray-500">Niemand passt zur Suche.</p>
       )}
     </div>
   );

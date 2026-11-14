@@ -36,8 +36,8 @@ export function CouponsPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Gutscheine</h1>
-        <p className="text-sm text-stone-500">
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Gutscheine</h1>
+        <p className="text-sm text-gray-500">
           Codes, die Kundinnen im Warenkorb eingeben, etwa SOMMER10 für 10 % Rabatt auf den Warenwert.
         </p>
       </div>
@@ -49,24 +49,24 @@ export function CouponsPage() {
         </div>
       )}
       {coupons.isPending && (
-        <div className="flex justify-center py-10 text-stone-400" role="status">
+        <div className="flex justify-center py-10 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Gutscheine werden geladen …</span>
         </div>
       )}
       {coupons.isError && <Alert>{coupons.error.message}</Alert>}
       {coupons.data?.length === 0 && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-10 text-center text-sm text-stone-500">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
           Noch keine Gutscheine.
         </div>
       )}
       {coupons.data && coupons.data.length > 0 && (
-        <ul className="divide-y divide-stone-100 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
           {coupons.data.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <p className="font-mono font-medium tracking-wide text-stone-900">{c.code}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                <p className="font-mono font-medium tracking-wide text-gray-900">{c.code}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                   <span>{couponLabel(c, formatEuro)}</span>
                   {c.active ? <Badge tone="green">Aktiv</Badge> : <Badge tone="stone">Aus</Badge>}
                 </div>

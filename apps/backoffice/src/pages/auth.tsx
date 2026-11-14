@@ -6,7 +6,7 @@ import { Alert, AuthFrame, Button, Field, Input } from "../components/ui.js";
 import { ApiError, request, type CurrentSession } from "../lib/api.js";
 import { sessionKey } from "../lib/session.js";
 
-const linkStyle = "font-medium text-emerald-800 underline-offset-4 hover:underline";
+const linkStyle = "font-medium text-brand-800 underline-offset-4 hover:underline";
 
 export function SignInPage() {
   const navigate = useNavigate();

@@ -54,7 +54,7 @@ export function StatusBadge({ order }: { order: Pick<OrderSummary, "status" | "f
 
 function Loading({ label }: { label: string }) {
   return (
-    <div className="flex justify-center py-16 text-stone-400" role="status">
+    <div className="flex justify-center py-16 text-gray-400" role="status">
       <Spinner className="size-6" />
       <span className="sr-only">{label}</span>
     </div>
@@ -94,9 +94,9 @@ export function OrdersPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Bestellungen</h1>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Bestellungen</h1>
           {orders.data && (
-            <p className="text-sm text-stone-500" aria-live="polite">
+            <p className="text-sm text-gray-500" aria-live="polite">
               {filtered
                 ? count === 1
                   ? "1 Treffer"
@@ -109,7 +109,7 @@ export function OrdersPage() {
                   {" · "}
                   <button
                     type="button"
-                    className="text-emerald-800 hover:underline"
+                    className="text-brand-800 hover:underline"
                     onClick={() => setFilter({ stand: "versenden" })}
                   >
                     {open} zu versenden
@@ -129,31 +129,29 @@ export function OrdersPage() {
       {orders.isPending && <Loading label="Bestellungen werden geladen …" />}
       {orders.isError && <Alert>{orders.error.message}</Alert>}
       {orders.data?.length === 0 && filtered && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 text-center">
           <p className="font-medium">Keine Bestellungen gefunden</p>
-          <p className="mt-1 text-sm text-stone-500">Keine Bestellung passt zu Suche und Filter.</p>
+          <p className="mt-1 text-sm text-gray-500">Keine Bestellung passt zu Suche und Filter.</p>
           <Button variant="secondary" className="mt-4" onClick={() => setFilter({})}>
             Filter zurücksetzen
           </Button>
         </div>
       )}
       {orders.data?.length === 0 && !filtered && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 text-center">
           <p className="font-medium">Noch keine Bestellungen</p>
-          <p className="mt-1 text-sm text-stone-500">
-            Sobald jemand in deinem Shop kauft, erscheint es hier.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Sobald jemand in deinem Shop kauft, erscheint es hier.</p>
         </div>
       )}
       {orders.data && orders.data.length > 0 && (
         <div
           className={
-            "overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200 transition-opacity" +
+            "overflow-hidden rounded-lg bg-white ring-1 ring-gray-200 transition-opacity" +
             (orders.isPlaceholderData ? " opacity-60" : "")
           }
         >
           <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs text-stone-500 uppercase">
+            <thead>
               <tr>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Bestellung
@@ -172,11 +170,11 @@ export function OrdersPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-gray-100">
               {orders.data.map((o) => (
                 <tr
                   key={o.id}
-                  className="cursor-pointer hover:bg-stone-50"
+                  className="cursor-pointer hover:bg-gray-50"
                   onClick={() =>
                     void navigate({
                       to: "/$shop/bestellungen/$orderId",
@@ -188,7 +186,7 @@ export function OrdersPage() {
                     <Link
                       to="/$shop/bestellungen/$orderId"
                       params={{ shop: shop.handle, orderId: o.id }}
-                      className="font-medium text-stone-900 hover:underline"
+                      className="font-medium text-gray-900 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Nr. {o.orderNumber}
@@ -197,12 +195,12 @@ export function OrdersPage() {
                       <StatusBadge order={o} />
                     </div>
                   </td>
-                  <td className="hidden px-4 py-3 text-stone-600 md:table-cell">
+                  <td className="hidden px-4 py-3 text-gray-600 md:table-cell">
                     {DATE.format(new Date(o.placedAt))}
                   </td>
                   <td className="px-4 py-3">
                     <div>{o.customerName || "–"}</div>
-                    <div className="text-xs text-stone-500">
+                    <div className="text-xs text-gray-500">
                       {o.itemCount === 1 ? "1 Artikel" : `${o.itemCount} Artikel`}
                     </div>
                   </td>
@@ -318,14 +316,14 @@ export function OrderPage() {
           <Link
             to="/$shop/bestellungen"
             params={{ shop: shop.handle }}
-            className="text-sm text-stone-500 hover:text-stone-800"
+            className="text-sm text-gray-500 hover:text-gray-800"
           >
             ← Alle Bestellungen
           </Link>
-          <h1 className="mt-1 flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-1 flex flex-wrap items-center gap-3 text-[22px] font-semibold tracking-[-0.01em] text-gray-900">
             Bestellung {o.orderNumber} <StatusBadge order={o} />
           </h1>
-          <p className="text-sm text-stone-500">{DATE.format(new Date(o.placedAt))}</p>
+          <p className="text-sm text-gray-500">{DATE.format(new Date(o.placedAt))}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canCancel && (
@@ -368,7 +366,7 @@ export function OrderPage() {
       </div>
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
         <Card title="Artikel" className="lg:col-span-2">
-          <ul className="divide-y divide-stone-100">
+          <ul className="divide-y divide-gray-100">
             {o.lines.map((l) => (
               <li key={l.position} className="flex items-baseline justify-between gap-4 py-3 text-sm">
                 <div>
@@ -379,7 +377,7 @@ export function OrderPage() {
                   >
                     {l.name}
                   </Link>
-                  <div className="text-xs text-stone-500">
+                  <div className="text-xs text-gray-500">
                     {l.quantity} × {formatEuro(l.unitPrice)} · {l.taxRatePercent} % MwSt.
                     {l.sku && ` · Art.-Nr. ${l.sku}`}
                   </div>
@@ -388,23 +386,23 @@ export function OrderPage() {
               </li>
             ))}
           </ul>
-          <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-stone-200 pt-4 text-sm">
-            <dt className="text-stone-600">Zwischensumme</dt>
+          <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-gray-200 pt-4 text-sm">
+            <dt className="text-gray-600">Zwischensumme</dt>
             <dd className="text-right tabular-nums">{formatEuro(o.subtotal)}</dd>
             {(o.discount ?? 0) > 0 && (
               <>
-                <dt className="text-stone-600">Gutschein {o.couponCode}</dt>
+                <dt className="text-gray-600">Gutschein {o.couponCode}</dt>
                 <dd className="text-right text-red-700 tabular-nums">−{formatEuro(o.discount ?? 0)}</dd>
               </>
             )}
-            <dt className="text-stone-600">Versand</dt>
+            <dt className="text-gray-600">Versand</dt>
             <dd className="text-right tabular-nums">
               {o.shipping === 0 ? "kostenlos" : formatEuro(o.shipping)}
             </dd>
             <dt className="font-semibold">Gesamt</dt>
             <dd className="text-right font-semibold tabular-nums">{formatEuro(o.total)}</dd>
             {Object.entries(o.taxByRate).map(([rate, cents]) => (
-              <div key={rate} className="contents text-xs text-stone-500">
+              <div key={rate} className="contents text-xs text-gray-500">
                 <dt>enthaltene MwSt. {rate} %</dt>
                 <dd className="text-right tabular-nums">{formatEuro(cents)}</dd>
               </div>
@@ -416,7 +414,7 @@ export function OrderPage() {
             <p className="text-sm">
               {o.address.firstName} {o.address.lastName}
               <br />
-              <a href={`mailto:${o.email}`} className="text-emerald-800 hover:underline">
+              <a href={`mailto:${o.email}`} className="text-brand-800 hover:underline">
                 {o.email}
               </a>
             </p>
@@ -493,7 +491,7 @@ function NoteCard({ order, onSaved }: { order: Order; onSaved: (o: Order) => voi
         <Button variant="secondary" busy={save.isPending} disabled={!changed} onClick={() => save.mutate()}>
           Notiz speichern
         </Button>
-        {save.isSuccess && !changed && <span className="text-sm text-emerald-800">Gespeichert</span>}
+        {save.isSuccess && !changed && <span className="text-sm text-brand-800">Gespeichert</span>}
       </div>
     </Card>
   );

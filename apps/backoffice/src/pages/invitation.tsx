@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Alert, AuthFrame, Button, Field, Input } from "../components/ui.js";
 import { ApiError, request } from "../lib/api.js";
 
-const linkStyle = "font-medium text-emerald-800 underline-offset-4 hover:underline";
+const linkStyle = "font-medium text-brand-800 underline-offset-4 hover:underline";
 
 function codeFromHash(): string {
   return new URLSearchParams(window.location.hash.slice(1)).get("code") ?? "";

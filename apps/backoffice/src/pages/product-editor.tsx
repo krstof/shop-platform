@@ -146,7 +146,7 @@ export function EditProductPage() {
   });
   if (product.isPending)
     return (
-      <div className="flex justify-center py-16 text-stone-400" role="status">
+      <div className="flex justify-center py-16 text-gray-400" role="status">
         <Spinner className="size-6" />
         <span className="sr-only">Produkt wird geladen …</span>
       </div>
@@ -229,11 +229,11 @@ function ProductEditor({ product }: { product: Product | undefined }) {
           <Link
             to="/$shop/produkte"
             params={{ shop: shop.handle }}
-            className="text-sm text-stone-500 hover:text-stone-800"
+            className="text-sm text-gray-500 hover:text-gray-800"
           >
             ← Alle Produkte
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.01em] text-gray-900">
             {isNew ? "Neues Produkt" : form.name || "Produkt"}
           </h1>
         </div>
@@ -299,7 +299,7 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                       onChange={(e) => set("price")(e.target.value)}
                       className="pr-8"
                     />
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-400">
                       €
                     </span>
                   </div>
@@ -320,7 +320,7 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                       onChange={(e) => set("salePrice")(e.target.value)}
                       className="pr-8"
                     />
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-400">
                       €
                     </span>
                   </div>
@@ -362,7 +362,7 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                       value={form.deliveryMin}
                       onChange={(e) => set("deliveryMin")(e.target.value)}
                     />
-                    <span className="text-sm text-stone-500">bis</span>
+                    <span className="text-sm text-gray-500">bis</span>
                     <Input
                       inputMode="numeric"
                       aria-label="Lieferzeit bis (Werktage)"
@@ -392,13 +392,13 @@ function ProductEditor({ product }: { product: Product | undefined }) {
             <label className="flex items-start gap-3 text-sm">
               <input
                 type="checkbox"
-                className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
+                className="mt-0.5 size-4 rounded border-gray-300 text-brand-700 focus:ring-brand-600"
                 checked={form.published}
                 onChange={(e) => set("published")(e.target.checked)}
               />
               <span>
                 <span className="font-medium">Im Shop sichtbar</span>
-                <span className="block text-stone-500">Sonst bleibt das Produkt ein Entwurf.</span>
+                <span className="block text-gray-500">Sonst bleibt das Produkt ein Entwurf.</span>
               </span>
             </label>
           </Card>
@@ -445,7 +445,7 @@ function CopyProductCard({ product }: { product: Product }) {
   });
   return (
     <Card title="Produkt kopieren">
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-gray-500">
         Legt eine Kopie mit gleichem Text, Preis, Kategorie und Bildern an, als Entwurf mit Bestand 0.
         Praktisch für ähnliche Produkte.
       </p>
@@ -483,7 +483,7 @@ function DeleteProductCard({ product }: { product: Product }) {
   });
   return (
     <Card title="Produkt löschen">
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-gray-500">
         Verschwindet aus dem Shop und aus dieser Liste. Bestellungen behalten ihre Angaben.
       </p>
       {remove.isError && (
@@ -621,7 +621,7 @@ function ImagesCard({ product, pending, setPending, onChanged }: ImagesCardProps
             <img
               src={item.url}
               alt={i === 0 ? "Hauptbild" : `Bild ${i + 1}`}
-              className="aspect-square w-full rounded-lg bg-stone-100 object-cover ring-1 ring-stone-200"
+              className="aspect-square w-full rounded-lg bg-gray-100 object-cover ring-1 ring-gray-200"
             />
             {i === 0 && (
               <span className="absolute top-2 left-2 rounded bg-white/90 px-1.5 py-0.5 text-xs font-medium shadow-sm">
@@ -668,9 +668,9 @@ function ImagesCard({ product, pending, setPending, onChanged }: ImagesCardProps
             disabled={busy === "upload"}
             className={
               "flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed " +
-              "text-sm text-stone-500 transition-colors hover:border-emerald-600 hover:text-emerald-800 " +
-              "focus-visible:outline-2 focus-visible:outline-emerald-600 " +
-              (dragging ? "border-emerald-600 bg-emerald-50" : "border-stone-300")
+              "text-sm text-gray-500 transition-colors hover:border-brand-600 hover:text-brand-800 " +
+              "focus-visible:outline-2 focus-visible:outline-brand-600 " +
+              (dragging ? "border-brand-600 bg-brand-50" : "border-gray-300")
             }
           >
             {busy === "upload" ? (
@@ -699,7 +699,7 @@ function ImagesCard({ product, pending, setPending, onChanged }: ImagesCardProps
         aria-hidden="true"
         onChange={onPick}
       />
-      <p className="mt-3 text-xs text-stone-500">
+      <p className="mt-3 text-xs text-gray-500">
         JPEG, PNG oder WebP, bis 8 MB. Das erste Bild ist das Hauptbild.
         {product === undefined && pending.length > 0 && " Die Bilder werden beim Anlegen hochgeladen."}
       </p>
@@ -723,7 +723,7 @@ function IconButton({
       aria-label={label}
       title={label}
       {...rest}
-      className="rounded-md px-2 py-1 text-xs text-stone-600 ring-1 ring-stone-200 hover:bg-stone-100 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600"
+      className="rounded-md px-2 py-1 text-xs text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-brand-600"
     >
       {children}
     </button>

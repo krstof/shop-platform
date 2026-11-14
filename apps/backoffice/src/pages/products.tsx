@@ -37,8 +37,8 @@ export function useCategories(shopId: string) {
 }
 
 const newButton =
-  "inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white shadow-sm " +
-  "hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600";
+  "inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm " +
+  "hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
 export function ProductsPage() {
   const shop = useShop();
@@ -115,9 +115,9 @@ export function ProductsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Produkte</h1>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Produkte</h1>
           {products.data && (
-            <p className="text-sm text-stone-500" aria-live="polite">
+            <p className="text-sm text-gray-500" aria-live="polite">
               {filtered
                 ? products.data.length === 1
                   ? "1 Treffer"
@@ -137,7 +137,7 @@ export function ProductsPage() {
 
       {selectedVisible.size > 0 && (
         <div
-          className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm text-white"
+          className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm text-white"
           role="region"
           aria-label="Sammelaktionen"
         >
@@ -174,25 +174,25 @@ export function ProductsPage() {
       )}
 
       {products.isPending && (
-        <div className="flex justify-center py-16 text-stone-400" role="status">
+        <div className="flex justify-center py-16 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Produkte werden geladen …</span>
         </div>
       )}
       {products.isError && <Alert>{products.error.message}</Alert>}
       {products.data?.length === 0 && filtered && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 text-center">
           <p className="font-medium">Keine Produkte gefunden</p>
-          <p className="mt-1 text-sm text-stone-500">Kein Produkt passt zu Suche und Filter.</p>
+          <p className="mt-1 text-sm text-gray-500">Kein Produkt passt zu Suche und Filter.</p>
           <Button variant="secondary" className="mt-4" onClick={() => setFilter({})}>
             Filter zurücksetzen
           </Button>
         </div>
       )}
       {products.data?.length === 0 && !filtered && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 text-center">
           <p className="font-medium">Noch keine Produkte</p>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-gray-500">
             Lege dein erstes Produkt an, mit Preis, Bestand und Bildern.
           </p>
         </div>
@@ -200,17 +200,17 @@ export function ProductsPage() {
       {products.data && products.data.length > 0 && (
         <div
           className={
-            "overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200 transition-opacity" +
+            "overflow-hidden rounded-lg bg-white ring-1 ring-gray-200 transition-opacity" +
             (products.isPlaceholderData ? " opacity-60" : "")
           }
         >
           <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs text-stone-500 uppercase">
+            <thead>
               <tr>
                 <th scope="col" className="w-10 py-3 pl-4">
                   <input
                     type="checkbox"
-                    className="size-4 rounded border-stone-300 text-emerald-700"
+                    className="size-4 rounded border-gray-300 text-brand-700"
                     aria-label="Alle auswählen"
                     checked={allSelected}
                     onChange={() => {
@@ -236,11 +236,11 @@ export function ProductsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-gray-100">
               {(sorted ?? []).map((p) => (
                 <tr
                   key={p.id}
-                  className="cursor-pointer hover:bg-stone-50"
+                  className="cursor-pointer hover:bg-gray-50"
                   onClick={() =>
                     void navigate({
                       to: "/$shop/produkte/$productId",
@@ -251,7 +251,7 @@ export function ProductsPage() {
                   <td className="py-2 pl-4" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
-                      className="size-4 rounded border-stone-300 text-emerald-700"
+                      className="size-4 rounded border-gray-300 text-brand-700"
                       aria-label={`„${p.name}“ auswählen`}
                       checked={selectedVisible.has(p.id)}
                       onChange={() => {
@@ -267,7 +267,7 @@ export function ProductsPage() {
                     <Link
                       to="/$shop/produkte/$productId"
                       params={{ shop: shop.handle, productId: p.id }}
-                      className="font-medium text-stone-900 hover:underline"
+                      className="font-medium text-gray-900 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {p.name}
@@ -280,7 +280,7 @@ export function ProductsPage() {
                       )}
                     </div>
                   </td>
-                  <td className="hidden px-4 py-3 text-stone-600 md:table-cell">
+                  <td className="hidden px-4 py-3 text-gray-600 md:table-cell">
                     {p.categoryId === null ? "–" : (categoryName.get(p.categoryId) ?? "–")}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
@@ -291,7 +291,7 @@ export function ProductsPage() {
                     ) : (
                       <span className="flex flex-col items-end">
                         <span className="font-medium text-red-700">{formatEuro(p.salePrice.amount)}</span>
-                        <span className="text-xs text-stone-400 line-through">
+                        <span className="text-xs text-gray-400 line-through">
                           <span className="sr-only">statt </span>
                           {formatEuro(p.price.amount)}
                         </span>
@@ -395,7 +395,7 @@ function FilterBar({
 function Thumbnail({ product }: { product: Product }) {
   const image = product.images[0];
   if (image === undefined)
-    return <div className="size-12 rounded-lg bg-stone-100 ring-1 ring-stone-200" aria-hidden="true" />;
+    return <div className="size-12 rounded-lg bg-gray-100 ring-1 ring-gray-200" aria-hidden="true" />;
   return (
     <img
       src={image.thumbnailUrl}
@@ -403,7 +403,7 @@ function Thumbnail({ product }: { product: Product }) {
       width={48}
       height={48}
       loading="lazy"
-      className="size-12 rounded-lg bg-stone-100 object-cover ring-1 ring-stone-200"
+      className="size-12 rounded-lg bg-gray-100 object-cover ring-1 ring-gray-200"
     />
   );
 }

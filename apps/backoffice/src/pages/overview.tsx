@@ -54,7 +54,7 @@ export function OverviewPage() {
 
   if (stats.isPending)
     return (
-      <div className="flex justify-center py-16 text-stone-400" role="status">
+      <div className="flex justify-center py-16 text-gray-400" role="status">
         <Spinner className="size-6" />
         <span className="sr-only">Übersicht wird geladen …</span>
       </div>
@@ -71,8 +71,8 @@ export function OverviewPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Übersicht</h1>
-        <p className="text-sm text-stone-500">Was heute in {shop.name} los ist.</p>
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Übersicht</h1>
+        <p className="text-sm text-gray-500">Was heute in {shop.name} los ist.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -108,12 +108,12 @@ export function OverviewPage() {
         <Card title="Fast ausverkauft">
           {products.isPending && <Spinner />}
           {products.data && scarce.length === 0 && (
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-gray-500">
               Alles gut: Kein Produkt im Shop hat {LOW_STOCK} Stück oder weniger.
             </p>
           )}
           {scarce.length > 0 && (
-            <ul className="divide-y divide-stone-100">
+            <ul className="divide-y divide-gray-100">
               {scarce.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <Link
@@ -124,9 +124,7 @@ export function OverviewPage() {
                     {p.name}
                   </Link>
                   <span
-                    className={
-                      p.stock === 0 ? "shrink-0 font-medium text-red-700" : "shrink-0 text-stone-600"
-                    }
+                    className={p.stock === 0 ? "shrink-0 font-medium text-red-700" : "shrink-0 text-gray-600"}
                   >
                     {p.stock === 0 ? "ausverkauft" : `noch ${p.stock}`}
                   </span>
@@ -139,12 +137,12 @@ export function OverviewPage() {
 
       <Card title="Neueste Bestellungen" className="mt-6">
         {recent.data?.data.length === 0 && (
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-gray-500">
             Noch keine Bestellungen. Sobald jemand kauft, steht es hier.
           </p>
         )}
         {recent.data && recent.data.data.length > 0 && (
-          <ul className="divide-y divide-stone-100">
+          <ul className="divide-y divide-gray-100">
             {recent.data.data.map((o) => (
               <li key={o.id} className="flex items-start justify-between gap-4 py-2.5 text-sm">
                 <div className="min-w-0">
@@ -155,7 +153,7 @@ export function OverviewPage() {
                   >
                     Nr. {o.orderNumber}
                   </Link>
-                  <p className="truncate text-xs text-stone-500">
+                  <p className="truncate text-xs text-gray-500">
                     {o.customerName || "–"} · {DATE.format(new Date(o.placedAt))}
                   </p>
                 </div>
@@ -171,7 +169,7 @@ export function OverviewPage() {
           <Link
             to="/$shop/bestellungen"
             params={{ shop: shop.handle }}
-            className="text-emerald-800 hover:underline"
+            className="text-brand-800 hover:underline"
           >
             Alle Bestellungen
           </Link>
@@ -201,26 +199,26 @@ function Tile({
   const shop = useShop();
   const body = (
     <>
-      <p className="text-sm text-stone-500">{label}</p>
+      <p className="text-sm text-gray-500">{label}</p>
       <p
         className={
           "mt-1 text-xl font-semibold tabular-nums sm:text-2xl " +
-          (highlight ? "text-emerald-800" : "text-stone-900")
+          (highlight ? "text-brand-800" : "text-gray-900")
         }
       >
         {value}
       </p>
-      <p className="mt-1 text-xs text-stone-500">{note}</p>
+      <p className="mt-1 text-xs text-gray-500">{note}</p>
     </>
   );
-  const box = "block rounded-xl bg-white p-4 shadow-sm ring-1 ring-stone-200 sm:p-5";
+  const box = "block rounded-lg bg-white p-4 ring-1 ring-gray-200 sm:p-5";
   if (to === undefined) return <div className={box}>{body}</div>;
   return (
     <Link
       to="/$shop/bestellungen"
       params={{ shop: shop.handle }}
       search={{ stand: to }}
-      className={box + " hover:ring-stone-300"}
+      className={box + " hover:ring-gray-300"}
     >
       {body}
     </Link>
@@ -235,7 +233,7 @@ function RevenueChart({ days }: { days: OrderStats["days"] }) {
   const max = Math.max(...days.map((d) => d.revenue), 1);
   return (
     <div>
-      <div className="flex h-44 items-end gap-2 border-b border-stone-200 sm:gap-3" role="list">
+      <div className="flex h-44 items-end gap-2 border-b border-gray-200 sm:gap-3" role="list">
         {days.map((d, i) => {
           const label = dayLabel(d.date);
           const height = d.revenue === 0 ? 0 : Math.max(4, Math.round((d.revenue / max) * 100));
@@ -251,14 +249,13 @@ function RevenueChart({ days }: { days: OrderStats["days"] }) {
               onClick={() => void navigate({ to: "/$shop/bestellungen", params: { shop: shop.handle } })}
             >
               {hover === i && (
-                <div className="pointer-events-none absolute bottom-full z-10 mb-1 rounded-md bg-stone-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow">
+                <div className="pointer-events-none absolute bottom-full z-10 mb-1 rounded-md bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow">
                   {formatEuro(d.revenue)} · {count(d.orders, "Bestellung")}
                 </div>
               )}
               <div
                 className={
-                  "w-full max-w-10 rounded-t " +
-                  (i === days.length - 1 ? "bg-emerald-700" : "bg-emerald-600/70")
+                  "w-full max-w-10 rounded-t " + (i === days.length - 1 ? "bg-brand-700" : "bg-brand-600/70")
                 }
                 style={{ height: `${height}%` }}
               />
@@ -270,8 +267,8 @@ function RevenueChart({ days }: { days: OrderStats["days"] }) {
         {days.map((d, i) => {
           const label = dayLabel(d.date);
           return (
-            <div key={d.date} className="flex-1 text-center text-xs text-stone-500">
-              <div className={i === days.length - 1 ? "font-medium text-stone-800" : undefined}>
+            <div key={d.date} className="flex-1 text-center text-xs text-gray-500">
+              <div className={i === days.length - 1 ? "font-medium text-gray-800" : undefined}>
                 {i === days.length - 1 ? "Heute" : label.weekday}
               </div>
               <div className="hidden sm:block">{label.day}</div>

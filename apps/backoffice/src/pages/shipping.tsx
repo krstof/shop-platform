@@ -58,14 +58,14 @@ export function ShippingPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Versand</h1>
-        <p className="text-sm text-stone-500">
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Versand</h1>
+        <p className="text-sm text-gray-500">
           Was der Versand innerhalb Deutschlands kostet. Gilt sofort im Shop; bestehende Bestellungen bleiben,
           wie sie sind.
         </p>
       </div>
       {settings.isPending && (
-        <div className="flex justify-center py-10 text-stone-400" role="status">
+        <div className="flex justify-center py-10 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Versandkosten werden geladen …</span>
         </div>
@@ -86,7 +86,7 @@ export function ShippingPage() {
                       onChange={(e) => set("amount")(e.target.value)}
                       className="pr-8"
                     />
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-400">
                       €
                     </span>
                   </div>
@@ -103,7 +103,7 @@ export function ShippingPage() {
                       onChange={(e) => set("freeFrom")(e.target.value)}
                       className="pr-8"
                     />
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-400">
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-400">
                       €
                     </span>
                   </div>
@@ -111,7 +111,7 @@ export function ShippingPage() {
               </Field>
             </div>
             {parsed.ok && (
-              <p className="rounded-lg bg-stone-50 px-4 py-3 text-sm text-stone-700 ring-1 ring-stone-200">
+              <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700 ring-1 ring-gray-200">
                 <span className="font-medium">So sieht es im Shop aus: </span>
                 {shippingSummary(parsed.body.amount, parsed.body.freeFrom, formatEuro)}
               </p>

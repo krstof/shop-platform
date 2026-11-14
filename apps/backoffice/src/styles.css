@@ -1,6 +1,60 @@
+/* Gestaltung des Backoffice (Redesign 14.11.2026, angelehnt an moderne SaaS-Werkzeuge wie airfocus):
+   helle Seitenleiste, weiße Arbeitsfläche, kühles Grau, klares Blau als Hauptfarbe, Schrift Figtree
+   (Open Font License, liegt im Paket, kein Abruf von außen). */
 @import "tailwindcss";
+@import "@fontsource-variable/figtree";
 
 @theme {
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* Hauptfarbe: Blau. Weiße Schrift auf brand-600 hat über 5 : 1 Kontrast. */
+  --color-brand-50: #eef3ff;
+  --color-brand-100: #dfe8ff;
+  --color-brand-200: #c3d4ff;
+  --color-brand-300: #98b5ff;
+  --color-brand-400: #6a8ffb;
+  --color-brand-500: #4a6ef3;
+  --color-brand-600: #3354e0;
+  --color-brand-700: #2a43c0;
+  --color-brand-800: #26399b;
+  --color-brand-900: #24347a;
+  --color-brand-950: #181f47;
+
+  /* Neutrale Töne: kühles Grau mit einem Hauch Blau. */
+  --color-gray-25: #fbfcfd;
+  --color-gray-50: #f6f7f9;
+  --color-gray-100: #eef0f3;
+  --color-gray-150: #e6e9ee;
+  --color-gray-200: #dfe3e8;
+  --color-gray-300: #c9ced6;
+  --color-gray-400: #9aa2ae;
+  --color-gray-500: #6c7480;
+  --color-gray-600: #535a66;
+  --color-gray-700: #3d434d;
+  --color-gray-800: #282d35;
+  --color-gray-900: #181c22;
+
+  --shadow-xs: 0 1px 2px 0 rgb(24 28 34 / 0.05);
+  --shadow-pop: 0 12px 32px -8px rgb(24 28 34 / 0.18), 0 2px 6px -2px rgb(24 28 34 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01";
+  }
+  body {
+    @apply bg-white text-gray-900;
+  }
+  /* Tabellen: ruhige Kopfzeile ohne Großbuchstaben, feine Linien, Zeile hebt sich beim Zeigen ab. */
+  table thead {
+    @apply bg-gray-25 text-gray-500 normal-case;
+  }
+  table thead th {
+    @apply border-b border-gray-200 text-xs font-medium tracking-normal;
+  }
+  table tbody tr {
+    @apply transition-colors hover:bg-gray-50;
+  }
 }

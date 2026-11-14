@@ -13,7 +13,7 @@ function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600";
+const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -29,9 +29,9 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const styles = {
-    primary: "bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm",
-    secondary: "bg-white text-stone-800 ring-1 ring-stone-300 hover:bg-stone-100 shadow-sm",
-    ghost: "text-stone-700 hover:bg-stone-200/60",
+    primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-xs",
+    secondary: "bg-white text-gray-800 ring-1 ring-gray-200 hover:bg-gray-50 hover:ring-gray-300 shadow-xs",
+    ghost: "text-gray-700 hover:bg-gray-100",
     danger: "bg-white text-red-700 ring-1 ring-red-200 hover:bg-red-50",
   }[variant];
   return (
@@ -41,7 +41,7 @@ export function Button({
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+        "inline-flex min-h-9 items-center justify-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-60",
         focus,
         styles,
@@ -79,7 +79,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-stone-800">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-800">
         {label}
       </label>
       {children({
@@ -88,7 +88,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
         ...(error ? { "aria-invalid": true as const } : {}),
       })}
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-xs text-stone-500">
+        <p id={`${id}-hint`} className="text-xs text-gray-500">
           {hint}
         </p>
       )}
@@ -102,8 +102,8 @@ export function Field({ label, hint, error, children }: FieldProps) {
 }
 
 const control = cx(
-  "block w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-stone-900 shadow-sm ring-1 ring-stone-300",
-  "placeholder:text-stone-400 focus:ring-2 focus:ring-emerald-600 focus:outline-none",
+  "block w-full rounded-md border-0 bg-white px-3 py-[7px] text-sm text-gray-900 shadow-xs ring-1 ring-gray-200",
+  "placeholder:text-gray-400 hover:ring-gray-300 focus:ring-2 focus:ring-brand-500 focus:outline-none",
   "aria-[invalid=true]:ring-red-400",
 );
 
@@ -133,8 +133,8 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={cx("rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200", className)}>
-      {title && <h2 className="mb-4 text-sm font-semibold text-stone-900">{title}</h2>}
+    <section className={cx("rounded-lg bg-white p-5 ring-1 ring-gray-200", className)}>
+      {title && <h2 className="mb-4 text-[15px] font-semibold text-gray-900">{title}</h2>}
       {children}
     </section>
   );
@@ -149,7 +149,7 @@ export function Alert({
 }) {
   const styles = {
     error: "bg-red-50 text-red-800 ring-red-200",
-    success: "bg-emerald-50 text-emerald-900 ring-emerald-200",
+    success: "bg-brand-50 text-brand-900 ring-brand-200",
     info: "bg-sky-50 text-sky-900 ring-sky-200",
   }[tone];
   return (
@@ -162,16 +162,30 @@ export function Alert({
   );
 }
 
-export function Badge({ tone, children }: { tone: "green" | "stone" | "amber"; children: ReactNode }) {
+/** Status als farbige Marke mit Punkt (wie „Released“, „To do“ in airfocus). */
+export function Badge({
+  tone,
+  children,
+}: {
+  tone: "green" | "stone" | "amber" | "blue" | "red" | "violet";
+  children: ReactNode;
+}) {
   const styles = {
-    green: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-    stone: "bg-stone-100 text-stone-700 ring-stone-200",
-    amber: "bg-amber-50 text-amber-800 ring-amber-200",
+    green: ["bg-[#e3f5e9] text-[#1d6b3c]", "bg-[#2f9e5b]"],
+    stone: ["bg-gray-100 text-gray-600", "bg-gray-400"],
+    amber: ["bg-[#fdf1d8] text-[#8a5a00]", "bg-[#e0a325]"],
+    blue: ["bg-brand-50 text-brand-800", "bg-brand-500"],
+    red: ["bg-red-50 text-red-800", "bg-red-500"],
+    violet: ["bg-violet-50 text-violet-800", "bg-violet-500"],
   }[tone];
   return (
     <span
-      className={cx("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1", styles)}
+      className={cx(
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        styles[0],
+      )}
     >
+      <span aria-hidden="true" className={cx("size-1.5 rounded-full", styles[1])} />
       {children}
     </span>
   );
@@ -188,14 +202,14 @@ export function AuthFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-12">
+    <main className="flex min-h-dvh items-center justify-center bg-gray-50 px-4 py-12">
       <div className="w-full max-w-sm">
         <p className="mb-6 flex justify-center">
           <SlopifyLogo size="lg" />
         </p>
-        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-stone-200">
-          <h1 className="text-xl font-semibold text-stone-900">{title}</h1>
-          {intro && <p className="mt-1 text-sm text-stone-600">{intro}</p>}
+        <div className="rounded-xl bg-white p-8 shadow-pop ring-1 ring-gray-200">
+          <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+          {intro && <p className="mt-1 text-sm text-gray-600">{intro}</p>}
           <div className="mt-6">{children}</div>
         </div>
       </div>

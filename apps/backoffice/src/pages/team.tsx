@@ -22,7 +22,7 @@ export function TeamPage() {
   if (shop.role !== "owner")
     return (
       <div>
-        <h1 className="mb-4 text-2xl font-semibold tracking-tight">Team</h1>
+        <h1 className="mb-4 text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Team</h1>
         <Alert>Nur die Inhaberin oder der Inhaber des Shops kann das Team verwalten.</Alert>
       </div>
     );
@@ -44,8 +44,8 @@ function TeamOwnerView() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
-        <p className="text-sm text-stone-500">
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Team</h1>
+        <p className="text-sm text-gray-500">
           Lade Kolleginnen und Kollegen ein. Sie können dann Produkte, Kategorien, Bestellungen und das
           Aussehen bearbeiten, aber kein Team verwalten.
         </p>
@@ -60,21 +60,21 @@ function TeamOwnerView() {
         </div>
       )}
       {members.isPending && (
-        <div className="flex justify-center py-10 text-stone-400" role="status">
+        <div className="flex justify-center py-10 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Team wird geladen …</span>
         </div>
       )}
       {members.isError && <Alert>{members.error.message}</Alert>}
       {members.data && (
-        <ul className="divide-y divide-stone-100 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
           {members.data.map((m) => {
             const status = statusLabel(m.status);
             return (
               <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-stone-900">{m.name ?? m.email}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                  <p className="truncate font-medium text-gray-900">{m.name ?? m.email}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     {m.name !== null && <span className="truncate">{m.email}</span>}
                     <span>{roleLabel(m.role)}</span>
                     <Badge tone={status.tone}>{status.text}</Badge>

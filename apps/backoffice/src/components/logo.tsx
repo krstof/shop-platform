@@ -21,7 +21,7 @@ export function SlopifyLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <SlopifyMark className={mark} />
-      <span className={`${text} font-extrabold tracking-tight text-stone-900`}>slopify</span>
+      <span className={`${text} font-extrabold tracking-tight text-gray-900`}>slopify</span>
     </span>
   );
 }

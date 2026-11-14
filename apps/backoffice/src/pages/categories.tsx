@@ -17,8 +17,8 @@ import { useShop } from "./layout.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
 
 const newButton =
-  "inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white shadow-sm " +
-  "hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600";
+  "inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm " +
+  "hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
 /** Neue Reihenfolge nach dem Verschieben eines Eintrags um einen Platz (Abstand 10, Position ab 10). */
 export function reorder(
@@ -73,9 +73,9 @@ export function CategoriesPage() {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Kategorien</h1>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Kategorien</h1>
           {categories.data && (
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-gray-500">
               {list.length === 1 ? "1 Kategorie" : `${list.length} Kategorien`} · Reihenfolge wie im Shop
             </p>
           )}
@@ -95,22 +95,22 @@ export function CategoriesPage() {
         </div>
       )}
       {categories.isPending && (
-        <div className="flex justify-center py-16 text-stone-400" role="status">
+        <div className="flex justify-center py-16 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Kategorien werden geladen …</span>
         </div>
       )}
       {categories.isError && <Alert>{categories.error.message}</Alert>}
       {categories.data?.length === 0 && (
-        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-16 text-center">
           <p className="font-medium">Noch keine Kategorien</p>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-gray-500">
             Mit Kategorien finden Kunden im Shop schneller, was sie suchen.
           </p>
         </div>
       )}
       {list.length > 0 && (
-        <ul className="divide-y divide-stone-100 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
           {list.map((c, i) => (
             <li key={c.id} className="flex items-center gap-3 px-4 py-3">
               <div className="flex flex-col">
@@ -133,11 +133,11 @@ export function CategoriesPage() {
                 <Link
                   to="/$shop/kategorien/$categoryId"
                   params={{ shop: shop.handle, categoryId: c.id }}
-                  className="font-medium text-stone-900 hover:underline"
+                  className="font-medium text-gray-900 hover:underline"
                 >
                   {c.name}
                 </Link>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                   {c.visible ? <Badge tone="green">Im Shop</Badge> : <Badge tone="stone">Versteckt</Badge>}
                   <span>
                     {products.data === undefined
@@ -151,7 +151,7 @@ export function CategoriesPage() {
               <Link
                 to="/$shop/kategorien/$categoryId"
                 params={{ shop: shop.handle, categoryId: c.id }}
-                className="rounded-md px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"
+                className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
                 aria-label={`„${c.name}“ bearbeiten`}
               >
                 Bearbeiten
@@ -182,7 +182,7 @@ function MoveButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="rounded px-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-25 focus-visible:outline-2 focus-visible:outline-emerald-600"
+      className="rounded px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-25 focus-visible:outline-2 focus-visible:outline-brand-600"
     >
       <span aria-hidden="true">{children}</span>
     </button>
@@ -227,7 +227,7 @@ export function EditCategoryPage() {
   });
   if (category.isPending)
     return (
-      <div className="flex justify-center py-16 text-stone-400" role="status">
+      <div className="flex justify-center py-16 text-gray-400" role="status">
         <Spinner className="size-6" />
         <span className="sr-only">Kategorie wird geladen …</span>
       </div>
@@ -319,11 +319,11 @@ function CategoryEditor({ category }: { category: Category | undefined }) {
           <Link
             to="/$shop/kategorien"
             params={{ shop: shop.handle }}
-            className="text-sm text-stone-500 hover:text-stone-800"
+            className="text-sm text-gray-500 hover:text-gray-800"
           >
             ← Alle Kategorien
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.01em] text-gray-900">
             {isNew ? "Neue Kategorie" : form.name || "Kategorie"}
           </h1>
         </div>
@@ -375,13 +375,13 @@ function CategoryEditor({ category }: { category: Category | undefined }) {
           <label className="flex items-start gap-3 text-sm">
             <input
               type="checkbox"
-              className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
+              className="mt-0.5 size-4 rounded border-gray-300 text-brand-700 focus:ring-brand-600"
               checked={form.visible}
               onChange={(e) => set("visible")(e.target.checked)}
             />
             <span>
               <span className="font-medium">Im Shop sichtbar</span>
-              <span className="block text-stone-500">
+              <span className="block text-gray-500">
                 Versteckte Kategorien erscheinen nicht im Menü des Shops.
               </span>
             </span>
@@ -447,17 +447,17 @@ function CategoryImageCard({
   const error = problem ?? (upload.error ?? remove.error)?.message;
   return (
     <Card title="Bild">
-      <p className="mb-3 text-sm text-stone-500">
+      <p className="mb-3 text-sm text-gray-500">
         Erscheint auf der Kachel der Startseite und oben auf der Kategorieseite. Querformat passt am besten.
       </p>
       {category.image ? (
         <img
           src={category.image.thumbnailUrl}
           alt=""
-          className="mb-3 h-36 w-full max-w-sm rounded-lg bg-stone-100 object-cover ring-1 ring-stone-200"
+          className="mb-3 h-36 w-full max-w-sm rounded-lg bg-gray-100 object-cover ring-1 ring-gray-200"
         />
       ) : (
-        <div className="mb-3 flex h-36 w-full max-w-sm items-center justify-center rounded-lg border-2 border-dashed border-stone-300 text-sm text-stone-400">
+        <div className="mb-3 flex h-36 w-full max-w-sm items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-400">
           Noch kein Bild
         </div>
       )}
@@ -512,7 +512,7 @@ function DeleteCategoryCard({ category }: { category: Category }) {
   });
   return (
     <Card title="Kategorie löschen">
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-gray-500">
         Die Produkte darin bleiben erhalten und sind danach ohne Kategorie.
       </p>
       {remove.isError && (

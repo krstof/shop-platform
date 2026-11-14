@@ -67,11 +67,11 @@ function PlatformFrame({
 }) {
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
-          <Link to="/plattform" className="flex items-center gap-2 font-semibold text-stone-900">
+          <Link to="/plattform" className="flex items-center gap-2 font-semibold text-gray-900">
             <SlopifyLogo />
-            <span className="rounded-md bg-stone-900 px-2 py-0.5 text-xs font-medium tracking-wide text-white">
+            <span className="rounded-md bg-gray-900 px-2 py-0.5 text-xs font-medium tracking-wide text-white">
               Betrieb
             </span>
             <span className="hidden sm:inline">Plattform-Verwaltung</span>
@@ -80,13 +80,13 @@ function PlatformFrame({
             <Link
               to="/$shop/uebersicht"
               params={{ shop: firstShop }}
-              className="rounded-md px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"
+              className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
             >
               Zu meinem Shop
             </Link>
           )}
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden text-sm text-stone-500 sm:inline">{email}</span>
+            <span className="hidden text-sm text-gray-500 sm:inline">{email}</span>
             <SignOutButton />
           </div>
         </div>
@@ -149,7 +149,7 @@ function TwoFactorSetupCard() {
     return (
       <Card className="mx-auto max-w-md">
         <h1 className="text-xl font-semibold">Zwei-Faktor einrichten</h1>
-        <p className="mt-2 text-sm text-stone-600">
+        <p className="mt-2 text-sm text-gray-600">
           Die Plattform-Verwaltung öffnet sich nur mit einem zweiten Schritt beim Anmelden: einem Code aus
           einer Authenticator-App auf dem Handy (etwa Google Authenticator, Microsoft Authenticator oder
           2FAS). Das ist einmalig und dauert eine Minute.
@@ -185,7 +185,7 @@ function TwoFactorSetupCard() {
           <h2 className="text-sm font-semibold">1. Mit der App scannen</h2>
           <svg
             viewBox={`0 0 ${qr.size} ${qr.size}`}
-            className="mt-3 size-52 rounded-lg ring-1 ring-stone-200"
+            className="mt-3 size-52 rounded-lg ring-1 ring-gray-200"
             role="img"
             aria-label="QR-Code für die Authenticator-App"
             shapeRendering="crispEdges"
@@ -193,17 +193,17 @@ function TwoFactorSetupCard() {
             <rect width={qr.size} height={qr.size} fill="#fff" />
             <path d={qr.path} fill="#000" />
           </svg>
-          <p className="mt-3 text-xs text-stone-500">
+          <p className="mt-3 text-xs text-gray-500">
             Scannen klappt nicht? Diesen Schlüssel in der App eintippen:
           </p>
           <p className="mt-1 font-mono text-sm break-all select-all">{groupSecret(setup.secret)}</p>
         </div>
         <div>
           <h2 className="text-sm font-semibold">2. Ersatzcodes aufheben</h2>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="mt-1 text-xs text-gray-500">
             Falls das Handy weg ist: Jeder Code gilt einmal statt des App-Codes. Sie werden nur jetzt gezeigt.
           </p>
-          <ul className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-stone-50 p-3 font-mono text-sm select-all">
+          <ul className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-gray-50 p-3 font-mono text-sm select-all">
             {setup.backupCodes.map((c) => (
               <li key={c}>{c}</li>
             ))}
@@ -263,9 +263,9 @@ function ShopsAdmin() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Shops</h1>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Shops</h1>
           {shops.data && (
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-gray-500">
               {shops.data.length === 1 ? "1 Shop" : `${shops.data.length} Shops`} · {active} geöffnet
             </p>
           )}
@@ -293,7 +293,7 @@ function ShopsAdmin() {
         />
       )}
       {(shops.isPending || operator.isPending) && (
-        <div className="flex justify-center py-16 text-stone-400" role="status">
+        <div className="flex justify-center py-16 text-gray-400" role="status">
           <Spinner className="size-6" />
           <span className="sr-only">Shops werden geladen …</span>
         </div>
@@ -301,9 +301,9 @@ function ShopsAdmin() {
       {shops.isError && <Alert>{shops.error.message}</Alert>}
       {operator.isError && <Alert>{operator.error.message}</Alert>}
       {shops.data && operator.data && (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200">
+        <div className="overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
           <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs text-stone-500 uppercase">
+            <thead>
               <tr>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Shop
@@ -324,7 +324,7 @@ function ShopsAdmin() {
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-gray-100">
               {shops.data.map((s) => (
                 <ShopRow key={s.id} shop={s} canWrite={canWrite} />
               ))}
@@ -353,12 +353,12 @@ function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) 
   return (
     <tr>
       <td className="px-4 py-3">
-        <div className="font-medium text-stone-900">{shop.name}</div>
+        <div className="font-medium text-gray-900">{shop.name}</div>
         <a
           href={`${siblingOrigin("shop")}/${shop.handle}`}
           target="_blank"
           rel="noreferrer"
-          className="text-xs text-emerald-800 hover:underline"
+          className="text-xs text-brand-800 hover:underline"
         >
           /{shop.handle} ansehen
         </a>
@@ -368,8 +368,8 @@ function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) 
           </p>
         )}
       </td>
-      <td className="hidden px-4 py-3 text-stone-600 md:table-cell">{shop.ownerEmail ?? "–"}</td>
-      <td className="hidden px-4 py-3 text-stone-600 sm:table-cell">
+      <td className="hidden px-4 py-3 text-gray-600 md:table-cell">{shop.ownerEmail ?? "–"}</td>
+      <td className="hidden px-4 py-3 text-gray-600 sm:table-cell">
         {DATE.format(new Date(shop.createdAt))}
       </td>
       <td className="px-4 py-3">

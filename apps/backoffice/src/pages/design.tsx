@@ -193,7 +193,7 @@ export function DesignPage() {
   });
   if (design.isPending)
     return (
-      <div className="flex justify-center py-16 text-stone-400" role="status">
+      <div className="flex justify-center py-16 text-gray-400" role="status">
         <Spinner className="size-6" />
         <span className="sr-only">Aussehen wird geladen …</span>
       </div>
@@ -425,7 +425,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
   const heroFields = (
     <div>
       {form.home.heroImage ? (
-        <div className="mb-3 overflow-hidden rounded-lg ring-1 ring-stone-200">
+        <div className="mb-3 overflow-hidden rounded-lg ring-1 ring-gray-200">
           <img
             src={form.home.heroImage.thumbnailUrl}
             alt="Startseitenbild"
@@ -433,7 +433,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
           />
         </div>
       ) : (
-        <p className="mb-3 text-sm text-stone-500">
+        <p className="mb-3 text-sm text-gray-500">
           Ohne Bild zeigt die Startseite nur die Begrüßung auf hellem Grund.
         </p>
       )}
@@ -460,13 +460,13 @@ function DesignEditor({ initial }: { initial: DesignState }) {
           </Button>
         )}
       </div>
-      <p className="mt-2 text-xs text-stone-500">
+      <p className="mt-2 text-xs text-gray-500">
         Am besten ein breites Foto (Querformat), PNG, JPEG oder WebP.
       </p>
 
       <div className="mt-5 space-y-4">
         <div>
-          <label htmlFor="hero-titel" className="block text-sm font-medium text-stone-800">
+          <label htmlFor="hero-titel" className="block text-sm font-medium text-gray-800">
             Überschrift
           </label>
           <Input
@@ -477,10 +477,10 @@ function DesignEditor({ initial }: { initial: DesignState }) {
             onChange={(e) => setHome({ heroTitle: e.target.value })}
             className="mt-1.5"
           />
-          <p className="mt-1 text-xs text-stone-500">Leer lassen für die Standardbegrüßung.</p>
+          <p className="mt-1 text-xs text-gray-500">Leer lassen für die Standardbegrüßung.</p>
         </div>
         <div>
-          <label htmlFor="hero-text" className="block text-sm font-medium text-stone-800">
+          <label htmlFor="hero-text" className="block text-sm font-medium text-gray-800">
             Text darunter
           </label>
           <Textarea
@@ -491,7 +491,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
             onChange={(e) => setHome({ heroText: e.target.value })}
             className="mt-1.5 min-h-20"
           />
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="mt-1 text-xs text-gray-500">
             {form.home.heroText.length}/{MAX_HERO_TEXT} Zeichen. Leer lassen für den Standardtext.
           </p>
         </div>
@@ -511,7 +511,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
         />
       );
     return (
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-gray-500">
         {type === "new"
           ? "Zeigt von selbst die vier neuesten lieferbaren Produkte. Hier gibt es nichts einzustellen."
           : "Zeigt die sichtbaren Kategorien als Kacheln, mit Bild, wenn eins hinterlegt ist."}
@@ -525,8 +525,8 @@ function DesignEditor({ initial }: { initial: DesignState }) {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Aussehen</h1>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-stone-500">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Aussehen</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
             {unpublished ? (
               <Badge tone="amber">Nicht veröffentlichte Änderungen</Badge>
             ) : (
@@ -536,7 +536,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
               href={storefrontUrl(shop.handle, window.location)}
               target="_blank"
               rel="noreferrer"
-              className="text-emerald-800 hover:underline"
+              className="text-brand-800 hover:underline"
             >
               Shop ansehen ↗
             </a>
@@ -581,7 +581,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
       <BuilderDnd blocks={currentBlocks} onChange={setBlocks} onSelect={setSelectedId}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
           <div className="space-y-6">
-            <div role="tablist" aria-label="Bereich" className="flex rounded-lg bg-stone-100 p-1">
+            <div role="tablist" aria-label="Bereich" className="flex rounded-lg bg-gray-100 p-1">
               {[
                 { id: "startseite", name: "Seiten" },
                 { id: "stil", name: "Farben, Logo, Fußzeile" },
@@ -593,10 +593,8 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                   aria-selected={tab === t.id}
                   onClick={() => setTab(t.id as "startseite" | "stil")}
                   className={
-                    "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
-                    (tab === t.id
-                      ? "bg-white text-stone-900 shadow-sm"
-                      : "text-stone-600 hover:text-stone-900")
+                    "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+                    (tab === t.id ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900")
                   }
                 >
                   {t.name}
@@ -607,8 +605,12 @@ function DesignEditor({ initial }: { initial: DesignState }) {
             {tab === "startseite" && (
               <>
                 <div>
-                  <p className="mb-2 text-sm font-medium text-stone-700">Welche Seite bearbeiten?</p>
-                  <div role="radiogroup" aria-label="Seite" className="flex flex-wrap gap-2">
+                  <p className="mb-2 text-sm font-medium text-gray-700">Welche Seite bearbeiten?</p>
+                  <div
+                    role="radiogroup"
+                    aria-label="Seite"
+                    className="inline-flex flex-wrap gap-2 align-middle"
+                  >
                     {[{ id: "home", title: "Startseite" }, ...form.pages].map((p) => {
                       const active = (currentPage?.id ?? "home") === p.id;
                       const problem =
@@ -621,12 +623,12 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                           aria-checked={active}
                           onClick={() => showPage(p.id)}
                           className={
-                            "max-w-full truncate rounded-full px-3 py-1.5 text-sm ring-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
+                            "max-w-full truncate rounded-full px-3 py-1.5 text-sm ring-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
                             (active
-                              ? "bg-stone-900 text-white ring-stone-900"
+                              ? "bg-gray-900 text-white ring-gray-900"
                               : problem
                                 ? "bg-white text-red-700 ring-red-300 hover:bg-red-50"
-                                : "bg-white text-stone-700 ring-stone-300 hover:bg-stone-50")
+                                : "bg-white text-gray-700 ring-gray-300 hover:bg-gray-50")
                           }
                         >
                           {p.title.trim() || "Ohne Titel"}
@@ -638,7 +640,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                     type="button"
                     onClick={addPage}
                     disabled={form.pages.length >= MAX_PAGES}
-                    className="mt-2 rounded-full px-3 py-1.5 text-sm text-emerald-800 ring-1 ring-emerald-700/40 ring-dashed transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-2 ml-0 rounded-full px-3 py-1.5 align-middle sm:mt-0 sm:ml-2 text-sm text-brand-800 ring-1 ring-brand-700/40 ring-dashed transition hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {form.pages.length >= MAX_PAGES ? `Höchstens ${MAX_PAGES} Seiten` : "+ Neue Seite"}
                   </button>
@@ -699,16 +701,16 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                           />
                         )}
                       </Field>
-                      <label className="flex items-start gap-2.5 text-sm text-stone-800">
+                      <label className="flex items-start gap-2.5 text-sm text-gray-800">
                         <input
                           type="checkbox"
                           checked={currentPage.inFooter}
                           onChange={(e) => setPage(currentPage.id, { inFooter: e.target.checked })}
-                          className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                          className="mt-0.5 size-4 rounded border-gray-300 text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                         />
                         <span>
                           In der Fußzeile verlinken
-                          <span className="block text-xs text-stone-500">
+                          <span className="block text-xs text-gray-500">
                             Aus heißt: Die Seite ist nur über ihre Adresse erreichbar.
                           </span>
                         </span>
@@ -734,9 +736,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                     renderFixed={fixedFields}
                   />
                   {!currentPage && (
-                    <p className="mt-3 text-xs text-stone-500">
-                      Darunter zeigt der Shop immer alle Produkte.
-                    </p>
+                    <p className="mt-3 text-xs text-gray-500">Darunter zeigt der Shop immer alle Produkte.</p>
                   )}
                 </Card>
               </>
@@ -745,7 +745,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
             {tab === "stil" && (
               <>
                 <Card title="Hauptfarbe">
-                  <p className="mb-3 text-sm text-stone-500">Für Knöpfe, Links und Markierungen im Shop.</p>
+                  <p className="mb-3 text-sm text-gray-500">Für Knöpfe, Links und Markierungen im Shop.</p>
                   <div role="radiogroup" aria-label="Fertige Farben" className="grid grid-cols-3 gap-2">
                     {PRESETS.map((p) => {
                       const active = p.color === form.accentColor;
@@ -757,11 +757,9 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                           aria-checked={active}
                           onClick={() => setColor(p.color)}
                           className={
-                            "flex flex-col items-center gap-1.5 rounded-lg p-2 text-xs text-stone-700 ring-1 transition " +
-                            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
-                            (active
-                              ? "bg-stone-50 ring-2 ring-stone-900"
-                              : "ring-stone-200 hover:bg-stone-50")
+                            "flex flex-col items-center gap-1.5 rounded-lg p-2 text-xs text-gray-700 ring-1 transition " +
+                            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+                            (active ? "bg-gray-50 ring-2 ring-gray-900" : "ring-gray-200 hover:bg-gray-50")
                           }
                         >
                           <Swatch color={p.color} />
@@ -771,7 +769,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                     })}
                   </div>
                   <div className="mt-4">
-                    <label htmlFor="eigene-farbe" className="block text-sm font-medium text-stone-800">
+                    <label htmlFor="eigene-farbe" className="block text-sm font-medium text-gray-800">
                       Eigene Farbe
                     </label>
                     <div className="mt-1.5 flex items-center gap-2">
@@ -780,7 +778,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                         aria-label="Farbe auswählen"
                         value={form.accentColor}
                         onChange={(e) => setColor(e.target.value)}
-                        className="h-9 w-12 cursor-pointer rounded-md border-0 bg-white p-0.5 ring-1 ring-stone-300"
+                        className="h-9 w-12 cursor-pointer rounded-md border-0 bg-white p-0.5 ring-1 ring-gray-300"
                       />
                       <Input
                         id="eigene-farbe"
@@ -799,7 +797,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                     </div>
                     <p
                       id="farbe-hinweis"
-                      className={"mt-1.5 text-xs " + (readable ? "text-stone-500" : "text-red-700")}
+                      className={"mt-1.5 text-xs " + (readable ? "text-gray-500" : "text-red-700")}
                     >
                       {readable
                         ? `${presetName ?? "Eigene Farbe"} · Kontrast zu weißer Schrift ${contrastWithWhite(form.accentColor).toFixed(1).replace(".", ",")} : 1, gut lesbar.`
@@ -824,16 +822,14 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                           }}
                           className={
                             "flex w-full items-baseline justify-between gap-3 rounded-lg px-3 py-2.5 text-left ring-1 transition " +
-                            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
-                            (active
-                              ? "bg-stone-50 ring-2 ring-stone-900"
-                              : "ring-stone-200 hover:bg-stone-50")
+                            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+                            (active ? "bg-gray-50 ring-2 ring-gray-900" : "ring-gray-200 hover:bg-gray-50")
                           }
                         >
-                          <span className="text-lg text-stone-900" style={{ fontFamily: f.titel }}>
+                          <span className="text-lg text-gray-900" style={{ fontFamily: f.titel }}>
                             {f.name}
                           </span>
-                          <span className="text-xs text-stone-500">{f.hint}</span>
+                          <span className="text-xs text-gray-500">{f.hint}</span>
                         </button>
                       );
                     })}
@@ -842,11 +838,11 @@ function DesignEditor({ initial }: { initial: DesignState }) {
 
                 <Card title="Logo">
                   {form.logo ? (
-                    <div className="mb-3 flex items-center justify-center rounded-lg bg-stone-50 p-4 ring-1 ring-stone-200">
+                    <div className="mb-3 flex items-center justify-center rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200">
                       <img src={form.logo.thumbnailUrl} alt="Dein Logo" className="max-h-16 w-auto" />
                     </div>
                   ) : (
-                    <p className="mb-3 text-sm text-stone-500">
+                    <p className="mb-3 text-sm text-gray-500">
                       Ohne Logo steht oben im Shop der Name „{shop.name}“.
                     </p>
                   )}
@@ -877,14 +873,14 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                       </Button>
                     )}
                   </div>
-                  <p className="mt-2 text-xs text-stone-500">
+                  <p className="mt-2 text-xs text-gray-500">
                     PNG, JPEG oder WebP, am besten mit durchsichtigem Hintergrund.
                   </p>
                 </Card>
 
                 <Card title="Kopf- und Fußzeile">
                   <div>
-                    <label htmlFor="slogan" className="block text-sm font-medium text-stone-800">
+                    <label htmlFor="slogan" className="block text-sm font-medium text-gray-800">
                       Text unter dem Logo
                     </label>
                     <Input
@@ -898,11 +894,11 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                       }}
                       className="mt-1.5"
                     />
-                    <p className="mt-1 text-xs text-stone-500">Kurz halten. Leer lassen für keinen Text.</p>
+                    <p className="mt-1 text-xs text-gray-500">Kurz halten. Leer lassen für keinen Text.</p>
                   </div>
 
                   <div className="mt-5">
-                    <label htmlFor="fuss-text" className="block text-sm font-medium text-stone-800">
+                    <label htmlFor="fuss-text" className="block text-sm font-medium text-gray-800">
                       Text im Fuß
                     </label>
                     <Textarea
@@ -919,8 +915,8 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                   </div>
 
                   <div className="mt-5">
-                    <p className="text-sm font-medium text-stone-800">Links im Fuß</p>
-                    <p className="mt-0.5 text-xs text-stone-500">
+                    <p className="text-sm font-medium text-gray-800">Links im Fuß</p>
+                    <p className="mt-0.5 text-xs text-gray-500">
                       Zum Beispiel „Kontakt“ mit deiner E-Mail-Adresse, eine Telefonnummer oder eine Webseite.
                     </p>
                     <div className="mt-3 space-y-3">
@@ -934,7 +930,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                           setMessage(undefined);
                         };
                         return (
-                          <div key={i} className="rounded-lg p-2.5 ring-1 ring-stone-200">
+                          <div key={i} className="rounded-lg p-2.5 ring-1 ring-gray-200">
                             <div className="flex items-start gap-2">
                               <div className="min-w-0 flex-1 space-y-2">
                                 <Input
@@ -991,11 +987,11 @@ function DesignEditor({ initial }: { initial: DesignState }) {
 
           <div className="lg:sticky lg:top-20 lg:self-start">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-stone-700">Vorschau</p>
+              <p className="text-sm font-medium text-gray-700">Vorschau</p>
               <div
                 role="radiogroup"
                 aria-label="Vorschau-Breite"
-                className="flex rounded-lg p-0.5 ring-1 ring-stone-200"
+                className="flex rounded-lg p-0.5 ring-1 ring-gray-200"
               >
                 {[
                   { id: false, name: "Computer" },
@@ -1008,8 +1004,8 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                     aria-checked={mobile === o.id}
                     onClick={() => setMobile(o.id)}
                     className={
-                      "rounded-md px-3 py-1 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
-                      (mobile === o.id ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50")
+                      "rounded-md px-3 py-1 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+                      (mobile === o.id ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50")
                     }
                   >
                     {o.name}
@@ -1067,15 +1063,15 @@ function FeaturedPicker({
 
   return (
     <div className="mt-5">
-      <p className="text-sm font-medium text-stone-800">Hervorgehobene Produkte</p>
-      <p className="mt-0.5 text-xs text-stone-500">
+      <p className="text-sm font-medium text-gray-800">Hervorgehobene Produkte</p>
+      <p className="mt-0.5 text-xs text-gray-500">
         Diese Produkte stehen oben auf der Startseite, in der Reihenfolge von oben nach unten.
       </p>
 
       {loading ? (
-        <p className="mt-3 text-sm text-stone-400">Produkte werden geladen …</p>
+        <p className="mt-3 text-sm text-gray-400">Produkte werden geladen …</p>
       ) : products.length === 0 ? (
-        <p className="mt-3 text-sm text-stone-500">
+        <p className="mt-3 text-sm text-gray-500">
           Noch keine veröffentlichten Produkte. Sobald welche im Shop sind, kannst du sie hier hervorheben.
         </p>
       ) : (
@@ -1088,7 +1084,7 @@ function FeaturedPicker({
                 return (
                   <li
                     key={id}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 ring-1 ring-stone-200"
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 ring-1 ring-gray-200"
                   >
                     {p.images[0] ? (
                       <img
@@ -1097,9 +1093,9 @@ function FeaturedPicker({
                         className="size-8 shrink-0 rounded object-cover"
                       />
                     ) : (
-                      <span className="size-8 shrink-0 rounded bg-stone-100" aria-hidden="true" />
+                      <span className="size-8 shrink-0 rounded bg-gray-100" aria-hidden="true" />
                     )}
-                    <span className="min-w-0 flex-1 truncate text-sm text-stone-800">{p.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-gray-800">{p.name}</span>
                     <span className="flex shrink-0 gap-1">
                       <IconButton
                         label={`„${p.name}“ nach oben`}
@@ -1139,7 +1135,7 @@ function FeaturedPicker({
               onChange={(e) => {
                 if (e.target.value !== "") onChange([...chosen, e.target.value]);
               }}
-              className="w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-stone-800 ring-1 ring-stone-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:text-stone-400"
+              className="w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-gray-800 ring-1 ring-gray-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:text-gray-400"
             >
               <option value="">
                 {full
@@ -1179,7 +1175,7 @@ function IconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-7 items-center justify-center rounded-md text-stone-600 ring-1 ring-stone-200 transition hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:text-stone-300 disabled:hover:bg-transparent"
+      className="flex size-7 items-center justify-center rounded-md text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
     >
       {children}
     </button>
@@ -1283,7 +1279,7 @@ function Preview({
       aria-label={page ? `Vorschau der Seite „${page.title}“` : "Vorschau der Startseite"}
       role="region"
       className={
-        "overflow-hidden rounded-xl shadow-sm ring-1 ring-stone-200 " +
+        "overflow-hidden rounded-xl shadow-sm ring-1 ring-gray-200 " +
         (mobile ? "mx-auto w-full max-w-[375px]" : "")
       }
       style={{ background: "#fbf8f3", color: "#26221e", fontFamily: font.text }}

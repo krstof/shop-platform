@@ -364,7 +364,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
   return (
     <div className={panel ? "flex h-full flex-col" : "mx-auto flex max-w-3xl flex-col"}>
       {panel ? (
-        <div className="flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-3">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
           <h2 className="flex items-center gap-2 font-semibold">
             <SlopifyMark className="size-5" /> Assistent
           </h2>
@@ -387,10 +387,10 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
       ) : (
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.01em] text-gray-900">
               <SlopifyMark className="size-7" /> Assistent
             </h1>
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-gray-500">
               Sag einfach, was du brauchst. Änderungen führe ich erst aus, wenn du sie bestätigst.
             </p>
           </div>
@@ -410,14 +410,14 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
 
       <div className={panel ? "flex-1 space-y-4 overflow-y-auto px-4 py-4" : "space-y-4"} aria-live="polite">
         {messages.length === 0 && !unavailable && (
-          <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-10 text-center">
+          <div className="rounded-xl border-2 border-dashed border-gray-300 px-6 py-10 text-center">
             <p className="font-medium">Womit kann ich helfen?</p>
             <div className="mt-4 flex flex-col items-center gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   type="button"
-                  className="rounded-full bg-white px-4 py-2 text-sm text-stone-700 shadow-sm ring-1 ring-stone-200 hover:bg-stone-50"
+                  className="rounded-full bg-white px-4 py-2 text-sm text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"
                   onClick={() => send(s)}
                   disabled={busy !== null || status.isPending}
                 >
@@ -425,7 +425,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
                 </button>
               ))}
             </div>
-            <p className="mt-4 text-sm text-stone-500">
+            <p className="mt-4 text-sm text-gray-500">
               Tipp: Schick ein Foto von einem Produkt, ich schlage Name, Text und Preis vor und lege es an.
             </p>
           </div>
@@ -442,17 +442,14 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
               if (b.type === "image")
                 return (
                   <div key={j} className="flex justify-end">
-                    <PhotoThumb
-                      block={b}
-                      className="max-h-48 max-w-[60%] rounded-2xl ring-1 ring-stone-200"
-                    />
+                    <PhotoThumb block={b} className="max-h-48 max-w-[60%] rounded-2xl ring-1 ring-gray-200" />
                   </div>
                 );
               if (b.type === "tool_use") {
                 const result = results.get(b.id);
                 if (!needsConfirmation(b.name, status.data))
                   return (
-                    <p key={j} className="pl-1 text-xs text-stone-500">
+                    <p key={j} className="pl-1 text-xs text-gray-500">
                       {toolLabel(b.name)}
                       {result?.is_error === true && " (hat nicht geklappt)"}
                     </p>
@@ -474,7 +471,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
           </Fragment>
         ))}
         {busy !== null && (
-          <p className="flex items-center gap-2 pl-1 text-sm text-stone-500" role="status">
+          <p className="flex items-center gap-2 pl-1 text-sm text-gray-500" role="status">
             <Spinner /> {busy}
           </p>
         )}
@@ -486,21 +483,21 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
         onSubmit={onSubmit}
         className={
           panel
-            ? "border-t border-stone-200 bg-stone-50 px-4 pt-2 pb-3"
-            : "sticky bottom-0 mt-6 bg-stone-50 pt-2 pb-4"
+            ? "border-t border-gray-200 bg-gray-50 px-4 pt-2 pb-3"
+            : "sticky bottom-0 mt-6 bg-gray-50 pt-2 pb-4"
         }
       >
         <label className="sr-only" htmlFor={`assistent-eingabe-${variant}`}>
           Nachricht an den Assistenten
         </label>
         {attachment !== null && (
-          <div className="mb-2 flex items-center gap-3 rounded-lg bg-white p-2 ring-1 ring-stone-200">
+          <div className="mb-2 flex items-center gap-3 rounded-lg bg-white p-2 ring-1 ring-gray-200">
             <BlobImage
               blob={attachment.preview}
               className="size-12 rounded-md object-cover"
               alt="Foto zum Mitschicken"
             />
-            <span className="flex-1 text-sm text-stone-600">Foto wird mitgeschickt</span>
+            <span className="flex-1 text-sm text-gray-600">Foto wird mitgeschickt</span>
             <Button variant="ghost" onClick={() => setAttachment(null)}>
               Entfernen
             </Button>
@@ -557,7 +554,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
           </Button>
         </div>
         {status.data?.available && (
-          <p className="mt-1 text-xs text-stone-400">
+          <p className="mt-1 text-xs text-gray-400">
             Heute {status.data.usedToday} von {status.data.dailyLimit} Antworten genutzt · Die KI kann sich
             irren.
           </p>
@@ -613,7 +610,7 @@ function Bubble({ mine, children }: { mine: boolean; children: ReactNode }) {
       <div
         className={
           "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed " +
-          (mine ? "bg-violet-600 text-white" : "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200")
+          (mine ? "bg-violet-600 text-white" : "bg-white text-gray-900 shadow-sm ring-1 ring-gray-200")
         }
       >
         {children}
@@ -681,12 +678,12 @@ function ConfirmCard({
       result.is_error === true ? (
         <p className="text-sm text-red-700">Hat nicht geklappt: {result.content}</p>
       ) : result.content.startsWith("Abgelehnt") || result.content.startsWith("Nicht ausgeführt") ? (
-        <p className="text-sm text-stone-500">Nicht ausgeführt.</p>
+        <p className="text-sm text-gray-500">Nicht ausgeführt.</p>
       ) : (
-        <p className="text-sm font-medium text-emerald-800">Erledigt.</p>
+        <p className="text-sm font-medium text-brand-800">Erledigt.</p>
       );
-  else if (decision === "approved") state = <p className="text-sm text-stone-500">Wird ausgeführt …</p>;
-  else if (decision === "declined") state = <p className="text-sm text-stone-500">Abgelehnt.</p>;
+  else if (decision === "approved") state = <p className="text-sm text-gray-500">Wird ausgeführt …</p>;
+  else if (decision === "declined") state = <p className="text-sm text-gray-500">Abgelehnt.</p>;
   else
     state = (
       <div className="flex gap-2">
@@ -701,12 +698,12 @@ function ConfirmCard({
 
   return (
     <div className="ml-0 max-w-[85%] rounded-xl bg-violet-50 p-4 ring-1 ring-violet-200">
-      <p className="text-sm font-semibold text-stone-900">
+      <p className="text-sm font-semibold text-gray-900">
         {title}
         {subject !== undefined && `: ${subject}`}
       </p>
       {lines.length > 0 && (
-        <ul className="mt-2 space-y-0.5 text-sm text-stone-700">
+        <ul className="mt-2 space-y-0.5 text-sm text-gray-700">
           {lines.map((l) => (
             <li key={l} className="break-words">
               {l}

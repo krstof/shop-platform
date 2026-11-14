@@ -38,6 +38,18 @@ import {
   type TouchEventHandler,
   type ReactNode,
 } from "react";
+import {
+  Columns2,
+  Heart,
+  Image as ImageIcon,
+  LayoutGrid,
+  MapPin,
+  MoveVertical,
+  Play,
+  Sparkles,
+  Star,
+  Type,
+} from "lucide-react";
 import { Button, Field, Input, Textarea } from "../components/ui.js";
 import type { DesignImage } from "../lib/api.js";
 import {
@@ -63,6 +75,25 @@ import {
 const PALETTE_PREFIX = "neu:";
 const END_ZONE = "ende";
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+/** Symbole der Bausteine (lucide, ISC-Lizenz). */
+const ICONS: Record<BlockType, typeof Type> = {
+  text: Type,
+  textImage: Columns2,
+  image: ImageIcon,
+  video: Play,
+  map: MapPin,
+  spacer: MoveVertical,
+  hero: Star,
+  featured: Heart,
+  new: Sparkles,
+  categories: LayoutGrid,
+};
+
+function BlockIcon({ type, className = "size-4" }: { type: BlockType; className?: string }) {
+  const I = ICONS[type];
+  return <I className={className} aria-hidden="true" />;
+}
 
 type Hint = { readonly id: string; readonly after: boolean } | undefined;
 const DragState = createContext<{ hint: Hint; adding: boolean }>({ hint: undefined, adding: false });
@@ -191,8 +222,8 @@ export function BuilderDnd({
       </DragState.Provider>
       <DragOverlay dropAnimation={null}>
         {activeName !== undefined && activeType !== undefined ? (
-          <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-stone-900 shadow-lg ring-1 ring-emerald-600">
-            <span aria-hidden="true">{BLOCK_INFO[activeType].icon}</span>
+          <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-lg ring-1 ring-brand-600">
+            <BlockIcon type={activeType} />
             {activeName}
           </span>
         ) : null}
@@ -216,7 +247,7 @@ export function Palette({
   const fixed = allowFixed ? missingFixed(blocks) : [];
   return (
     <div>
-      <p className="mb-3 text-sm text-stone-500">
+      <p className="mb-3 text-sm text-gray-500">
         Zieh einen Baustein in die Vorschau an die gewünschte Stelle. Oder klick ihn an, dann kommt er ans
         Ende.
       </p>
@@ -234,9 +265,7 @@ export function Palette({
       </ul>
       {fixed.length > 0 && (
         <>
-          <p className="mt-4 mb-2 text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Shop-Bereiche
-          </p>
+          <p className="mt-4 mb-2 text-xs font-medium tracking-wide text-gray-500 uppercase">Shop-Bereiche</p>
           <ul className="grid grid-cols-2 gap-2">
             {fixed.map((t) => (
               <li key={t}>
@@ -272,19 +301,19 @@ function PaletteTile({
       onClick={() => onAdd(type)}
       aria-label={`${info.name} hinzufügen`}
       className={
-        "flex w-full cursor-grab items-start gap-2 rounded-lg bg-white px-2.5 py-2 text-left ring-1 ring-stone-200 transition select-none hover:bg-stone-50 hover:ring-emerald-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50 " +
+        "flex w-full cursor-grab items-start gap-2 rounded-lg bg-white px-2.5 py-2 text-left ring-1 ring-gray-200 transition select-none hover:bg-gray-50 hover:ring-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50 " +
         (isDragging ? "opacity-50" : "")
       }
     >
       <span
         aria-hidden="true"
-        className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-800"
+        className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-800"
       >
-        {info.icon}
+        <BlockIcon type={type} />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-stone-900">{info.name}</span>
-        <span className="block text-xs leading-snug text-stone-500">{info.hint}</span>
+        <span className="block text-sm font-medium text-gray-900">{info.name}</span>
+        <span className="block text-xs leading-snug text-gray-500">{info.hint}</span>
       </span>
     </button>
   );
@@ -325,7 +354,7 @@ export function Canvas({
           className={
             "mt-3 flex items-center justify-center rounded-lg border-2 border-dashed text-xs transition " +
             (blocks.length === 0 ? "min-h-32 " : adding ? "min-h-14 " : "min-h-0 border-transparent ") +
-            (end.isOver ? "" : "border-stone-300")
+            (end.isOver ? "" : "border-gray-300")
           }
           style={end.isOver ? { borderColor: accent, color: accent } : { color: "#8a8075" }}
         >
@@ -392,7 +421,7 @@ function CanvasBlock({
         >
           ⠿ {info.name}
         </span>
-        <div className="pointer-events-none rounded-lg ring-stone-300 group-hover:ring-1">{children}</div>
+        <div className="pointer-events-none rounded-lg ring-gray-300 group-hover:ring-1">{children}</div>
       </div>
       {showAfter && line}
     </div>
@@ -552,7 +581,7 @@ export function BlockOutline({
   }
 
   if (blocks.length === 0)
-    return <p className="text-sm text-stone-500">Die Startseite ist leer. Füg oben einen Baustein hinzu.</p>;
+    return <p className="text-sm text-gray-500">Die Startseite ist leer. Füg oben einen Baustein hinzu.</p>;
 
   return (
     <ol className="space-y-2">
@@ -567,24 +596,24 @@ export function BlockOutline({
               if (el === null) refs.current.delete(b.id);
               else refs.current.set(b.id, el);
             }}
-            className={"scroll-mt-24 rounded-lg ring-1 " + (open ? "ring-emerald-600" : "ring-stone-200")}
+            className={"scroll-mt-24 rounded-lg ring-1 " + (open ? "ring-brand-600" : "ring-gray-200")}
           >
             <div className="flex items-center gap-2 px-2.5 py-2">
               <button
                 type="button"
                 aria-expanded={open}
                 onClick={() => onSelect(open ? undefined : b.id)}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
               >
                 <span
                   aria-hidden="true"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md bg-stone-100 text-stone-700"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-700"
                 >
-                  {info.icon}
+                  <BlockIcon type={b.type} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium text-stone-900">{info.name}</span>
-                  <span className={"block truncate text-xs " + (problem ? "text-red-700" : "text-stone-500")}>
+                  <span className="block text-sm font-medium text-gray-900">{info.name}</span>
+                  <span className={"block truncate text-xs " + (problem ? "text-red-700" : "text-gray-500")}>
                     {problem ? "Bitte prüfen" : blockSummary(b)}
                   </span>
                 </span>
@@ -616,7 +645,7 @@ export function BlockOutline({
               </span>
             </div>
             {open && (
-              <div className="border-t border-stone-200 px-3 pt-3 pb-4">
+              <div className="border-t border-gray-200 px-3 pt-3 pb-4">
                 {b.type === "hero" || b.type === "featured" || b.type === "categories" || b.type === "new" ? (
                   renderFixed(b.type)
                 ) : (
@@ -797,11 +826,11 @@ function Choice<T extends string>({
 }) {
   return (
     <div>
-      <p className="text-sm font-medium text-stone-800">{label}</p>
+      <p className="text-sm font-medium text-gray-800">{label}</p>
       <div
         role="radiogroup"
         aria-label={label}
-        className="mt-1.5 inline-flex rounded-lg p-0.5 ring-1 ring-stone-200"
+        className="mt-1.5 inline-flex rounded-lg p-0.5 ring-1 ring-gray-200"
       >
         {options.map((o) => (
           <button
@@ -811,8 +840,8 @@ function Choice<T extends string>({
             aria-checked={value === o.id}
             onClick={() => onChange(o.id)}
             className={
-              "rounded-md px-3 py-1 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
-              (value === o.id ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50")
+              "rounded-md px-3 py-1 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+              (value === o.id ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50")
             }
           >
             {o.name}
@@ -860,12 +889,12 @@ function ImageField({
 
   return (
     <div>
-      <p className="text-sm font-medium text-stone-800">Bild</p>
+      <p className="text-sm font-medium text-gray-800">Bild</p>
       {img && (
         <img
           src={img.thumbnailUrl}
           alt="Gewähltes Bild"
-          className="mt-1.5 h-28 w-full rounded-lg object-cover ring-1 ring-stone-200"
+          className="mt-1.5 h-28 w-full rounded-lg object-cover ring-1 ring-gray-200"
         />
       )}
       <input
@@ -908,7 +937,7 @@ function SmallButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-7 items-center justify-center rounded-md text-stone-600 ring-1 ring-stone-200 transition hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:text-stone-300 disabled:hover:bg-transparent"
+      className="flex size-7 items-center justify-center rounded-md text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent"
     >
       {children}
     </button>
