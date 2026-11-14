@@ -9,6 +9,7 @@ import { formatEuro } from "../lib/money.js";
 import {
   isOrderFiltered,
   orderListPath,
+  ordersCsv,
   parseOrderFilter,
   type OrderFilter,
   type OrderStateFilter,
@@ -20,6 +21,27 @@ import { productsKey } from "./products.js";
 type FilterInput = { [K in keyof OrderFilter]?: OrderFilter[K] | undefined };
 
 const DATE = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+
+/** Stand als Text (für die CSV-Datei). */
+export function stateText(o: { status: string; paymentStatus: string }): string {
+  if (o.status === "pending_payment") return "Wartet auf Zahlung";
+  if (o.status === "cancelled") return "Storniert";
+  if (o.status === "completed") return "Versendet";
+  return "Bezahlt – zu versenden";
+}
+
+/** Lädt die gerade gezeigte Liste als CSV-Datei herunter (für Excel oder Numbers). */
+function downloadCsv(orders: readonly OrderSummary[], shopHandle: string) {
+  const blob = new Blob([ordersCsv(orders, stateText)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bestellungen-${shopHandle}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /** Ein Wort für den Stand, wie Händler ihn verstehen. */
 export function StatusBadge({ order }: { order: Pick<OrderSummary, "status" | "fulfillmentStatus"> }) {
@@ -70,30 +92,37 @@ export function OrdersPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Bestellungen</h1>
-        {orders.data && (
-          <p className="text-sm text-stone-500" aria-live="polite">
-            {filtered
-              ? count === 1
-                ? "1 Treffer"
-                : `${count} Treffer`
-              : count === 1
-                ? "1 Bestellung"
-                : `${count} Bestellungen`}
-            {open > 0 && (
-              <>
-                {" · "}
-                <button
-                  type="button"
-                  className="text-emerald-800 hover:underline"
-                  onClick={() => setFilter({ stand: "versenden" })}
-                >
-                  {open} zu versenden
-                </button>
-              </>
-            )}
-          </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Bestellungen</h1>
+          {orders.data && (
+            <p className="text-sm text-stone-500" aria-live="polite">
+              {filtered
+                ? count === 1
+                  ? "1 Treffer"
+                  : `${count} Treffer`
+                : count === 1
+                  ? "1 Bestellung"
+                  : `${count} Bestellungen`}
+              {open > 0 && (
+                <>
+                  {" · "}
+                  <button
+                    type="button"
+                    className="text-emerald-800 hover:underline"
+                    onClick={() => setFilter({ stand: "versenden" })}
+                  >
+                    {open} zu versenden
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+        </div>
+        {orders.data && orders.data.length > 0 && (
+          <Button variant="secondary" onClick={() => downloadCsv(orders.data, shop.handle)}>
+            Als Tabelle herunterladen
+          </Button>
         )}
       </div>
       <OrderFilterBar filter={filter} onChange={setFilter} />
@@ -233,6 +262,7 @@ function OrderFilterBar({
           <option value="zahlung">Wartet auf Zahlung</option>
           <option value="versenden">Bezahlt – zu versenden</option>
           <option value="versendet">Versendet</option>
+          <option value="storniert">Storniert</option>
         </Select>
       </label>
     </div>
