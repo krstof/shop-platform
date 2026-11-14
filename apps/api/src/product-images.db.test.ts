@@ -278,4 +278,36 @@ describe.skipIf(adminUrl === undefined)("Produktbilder (M2 Teil 2, echte Datenba
     expect((await call("POST", `/admin/v1/products/${uuidv7()}/copy`, "a")).statusCode).toBe(404);
     expect((await call("POST", `/admin/v1/products/${id}/copy`, "b")).statusCode).toBe(403);
   });
+  it("Kategoriebild: hochladen, ersetzen (altes weg), im Shop sichtbar, entfernen, fremder Shop nicht", async () => {
+    const cat = (await call("POST", "/admin/v1/categories", "a", { name: "Bildkategorie" })).json();
+    expect(cat.image).toBeNull();
+    const first = await call("PUT", `/admin/v1/categories/${cat.id}/image`, "a", {
+      data: await image("#aa3344"),
+    });
+    expect(first.statusCode).toBe(200);
+    const firstId = first.json().image.id;
+    expect(first.json().image.url).toContain(firstId);
+    const second = (
+      await call("PUT", `/admin/v1/categories/${cat.id}/image`, "a", { data: await image("#3344aa") })
+    ).json();
+    expect(second.image.id).not.toBe(firstId);
+    expect([...storage.objects.keys()].some((k) => k.includes(firstId))).toBe(false);
+    expect(
+      (await call("GET", "/admin/v1/categories", "a"))
+        .json()
+        .data.find((c: { id: string }) => c.id === cat.id).image.id,
+    ).toBe(second.image.id);
+    const bad = await call("PUT", `/admin/v1/categories/${cat.id}/image`, "a", {
+      data: Buffer.from("kein bild").toString("base64"),
+    });
+    expect(bad.statusCode).toBe(422);
+    expect(
+      (await call("PUT", `/admin/v1/categories/${cat.id}/image`, "b", { data: await image("#000000") }))
+        .statusCode,
+    ).toBe(403);
+    const removed = (await call("DELETE", `/admin/v1/categories/${cat.id}/image`, "a")).json();
+    expect(removed.image).toBeNull();
+    expect([...storage.objects.keys()].some((k) => k.includes(second.image.id))).toBe(false);
+    expect((await call("DELETE", `/admin/v1/categories/${uuidv7()}/image`, "a")).statusCode).toBe(404);
+  });
 });

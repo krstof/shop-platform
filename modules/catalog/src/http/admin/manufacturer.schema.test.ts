@@ -78,6 +78,8 @@ describe("Hersteller in der Admin-API", () => {
       "createCategory",
       "updateCategory",
       "deleteCategory",
+      "setCategoryImage",
+      "deleteCategoryImage",
       "listProducts",
       "getProduct",
       "createProduct",

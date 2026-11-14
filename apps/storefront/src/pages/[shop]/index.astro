@@ -65,7 +65,17 @@ const sichtbareKategorien = home.showCategories ? categories : [];
       <ul class="kategorien">
         {sichtbareKategorien.map((k) => (
           <li>
-            <a href={`/${shop.handle}/kategorie/${k.slug}`}>
+            <a href={`/${shop.handle}/kategorie/${k.slug}`} class:list={{ "mit-bild": k.image != null }}>
+              {k.image != null && (
+                <img
+                  class="kachel-bild"
+                  src={k.image.thumbnailUrl}
+                  alt=""
+                  width="400"
+                  height="300"
+                  loading="lazy"
+                />
+              )}
               <strong>{k.name}</strong>
               {k.description && <span class="klein">{k.description}</span>}
             </a>

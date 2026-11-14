@@ -2,9 +2,17 @@
 // Einfache Liste ohne Unterkategorien; Löschen gibt es noch nicht (siehe STATUS.md, „Später“).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Alert, Badge, Button, Card, Field, Input, Spinner, Textarea } from "../components/ui.js";
-import { ApiError, listAll, request, type Category, type CategoryInput, type Product } from "../lib/api.js";
+import {
+  ApiError,
+  fileToBase64,
+  listAll,
+  request,
+  type Category,
+  type CategoryInput,
+  type Product,
+} from "../lib/api.js";
 import { useShop } from "./layout.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
 
@@ -379,9 +387,108 @@ function CategoryEditor({ category }: { category: Category | undefined }) {
             </span>
           </label>
         </Card>
+        {current !== undefined && (
+          <CategoryImageCard
+            category={current}
+            onChanged={(c) => {
+              // Das Bild ändert die Version; ohne Nachziehen gäbe das nächste Speichern 412.
+              setCurrent(c);
+              queryClient.setQueryData(["category", shop.id, c.id], c);
+              void queryClient.invalidateQueries({ queryKey: categoriesKey(shop.id) });
+            }}
+          />
+        )}
         {current !== undefined && <DeleteCategoryCard category={current} />}
       </div>
     </form>
+  );
+}
+
+/** Bild der Kategorie: hochladen, ersetzen, entfernen. Wirkt sofort (wie Produktbilder). */
+function CategoryImageCard({
+  category,
+  onChanged,
+}: {
+  category: Category;
+  onChanged: (c: Category) => void;
+}) {
+  const shop = useShop();
+  const input = useRef<HTMLInputElement>(null);
+  const [problem, setProblem] = useState<string | undefined>();
+  const upload = useMutation({
+    mutationFn: async (file: File) =>
+      request<Category>(`/admin/v1/categories/${category.id}/image`, {
+        method: "PUT",
+        body: { data: await fileToBase64(file), filename: file.name },
+        shopId: shop.id,
+      }),
+    onSuccess: onChanged,
+  });
+  const remove = useMutation({
+    mutationFn: () =>
+      request<Category>(`/admin/v1/categories/${category.id}/image`, { method: "DELETE", shopId: shop.id }),
+    onSuccess: onChanged,
+  });
+  const choose = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file === undefined) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setProblem("Bitte JPEG, PNG oder WebP wählen.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setProblem("Das Bild ist größer als 8 MB.");
+      return;
+    }
+    setProblem(undefined);
+    upload.mutate(file);
+  };
+  const error = problem ?? (upload.error ?? remove.error)?.message;
+  return (
+    <Card title="Bild">
+      <p className="mb-3 text-sm text-stone-500">
+        Erscheint auf der Kachel der Startseite und oben auf der Kategorieseite. Querformat passt am besten.
+      </p>
+      {category.image ? (
+        <img
+          src={category.image.thumbnailUrl}
+          alt=""
+          className="mb-3 h-36 w-full max-w-sm rounded-lg bg-stone-100 object-cover ring-1 ring-stone-200"
+        />
+      ) : (
+        <div className="mb-3 flex h-36 w-full max-w-sm items-center justify-center rounded-lg border-2 border-dashed border-stone-300 text-sm text-stone-400">
+          Noch kein Bild
+        </div>
+      )}
+      {error !== undefined && (
+        <div className="mb-3">
+          <Alert>{error}</Alert>
+        </div>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only"
+        onChange={choose}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          busy={upload.isPending}
+          onClick={() => input.current?.click()}
+        >
+          {category.image ? "Bild ersetzen" : "Bild hochladen"}
+        </Button>
+        {category.image && (
+          <Button type="button" variant="ghost" busy={remove.isPending} onClick={() => remove.mutate()}>
+            Entfernen
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 

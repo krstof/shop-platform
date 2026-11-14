@@ -14,6 +14,8 @@ export interface CategoryRow {
   description: string;
   position: number;
   status: "visible" | "hidden";
+  /** Bild für Kacheln und Kopf der Kategorieseite (Modul media), `null` = keins. */
+  image_media_id: string | null;
   created_at: Date;
   updated_at: Date;
   version: number;
@@ -32,6 +34,7 @@ function baseQuery(trx: Transaction<DB>) {
       "t.description",
       "c.position",
       "c.status",
+      "c.image_media_id",
       "c.created_at",
       "c.updated_at",
       "c.version",
@@ -203,4 +206,26 @@ export async function countProductsInCategory(trx: Transaction<DB>, id: string):
     .where("p.status", "<>", "archived")
     .executeTakeFirstOrThrow();
   return Number(r.n);
+}
+
+/** Setzt das Bild einer Kategorie und nennt das bisherige (zum Aufräumen). `undefined`: Kategorie fehlt. */
+export async function setCategoryImage(
+  trx: Transaction<DB>,
+  id: string,
+  mediaId: string | null,
+): Promise<{ previous: string | null } | undefined> {
+  const before = await trx
+    .selectFrom("catalog.category")
+    .select("image_media_id")
+    .where("id", "=", id)
+    .where("archived_at", "is", null)
+    .forUpdate()
+    .executeTakeFirst();
+  if (before === undefined) return undefined;
+  await trx
+    .updateTable("catalog.category")
+    .set((eb) => ({ image_media_id: mediaId, updated_at: new Date(), version: eb("version", "+", 1) }))
+    .where("id", "=", id)
+    .execute();
+  return { previous: before.image_media_id };
 }

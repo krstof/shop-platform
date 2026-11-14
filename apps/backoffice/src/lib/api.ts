@@ -169,6 +169,8 @@ export interface Category {
   readonly position: number;
   /** Im Shop sichtbar. */
   readonly visible: boolean;
+  /** Bild für Kachel und Kategorieseite. */
+  readonly image?: ProductImage | null;
   readonly version: number;
 }
 

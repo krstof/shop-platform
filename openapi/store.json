@@ -2069,13 +2069,25 @@
           },
           "description": {
             "type": "string"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductImage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bild der Kategorie oder null."
           }
         },
         "required": [
           "id",
           "name",
           "slug",
-          "description"
+          "description",
+          "image"
         ],
         "additionalProperties": false
       },

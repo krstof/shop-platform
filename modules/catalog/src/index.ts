@@ -57,7 +57,7 @@ export function catalogEndpoints(deps: CatalogDependencies): Endpoint[] {
   const db = deps.database as Database<DB>;
   return [
     ...manufacturerEndpoints(db),
-    ...categoryEndpoints(db),
+    ...categoryEndpoints(db, deps.images),
     ...productEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
     ...productImageEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
     // Storefront-API (M4): nur Sichtbares, öffentlich je Shop.

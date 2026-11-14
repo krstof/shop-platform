@@ -17,6 +17,8 @@ export interface StoreCategory {
   readonly name: string;
   readonly slug: string;
   readonly description: string;
+  /** Bild der Kategorie (seit Etappe „Kategoriebilder“; ältere API-Stände ohne). */
+  readonly image?: StoreImage | null;
 }
 
 export interface StoreImage {

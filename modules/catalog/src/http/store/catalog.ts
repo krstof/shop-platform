@@ -56,7 +56,13 @@ export const storeProductSchema = z
 export type StoreProduct = z.infer<typeof storeProductSchema>;
 
 const storeCategorySchema = z
-  .object({ id: z.uuid(), name: z.string(), slug: z.string(), description: z.string() })
+  .object({
+    id: z.uuid(),
+    name: z.string(),
+    slug: z.string(),
+    description: z.string(),
+    image: productImageSchema.nullable().meta({ description: "Bild der Kategorie oder null." }),
+  })
   .meta({ id: "StoreCategory" });
 
 export interface StoreCatalogDependencies {
@@ -133,12 +139,22 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
     },
     problems: [404],
     handler: async () => {
-      const rows = await withTenantTransaction(db, (trx) => findCategories(trx, { limit: 200 }));
+      const rows = (await withTenantTransaction(db, (trx) => findCategories(trx, { limit: 200 })))
+        .slice(0, 200)
+        .filter((c) => c.status === "visible");
+      const ids = rows.map((c) => c.image_media_id).filter((id): id is string => id !== null);
+      const found = ids.length === 0 ? new Map<string, ProductImage>() : await deps.images.get(ids);
       return {
-        data: rows
-          .slice(0, 200)
-          .filter((c) => c.status === "visible")
-          .map((c) => ({ id: c.id, name: c.name, slug: c.slug, description: c.description })),
+        data: rows.map((c) => {
+          const image = c.image_media_id === null ? undefined : found.get(c.image_media_id);
+          return {
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            description: c.description,
+            image: image === undefined ? null : { ...image },
+          };
+        }),
       };
     },
   });

@@ -2,6 +2,8 @@
 import { multiLineText, singleLineText, timestamp } from "@shop/http";
 import { z } from "zod";
 import type { CategoryRow, CategoryValues } from "../../internal/category-repository.js";
+import type { ProductImage } from "../../ports.js";
+import { productImageSchema } from "./image.schema.js";
 
 export const slugInput = z
   .string()
@@ -18,6 +20,9 @@ export const categorySchema = z
     description: z.string().meta({ description: "Klartext, Absätze durch Leerzeilen getrennt." }),
     position: z.number().int(),
     visible: z.boolean().meta({ description: "Im Shop sichtbar." }),
+    image: productImageSchema
+      .nullable()
+      .meta({ description: "Bild für Kacheln auf der Startseite und den Kopf der Kategorieseite." }),
     createdAt: timestamp,
     updatedAt: timestamp,
     version: z.number().int().positive(),
@@ -26,7 +31,7 @@ export const categorySchema = z
 
 export type Category = z.infer<typeof categorySchema>;
 
-export function toCategory(row: CategoryRow): Category {
+export function toCategory(row: CategoryRow, image?: ProductImage): Category {
   return {
     id: row.id,
     name: row.name,
@@ -34,6 +39,7 @@ export function toCategory(row: CategoryRow): Category {
     description: row.description,
     position: row.position,
     visible: row.status === "visible",
+    image: image === undefined ? null : { ...image },
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
     version: row.version,

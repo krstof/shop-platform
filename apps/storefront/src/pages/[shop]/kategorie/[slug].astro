@@ -32,6 +32,9 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
       </li>
     </ol>
   </nav>
+  {k.image != null && (
+    <img class="kategorie-kopf" src={k.image.url} alt="" width={k.image.width} height={k.image.height} />
+  )}
   <h1>{k.name}</h1>
   {k.description && <p class="klein">{k.description}</p>}
   {produkte.length === 0 ? (

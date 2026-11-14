@@ -5,6 +5,9 @@ import { z } from "zod";
 import type { ProductRow, ProductValues } from "../../internal/product-repository.js";
 import type { ProductImage } from "../../ports.js";
 import { slugInput } from "./category.schema.js";
+import { productImageSchema } from "./image.schema.js";
+
+export { productImageSchema };
 
 export const CURRENCY = "EUR";
 
@@ -18,16 +21,6 @@ const priceSchema = z
     currency: z.literal(CURRENCY),
   })
   .meta({ id: "Price" });
-
-export const productImageSchema = z
-  .object({
-    id: z.uuid(),
-    url: z.url().meta({ description: "Große Fassung (höchstens 1600 Pixel breit oder hoch), WebP." }),
-    thumbnailUrl: z.url().meta({ description: "Kleine Fassung (höchstens 400 Pixel), WebP, für Listen." }),
-    width: z.number().int().meta({ description: "Breite des Originals in Pixeln." }),
-    height: z.number().int().meta({ description: "Höhe des Originals in Pixeln." }),
-  })
-  .meta({ id: "ProductImage", description: "Produktbild, ausgeliefert über media.<Domain>." });
 
 export const productSchema = z
   .object({
