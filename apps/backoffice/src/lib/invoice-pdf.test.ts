@@ -64,8 +64,13 @@ describe("Rechnung als PDF", () => {
 
   it("verteilt viele Artikel auf mehrere Seiten", () => {
     const lines = Array.from({ length: 60 }, (_, i) => ({
-      ...(ORDER.lines[1] ?? ORDER.lines[0]),
       position: i + 1,
+      name: "Teesieb",
+      sku: null,
+      quantity: 1,
+      unitPrice: 400,
+      lineTotal: 400,
+      taxRatePercent: 7,
     }));
     const s = latin1(invoicePdf({ ...ORDER, lines }, { shopName: "Teeladen" }));
     expect(Number(/\/Count (\d+)/.exec(s)?.[1])).toBeGreaterThan(1);
