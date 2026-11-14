@@ -1,8 +1,8 @@
 // Rahmen für alles im Shop (M3): Kopfzeile mit Shop-Auswahl und Abmelden. Der Shop steht im Pfad
 // (/<handle>/produkte), damit Links und Neuladen den gewählten Shop behalten.
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, Navigate, Outlet, useNavigate, useParams } from "@tanstack/react-router";
-import { createContext, useContext, useState } from "react";
+import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Button, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
 import { useSession } from "../lib/session.js";
@@ -90,90 +90,69 @@ export function SignOutButton({ className }: { className?: string }) {
   );
 }
 
+/** Menüpunkte des Shops. Reihenfolge = Reihenfolge im Menü. */
+const MENU = [
+  { to: "/$shop/produkte", label: "Produkte" },
+  { to: "/$shop/kategorien", label: "Kategorien" },
+  { to: "/$shop/bestellungen", label: "Bestellungen" },
+  { to: "/$shop/aussehen", label: "Aussehen" },
+  { to: "/$shop/assistent", label: "Assistent" },
+] as const;
+
 export function ShopLayout() {
   const { shop: handle } = useParams({ strict: false });
   const navigate = useNavigate();
   const session = useSession();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Nach jedem Seitenwechsel ist das Handy-Menü wieder zu.
+  useEffect(() => setMenuOpen(false), [location.pathname]);
   if (session.isPending) return <FullPageSpinner />;
   if (!session.data) return <Navigate to="/anmelden" replace />;
   const shops = session.data.shops;
   const shop = shops.find((s) => s.handle === handle);
   if (shop === undefined) return <Navigate to="/" replace />;
+  const operator = session.data.platformOperator;
 
   return (
     <ShopContext.Provider value={shop}>
       <div className="min-h-dvh">
-        <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
+        <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur">
+          <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
             <Link
               to="/$shop/produkte"
               params={{ shop: shop.handle }}
-              className="flex shrink-0 items-center gap-2 font-semibold text-emerald-800"
+              className="flex min-w-0 shrink items-center gap-2 font-semibold text-emerald-800 lg:shrink-0"
               title="Slopify"
             >
-              <SlopifyMark className="hidden size-6 sm:block" />
-              {shop.name}
+              <SlopifyMark className="size-6 shrink-0" />
+              <span className="truncate">{shop.name}</span>
             </Link>
             {shops.length > 1 && (
-              <label className="text-sm text-stone-600">
+              <label className="hidden text-sm text-stone-600 sm:block">
                 <span className="sr-only">Shop wechseln</span>
-                <select
-                  className="rounded-md border-0 bg-stone-100 py-1 pr-7 pl-2 text-sm"
+                <ShopSelect
+                  shops={shops}
                   value={shop.handle}
-                  onChange={(e) => void navigate({ to: "/$shop/produkte", params: { shop: e.target.value } })}
-                >
-                  {shops.map((s) => (
-                    <option key={s.id} value={s.handle}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(h) => void navigate({ to: "/$shop/produkte", params: { shop: h } })}
+                />
               </label>
             )}
-            <nav className="ml-2 flex min-w-0 gap-1 overflow-x-auto text-sm" aria-label="Hauptmenü">
-              <Link
-                to="/$shop/produkte"
-                params={{ shop: shop.handle }}
-                className="rounded-md px-3 py-1.5 text-stone-600 hover:bg-stone-100"
-                activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
-              >
-                Produkte
-              </Link>
-              <Link
-                to="/$shop/kategorien"
-                params={{ shop: shop.handle }}
-                className="rounded-md px-3 py-1.5 text-stone-600 hover:bg-stone-100"
-                activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
-              >
-                Kategorien
-              </Link>
-              <Link
-                to="/$shop/bestellungen"
-                params={{ shop: shop.handle }}
-                className="rounded-md px-3 py-1.5 text-stone-600 hover:bg-stone-100"
-                activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
-              >
-                Bestellungen
-              </Link>
-              <Link
-                to="/$shop/aussehen"
-                params={{ shop: shop.handle }}
-                className="rounded-md px-3 py-1.5 text-stone-600 hover:bg-stone-100"
-                activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
-              >
-                Aussehen
-              </Link>
-              <Link
-                to="/$shop/assistent"
-                params={{ shop: shop.handle }}
-                className="rounded-md px-3 py-1.5 text-violet-700 hover:bg-violet-50"
-                activeProps={{ className: "bg-violet-50 font-medium text-violet-800" }}
-              >
-                Assistent
-              </Link>
+            <nav className="ml-2 hidden gap-1 text-sm lg:flex" aria-label="Hauptmenü">
+              {MENU.map((m) => (
+                <Link
+                  key={m.to}
+                  to={m.to}
+                  params={{ shop: shop.handle }}
+                  className="rounded-md px-3 py-1.5 whitespace-nowrap text-stone-600 hover:bg-stone-100"
+                  activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
+                >
+                  {m.label}
+                </Link>
+              ))}
             </nav>
-            <div className="ml-auto flex items-center gap-2">
-              {session.data.platformOperator && (
+            <div className="ml-auto hidden items-center gap-2 lg:flex">
+              {operator && (
                 <Link
                   to="/plattform"
                   className="rounded-md px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"
@@ -181,15 +160,104 @@ export function ShopLayout() {
                   Plattform
                 </Link>
               )}
-              <span className="hidden text-sm text-stone-500 sm:inline">{session.data.user.email}</span>
+              <span className="hidden text-sm text-stone-500 xl:inline">{session.data.user.email}</span>
               <SignOutButton />
             </div>
+            <button
+              type="button"
+              className="ml-auto inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100 lg:hidden"
+              aria-expanded={menuOpen}
+              aria-controls="handy-menue"
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <MenuIcon open={menuOpen} />
+              Menü
+            </button>
           </div>
+          {menuOpen && (
+            <div id="handy-menue" className="border-t border-stone-200 bg-white lg:hidden">
+              <nav className="mx-auto flex max-w-6xl flex-col px-4 py-2 sm:px-6" aria-label="Hauptmenü">
+                {MENU.map((m) => (
+                  <Link
+                    key={m.to}
+                    to={m.to}
+                    params={{ shop: shop.handle }}
+                    className="rounded-md px-3 py-3 text-base text-stone-700 hover:bg-stone-100"
+                    activeProps={{ className: "bg-stone-100 font-medium text-stone-900" }}
+                  >
+                    {m.label}
+                  </Link>
+                ))}
+                {operator && (
+                  <Link
+                    to="/plattform"
+                    className="rounded-md px-3 py-3 text-base text-stone-700 hover:bg-stone-100"
+                  >
+                    Plattform-Verwaltung
+                  </Link>
+                )}
+                {shops.length > 1 && (
+                  <label className="flex items-center justify-between gap-3 px-3 py-3 text-base text-stone-700 sm:hidden">
+                    Shop wechseln
+                    <ShopSelect
+                      shops={shops}
+                      value={shop.handle}
+                      onChange={(h) => void navigate({ to: "/$shop/produkte", params: { shop: h } })}
+                    />
+                  </label>
+                )}
+                <div className="mt-2 flex items-center justify-between gap-3 border-t border-stone-100 px-3 pt-3 pb-1">
+                  <span className="truncate text-sm text-stone-500">{session.data.user.email}</span>
+                  <SignOutButton />
+                </div>
+              </nav>
+            </div>
+          )}
         </header>
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
           <Outlet />
         </main>
       </div>
     </ShopContext.Provider>
+  );
+}
+
+function ShopSelect({
+  shops,
+  value,
+  onChange,
+}: {
+  shops: readonly ShopOfUser[];
+  value: string;
+  onChange: (handle: string) => void;
+}) {
+  return (
+    <select
+      className="rounded-md border-0 bg-stone-100 py-1 pr-7 pl-2 text-sm"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {shops.map((s) => (
+        <option key={s.id} value={s.handle}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      {open ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 6h14M3 10h14M3 14h14" />}
+    </svg>
   );
 }
