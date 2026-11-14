@@ -34,7 +34,7 @@ import {
   updateProduct,
   type ProductRow,
 } from "../../internal/product-repository.js";
-import { imageIdsOf } from "../../internal/product-image-repository.js";
+import { appendImage, imageIdsOf } from "../../internal/product-image-repository.js";
 import type { ProductImage, ProductImages, ProductPrices, ProductStock } from "../../ports.js";
 import {
   createProductInput,
@@ -273,7 +273,62 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
     },
   });
 
-  return [list, get, create, update, remove];
+  const copy = defineEndpoint({
+    api: "admin",
+    method: "POST",
+    path: "/products/{productId}/copy",
+    operationId: "copyProduct",
+    summary: "Produkt kopieren",
+    description:
+      "Legt eine Kopie an: gleicher Text, Preis, Steuersatz, Kategorie und dieselben Bilder, Name mit " +
+      "„(Kopie)“, eigene Adresse, ohne Artikelnummer, Bestand 0 und als Entwurf (noch nicht im Shop). " +
+      "Die Bilder teilen sich Original und Kopie; entfernt man eines bei einem der beiden, bleibt es beim anderen.",
+    tags: ["Produkte"],
+    access: { scopes: ["products:write"] },
+    params: z.strictObject({ productId: idParam }),
+    response: { status: 201, description: "Die Kopie.", schema: productSchema },
+    problems: [404],
+    handler: async ({ params }) => {
+      const tenantId = getContext()?.tenantId ?? "";
+      const result = await withTenantTransaction(db, async (trx) => {
+        const row = await findProductById(trx, params.productId);
+        if (row === undefined) return undefined;
+        const [source] = await withDetails(trx, [row]);
+        if (source === undefined) return undefined;
+        const name = copyName(source.name);
+        const slug = await freeProductSlug(trx, name);
+        const created = await insertProduct(trx, tenantId, {
+          name,
+          slug,
+          description: source.description === "" ? null : source.description,
+          status: "draft",
+          tax_class_code: source.taxClass,
+          category_id: source.categoryId,
+          sku: null,
+        });
+        if (source.price !== null)
+          await prices.setBasePrice({
+            variantId: created.variant_id,
+            amount: source.price.amount,
+            currency: CURRENCY,
+          });
+        await stock.setOnHand(created.variant_id, 0);
+        for (const image of source.images) await appendImage(trx, tenantId, created.id, image.id);
+        await publishEvent(trx, productCreated, { id: created.id, name: created.name });
+        return (await withDetails(trx, [created]))[0];
+      });
+      if (result === undefined) throw new NotFoundError();
+      return result;
+    },
+  });
+
+  return [list, get, create, update, remove, copy];
+}
+
+/** „Sencha“ → „Sencha (Kopie)“, gekürzt auf die erlaubten 200 Zeichen. */
+export function copyName(name: string): string {
+  const suffix = " (Kopie)";
+  return `${name.slice(0, 200 - suffix.length).trimEnd()}${suffix}`;
 }
 
 const deletedSchema = z

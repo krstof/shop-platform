@@ -108,3 +108,14 @@ export async function touchProduct(trx: Transaction<DB>, productId: string): Pro
     .where("id", "=", productId)
     .execute();
 }
+
+/** Hängt das Bild noch an irgendeinem Produkt (auch archivierten) des Shops? */
+export async function imageInUse(trx: Transaction<DB>, mediaAssetId: string): Promise<boolean> {
+  const r = await trx
+    .selectFrom("catalog.product_media")
+    .select("id")
+    .where("media_asset_id", "=", mediaAssetId)
+    .limit(1)
+    .executeTakeFirst();
+  return r !== undefined;
+}

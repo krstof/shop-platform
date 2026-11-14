@@ -346,10 +346,46 @@ function ProductEditor({ product }: { product: Product | undefined }) {
               )}
             </Field>
           </Card>
+          {product !== undefined && <CopyProductCard product={product} />}
           {product !== undefined && <DeleteProductCard product={product} />}
         </div>
       </div>
     </form>
+  );
+}
+
+/** Kopie als Entwurf anlegen (gleiche Texte, Preis, Kategorie, Bilder) und gleich öffnen. */
+function CopyProductCard({ product }: { product: Product }) {
+  const shop = useShop();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const copy = useMutation({
+    mutationFn: () =>
+      request<Product>(`/admin/v1/products/${product.id}/copy`, { method: "POST", shopId: shop.id }),
+    onSuccess: async (p) => {
+      queryClient.setQueryData(["product", shop.id, p.id], p);
+      await queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+      await queryClient.invalidateQueries({ queryKey: categoriesKey(shop.id) });
+      await navigate({ to: "/$shop/produkte/$productId", params: { shop: shop.handle, productId: p.id } });
+    },
+  });
+  return (
+    <Card title="Produkt kopieren">
+      <p className="text-sm text-stone-500">
+        Legt eine Kopie mit gleichem Text, Preis, Kategorie und Bildern an, als Entwurf mit Bestand 0.
+        Praktisch für ähnliche Produkte.
+      </p>
+      {copy.isError && (
+        <div className="mt-3">
+          <Alert>{copy.error instanceof ApiError ? copy.error.message : "Das hat nicht geklappt."}</Alert>
+        </div>
+      )}
+      <div className="mt-4">
+        <Button type="button" variant="secondary" busy={copy.isPending} onClick={() => copy.mutate()}>
+          Kopie anlegen
+        </Button>
+      </div>
+    </Card>
   );
 }
 

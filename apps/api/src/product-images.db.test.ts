@@ -232,4 +232,50 @@ describe.skipIf(adminUrl === undefined)("Produktbilder (M2 Teil 2, echte Datenba
     });
     expect(tooBig.statusCode).toBe(413);
   });
+  it("kopiert ein Produkt samt Bildern; geteilte Bilder bleiben, bis das letzte Produkt sie abgibt", async () => {
+    const created = await call("POST", "/admin/v1/products", "a", {
+      name: "Gyokuro",
+      description: "Schattentee.",
+      price: { amount: 2490 },
+      taxClass: "reduced",
+      stock: 7,
+      sku: "GYO-1",
+      status: "published",
+    });
+    const id = created.json().id;
+    const img = (
+      await call("POST", `/admin/v1/products/${id}/images`, "a", { data: await image("#335533") })
+    ).json().images[0].id;
+    const r = await call("POST", `/admin/v1/products/${id}/copy`, "a");
+    expect(r.statusCode).toBe(201);
+    const copy = r.json();
+    expect(copy).toMatchObject({
+      name: "Gyokuro (Kopie)",
+      slug: "gyokuro-kopie",
+      description: "Schattentee.",
+      price: { amount: 2490, currency: "EUR" },
+      taxClass: "reduced",
+      stock: 0,
+      sku: null,
+      status: "draft",
+    });
+    expect(copy.id).not.toBe(id);
+    expect(copy.images.map((i: { id: string }) => i.id)).toEqual([img]);
+    // Zweite Kopie bekommt eine eigene Adresse.
+    expect((await call("POST", `/admin/v1/products/${id}/copy`, "a")).json().slug).toBe("gyokuro-kopie-2");
+    const files = () => [...storage.objects.keys()].filter((k) => k.includes(img)).length;
+    expect(files()).toBe(3);
+    // Bild von der Kopie nehmen: Original behält es samt Dateien.
+    expect((await call("DELETE", `/admin/v1/products/${copy.id}/images/${img}`, "a")).statusCode).toBe(200);
+    expect(files()).toBe(3);
+    expect((await call("GET", `/admin/v1/products/${id}`, "a")).json().images).toHaveLength(1);
+    // Die zweite Kopie hält das Bild noch; erst wenn kein Produkt es mehr nutzt, sind die Dateien weg.
+    const copies = (await call("GET", "/admin/v1/products?q=gyokuro", "a")).json().data;
+    for (const p of copies as { id: string; images: { id: string }[] }[])
+      if (p.images.length > 0) await call("DELETE", `/admin/v1/products/${p.id}/images/${img}`, "a");
+    expect(files()).toBe(0);
+    // Unbekanntes Produkt 404, Shop ohne Schreibrecht 403.
+    expect((await call("POST", `/admin/v1/products/${uuidv7()}/copy`, "a")).statusCode).toBe(404);
+    expect((await call("POST", `/admin/v1/products/${id}/copy`, "b")).statusCode).toBe(403);
+  });
 });

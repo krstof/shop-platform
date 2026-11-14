@@ -18,6 +18,7 @@ import type { DB } from "../../db.generated.js";
 import {
   appendImage,
   detachImage,
+  imageInUse,
   imageIdsOf,
   lockProduct,
   MAX_IMAGES_PER_PRODUCT,
@@ -148,11 +149,12 @@ export function productImageEndpoints(deps: ProductEndpointDependencies): Endpoi
       const product = await withTenantTransaction(db, async (trx) => {
         const before = await lock(trx, params.productId);
         if (!(await detachImage(trx, params.productId, params.imageId))) throw new NotFoundError();
-        return finish(trx, before);
+        // Eine Kopie des Produkts kann dasselbe Bild nutzen; dann bleiben die Dateien.
+        return { product: await finish(trx, before), shared: await imageInUse(trx, params.imageId) };
       });
       // Dateien erst löschen, wenn die Zuordnung sicher weg ist (nach dem Commit).
-      await images.remove([params.imageId]);
-      return product;
+      if (!product.shared) await images.remove([params.imageId]);
+      return product.product;
     },
   });
 
