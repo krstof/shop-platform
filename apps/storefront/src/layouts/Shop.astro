@@ -11,8 +11,10 @@ interface Props {
   beschreibung?: string;
   /** Anzahl der Artikel im Warenkorb (M6). */
   korb?: number;
+  /** Text im Suchfeld (nur auf der Suchseite gefüllt). */
+  suche?: string;
 }
-const { shop, categories, titel, beschreibung = shop.name, korb = 0 } = Astro.props;
+const { shop, categories, titel, beschreibung = shop.name, korb = 0, suche = "" } = Astro.props;
 const pfad = Astro.url.pathname.replace(/\/+$/, "");
 const basis = `/${shop.handle}`;
 const design = shop.design ?? DEFAULT_DESIGN;
@@ -75,13 +77,22 @@ const fussLinks = (design.footer?.links ?? []).flatMap((l) => {
             })}
           </ul>
         </nav>
-        <a
-          class="korb"
-          href={`${basis}/warenkorb`}
-          aria-current={pfad === `${basis}/warenkorb` ? "page" : undefined}
-        >
-          Warenkorb ({korb})
-        </a>
+        <div class="kopf-aktionen">
+          <form class="suchfeld" role="search" action={`${basis}/suche`} method="get">
+            <label class="unsichtbar" for="suche-q">
+              Im Shop suchen
+            </label>
+            <input id="suche-q" type="search" name="q" value={suche} maxlength="100" placeholder="Suchen …" />
+            <button type="submit">Suchen</button>
+          </form>
+          <a
+            class="korb"
+            href={`${basis}/warenkorb`}
+            aria-current={pfad === `${basis}/warenkorb` ? "page" : undefined}
+          >
+            Warenkorb ({korb})
+          </a>
+        </div>
       </div>
     </header>
     <main id="inhalt" class="breite" tabindex="-1">

@@ -163,6 +163,38 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect((await inject("GET", "/store/v1/shops/mode-b/products/sencha")).statusCode).toBe(404);
   });
 
+  it("sucht in Name und Beschreibung veröffentlichter Produkte (Storefront-Suche)", async () => {
+    await inject("POST", "/admin/v1/products", "a", {
+      name: "Oolong Bergnebel",
+      status: "published",
+      stock: 3,
+      price: { amount: 1290 },
+      description: "Halbfermentiert und blumig.\n\nFür 100%_Genuss am Nachmittag.",
+    });
+    await inject("POST", "/admin/v1/products", "a", {
+      name: "Blumiger Entwurf",
+      status: "draft",
+      price: { amount: 990 },
+    });
+    const names = async (url: string) =>
+      (await inject("GET", url)).json().data.map((p: { name: string }) => p.name);
+    expect(await names("/store/v1/shops/tee-a/products?q=SENCH")).toEqual(["Sencha"]);
+    // Beschreibung, auch der zweite Absatz; der Entwurf bleibt unsichtbar.
+    expect(await names("/store/v1/shops/tee-a/products?q=blumig")).toEqual(["Oolong Bergnebel"]);
+    expect(await names("/store/v1/shops/tee-a/products?q=nachmittag")).toEqual(["Oolong Bergnebel"]);
+    // JSON-Schlüssel der Beschreibung zählen nicht; % und _ sind normale Zeichen.
+    expect(await names("/store/v1/shops/tee-a/products?q=paragraph")).toEqual([]);
+    expect(await names("/store/v1/shops/tee-a/products?q=%25")).toEqual(["Oolong Bergnebel"]);
+    expect(await names("/store/v1/shops/tee-a/products?q=a_a")).toEqual([]);
+    // Kombination mit Kategorie: Oolong hat keine.
+    expect(await names("/store/v1/shops/tee-a/products?q=oolong&category=gruentee")).toEqual([]);
+    expect(await names("/store/v1/shops/tee-a/products?q=a&category=gruentee")).toEqual(["Sencha", "Matcha"]);
+    // Fremder Shop findet nichts aus A.
+    expect(await names("/store/v1/shops/mode-b/products?q=sencha")).toEqual([]);
+    expect((await inject("GET", "/store/v1/shops/tee-a/products?q=")).statusCode).toBe(422);
+    expect((await inject("GET", `/store/v1/shops/tee-a/products?q=${"x".repeat(101)}`)).statusCode).toBe(422);
+  });
+
   it("ein frisch gesperrter Shop verschwindet sofort", async () => {
     await inspect.query(`UPDATE platform.tenant SET status = 'suspended' WHERE id = $1`, [TENANT_B]);
     expect((await inject("GET", "/store/v1/shops/mode-b/products")).statusCode).toBe(404);

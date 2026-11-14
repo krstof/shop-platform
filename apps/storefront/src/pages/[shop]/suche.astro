@@ -1,0 +1,62 @@
+---
+// Suche im Shop: Treffer in Name und Beschreibung der veröffentlichten Produkte.
+// Das Suchfeld steht im Kopf jeder Seite (Layout Shop) und schickt ?q=… hierher.
+import Shop from "../../layouts/Shop.astro";
+import Produktkarte from "../../components/Produktkarte.astro";
+import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
+import { warenkorbAnzahl } from "../../lib/cart.js";
+import { suchbegriff, trefferText } from "../../lib/suche.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const begriff = suchbegriff(Astro.url.searchParams.get("q"));
+const treffer =
+  begriff === undefined
+    ? []
+    : (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?q=${encodeURIComponent(begriff)}`))
+        .data;
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop
+  shop={shop}
+  categories={categories}
+  titel={begriff === undefined ? "Suche" : `Suche: ${begriff}`}
+  korb={korb}
+  suche={begriff ?? ""}
+>
+  <h1 class="suche-titel">Suche</h1>
+  {begriff === undefined ? (
+    <p>Gib oben einen Suchbegriff ein, etwa einen Produktnamen.</p>
+  ) : (
+    <>
+      <p class="klein" role="status">
+        {trefferText(treffer.length)} für „{begriff}“
+      </p>
+      {treffer.length === 0 ? (
+        <div class="leer-suche">
+          <p>Dazu haben wir leider nichts gefunden. Versuch es mit einem anderen Wort oder stöbere hier:</p>
+          {categories.length > 0 && (
+            <ul class="nav">
+              {categories.map((k) => (
+                <li>
+                  <a href={`/${shop.handle}/kategorie/${k.slug}`}>{k.name}</a>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p>
+            <a href={`/${shop.handle}`}>Zur Startseite</a>
+          </p>
+        </div>
+      ) : (
+        <ul class="raster">
+          {treffer.map((p) => (
+            <Produktkarte produkt={p} shop={shop.handle} />
+          ))}
+        </ul>
+      )}
+    </>
+  )}
+</Shop>

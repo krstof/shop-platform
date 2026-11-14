@@ -74,6 +74,8 @@ export interface ProductFilter {
   readonly categoryId?: string | undefined;
   /** Sucht ohne Groß-/Kleinschreibung im Namen und in der Artikelnummer (Teiltreffer). */
   readonly search?: string | undefined;
+  /** Sucht ohne Groß-/Kleinschreibung im Namen und im Text der Beschreibung (Storefront). */
+  readonly searchText?: string | undefined;
 }
 
 /** Macht %, _ und \\ in einem LIKE-Muster wirkungslos, damit sie als normale Zeichen gelten. */
@@ -92,6 +94,27 @@ export async function findProducts(trx: Transaction<DB>, f: ProductFilter): Prom
   if (f.search !== undefined) {
     const pattern = likePattern(f.search);
     q = q.where((eb) => eb.or([eb("t.name", "ilike", pattern), eb("v.sku", "ilike", pattern)]));
+  }
+  if (f.searchText !== undefined) {
+    const pattern = likePattern(f.searchText);
+    // Nur die Textknoten der Beschreibung, nicht die JSON-Schlüssel („paragraph“ usw.).
+    q = q.where((eb) =>
+      eb.or([
+        eb("t.name", "ilike", pattern),
+        eb.exists(
+          eb
+            .selectFrom(
+              eb
+                .fn<{ value: string }>("jsonb_array_elements_text", [
+                  eb.fn("jsonb_path_query_array", [eb.ref("t.description"), eb.val("lax $.**.text")]),
+                ])
+                .as("d"),
+            )
+            .select(eb.lit(1).as("eins"))
+            .where("d.value", "ilike", pattern),
+        ),
+      ]),
+    );
   }
   return (await q.execute()).map(toRow);
 }

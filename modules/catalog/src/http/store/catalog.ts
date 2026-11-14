@@ -1,7 +1,7 @@
 // Katalog in der Storefront-API (M4): nur Sichtbares (veröffentlichte Produkte, sichtbare
 // Kategorien), ohne interne Felder wie Artikelnummer oder genauen Bestand. Öffentlich, weil
 // jeder Besucher eines Shops diese Daten sehen darf; der Shop kommt aus dem Pfad.
-import { defineEndpoint, type Endpoint } from "@shop/http";
+import { defineEndpoint, singleLineText, type Endpoint } from "@shop/http";
 import { NotFoundError, withTenantTransaction, type Database, type Transaction } from "@shop/kernel";
 import { z } from "zod";
 import type { DB } from "../../db.generated.js";
@@ -136,11 +136,16 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
     operationId: "listStoreProducts",
     summary: "Produkte des Shops",
     description:
-      "Veröffentlichte Produkte in Anlagereihenfolge (höchstens 200), wahlweise nur einer Kategorie.",
+      "Veröffentlichte Produkte in Anlagereihenfolge (höchstens 200), wahlweise nur einer Kategorie oder nur Treffer einer Suche.",
     tags: ["Storefront"],
     access: PUBLIC,
     params: z.strictObject({ shopHandle: shopHandleParam }),
-    query: z.strictObject({ category: slugParam.optional() }),
+    query: z.strictObject({
+      category: slugParam.optional(),
+      q: singleLineText(100).optional().meta({
+        description: "Suchtext für Name oder Beschreibung (Teiltreffer, Groß-/Kleinschreibung egal).",
+      }),
+    }),
     response: {
       status: 200,
       description: "Die Produkte.",
@@ -156,7 +161,12 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
           if (c === undefined) throw new NotFoundError();
           categoryId = c.id;
         }
-        const rows = await findProducts(trx, { limit: 200, status: "published", categoryId });
+        const rows = await findProducts(trx, {
+          limit: 200,
+          status: "published",
+          categoryId,
+          searchText: query.q,
+        });
         return { data: await read(trx, rows.slice(0, 200)) };
       }),
   });
