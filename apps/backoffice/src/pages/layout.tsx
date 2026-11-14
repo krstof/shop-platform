@@ -95,6 +95,9 @@ const MENU = [
   { to: "/$shop/aussehen", label: "Aussehen" },
 ] as const;
 
+/** Nur Inhaber:innen verwalten das Team. */
+const TEAM = { to: "/$shop/team", label: "Team" } as const;
+
 export function ShopLayout() {
   const { shop: handle } = useParams({ strict: false });
   const session = useSession();
@@ -132,6 +135,7 @@ function ShopFrame({
   // Nach jedem Seitenwechsel ist das Handy-Menü wieder zu.
   useEffect(() => setMenuOpen(false), [location.pathname]);
   const onAssistantPage = location.pathname.endsWith("/assistent");
+  const menu = shop.role === "owner" ? [...MENU, TEAM] : MENU;
   const panelOpen = assistant.open && !onAssistantPage;
   const toggleAssistant = () => {
     setMenuOpen(false);
@@ -162,7 +166,7 @@ function ShopFrame({
             </label>
           )}
           <nav className="ml-2 hidden gap-1 text-sm xl:flex" aria-label="Hauptmenü">
-            {MENU.map((m) => (
+            {menu.map((m) => (
               <Link
                 key={m.to}
                 to={m.to}
@@ -204,7 +208,7 @@ function ShopFrame({
         {menuOpen && (
           <div id="handy-menue" className="border-t border-stone-200 bg-white xl:hidden">
             <nav className="mx-auto flex max-w-6xl flex-col px-4 py-2 sm:px-6" aria-label="Hauptmenü">
-              {MENU.map((m) => (
+              {menu.map((m) => (
                 <Link
                   key={m.to}
                   to={m.to}

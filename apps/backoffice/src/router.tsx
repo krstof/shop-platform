@@ -11,6 +11,7 @@ import { OverviewPage } from "./pages/overview.js";
 import { PlatformPage } from "./pages/platform.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
+import { TeamPage } from "./pages/team.js";
 import { parseOrderFilter } from "./lib/order-filter.js";
 import { parseProductFilter } from "./lib/product-filter.js";
 
@@ -92,6 +93,9 @@ const design = createRoute({ getParentRoute: () => shop, path: "/aussehen", comp
 // KI-Assistent (Welle 2).
 const assistant = createRoute({ getParentRoute: () => shop, path: "/assistent", component: AssistantPage });
 
+// Team: Mitglieder sehen und einladen (nur Inhaber:in).
+const team = createRoute({ getParentRoute: () => shop, path: "/team", component: TeamPage });
+
 const orders = createRoute({
   getParentRoute: () => shop,
   path: "/bestellungen",
@@ -124,6 +128,7 @@ const routeTree = root.addChildren([
     order,
     design,
     assistant,
+    team,
   ]),
 ]);
 
