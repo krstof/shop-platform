@@ -4,10 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Testserver ohne GitHub-Kosten (14.11.2026):** Kristof will kein Geld für GitHub ausgeben. Die Prüfungen laufen ohnehin bei Claude vor jedem Hochladen. Für den Testserver zwei Wege: Projekt **öffentlich** machen (dann sind GitHubs Abläufe kostenlos, Code für alle sichtbar, keine Passwörter darin), oder **warten**, bis GitHub im neuen Monat wieder Freiminuten hat; dann richtet ein einziger Lauf ein, dass der Server sich neue Stände selbst holt, und GitHub-Abläufe werden danach nicht mehr gebraucht. Antwort: „öffentlich“ oder „warten“.
+(keine; Kristof stellt das Projekt auf GitHub auf „öffentlich“, danach aktualisiert Claude den Testserver)
 
 ## Beantwortet
 
+- **Testserver ohne GitHub-Kosten:** Öffentlich ist in Ordnung („egal, wenn jeder den Code sehen kann“), nichts soll kaputtgehen. Geheimnis-Prüfung des ganzen Verlaufs vorher: nichts gefunden. (Kristof, 14.11.2026)
 - **GitHub-Abrechnung:** Kein Geld für GitHub; es soll ohne Kosten gehen. (Kristof, 14.11.2026)
 
 - **Erst testen oder weiterbauen?** Weiterbauen. (Kristof, 14.11.2026)
