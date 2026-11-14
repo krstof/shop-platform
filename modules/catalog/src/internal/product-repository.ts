@@ -2,7 +2,6 @@
 // Hauptkategorie. Preis und Bestand gehören den Modulen pricing und inventory und kommen über
 // deren Fassaden dazu (siehe products.ts). Läuft immer in withTenantTransaction (RLS).
 import type { Transaction } from "@shop/kernel";
-import { sql } from "kysely";
 import type { DB } from "../db.generated.js";
 import { LOCALE } from "./category-repository.js";
 import { docFromText, firstFreeSlug, slugify, textFromDoc } from "./text.js";
@@ -51,9 +50,19 @@ function baseQuery(trx: Transaction<DB>) {
       "t.description",
       "p.tax_class_code",
       "pc.category_id",
-      sql<string[]>`coalesce((
-        select array_agg(x.category_id order by x.is_primary desc, x.position, x.category_id)
-        from catalog.product_category x where x.product_id = p.id), '{}')`.as("category_ids"),
+      (eb) =>
+        eb
+          .selectFrom("catalog.product_category as x")
+          .select((e) =>
+            e.fn
+              .agg<string[] | null>("array_agg", ["x.category_id"])
+              .orderBy("x.is_primary", "desc")
+              .orderBy("x.position")
+              .orderBy("x.category_id")
+              .as("ids"),
+          )
+          .whereRef("x.product_id", "=", "p.id")
+          .as("category_ids"),
       "v.id as variant_id",
       "v.sku",
       "p.published_at",
@@ -75,6 +84,7 @@ function toRow(r: RawRow): ProductRow {
     tax_class_code: r.tax_class_code === "reduced" ? "reduced" : "standard",
     description: textFromDoc(r.description),
     category_id: r.category_id ?? null,
+    category_ids: r.category_ids ?? [],
   };
 }
 
