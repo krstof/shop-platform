@@ -474,3 +474,18 @@ export async function shrinkPhoto(file: Blob, maxEdge = 1024): Promise<{ data: s
   }
   throw new Error("Foto konnte nicht verkleinert werden");
 }
+
+/**
+ * Antwortknöpfe (15.11.2026): Endet eine Antwort des Assistenten mit „Antworten: Ja | Nein“, zeigt der
+ * Chat diese Zeile als Knöpfe statt als Text (2 bis 4 kurze Antworten).
+ */
+export function splitChoices(text: string): { text: string; choices: string[] } {
+  const m = /\n?[ \t]*Antworten:[ \t]*([^\n]+?)[ \t]*$/.exec(text.trimEnd());
+  if (m === null) return { text, choices: [] };
+  const choices = (m[1] ?? "")
+    .split("|")
+    .map((c) => c.trim().replace(/^[„"“]|[“"”]$/g, ""))
+    .filter((c) => c !== "" && c.length <= 40);
+  if (choices.length < 2 || choices.length > 4) return { text, choices: [] };
+  return { text: text.trimEnd().slice(0, m.index).trimEnd(), choices };
+}

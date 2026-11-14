@@ -2,12 +2,13 @@
 // Suche und Filter (12.11.2026) stehen in der Adresse und gehen als Filter an die Admin-API.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download, Upload } from "lucide-react";
 import { Alert, Badge, Button, Input, Select, Spinner } from "../components/ui.js";
 import { listAll, request, type Category, type Product } from "../lib/api.js";
 import { bulkMessage, bulkTargets, categoryMessage, categoryTargets, type BulkAction } from "../lib/bulk.js";
 import { importBody, productsCsv, readImport, type ImportResult } from "../lib/product-csv.js";
+import { ImportDialog } from "./product-import.js";
 import { formatEuro } from "../lib/money.js";
 import {
   isFiltered,
@@ -19,6 +20,7 @@ import {
   type ProductSort,
 } from "../lib/product-filter.js";
 import { useShop } from "./layout.js";
+import { useConfirm } from "../components/dialog.js";
 
 /** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
 type FilterInput = { [K in keyof ProductFilter]?: ProductFilter[K] | undefined };
@@ -43,6 +45,7 @@ const newButton =
   "hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
 export function ProductsPage() {
+  const confirm = useConfirm();
   const shop = useShop();
   const navigate = useNavigate();
   const filter = useSearch({ from: "/$shop/produkte" });
@@ -134,9 +137,7 @@ export function ProductsPage() {
   });
 
   // Produkte als Tabelle herunterladen und hochladen.
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState<ImportResult | undefined>();
-  const [importError, setImportError] = useState<string | undefined>();
+  const [importOpen, setImportOpen] = useState(false);
   async function download() {
     const all = await listAll<Product>("/admin/v1/products", shop.id);
     const blob = new Blob([productsCsv(all, (id) => (id === null ? "" : (categoryName.get(id) ?? "")))], {
@@ -149,18 +150,10 @@ export function ProductsPage() {
     a.click();
     URL.revokeObjectURL(url);
   }
-  async function onImportFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file === undefined) return;
-    setImportError(undefined);
+  async function readFile(text: string): Promise<ImportResult> {
     setBulkInfo(undefined);
-    if (file.size > 2_000_000) {
-      setImportError("Die Datei ist zu groß (höchstens 2 MB).");
-      return;
-    }
     const all = await listAll<Product>("/admin/v1/products", shop.id);
-    setImporting(readImport(await file.text(), all, categories.data ?? []));
+    return readImport(text, all, categories.data ?? []);
   }
   const applyImport = useMutation({
     mutationFn: async ({ rows, columns }: ImportResult) => {
@@ -195,7 +188,7 @@ export function ProductsPage() {
       );
     },
     onSuccess: (message) => {
-      setImporting(undefined);
+      setImportOpen(false);
       setBulkInfo(message);
     },
     onSettled: () => {
@@ -236,25 +229,17 @@ export function ProductsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => void download()} title="Alle Produkte als Tabelle (CSV)">
             <Download className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Herunterladen</span>
-            <span className="sr-only sm:hidden">Als Tabelle herunterladen</span>
+            <span className="hidden sm:inline">Exportieren</span>
+            <span className="sr-only sm:hidden">Als Tabelle exportieren</span>
           </Button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".csv,text/csv"
-            className="sr-only"
-            tabIndex={-1}
-            onChange={(e) => void onImportFile(e)}
-          />
           <Button
             variant="secondary"
-            onClick={() => fileInput.current?.click()}
-            title="Tabelle (CSV) hochladen"
+            onClick={() => setImportOpen(true)}
+            title="Produkte aus einer Tabelle (CSV)"
           >
             <Upload className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Hochladen</span>
-            <span className="sr-only sm:hidden">Tabelle hochladen</span>
+            <span className="hidden sm:inline">Importieren</span>
+            <span className="sr-only sm:hidden">Aus Tabelle importieren</span>
           </Button>
           <Link to="/$shop/produkte/neu" params={{ shop: shop.handle }} className={newButton}>
             <span aria-hidden="true">+</span> Produkt anlegen
@@ -262,50 +247,13 @@ export function ProductsPage() {
         </div>
       </div>
 
-      {importError && (
-        <div className="mb-3">
-          <Alert>{importError}</Alert>
-        </div>
-      )}
-      {importing && (
-        <section aria-label="Tabelle hochladen" className="mb-4 rounded-lg bg-white p-5 ring-1 ring-gray-200">
-          <h2 className="font-semibold text-gray-900">Tabelle prüfen</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            {importing.rows.filter((r) => r.existingId === null).length} neue Produkte,{" "}
-            {importing.rows.filter((r) => r.existingId !== null).length} Änderungen (gleiche Artikelnummer)
-            {importing.errors.length > 0 &&
-              `, ${importing.errors.length} Zeilen mit Fehlern (werden übersprungen)`}
-            .
-          </p>
-          {importing.errors.length > 0 && (
-            <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-sm text-red-800">
-              {importing.errors.map((e) => (
-                <li key={e.line}>
-                  Zeile {e.line}: {e.message}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-2 text-xs text-gray-500">
-            Spalten wie beim Herunterladen: Name, Artikelnummer, Preis, Angebotspreis, Bestand, Kategorie, Im
-            Shop (ja/nein), Mehrwertsteuer (7/19), Lieferzeit von/bis, Beschreibung.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              disabled={importing.rows.length === 0}
-              busy={applyImport.isPending}
-              onClick={() => applyImport.mutate(importing)}
-            >
-              {importing.rows.length === 1
-                ? "1 Zeile übernehmen"
-                : `${importing.rows.length} Zeilen übernehmen`}
-            </Button>
-            <Button variant="ghost" disabled={applyImport.isPending} onClick={() => setImporting(undefined)}>
-              Abbrechen
-            </Button>
-          </div>
-        </section>
-      )}
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        read={readFile}
+        apply={(r) => applyImport.mutate(r)}
+        applying={applyImport.isPending}
+      />
 
       <FilterBar filter={filter} categories={categories.data ?? []} onChange={setFilter} />
 
@@ -324,14 +272,14 @@ export function ProductsPage() {
           </Button>
           <label className="inline-flex items-center">
             <span className="sr-only">Kategorie setzen</span>
-            <select
+            <Select
               value=""
               disabled={setCategory.isPending}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v !== "") setCategory.mutate(v === "ohne" ? null : v);
               }}
-              className="rounded-md border-0 bg-white px-2.5 py-1.5 text-sm text-gray-800 ring-1 ring-gray-300"
+              className="w-52"
             >
               <option value="">Kategorie setzen …</option>
               <option value="ohne">Ohne Kategorie</option>
@@ -340,16 +288,20 @@ export function ProductsPage() {
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <Button
             variant="danger"
             busy={bulk.isPending}
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm(
-                  `${selectedVisible.size} Produkte löschen? Das lässt sich nicht rückgängig machen.`,
-                )
+                await confirm({
+                  title: `${selectedVisible.size} Produkte löschen?`,
+                  message:
+                    "Die Produkte verschwinden aus Shop und Backoffice. Das lässt sich nicht rückgängig machen.",
+                  confirmLabel: "Löschen",
+                  tone: "danger",
+                })
               )
                 bulk.mutate("delete");
             }}

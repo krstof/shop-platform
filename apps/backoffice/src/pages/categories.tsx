@@ -15,6 +15,7 @@ import {
 } from "../lib/api.js";
 import { useShop } from "./layout.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
+import { useConfirm } from "../components/dialog.js";
 
 const newButton =
   "inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white shadow-sm " +
@@ -494,6 +495,7 @@ function CategoryImageCard({
 
 /** Löschen mit Rückfrage. Die Produkte der Kategorie bleiben, nur ohne Kategorie. */
 function DeleteCategoryCard({ category }: { category: Category }) {
+  const confirm = useConfirm();
   const shop = useShop();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -525,11 +527,14 @@ function DeleteCategoryCard({ category }: { category: Category }) {
           type="button"
           variant="danger"
           busy={remove.isPending}
-          onClick={() => {
+          onClick={async () => {
             if (
-              window.confirm(
-                `Kategorie „${category.name}“ wirklich löschen? Die Produkte darin bleiben erhalten.`,
-              )
+              await confirm({
+                title: `Kategorie „${category.name}“ löschen?`,
+                message: "Die Produkte darin bleiben erhalten.",
+                confirmLabel: "Löschen",
+                tone: "danger",
+              })
             )
               remove.mutate();
           }}

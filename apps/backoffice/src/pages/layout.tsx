@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { storefrontUrl } from "../lib/design.js";
 import { ShopContext, useShop } from "../lib/shop.js";
-import { Button, Spinner } from "../components/ui.js";
+import { Button, Select, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
 import { useSession } from "../lib/session.js";
 import { SlopifyMark } from "../components/logo.js";
@@ -387,37 +387,53 @@ function Sidebar({
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-14 items-center border-b border-gray-200 px-3">
-        <div className="relative flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-gray-150">
-          <span
-            aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
+        {shops.length > 1 ? (
+          <Select
+            className="w-full"
+            aria-label="Shop wechseln"
+            value={shop.handle}
+            onChange={(e) => void navigate({ to: "/$shop/dashboard", params: { shop: e.target.value } })}
+            buttonClassName="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-gray-150 focus-visible:outline-2 focus-visible:outline-brand-600"
+            trigger={
+              <>
+                <span
+                  aria-hidden="true"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
+                >
+                  {shop.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[0.95rem] leading-tight font-semibold text-gray-900">
+                    {shop.name}
+                  </span>
+                  <span className="block truncate text-xs text-gray-500">{roleName(shop.role)}</span>
+                </span>
+                <ChevronsUpDown className="size-4 shrink-0 text-gray-400" aria-hidden="true" />
+              </>
+            }
           >
-            {shop.name.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.95rem] leading-tight font-semibold text-gray-900">
-              {shop.name}
+            {shops.map((s) => (
+              <option key={s.id} value={s.handle}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <div className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5">
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
+            >
+              {shop.name.slice(0, 1).toUpperCase()}
             </span>
-            <span className="block truncate text-xs text-gray-500">{roleName(shop.role)}</span>
-          </span>
-          {shops.length > 1 && (
-            <>
-              <ChevronsUpDown className="size-4 shrink-0 text-gray-400" aria-hidden="true" />
-              <select
-                aria-label="Shop wechseln"
-                className="absolute inset-0 cursor-pointer opacity-0"
-                value={shop.handle}
-                onChange={(e) => void navigate({ to: "/$shop/dashboard", params: { shop: e.target.value } })}
-              >
-                {shops.map((s) => (
-                  <option key={s.id} value={s.handle}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-        </div>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[0.95rem] leading-tight font-semibold text-gray-900">
+                {shop.name}
+              </span>
+              <span className="block truncate text-xs text-gray-500">{roleName(shop.role)}</span>
+            </span>
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Hauptmenü">

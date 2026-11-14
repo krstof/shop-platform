@@ -18,6 +18,7 @@ import {
 import { useShop } from "./layout.js";
 import type { GeneralSettings } from "./settings.js";
 import { productsKey } from "./products.js";
+import { useConfirm } from "../components/dialog.js";
 
 /** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
 type FilterInput = { [K in keyof OrderFilter]?: OrderFilter[K] | undefined };
@@ -301,6 +302,7 @@ function OrderFilterBar({
 }
 
 export function OrderPage() {
+  const confirm = useConfirm();
   const shop = useShop();
   const queryClient = useQueryClient();
   const { orderId } = useParams({ strict: false });
@@ -366,13 +368,16 @@ export function OrderPage() {
             <Button
               variant="secondary"
               busy={cancel.isPending}
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  window.confirm(
-                    `Bestellung ${o.orderNumber} stornieren? Die Ware kommt zurück ins Lager${
+                  await confirm({
+                    title: `Bestellung ${o.orderNumber} stornieren?`,
+                    message: `Die Ware kommt zurück ins Lager${
                       o.paymentStatus === "paid" ? ", die Testzahlung gilt als erstattet" : ""
                     }. Das lässt sich nicht rückgängig machen.`,
-                  )
+                    confirmLabel: "Stornieren",
+                    tone: "danger",
+                  })
                 )
                   cancel.mutate();
               }}

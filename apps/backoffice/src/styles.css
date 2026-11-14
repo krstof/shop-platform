@@ -68,3 +68,40 @@
     @apply transition-colors hover:bg-gray-50;
   }
 }
+
+/* Dezente Bildlaufleisten überall (Kristof 15.11.2026: „die Scrollbar ist hässlich“). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(0 0 0 / 0.18);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Pop-ups (components/dialog.tsx) */
+dialog.modal::backdrop {
+  background: rgb(17 24 39 / 0.45);
+  backdrop-filter: blur(2px);
+}
+dialog.modal[open] {
+  animation: modal-auf 0.16s ease-out;
+}
+@keyframes modal-auf {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.modal[open] {
+    animation: none;
+  }
+}

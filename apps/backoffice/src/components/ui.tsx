@@ -1,11 +1,5 @@
 // Schlichte Bausteine fürs Backoffice (M3). Bewusst wenige, mit klaren Zuständen und Fokusrahmen.
-import type {
-  ButtonHTMLAttributes,
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
-} from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { useId } from "react";
 import { SlopifyLogo } from "./logo.js";
 
@@ -16,7 +10,7 @@ function cx(...parts: (string | false | null | undefined)[]): string {
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "destructive";
   busy?: boolean;
 };
 
@@ -33,6 +27,7 @@ export function Button({
     secondary: "bg-white text-gray-800 ring-1 ring-gray-200 hover:bg-gray-50 hover:ring-gray-300 shadow-xs",
     ghost: "text-gray-700 hover:bg-gray-100",
     danger: "bg-white text-red-700 ring-1 ring-red-200 hover:bg-red-50",
+    destructive: "bg-red-600 text-white hover:bg-red-700 shadow-xs",
   }[variant];
   return (
     <button
@@ -115,13 +110,7 @@ export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLText
   return <textarea {...rest} className={cx(control, "min-h-32", className)} />;
 }
 
-export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select {...rest} className={cx(control, "pr-8", className)}>
-      {children}
-    </select>
-  );
-}
+export { Select } from "./select.js";
 
 export function Card({
   title,

@@ -7,11 +7,13 @@ import { ApiError, request } from "../lib/api.js";
 import { couponLabel, parseCouponForm, type Coupon, type CouponForm } from "../lib/coupons.js";
 import { formatEuro } from "../lib/money.js";
 import { useShop } from "./layout.js";
+import { useConfirm } from "../components/dialog.js";
 
 const couponsKey = (shopId: string) => ["coupons", shopId] as const;
 const emptyForm: CouponForm = { code: "", kind: "percent", value: "", minOrder: "" };
 
 export function CouponsPage() {
+  const confirm = useConfirm();
   const shop = useShop();
   const queryClient = useQueryClient();
   const coupons = useQuery({
@@ -83,8 +85,15 @@ export function CouponsPage() {
                 type="button"
                 variant="ghost"
                 busy={remove.isPending && remove.variables?.id === c.id}
-                onClick={() => {
-                  if (window.confirm(`Gutschein ${c.code} löschen? Bestellungen behalten ihren Rabatt.`))
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: `Gutschein ${c.code} löschen?`,
+                      message: "Bestellungen, die ihn schon benutzt haben, behalten ihren Rabatt.",
+                      confirmLabel: "Löschen",
+                      tone: "danger",
+                    })
+                  )
                     remove.mutate(c);
                 }}
               >

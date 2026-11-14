@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   describeChange,
+  splitChoices,
   needsConfirmation,
   prepareForSend,
   productBody,
@@ -156,5 +157,20 @@ describe("Fotos im Chat", () => {
         photo: "foto-2",
       }).lines,
     ).toContain("Bild: das Foto aus dem Chat");
+  });
+});
+
+describe("Antwortknöpfe", () => {
+  it("liest die letzte Zeile als Knöpfe und entfernt sie aus dem Text", () => {
+    expect(splitChoices("Soll ich es gleich in den Shop stellen?\nAntworten: Ja | Nein")).toEqual({
+      text: "Soll ich es gleich in den Shop stellen?",
+      choices: ["Ja", "Nein"],
+    });
+    expect(splitChoices("Welcher Satz?\n\nAntworten: 7 % | 19 %\n").choices).toEqual(["7 %", "19 %"]);
+  });
+  it("lässt normalen Text und unpassende Listen in Ruhe", () => {
+    expect(splitChoices("Welcher Preis?")).toEqual({ text: "Welcher Preis?", choices: [] });
+    expect(splitChoices("Antworten: Ja").choices).toEqual([]);
+    expect(splitChoices("Antworten: a | b | c | d | e").choices).toEqual([]);
   });
 });

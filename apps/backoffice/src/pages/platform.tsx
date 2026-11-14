@@ -20,6 +20,7 @@ import { groupSecret, qrPath } from "../lib/qr.js";
 import { sessionKey, useSession } from "../lib/session.js";
 import { FullPageSpinner, SignOutButton } from "./layout.js";
 import { SlopifyLogo } from "../components/logo.js";
+import { useConfirm } from "../components/dialog.js";
 
 const DATE = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" });
 const DATE_TIME = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
@@ -337,6 +338,7 @@ function ShopsAdmin() {
 }
 
 function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const suspended = shop.status === "suspended";
   const change = useMutation({
@@ -387,12 +389,16 @@ function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) 
             <Button
               variant={suspended ? "secondary" : "danger"}
               busy={change.isPending}
-              onClick={() => {
+              onClick={async () => {
                 if (
                   suspended ||
-                  window.confirm(
-                    `„${shop.name}“ sperren? Der Shop ist dann für Kunden nicht mehr erreichbar, und niemand vom Shop kann sich anmelden. Die Daten bleiben.`,
-                  )
+                  (await confirm({
+                    title: `„${shop.name}“ sperren?`,
+                    message:
+                      "Der Shop ist dann für Kunden nicht mehr erreichbar, und niemand vom Shop kann sich anmelden. Die Daten bleiben.",
+                    confirmLabel: "Sperren",
+                    tone: "danger",
+                  }))
                 )
                   change.mutate();
               }}

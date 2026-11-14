@@ -15,6 +15,7 @@ import {
 } from "../lib/team.js";
 import { useShop } from "./layout.js";
 import { SettingsTabs } from "./settings.js";
+import { useConfirm } from "../components/dialog.js";
 
 const membersKey = (shopId: string) => ["members", shopId] as const;
 
@@ -31,6 +32,7 @@ export function TeamPage() {
 }
 
 function TeamOwnerView() {
+  const confirm = useConfirm();
   const shop = useShop();
   const queryClient = useQueryClient();
   const members = useQuery({
@@ -87,12 +89,19 @@ function TeamOwnerView() {
                     type="button"
                     variant="ghost"
                     busy={remove.isPending && remove.variables?.id === m.id}
-                    onClick={() => {
-                      const question =
-                        m.status === "invited"
-                          ? `Einladung an ${m.email} zurückziehen?`
-                          : `${m.email} aus dem Team entfernen? Der Zugang zum Shop endet sofort.`;
-                      if (window.confirm(question)) remove.mutate(m);
+                    onClick={async () => {
+                      const invited = m.status === "invited";
+                      if (
+                        await confirm({
+                          title: invited ? "Einladung zurückziehen?" : "Aus dem Team entfernen?",
+                          message: invited
+                            ? `Die Einladung an ${m.email} gilt dann nicht mehr.`
+                            : `${m.email} verliert sofort den Zugang zum Shop.`,
+                          confirmLabel: invited ? "Zurückziehen" : "Entfernen",
+                          tone: "danger",
+                        })
+                      )
+                        remove.mutate(m);
                     }}
                   >
                     {m.status === "invited" ? "Zurückziehen" : "Entfernen"}

@@ -3,6 +3,7 @@
 // Der Verlauf bleibt nur in diesem Browser-Tab (sessionStorage), auf dem Server wird nichts gespeichert.
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
+import { ImagePlus } from "lucide-react";
 import {
   createContext,
   Fragment,
@@ -23,6 +24,7 @@ import {
   prepareForSend,
   runTool,
   shrinkPhoto,
+  splitChoices,
   stripImages,
   toolLabel,
   type AssistantStatus,
@@ -433,12 +435,37 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
         {messages.map((m, i) => (
           <Fragment key={i}>
             {m.content.map((b, j) => {
-              if (b.type === "text")
+              if (b.type === "text") {
+                if (m.role === "user")
+                  return (
+                    <Bubble key={j} mine>
+                      <RichText text={visibleText(b.text)} />
+                    </Bubble>
+                  );
+                const { text: shown, choices } = splitChoices(b.text);
+                const canAnswer = choices.length > 0 && busy === null && i === messages.length - 1;
                 return (
-                  <Bubble key={j} mine={m.role === "user"}>
-                    <RichText text={m.role === "user" ? visibleText(b.text) : b.text} />
-                  </Bubble>
+                  <Fragment key={j}>
+                    <Bubble mine={false}>
+                      <RichText text={shown} />
+                    </Bubble>
+                    {canAnswer && (
+                      <div className="flex flex-wrap gap-2 pl-1" role="group" aria-label="Antwort wählen">
+                        {choices.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => send(c)}
+                            className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-violet-700 shadow-xs ring-1 ring-violet-200 transition hover:bg-violet-50 hover:ring-violet-300"
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Fragment>
                 );
+              }
               if (b.type === "image")
                 return (
                   <div key={j} className="flex justify-end">
@@ -525,8 +552,9 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
             title="Foto anhängen"
             disabled={unavailable || busy !== null}
             onClick={() => fileRef.current?.click()}
+            className="px-2.5"
           >
-            Foto
+            <ImagePlus className="size-5" aria-hidden="true" />
           </Button>
           <Textarea
             id={`assistent-eingabe-${variant}`}
@@ -534,9 +562,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
             className="min-h-0! resize-none"
             maxLength={4000}
             value={text}
-            placeholder={
-              unavailable ? "Noch nicht eingerichtet" : "Zum Beispiel: Setz den Preis von Sencha auf 9,50 €"
-            }
+            placeholder={unavailable ? "Noch nicht eingerichtet" : "Gib hier deine Frage ein"}
             disabled={unavailable}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

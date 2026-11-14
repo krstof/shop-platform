@@ -220,3 +220,28 @@ export function importBody(r: ImportRow, columns: readonly string[]): Record<str
   if (has("Im Shop")) body["status"] = r.status;
   return body;
 }
+
+/** Erklärung der Spalten fürs Import-Fenster (Reihenfolge wie CSV_COLUMNS). */
+export const CSV_HELP: readonly { column: (typeof CSV_COLUMNS)[number]; text: string; example: string }[] = [
+  { column: "Name", text: "Pflicht.", example: "Sencha Frühling" },
+  {
+    column: "Artikelnummer",
+    text: "Gibt es die Nummer schon, wird dieses Produkt geändert, sonst neu angelegt.",
+    example: "T-100",
+  },
+  { column: "Preis", text: "Pflicht, in Euro mit Komma.", example: "8,90" },
+  { column: "Angebotspreis", text: "Leer = kein Angebot; muss unter dem Preis liegen.", example: "6,90" },
+  { column: "Bestand", text: "Ganze Zahl, leer = 0.", example: "25" },
+  { column: "Kategorie", text: "Name einer vorhandenen Kategorie, leer = keine.", example: "Grüntee" },
+  { column: "Im Shop", text: "„ja“ = sichtbar, sonst Entwurf.", example: "ja" },
+  { column: "Mehrwertsteuer", text: "19 oder 7, leer = 19.", example: "7" },
+  { column: "Lieferzeit von", text: "Werktage, freiwillig.", example: "2" },
+  { column: "Lieferzeit bis", text: "Werktage, freiwillig.", example: "4" },
+  { column: "Beschreibung", text: "Freier Text, freiwillig.", example: "Frischer grüner Tee aus Japan." },
+];
+
+/** Leere Vorlage mit Kopfzeile und einer Beispielzeile (Semikolon, BOM für Excel). */
+export function importTemplateCsv(): string {
+  const line = (cells: readonly string[]) => cells.map(csvCell).join(";");
+  return "\uFEFF" + [line(CSV_COLUMNS), line(CSV_HELP.map((h) => h.example))].join("\r\n") + "\r\n";
+}

@@ -7,6 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Settings2, Trash, Upload, X } from "lucide-react";
 import { siFacebook, siInstagram, siPinterest, siTiktok, siX, siYoutube } from "simple-icons";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Select } from "../../components/select.js";
 import type { Category, DesignImage, Product } from "../../lib/api.js";
 import {
   BLOCK_INFO,
@@ -1046,8 +1047,8 @@ function BlockSettings({
         <div className="space-y-3">
           <label className="block text-sm font-medium">
             Ziel
-            <select
-              className={field}
+            <Select
+              className="mt-1 font-normal"
               value={targets.some((t) => t.url === b.url) ? b.url : "eigen"}
               onChange={(e) => update({ url: e.target.value === "eigen" ? "https://" : e.target.value })}
             >
@@ -1057,7 +1058,7 @@ function BlockSettings({
                 </option>
               ))}
               <option value="eigen">Andere Adresse …</option>
-            </select>
+            </Select>
           </label>
           {!targets.some((t) => t.url === b.url) && (
             <label className="block text-sm font-medium">

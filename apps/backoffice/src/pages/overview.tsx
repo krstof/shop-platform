@@ -30,12 +30,17 @@ export function dayLabel(date: string): { weekday: string; day: string } {
   return { weekday: WEEKDAY.format(d).replace(".", ""), day: DAY.format(d) };
 }
 
-/** Veröffentlichte Produkte mit wenig Bestand, knappste zuerst. */
+/** Veröffentlichte Produkte mit wenig, aber noch etwas Bestand, knappste zuerst (ausverkaufte zählt `soldOut`). */
 export function lowStock(products: readonly Product[], limit = 5): Product[] {
   return products
-    .filter((p) => p.status === "published" && p.stock <= LOW_STOCK)
+    .filter((p) => p.status === "published" && p.stock > 0 && p.stock <= LOW_STOCK)
     .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name, "de"))
     .slice(0, limit);
+}
+
+/** Wie viele Produkte im Shop ausverkauft sind. */
+export function soldOut(products: readonly Product[]): number {
+  return products.filter((p) => p.status === "published" && p.stock <= 0).length;
 }
 
 export function OverviewPage() {
@@ -68,6 +73,7 @@ export function OverviewPage() {
     revenue: 0,
   });
   const scarce = lowStock(products.data ?? []);
+  const gone = soldOut(products.data ?? []);
 
   return (
     <div>
@@ -141,7 +147,7 @@ export function OverviewPage() {
           {products.isPending && <Spinner />}
           {products.data && scarce.length === 0 && (
             <p className="text-sm text-gray-500">
-              Alles gut: Kein Produkt im Shop hat {LOW_STOCK} Stück oder weniger.
+              Alles gut: Kein Produkt im Shop hat nur noch {LOW_STOCK} Stück oder weniger.
             </p>
           )}
           {scarce.length > 0 && (
@@ -155,14 +161,20 @@ export function OverviewPage() {
                   >
                     {p.name}
                   </Link>
-                  <span
-                    className={p.stock === 0 ? "shrink-0 font-medium text-red-700" : "shrink-0 text-gray-600"}
-                  >
-                    {p.stock === 0 ? "ausverkauft" : `noch ${p.stock}`}
-                  </span>
+                  <span className="shrink-0 text-gray-600">noch {p.stock}</span>
                 </li>
               ))}
             </ul>
+          )}
+          {gone > 0 && (
+            <Link
+              to="/$shop/produkte"
+              params={{ shop: shop.handle }}
+              search={{ sortierung: "bestand" }}
+              className="mt-3 block border-t border-gray-100 pt-3 text-sm text-red-700 hover:underline"
+            >
+              {gone === 1 ? "1 Produkt ist ausverkauft" : `${gone} Produkte sind ausverkauft`} →
+            </Link>
           )}
         </Card>
       </div>

@@ -94,16 +94,10 @@ function Editor({ initial }: { initial: DesignState }) {
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [mobile, setMobile] = useState(false);
   const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | undefined>();
-  const [open, setOpen] = useState<Record<Panel, boolean>>({
-    seiten: true,
-    bausteine: true,
-    farben: false,
-    schriften: false,
-    logo: false,
-    fuss: false,
-    vorlage: false,
-  });
-  const toggle = (p: Panel) => setOpen((o) => ({ ...o, [p]: !o[p] }));
+  // Immer nur ein Bereich offen (Kristof 15.11.2026): Aufklappen schließt die anderen, damit nichts
+  // unten verschwindet.
+  const [openPanel, setOpenPanel] = useState<Panel | undefined>("bausteine");
+  const toggle = (p: Panel) => setOpenPanel((o) => (o === p ? undefined : p));
 
   const categories = useCategories(shop.id);
   const products = useQuery({
@@ -258,7 +252,7 @@ function Editor({ initial }: { initial: DesignState }) {
           aria-label="Editor"
           className="shrink-0 border-b border-gray-200 bg-gray-25 lg:w-[19rem] lg:overflow-y-auto lg:border-r lg:border-b-0"
         >
-          <Section title="Seiten" open={open.seiten} onToggle={() => toggle("seiten")}>
+          <Section title="Seiten" open={openPanel === "seiten"} onToggle={() => toggle("seiten")}>
             <PagesPanel
               pages={form.pages}
               current={page?.id ?? "home"}
@@ -267,19 +261,19 @@ function Editor({ initial }: { initial: DesignState }) {
               onAdd={addPage}
             />
           </Section>
-          <Section title="Bausteine" open={open.bausteine} onToggle={() => toggle("bausteine")}>
+          <Section title="Bausteine" open={openPanel === "bausteine"} onToggle={() => toggle("bausteine")}>
             <PalettePanel blocks={blocks} onAdd={addBlock} />
           </Section>
           <p className="px-4 pt-4 pb-1 text-[0.72rem] font-semibold tracking-[0.07em] text-gray-400 uppercase">
             Design
           </p>
-          <Section title="Farben" open={open.farben} onToggle={() => toggle("farben")}>
+          <Section title="Farben" open={openPanel === "farben"} onToggle={() => toggle("farben")}>
             <ColorsPanel form={form} set={set} />
           </Section>
-          <Section title="Schriften" open={open.schriften} onToggle={() => toggle("schriften")}>
+          <Section title="Schriften" open={openPanel === "schriften"} onToggle={() => toggle("schriften")}>
             <FontsPanel form={form} set={set} />
           </Section>
-          <Section title="Logo und Slogan" open={open.logo} onToggle={() => toggle("logo")}>
+          <Section title="Logo und Slogan" open={openPanel === "logo"} onToggle={() => toggle("logo")}>
             <LogoPanel
               form={form}
               set={set}
@@ -287,10 +281,10 @@ function Editor({ initial }: { initial: DesignState }) {
               busy={uploadLogo.isPending}
             />
           </Section>
-          <Section title="Fußzeile" open={open.fuss} onToggle={() => toggle("fuss")}>
+          <Section title="Fußzeile" open={openPanel === "fuss"} onToggle={() => toggle("fuss")}>
             <FooterPanel form={form} set={set} />
           </Section>
-          <Section title="Vorlage" open={open.vorlage} onToggle={() => toggle("vorlage")}>
+          <Section title="Vorlage" open={openPanel === "vorlage"} onToggle={() => toggle("vorlage")}>
             <TemplatePanel value={form.template} onChange={(template) => set({ template })} />
           </Section>
         </aside>

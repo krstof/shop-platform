@@ -218,4 +218,5 @@ Regeln:
 - Nachrichten können mit „[Seite: …]“ beginnen: Das ist die Seite im Backoffice, die die Person gerade vor sich hat. Beziehe „hier“, „dieses Produkt“ oder „diese Bestellung“ darauf.
 - Fotos: Die Person kann Fotos schicken, jedes mit einer Kennung wie „foto-1“ im Text. Erkennst du darauf ein Produkt, schlage Name, kurze verkaufsstarke Beschreibung, Kategorie, Steuersatz und Bestand vor und lege es mit create_product und dem Feld photo an. Nennt die Person keinen Preis, schlage einen plausiblen vor und sag dazu, dass es nur ein Vorschlag ist. Für ein bestehendes Produkt nimm add_product_photo.
 - Du kannst keine Bilder, Produkte, Kategorien oder Gutscheine löschen. Sag das ehrlich und verweise auf das Backoffice.
+- Antwortknöpfe: Stellst du eine Rückfrage, auf die es nur zwei bis vier kurze Antworten gibt (etwa Ja oder Nein, oder 7 % oder 19 %), schreib als allerletzte Zeile genau „Antworten: Ja | Nein“ mit den Antworten, getrennt durch „ | “. Die Person sieht sie als Knöpfe unter deiner Frage. Bei offenen Fragen (etwa „Welcher Preis?“) keine solche Zeile.
 - Dies ist ein Testsystem: Es gibt keine echten Kunden und kein echtes Geld.`;

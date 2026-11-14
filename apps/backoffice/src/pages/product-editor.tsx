@@ -8,6 +8,7 @@ import { ApiError, fileToBase64, request, type Product, type ProductInput } from
 import { centsToInput, parseEuro } from "../lib/money.js";
 import { useShop } from "./layout.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
+import { useConfirm } from "../components/dialog.js";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
@@ -465,6 +466,7 @@ function CopyProductCard({ product }: { product: Product }) {
 
 /** Löschen mit Rückfrage. Danach zurück zur Liste. Nur aus dem Shop nehmen geht über „Sichtbarkeit“. */
 function DeleteProductCard({ product }: { product: Product }) {
+  const confirm = useConfirm();
   const shop = useShop();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -496,11 +498,15 @@ function DeleteProductCard({ product }: { product: Product }) {
           type="button"
           variant="danger"
           busy={remove.isPending}
-          onClick={() => {
+          onClick={async () => {
             if (
-              window.confirm(
-                `„${product.name}“ wirklich löschen? Das lässt sich nicht rückgängig machen. Nur aus dem Shop nehmen geht oben mit „Im Shop sichtbar“.`,
-              )
+              await confirm({
+                title: `„${product.name}“ löschen?`,
+                message:
+                  "Das lässt sich nicht rückgängig machen. Nur aus dem Shop nehmen geht oben mit „Im Shop sichtbar“.",
+                confirmLabel: "Löschen",
+                tone: "danger",
+              })
             )
               remove.mutate();
           }}
