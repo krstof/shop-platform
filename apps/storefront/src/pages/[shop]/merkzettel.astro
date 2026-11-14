@@ -1,0 +1,63 @@
+---
+// Merkzettel: gemerkte Produkte ansehen und entfernen. POST ändert die Liste (Merken auf der Produktseite)
+// und leitet zurück; das Ziel muss im eigenen Shop liegen.
+import Shop from "../../layouts/Shop.astro";
+import Produktkarte from "../../components/Produktkarte.astro";
+import { loadShop, safeHandle, storeApi, type StoreProduct } from "../../lib/store-api.js";
+import { warenkorbAnzahl } from "../../lib/cart.js";
+import { changeMerkzettel, readMerkzettel, writeMerkzettel } from "../../lib/merkzettel.js";
+
+const handle = safeHandle(Astro.params.shop);
+if (handle === undefined) return Astro.rewrite("/404");
+const basis = `/${handle}`;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const id = String(form.get("produkt") ?? "");
+  const add = String(form.get("aktion") ?? "") === "merken";
+  writeMerkzettel(Astro.cookies, handle, changeMerkzettel(readMerkzettel(Astro.cookies), id, add));
+  const zurueck = String(form.get("zurueck") ?? "");
+  const ziel =
+    /^\/[a-z0-9-]+(\/[a-z0-9/_-]*)?$/.test(zurueck) && zurueck.startsWith(basis)
+      ? zurueck
+      : `${basis}/merkzettel`;
+  return Astro.redirect(ziel, 303);
+}
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const ids = readMerkzettel(Astro.cookies);
+const alle =
+  ids.length === 0 ? [] : (await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products")).data;
+const nachId = new Map(alle.map((p) => [p.id, p]));
+const produkte = ids.map((id) => nachId.get(id)).filter((p): p is StoreProduct => p !== undefined);
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop shop={shop} categories={categories} titel="Merkzettel" korb={korb}>
+  <h1>Merkzettel</h1>
+  {produkte.length === 0 ? (
+    <p class="leer-hinweis">
+      Noch nichts gemerkt. Auf jeder Produktseite gibt es den Knopf „Merken“. <a href={basis}>Zum Shop</a>
+    </p>
+  ) : (
+    <ul class="raster">
+      {produkte.map((p) => (
+        <li class="merk-eintrag">
+          <ul class="raster-einzeln">
+            <Produktkarte produkt={p} shop={shop.handle} />
+          </ul>
+          <form method="post" action={`${basis}/merkzettel`}>
+            <input type="hidden" name="produkt" value={p.id} />
+            <input type="hidden" name="aktion" value="entfernen" />
+            <input type="hidden" name="zurueck" value={`${basis}/merkzettel`} />
+            <button type="submit" class="knopf-klein">
+              Entfernen
+            </button>
+          </form>
+        </li>
+      ))}
+    </ul>
+  )}
+</Shop>

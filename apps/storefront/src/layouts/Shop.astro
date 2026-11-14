@@ -11,6 +11,7 @@ import {
   SOCIAL_NETWORKS,
   webFontCssUrl,
 } from "../lib/design.js";
+import { readMerkzettel } from "../lib/merkzettel.js";
 import { siFacebook, siInstagram, siPinterest, siTiktok, siX, siYoutube } from "simple-icons";
 import { VERSAND_KOSTENLOS, versandText } from "../lib/format.js";
 
@@ -28,6 +29,7 @@ const { shop, categories, titel, beschreibung = shop.name, korb = 0, suche = "" 
 const pfad = Astro.url.pathname.replace(/\/+$/, "");
 const basis = `/${shop.handle}`;
 const design = shop.design ?? DEFAULT_DESIGN;
+const merkzettel = readMerkzettel(Astro.cookies).length;
 // Kopf- und Fußzeile (Shop-Editor Teil 3). Ältere Antworten ohne diese Felder: Standard.
 const slogan = design.tagline ?? "";
 const fussText = design.footer?.text ?? "";
@@ -118,6 +120,13 @@ const fussLinks = [
             <input id="suche-q" type="search" name="q" value={suche} maxlength="100" placeholder="Suchen …" />
             <button type="submit">Suchen</button>
           </form>
+          <a
+            class="merk-link"
+            href={`${basis}/merkzettel`}
+            aria-current={pfad === `${basis}/merkzettel` ? "page" : undefined}
+          >
+            Merkzettel{merkzettel > 0 && ` (${merkzettel})`}
+          </a>
           <a
             class="korb"
             href={`${basis}/warenkorb`}

@@ -2,6 +2,7 @@
 // Produktseite (M4): Bilder, Preis mit Pflichtangaben, Beschreibung.
 import Shop from "../../../layouts/Shop.astro";
 import { absaetze, euro, lieferzeit, steuerHinweis } from "../../../lib/format.js";
+import { readMerkzettel } from "../../../lib/merkzettel.js";
 import { loadShop, safeSlug, storeApi, StoreApiError, type StoreProduct } from "../../../lib/store-api.js";
 import { warenkorbAnzahl } from "../../../lib/cart.js";
 import Produktkarte from "../../../components/Produktkarte.astro";
@@ -33,6 +34,7 @@ try {
 } catch {
   aehnliche = [];
 }
+const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
 ---
 
 <Shop
@@ -134,6 +136,14 @@ try {
         ) : (
           <p class="hinweis-aus">Zurzeit ausverkauft</p>
         )}
+        <form method="post" action={`/${shop.handle}/merkzettel`} class="merken-form">
+          <input type="hidden" name="produkt" value={p.id} />
+          <input type="hidden" name="aktion" value={gemerkt ? "entfernen" : "merken"} />
+          <input type="hidden" name="zurueck" value={Astro.url.pathname} />
+          <button type="submit" class="knopf-merken" aria-pressed={gemerkt ? "true" : "false"}>
+            <span aria-hidden="true">{gemerkt ? "♥" : "♡"}</span> {gemerkt ? "Gemerkt" : "Merken"}
+          </button>
+        </form>
       </div>
       {absaetze(p.description).length > 0 && (
         <>

@@ -1119,3 +1119,38 @@ form.gutschein:has(.knopf-leise) {
   height: 1.05rem;
   fill: currentColor;
 }
+
+/* Merkzettel */
+.merken-form {
+  margin-top: 0.75rem;
+}
+.knopf-merken {
+  font: inherit;
+  background: transparent;
+  border: 1px solid var(--linie);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  color: var(--akzent-dunkel);
+  cursor: pointer;
+}
+.knopf-merken[aria-pressed="true"] {
+  background: var(--flaeche);
+  border-color: var(--akzent);
+}
+.knopf-merken:hover {
+  border-color: var(--akzent);
+}
+.merk-link {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.merk-eintrag {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+.raster-einzeln {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
