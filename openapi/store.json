@@ -2729,6 +2729,15 @@
               }
             ]
           },
+          "template": {
+            "type": "string",
+            "x-extensible-enum": [
+              "klassisch",
+              "zentriert",
+              "boutique"
+            ],
+            "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
+          },
           "pages": {
             "type": "array",
             "items": {
@@ -2765,6 +2774,7 @@
           "backgroundColor",
           "headingFont",
           "bodyFont",
+          "template",
           "pages"
         ],
         "additionalProperties": false,

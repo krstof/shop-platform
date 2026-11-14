@@ -18,6 +18,8 @@ import {
   readableBackground,
   readableWithWhite,
   SOCIAL,
+  templateOf,
+  type Template,
   type Font,
   type WebFont,
 } from "../../lib/design.js";
@@ -33,6 +35,7 @@ export interface Form {
   headingFont: WebFont | null;
   bodyFont: WebFont | null;
   backgroundColor: string;
+  template: Template;
   logo: DesignImage | null;
   tagline: string;
   footerText: string;
@@ -58,6 +61,7 @@ export function formOf(state: DesignState): Form {
     headingFont: d.headingFont ?? null,
     bodyFont: d.bodyFont ?? null,
     backgroundColor: d.backgroundColor ?? DEFAULT_BACKGROUND,
+    template: templateOf(d.template),
     logo: d.logo,
     tagline: d.tagline,
     footerText: d.footer.text,
@@ -113,6 +117,7 @@ export function bodyOf(f: Form) {
     headingFont: f.headingFont,
     bodyFont: f.bodyFont,
     backgroundColor: f.backgroundColor,
+    template: f.template,
     logoImageId: f.logo?.id ?? null,
     home: {
       heroImageId: f.heroImage?.id ?? null,

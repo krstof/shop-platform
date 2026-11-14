@@ -50,6 +50,7 @@ import {
   readableWithWhite,
   sameSettings,
   SOCIAL_NETWORKS,
+  TEMPLATES,
   webFontSchema,
   type DesignSettings,
   type FooterSettings,
@@ -209,6 +210,12 @@ const webFontView = z
   .object({ id: z.string(), name: z.string(), category: z.enum(FONT_CATEGORIES) })
   .meta({ id: "WebFont", description: "Schrift von Google Fonts (der Shop lädt sie über Bunny Fonts)." });
 
+const templateView = z.string().meta({
+  "x-extensible-enum": [...TEMPLATES],
+  description:
+    "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften.",
+});
+
 const footerViewSchema = z
   .object({
     text: z.string().meta({ description: "Kurzer Text im Fuß; leer heißt Standardhinweis." }),
@@ -233,6 +240,7 @@ const designViewSchema = z
     bodyFont: webFontView
       .nullable()
       .meta({ description: "Schrift des Fließtexts; null = Auswahl unter `font`." }),
+    template: templateView,
   })
   .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
@@ -358,6 +366,10 @@ const draftInput = z.strictObject({
     .nullable()
     .optional()
     .meta({ description: "Schrift des Fließtexts (Google Fonts) oder null. Fehlt das Feld, bleibt sie." }),
+  template: z
+    .enum(TEMPLATES)
+    .optional()
+    .meta({ description: "Design-Vorlage (klassisch, zentriert, boutique). Fehlt das Feld, bleibt sie." }),
   pages: pagesSchema.optional().meta({
     description: `Eigene Inhaltsseiten (bis zu ${MAX_PAGES}), nur freie Bausteine. Fehlt das Feld, bleiben sie.`,
   }),
@@ -493,6 +505,7 @@ const storeDesignSchema = z
     backgroundColor: z.string().meta({ description: "Hintergrundfarbe als Hex." }),
     headingFont: webFontView.nullable(),
     bodyFont: webFontView.nullable(),
+    template: templateView,
     pages: z
       .array(z.object({ title: z.string(), slug: z.string(), inFooter: z.boolean() }))
       .meta({ description: "Eigene Inhaltsseiten (nur Titel und Adresse; Inhalt über /pages/{pageSlug})." }),
@@ -648,6 +661,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       backgroundColor: s.backgroundColor,
       headingFont: s.headingFont,
       bodyFont: s.bodyFont,
+      template: s.template,
       pages: s.pages.map((p) => ({
         ...p,
         blocks: firstBlocksOf(p.blocks),
@@ -845,6 +859,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             backgroundColor: background,
             headingFont: body.headingFont === undefined ? current.draft.headingFont : body.headingFont,
             bodyFont: body.bodyFont === undefined ? current.draft.bodyFont : body.bodyFont,
+            template: body.template ?? current.draft.template,
           },
         };
       });
@@ -989,6 +1004,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         backgroundColor: published.backgroundColor,
         headingFont: published.headingFont,
         bodyFont: published.bodyFont,
+        template: published.template,
       };
     },
   });

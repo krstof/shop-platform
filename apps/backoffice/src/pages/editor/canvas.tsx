@@ -70,6 +70,7 @@ export function Canvas({
   onSelect,
   shop,
   mobile,
+  template,
   ...ctx
 }: Ctx & {
   page: ContentPage | undefined;
@@ -79,6 +80,8 @@ export function Canvas({
   onSelect: (id: string | undefined) => void;
   shop: CanvasShop;
   mobile: boolean;
+  /** Design-Vorlage (Anordnung). */
+  template: string;
 }) {
   const { adding } = useDragState();
   const end = useDroppable({ id: END_ZONE });
@@ -91,7 +94,7 @@ export function Canvas({
   return (
     <div
       className={
-        "sp mx-auto overflow-hidden shadow-pop ring-1 ring-gray-200 " +
+        `sp vorlage-${template} mx-auto overflow-hidden shadow-pop ring-1 ring-gray-200 ` +
         (mobile ? "max-w-[390px] rounded-[1.75rem]" : "rounded-lg")
       }
       onClick={(e) => {
@@ -790,7 +793,10 @@ function BlockView({
           {ctx.categories.length > 0 ? (
             <div className="sp-kategorien">
               {ctx.categories.map((c) => (
-                <div key={c.id}>{c.name}</div>
+                <div key={c.id} className={c.image ? "mit-bild" : undefined}>
+                  {c.image && <img src={c.image.thumbnailUrl} alt="" />}
+                  <strong>{c.name}</strong>
+                </div>
               ))}
             </div>
           ) : (

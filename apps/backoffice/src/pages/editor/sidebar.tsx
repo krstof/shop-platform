@@ -47,6 +47,8 @@ import {
   searchFonts,
   SOCIAL,
   SUGGESTED_FONTS,
+  TEMPLATES,
+  type Template,
   webFontCssUrl,
   webFontStack,
   type WebFont,
@@ -830,5 +832,86 @@ export function FooterPanel({ form, set }: { form: Form; set: Set }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Design-Vorlagen mit kleiner Skizze; Farben und Schriften bleiben, nur die Anordnung ändert sich. */
+export function TemplatePanel({ value, onChange }: { value: Template; onChange: (t: Template) => void }) {
+  return (
+    <div>
+      <p className="mb-2 text-xs text-gray-500">Ändert nur die Anordnung, Farben und Schriften bleiben.</p>
+      <div role="radiogroup" aria-label="Design-Vorlage" className="space-y-2">
+        {TEMPLATES.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="radio"
+            aria-checked={value === t.id}
+            onClick={() => onChange(t.id)}
+            className={
+              "flex w-full items-center gap-3 rounded-lg bg-white p-2 text-left ring-1 transition " +
+              (value === t.id ? "ring-2 ring-brand-500" : "ring-gray-200 hover:ring-gray-300")
+            }
+          >
+            <Sketch id={t.id} />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-gray-900">{t.name}</span>
+              <span className="block text-xs leading-snug text-gray-500">{t.hint}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Sketch({ id }: { id: Template }) {
+  const bar = "rounded-sm bg-gray-300";
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-16 w-20 shrink-0 flex-col gap-1 overflow-hidden rounded-md bg-gray-50 p-1.5 ring-1 ring-gray-200"
+    >
+      {id === "klassisch" && (
+        <>
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-4 rounded-sm bg-gray-500" />
+            <span className={bar + " h-1 w-6"} />
+          </span>
+          <span className="h-6 rounded bg-brand-200" />
+          <span className="grid grid-cols-3 gap-0.5">
+            <span className="h-3 rounded-sm bg-gray-200" />
+            <span className="h-3 rounded-sm bg-gray-200" />
+            <span className="h-3 rounded-sm bg-gray-200" />
+          </span>
+        </>
+      )}
+      {id === "zentriert" && (
+        <>
+          <span className="mx-auto h-1.5 w-5 rounded-sm bg-gray-500" />
+          <span className={bar + " mx-auto h-1 w-8"} />
+          <span className="mx-auto mt-0.5 h-1.5 w-10 rounded-sm bg-brand-300" />
+          <span className="mt-0.5 flex justify-center gap-1">
+            <span className="size-4 rounded-full bg-gray-200" />
+            <span className="size-4 rounded-full bg-gray-200" />
+            <span className="size-4 rounded-full bg-gray-200" />
+          </span>
+        </>
+      )}
+      {id === "boutique" && (
+        <>
+          <span className="-mx-1.5 -mt-1.5 flex items-center gap-1 bg-gray-800 px-1.5 py-1">
+            <span className="h-1.5 w-4 rounded-sm bg-white" />
+            <span className="h-0.5 w-6 rounded-sm bg-gray-400" />
+          </span>
+          <span className="-mx-1.5 h-6 bg-brand-200" />
+          <span className="grid grid-cols-3 gap-0.5">
+            <span className="h-4 bg-gray-200" />
+            <span className="h-4 bg-gray-200" />
+            <span className="h-4 bg-gray-200" />
+          </span>
+        </>
+      )}
+    </span>
   );
 }

@@ -1163,3 +1163,215 @@ form.gutschein:has(.knopf-leise) {
 .geschlossen p {
   color: var(--text-leise);
 }
+
+/* ------------------------------------------------------------------------------------------------
+   Auffrischung (14.11.2026, Kristof: „zu klein, Kacheln hässlich“): größere Schrift und Bühne, mehr Luft,
+   Kategorie-Kacheln als farbige Flächen (ohne Bild) oder mit Bild und dunklem Verlauf.
+   Danach die Design-Vorlagen: nur Anordnung, nie Farben oder Schriften.
+   ------------------------------------------------------------------------------------------------ */
+body {
+  font-size: 1.125rem;
+}
+.kopf-innen {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+.logo {
+  font-size: 1.75rem;
+}
+.nav {
+  font-size: 1.05rem;
+}
+main h2 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  margin-top: 3.5rem;
+}
+.buehne {
+  padding: 4.5rem 0 1.5rem;
+}
+.buehne h1,
+.buehne h2 {
+  font-size: clamp(2.4rem, 5.5vw, 3.9rem);
+  letter-spacing: -0.01em;
+}
+.buehne p {
+  font-size: 1.2rem;
+}
+.buehne-bild {
+  min-height: clamp(20rem, 42vw, 30rem);
+  border-radius: 16px;
+}
+.buehne-bild .buehne-text {
+  padding: 4rem 2.5rem 2.25rem;
+}
+.raster {
+  gap: 2.5rem 1.75rem;
+}
+.bild {
+  border-radius: 14px;
+}
+.karte-name {
+  font-size: 1.3rem;
+}
+.kategorien {
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1.25rem;
+}
+.kategorien a,
+.kategorien a.mit-bild {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  aspect-ratio: 4 / 3;
+  padding: 1.5rem;
+  border-radius: 16px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--akzent) 22%, transparent), transparent 55%),
+    linear-gradient(150deg, color-mix(in srgb, var(--akzent) 14%, var(--grund)), var(--flaeche));
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.kategorien a:hover {
+  background:
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--akzent) 30%, transparent), transparent 55%),
+    linear-gradient(150deg, color-mix(in srgb, var(--akzent) 20%, var(--grund)), var(--flaeche));
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.25);
+}
+.kategorien strong {
+  font-size: 1.6rem;
+  line-height: 1.15;
+}
+.kategorien strong::after {
+  content: " →";
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+.kategorien a.mit-bild strong,
+.kategorien a.mit-bild .klein {
+  padding: 0;
+  color: #fff;
+}
+.kategorien a.mit-bild .kachel-bild {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  object-fit: cover;
+  z-index: -2;
+  transition: transform 0.4s ease;
+}
+.kategorien a.mit-bild::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0) 60%);
+}
+.kategorien a.mit-bild:hover .kachel-bild {
+  transform: scale(1.04);
+}
+
+/* Vorlage „Zentriert“: Logo, Menü und Suche mittig untereinander, Texte zentriert. */
+.vorlage-zentriert .kopf-innen {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.9rem;
+}
+.vorlage-zentriert .marke {
+  justify-items: center;
+}
+.vorlage-zentriert .nav {
+  justify-content: center;
+}
+.vorlage-zentriert .kopf-aktionen {
+  margin-left: 0;
+  justify-content: center;
+}
+.vorlage-zentriert .buehne {
+  justify-items: center;
+  text-align: center;
+}
+.vorlage-zentriert .buehne p {
+  margin-inline: auto;
+}
+.vorlage-zentriert .buehne-bild .buehne-text {
+  text-align: center;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.15));
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+}
+.vorlage-zentriert main h2 {
+  text-align: center;
+}
+.vorlage-zentriert .karte {
+  text-align: center;
+}
+.vorlage-zentriert .kategorien a {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 999px;
+  aspect-ratio: 1;
+}
+
+/* Vorlage „Boutique“: dunkler Kopf, Menü in Großbuchstaben, Bühne über die ganze Breite, hohe Bilder. */
+.vorlage-boutique .kopf {
+  background: var(--text);
+  border-bottom: 0;
+}
+.vorlage-boutique .kopf .logo,
+.vorlage-boutique .kopf .nav a,
+.vorlage-boutique .kopf .merk-link,
+.vorlage-boutique .kopf .korb {
+  color: var(--grund);
+}
+.vorlage-boutique .kopf .slogan {
+  color: color-mix(in srgb, var(--grund) 75%, transparent);
+}
+.vorlage-boutique .nav a {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.85rem;
+}
+.vorlage-boutique .buehne-bild {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-top: 0;
+  border-radius: 0;
+  min-height: clamp(24rem, 55vw, 38rem);
+}
+.vorlage-boutique .buehne-bild .buehne-text {
+  padding-inline: max(1.5rem, calc(50vw - 34rem));
+}
+.vorlage-boutique main h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 1.1rem;
+  font-family: var(--schrift-text);
+  font-weight: 600;
+}
+.vorlage-boutique .bild {
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
+}
+.vorlage-boutique .kategorien a {
+  border-radius: 0;
+  aspect-ratio: 1;
+}
+.vorlage-boutique .kategorien strong {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 1.15rem;
+}
+body.vorlage-boutique {
+  overflow-x: clip;
+}

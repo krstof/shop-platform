@@ -63,6 +63,7 @@ describe("Aussehen: Rechenregeln", () => {
       backgroundColor: "#ffffff",
       headingFont: { id: "lora", name: "Lora", category: "serif" },
       bodyFont: null,
+      template: "boutique",
       pages: [
         {
           id: "p1",

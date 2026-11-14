@@ -3610,6 +3610,15 @@
                       }
                     ]
                   },
+                  "template": {
+                    "description": "Design-Vorlage (klassisch, zentriert, boutique). Fehlt das Feld, bleibt sie.",
+                    "type": "string",
+                    "enum": [
+                      "klassisch",
+                      "zentriert",
+                      "boutique"
+                    ]
+                  },
                   "pages": {
                     "description": "Eigene Inhaltsseiten (bis zu 10), nur freie Bausteine. Fehlt das Feld, bleiben sie.",
                     "maxItems": 10,
@@ -10947,6 +10956,15 @@
               }
             ],
             "description": "Schrift des Fließtexts; null = Auswahl unter `font`."
+          },
+          "template": {
+            "type": "string",
+            "x-extensible-enum": [
+              "klassisch",
+              "zentriert",
+              "boutique"
+            ],
+            "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
           }
         },
         "required": [
@@ -10959,7 +10977,8 @@
           "pages",
           "backgroundColor",
           "headingFont",
-          "bodyFont"
+          "bodyFont",
+          "template"
         ],
         "additionalProperties": false,
         "description": "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite."

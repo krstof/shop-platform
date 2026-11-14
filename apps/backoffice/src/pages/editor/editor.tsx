@@ -47,6 +47,7 @@ import {
   PagesPanel,
   PalettePanel,
   Section,
+  TemplatePanel,
   useFontCss,
 } from "./sidebar.js";
 
@@ -81,7 +82,7 @@ export function DesignPage() {
   return <Editor initial={design.data} />;
 }
 
-type Panel = "seiten" | "bausteine" | "farben" | "schriften" | "logo" | "fuss";
+type Panel = "seiten" | "bausteine" | "farben" | "schriften" | "logo" | "fuss" | "vorlage";
 
 function Editor({ initial }: { initial: DesignState }) {
   const shop = useShop();
@@ -100,6 +101,7 @@ function Editor({ initial }: { initial: DesignState }) {
     schriften: false,
     logo: false,
     fuss: false,
+    vorlage: false,
   });
   const toggle = (p: Panel) => setOpen((o) => ({ ...o, [p]: !o[p] }));
 
@@ -288,6 +290,9 @@ function Editor({ initial }: { initial: DesignState }) {
           <Section title="Fußzeile" open={open.fuss} onToggle={() => toggle("fuss")}>
             <FooterPanel form={form} set={set} />
           </Section>
+          <Section title="Vorlage" open={open.vorlage} onToggle={() => toggle("vorlage")}>
+            <TemplatePanel value={form.template} onChange={(template) => set({ template })} />
+          </Section>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col bg-gray-100">
@@ -388,6 +393,7 @@ function Editor({ initial }: { initial: DesignState }) {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 mobile={mobile}
+                template={form.template}
                 images={images}
                 uploadImage={uploadImage}
                 products={published}

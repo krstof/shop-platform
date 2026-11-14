@@ -6,7 +6,7 @@
   background: var(--grund);
   color: var(--text);
   font-family: var(--schrift-text);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.6;
   text-align: left;
 }
@@ -20,11 +20,11 @@
   line-height: 1.2;
 }
 .sp h1 {
-  font-size: 2.4rem;
+  font-size: 3.2rem;
   margin: 0 0 0.5rem;
 }
 .sp h2 {
-  font-size: 1.5rem;
+  font-size: 1.9rem;
   margin: 0 0 1rem;
 }
 .sp a {
@@ -55,7 +55,7 @@
   padding-bottom: 1rem;
 }
 .sp-logo {
-  font-size: 1.4rem;
+  font-size: 1.75rem;
   margin: 0;
 }
 .sp-logo-bild {
@@ -191,11 +191,46 @@
   gap: 1rem;
 }
 .sp-kategorien div {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 4 / 3;
   padding: 1.25rem;
-  background: var(--flaeche);
-  border-radius: 8px;
+  border-radius: 16px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--akzent) 22%, transparent), transparent 55%),
+    linear-gradient(150deg, color-mix(in srgb, var(--akzent) 14%, var(--grund)), var(--flaeche));
+}
+.sp-kategorien strong {
   font-family: var(--schrift-titel);
-  font-size: 1.2rem;
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.15;
+}
+.sp-kategorien strong::after {
+  content: " →";
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+.sp-kategorien .mit-bild img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.sp-kategorien .mit-bild::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0) 60%);
+}
+.sp-kategorien .mit-bild strong {
+  color: #fff;
 }
 
 /* Bausteine */
@@ -395,4 +430,99 @@
 .sp-buehne.mit-bild .sp-edit:empty::before,
 .sp-knopf .sp-edit:empty::before {
   color: inherit;
+}
+
+/* Auffrischung wie im Shop: mehr Luft, größere Bühne. */
+.sp-buehne {
+  padding: 3.5rem 0 1.25rem;
+}
+.sp-buehne p {
+  font-size: 1.15rem;
+}
+.sp-buehne.mit-bild {
+  min-height: 24rem;
+  border-radius: 16px;
+}
+.sp-bild {
+  border-radius: 14px;
+}
+.sp-karte-name {
+  font-size: 1.25rem;
+}
+
+/* Vorlage „Zentriert“ */
+.sp.vorlage-zentriert .sp-kopf-innen {
+  flex-direction: column;
+  text-align: center;
+  gap: 0.75rem;
+}
+.sp.vorlage-zentriert .sp-nav,
+.sp.vorlage-zentriert .sp-korb {
+  justify-content: center;
+  margin-left: 0;
+}
+.sp.vorlage-zentriert .sp-buehne {
+  justify-items: center;
+  text-align: center;
+}
+.sp.vorlage-zentriert .sp-buehne.mit-bild {
+  align-content: center;
+}
+.sp.vorlage-zentriert .sp-buehne.mit-bild .sp-buehne-text {
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.15));
+}
+.sp.vorlage-zentriert .sp-buehne p {
+  margin-inline: auto;
+}
+.sp.vorlage-zentriert .sp-main h2,
+.sp.vorlage-zentriert .sp-karte {
+  text-align: center;
+}
+.sp.vorlage-zentriert .sp-kategorien div {
+  border-radius: 999px;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Vorlage „Boutique“ */
+.sp.vorlage-boutique .sp-kopf {
+  background: var(--text);
+  border-bottom: 0;
+  color: var(--grund);
+}
+.sp.vorlage-boutique .sp-logo,
+.sp.vorlage-boutique .sp-korb span {
+  color: var(--grund);
+}
+.sp.vorlage-boutique .sp-nav {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.85rem;
+}
+.sp.vorlage-boutique .sp-buehne.mit-bild {
+  border-radius: 0;
+  margin-inline: -1.25rem;
+  min-height: 30rem;
+}
+.sp.vorlage-boutique .sp-main h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 1.05rem;
+  font-family: var(--schrift-text);
+  font-weight: 600;
+}
+.sp.vorlage-boutique .sp-bild {
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
+}
+.sp.vorlage-boutique .sp-kategorien div {
+  border-radius: 0;
+  aspect-ratio: 1;
+}
+.sp.vorlage-boutique .sp-kategorien strong {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 1.1rem;
 }

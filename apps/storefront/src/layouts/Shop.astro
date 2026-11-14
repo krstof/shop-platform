@@ -9,6 +9,7 @@ import {
   safeLink,
   safePageSlug,
   SOCIAL_NETWORKS,
+  vorlage,
   webFontCssUrl,
 } from "../lib/design.js";
 import { readMerkzettel } from "../lib/merkzettel.js";
@@ -73,7 +74,7 @@ const fussLinks = [
     {schriften !== undefined && <link rel="stylesheet" href={schriften} />}
     <link rel="stylesheet" href={`${basis}/design.css?v=${designVersion(design)}`} />
   </head>
-  <body>
+  <body class={`vorlage-${vorlage(design)}`}>
     <a class="sprung" href="#inhalt">
       Zum Inhalt springen
     </a>

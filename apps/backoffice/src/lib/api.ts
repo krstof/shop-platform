@@ -160,6 +160,8 @@ export interface Design {
   readonly backgroundColor?: string;
   readonly headingFont?: import("./design.js").WebFont | null;
   readonly bodyFont?: import("./design.js").WebFont | null;
+  /** Design-Vorlage (Anordnung); ältere API-Stände ohne. */
+  readonly template?: string;
 }
 
 /** Eigene Inhaltsseite (Baukasten Teil 3). */

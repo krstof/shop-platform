@@ -166,6 +166,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       backgroundColor: "#fbf8f3",
       headingFont: null,
       bodyFont: null,
+      template: "klassisch",
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });
@@ -668,6 +669,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       font: "klassisch",
       logoImageId: null,
       backgroundColor: "#FFFFFF",
+      template: "boutique",
       headingFont: { id: "playfair-display", name: "Playfair Display", category: "serif" },
       bodyFont: { id: "dm-sans", name: "DM Sans", category: "sans-serif" },
       footer: {
@@ -724,7 +726,11 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
     expect(saved.json().draft.home.blocks[0]).toEqual({ id: "h1", type: "hero" });
     await call("POST", "/admin/v1/design/publish", "a");
     const store = (await call("GET", "/store/v1/shops/design-a/design")).json();
-    expect(store).toMatchObject({ backgroundColor: "#ffffff", bodyFont: { name: "DM Sans" } });
+    expect(store).toMatchObject({
+      backgroundColor: "#ffffff",
+      bodyFont: { name: "DM Sans" },
+      template: "boutique",
+    });
     // Altes Feld `blocks`: nur alte Arten, Shop-Bereiche wie bisher; `content` hat alles.
     expect(store.home.blocks.map((b: { type: string }) => b.type)).toEqual(["hero", "hero", "featured"]);
     const [h1, h2, f1, g1] = store.home.content;

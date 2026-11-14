@@ -112,6 +112,21 @@ export function storefrontUrl(handle: string, location: { protocol: string; host
   return `${location.protocol}//${host}/${handle}`;
 }
 
+/** Design-Vorlagen: nur die Anordnung, nie Farben oder Schriften (wie API und Shop). */
+export const TEMPLATES = [
+  { id: "klassisch", name: "Klassisch", hint: "Logo links, Menü daneben, Bühne mit Bild als Karte" },
+  { id: "zentriert", name: "Zentriert", hint: "Logo und Menü mittig, Texte zentriert, runde Kacheln" },
+  {
+    id: "boutique",
+    name: "Boutique",
+    hint: "Dunkler Kopf, Menü in Großbuchstaben, Bühne über die ganze Breite",
+  },
+] as const;
+export type Template = (typeof TEMPLATES)[number]["id"];
+export function templateOf(v: string | undefined): Template {
+  return TEMPLATES.some((t) => t.id === v) ? (v as Template) : "klassisch";
+}
+
 // --- Editor (14.11.2026): Hintergrund, Google-Schriften, soziale Netzwerke ---
 
 /** Dunkle Schrift des Shops; der Hintergrund muss dazu mindestens 4,5 : 1 Kontrast haben. */

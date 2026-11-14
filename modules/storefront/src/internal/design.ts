@@ -89,6 +89,10 @@ export const webFontSchema = z.strictObject({
   category: z.enum(FONT_CATEGORIES),
 });
 
+/** Design-Vorlagen: ändern nur die Anordnung (Kopf, Menü, Bühne, Kacheln), nie Farben oder Schriften. */
+export const TEMPLATES = ["klassisch", "zentriert", "boutique"] as const;
+export type Template = (typeof TEMPLATES)[number];
+
 /** Hintergrund des Shops: hell genug, damit der dunkle Text (#26221e) gut lesbar bleibt. */
 export const DEFAULT_BACKGROUND = "#fbf8f3";
 export const TEXT_COLOR = "#26221e";
@@ -108,6 +112,8 @@ export interface DesignSettings {
   /** Schriften von Google Fonts; `null` = die Auswahl unter `font`. */
   readonly headingFont: WebFont | null;
   readonly bodyFont: WebFont | null;
+  /** Design-Vorlage (Anordnung). */
+  readonly template: Template;
 }
 
 export const DEFAULT_HOME: HomeSettings = {
@@ -133,6 +139,7 @@ export const DEFAULT_DESIGN: DesignSettings = {
   backgroundColor: DEFAULT_BACKGROUND,
   headingFont: null,
   bodyFont: null,
+  template: "klassisch",
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -175,6 +182,7 @@ const stored = z.object({
   backgroundColor: z.string().regex(HEX).refine(readableBackground).catch(DEFAULT_BACKGROUND),
   headingFont: webFontSchema.nullable().catch(null),
   bodyFont: webFontSchema.nullable().catch(null),
+  template: z.enum(TEMPLATES).catch("klassisch"),
 });
 
 /** Gespeicherte Profile lesen: nur bekannte Netzwerke mit https-Adresse. */

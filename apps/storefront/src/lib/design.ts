@@ -165,6 +165,16 @@ export interface StoreDesign {
   readonly backgroundColor?: string;
   readonly headingFont?: WebFont | null;
   readonly bodyFont?: WebFont | null;
+  /** Design-Vorlage (Anordnung); ältere API-Stände ohne. */
+  readonly template?: string;
+}
+
+export const TEMPLATES = ["klassisch", "zentriert", "boutique"] as const;
+/** Vorlage für die CSS-Klasse; Unbekanntes wird „klassisch“. */
+export function vorlage(design: StoreDesign): (typeof TEMPLATES)[number] {
+  return (TEMPLATES as readonly string[]).includes(design.template ?? "")
+    ? (design.template as (typeof TEMPLATES)[number])
+    : "klassisch";
 }
 
 /** Eintrag einer eigenen Seite im Aussehen (Inhalt kommt über /pages/{slug}). */
