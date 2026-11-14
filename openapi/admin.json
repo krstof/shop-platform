@@ -3536,7 +3536,8 @@
                   "heroTitle": "Frischer Tee, direkt vom Garten",
                   "heroText": "Lose Tees aus kleinen Teegärten, sorgfältig ausgewählt.",
                   "featuredProductIds": [],
-                  "showCategories": true
+                  "showCategories": true,
+                  "showNew": true
                 },
                 "tagline": "Tee mit Herz seit 1998",
                 "footer": {
@@ -9753,6 +9754,10 @@
           "showCategories": {
             "type": "boolean",
             "description": "Kacheln mit den Kategorien auf der Startseite zeigen."
+          },
+          "showNew": {
+            "type": "boolean",
+            "description": "Abschnitt „Neu im Shop“ mit den vier neuesten Produkten zeigen."
           }
         },
         "required": [
@@ -9760,7 +9765,8 @@
           "heroTitle",
           "heroText",
           "featuredProductIds",
-          "showCategories"
+          "showCategories",
+          "showNew"
         ],
         "additionalProperties": false,
         "description": "Startseite: Bild mit Überschrift und Text, Empfehlungen, Kategorien."
@@ -9820,6 +9826,10 @@
             "description": "Bis zu 8 Produkt-IDs, in der gewünschten Reihenfolge."
           },
           "showCategories": {
+            "type": "boolean"
+          },
+          "showNew": {
+            "description": "Fehlt es, bleibt der bisherige Wert.",
             "type": "boolean"
           }
         },

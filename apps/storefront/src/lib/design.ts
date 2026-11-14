@@ -18,6 +18,8 @@ export interface StoreHome {
   readonly heroText: string;
   readonly featuredProductIds: readonly string[];
   readonly showCategories: boolean;
+  /** „Neu im Shop“ zeigen; ältere API-Stände ohne (dann ja). */
+  readonly showNew?: boolean;
 }
 
 /** Kopf- und Fußzeile (Shop-Editor Teil 3). */
@@ -66,6 +68,7 @@ export const DEFAULT_HOME: StoreHome = {
   heroText: "",
   featuredProductIds: [],
   showCategories: true,
+  showNew: true,
 };
 
 export const DEFAULT_DESIGN: StoreDesign = {

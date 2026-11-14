@@ -2232,6 +2232,9 @@
           },
           "showCategories": {
             "type": "boolean"
+          },
+          "showNew": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2239,7 +2242,8 @@
           "heroTitle",
           "heroText",
           "featuredProductIds",
-          "showCategories"
+          "showCategories",
+          "showNew"
         ],
         "additionalProperties": false,
         "description": "Inhalt der Startseite."

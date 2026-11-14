@@ -146,6 +146,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
         heroText: "",
         featuredProductIds: [],
         showCategories: true,
+        showNew: true,
       },
       tagline: "",
       footer: { text: "", links: [] },
@@ -261,6 +262,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       heroText: "",
       featuredProductIds: [],
       showCategories: true,
+      showNew: true,
     });
 
     const featured = [uuidv7(), uuidv7()];
@@ -274,6 +276,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
         heroText: "Lose Tees aus kleinen Gärten.",
         featuredProductIds: featured,
         showCategories: false,
+        showNew: false,
       },
     };
     const saved = await call("PUT", "/admin/v1/design/draft", "a", body, start.version);
@@ -283,6 +286,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       heroText: "Lose Tees aus kleinen Gärten.",
       featuredProductIds: featured,
       showCategories: false,
+      showNew: false,
     });
     expect(saved.json().hasUnpublishedChanges).toBe(true);
     // Der Shop zeigt die Startseite erst nach Veröffentlichen.
@@ -305,6 +309,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       heroText: "Lose Tees aus kleinen Gärten.",
       featuredProductIds: featured,
       showCategories: false,
+      showNew: false,
     });
     expect(store.home.heroImage.url).toMatch(/^https:\/\/media\.localhost\/tenants\//);
 
@@ -315,6 +320,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       heroText: "",
       featuredProductIds: [],
       showCategories: true,
+      showNew: true,
     });
     return heroId;
   });

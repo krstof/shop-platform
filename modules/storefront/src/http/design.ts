@@ -117,6 +117,9 @@ const homeViewSchema = z
     showCategories: z
       .boolean()
       .meta({ description: "Kacheln mit den Kategorien auf der Startseite zeigen." }),
+    showNew: z
+      .boolean()
+      .meta({ description: "Abschnitt „Neu im Shop“ mit den vier neuesten Produkten zeigen." }),
   })
   .meta({
     id: "DesignHome",
@@ -175,6 +178,7 @@ const homeInput = z
       .refine((ids) => new Set(ids).size === ids.length, { message: "Jedes Produkt nur einmal." })
       .meta({ description: `Bis zu ${MAX_FEATURED} Produkt-IDs, in der gewünschten Reihenfolge.` }),
     showCategories: z.boolean(),
+    showNew: z.boolean().optional().meta({ description: "Fehlt es, bleibt der bisherige Wert." }),
   })
   .meta({ id: "DesignHomeInput" });
 
@@ -247,6 +251,7 @@ const storeDesignSchema = z
             "Hervorgehobene Produkte in dieser Reihenfolge; nicht (mehr) sichtbare einfach auslassen.",
         }),
         showCategories: z.boolean(),
+        showNew: z.boolean(),
       })
       .meta({ id: "StoreDesignHome", description: "Inhalt der Startseite." }),
     tagline: z.string().meta({ description: "Text unter dem Logo; leer heißt keiner." }),
@@ -360,6 +365,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         heroText: "Lose Tees aus kleinen Teegärten, sorgfältig ausgewählt.",
         featuredProductIds: [],
         showCategories: true,
+        showNew: true,
       },
       tagline: "Tee mit Herz seit 1998",
       footer: {
@@ -380,7 +386,10 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       return change(async (current) => {
         if (current.version !== ifMatch) throw new PreconditionFailedError();
         const logo = body.logoImageId;
-        const home: HomeSettings = body.home ?? current.draft.home;
+        const home: HomeSettings =
+          body.home === undefined
+            ? current.draft.home
+            : { ...body.home, showNew: body.home.showNew ?? current.draft.home.showNew };
         // Nur Bilder, die es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
         const wanted = [
           { id: logo, path: "/logoImageId", detail: "Dieses Logo gibt es nicht. Bitte neu hochladen." },
@@ -538,6 +547,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           heroText: home.heroText,
           featuredProductIds: [...home.featuredProductIds],
           showCategories: home.showCategories,
+          showNew: home.showNew,
         },
         tagline: published.tagline,
         footer: footerView(published.footer),

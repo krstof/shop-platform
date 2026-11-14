@@ -46,6 +46,7 @@ interface HomeForm {
   heroText: string;
   featuredProductIds: string[];
   showCategories: boolean;
+  showNew: boolean;
 }
 
 interface FooterLinkForm {
@@ -73,6 +74,7 @@ function homeOf(h: DesignHome): HomeForm {
     heroText: h.heroText,
     featuredProductIds: [...h.featuredProductIds],
     showCategories: h.showCategories,
+    showNew: h.showNew ?? true,
   };
 }
 
@@ -112,6 +114,7 @@ function sameHome(a: HomeForm, b: HomeForm): boolean {
     a.heroTitle === b.heroTitle &&
     a.heroText === b.heroText &&
     a.showCategories === b.showCategories &&
+    a.showNew === b.showNew &&
     a.featuredProductIds.join(",") === b.featuredProductIds.join(",")
   );
 }
@@ -209,6 +212,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
           heroText: form.home.heroText.trim(),
           featuredProductIds: form.home.featuredProductIds,
           showCategories: form.home.showCategories,
+          showNew: form.home.showNew,
         },
         tagline: form.tagline.trim(),
         footer: { text: form.footerText.trim(), links: cleanLinks(form.footerLinks) },
@@ -593,6 +597,20 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                 </span>
               </span>
             </label>
+            <label className="mt-3 flex items-start gap-2.5 text-sm text-stone-800">
+              <input
+                type="checkbox"
+                checked={form.home.showNew}
+                onChange={(e) => setHome({ showNew: e.target.checked })}
+                className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              />
+              <span>
+                „Neu im Shop“ zeigen
+                <span className="block text-xs text-stone-500">
+                  Die vier neuesten lieferbaren Produkte, direkt über den Kategorien.
+                </span>
+              </span>
+            </label>
           </Card>
 
           <Card title="Kopf- und Fußzeile">
@@ -925,6 +943,11 @@ function Preview({
         ? products.slice(0, 3).map(toPreview)
         : placeholders;
   const cats = categories.slice(0, 4);
+  // Wie im Shop: die vier zuletzt angelegten lieferbaren Produkte (die Liste kommt älteste zuerst).
+  const newest = products
+    .filter((p) => p.stock > 0)
+    .reverse()
+    .slice(0, 4);
   const heroTitle =
     form.home.heroTitle.trim() !== "" ? form.home.heroTitle.trim() : `Willkommen bei ${shop.name}`;
   const heroText =
@@ -1028,6 +1051,17 @@ function Preview({
             </div>
           ))}
         </div>
+
+        {form.home.showNew && newest.length > 1 && (
+          <>
+            <p className="mt-7 text-xl" style={titel}>
+              Neu im Shop
+            </p>
+            <p className="mt-1 text-sm" style={{ color: "#5e554c" }}>
+              {newest.map((p) => p.name).join(" · ")}
+            </p>
+          </>
+        )}
 
         {form.home.showCategories && cats.length > 0 && (
           <>

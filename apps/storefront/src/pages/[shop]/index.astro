@@ -31,6 +31,13 @@ const empfohlen = home.featuredProductIds
 const titel = home.heroTitle !== "" ? home.heroTitle : `Willkommen bei ${shop.name}`;
 const text = home.heroText !== "" ? home.heroText : "Schön, dass du da bist. Stöbere durch unser Sortiment.";
 const sichtbareKategorien = home.showCategories ? categories : [];
+// „Neu im Shop“: die vier neuesten lieferbaren Produkte (eigene Abfrage, unabhängig von der Sortierung unten).
+const neu =
+  home.showNew === false
+    ? []
+    : (
+        await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
+      ).data.slice(0, 4);
 ---
 
 <Shop shop={shop} categories={categories} titel={shop.name} korb={korb}>
@@ -56,6 +63,17 @@ const sichtbareKategorien = home.showCategories ? categories : [];
       <h2 id="empfohlen">Empfohlen</h2>
       <ul class="raster">
         {empfohlen.map((p) => (
+          <Produktkarte produkt={p} shop={shop.handle} />
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {neu.length > 1 && (
+    <section aria-labelledby="neu-titel">
+      <h2 id="neu-titel">Neu im Shop</h2>
+      <ul class="raster">
+        {neu.map((p) => (
           <Produktkarte produkt={p} shop={shop.handle} />
         ))}
       </ul>

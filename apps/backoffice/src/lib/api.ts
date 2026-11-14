@@ -134,6 +134,8 @@ export interface DesignHome {
   readonly heroText: string;
   readonly featuredProductIds: readonly string[];
   readonly showCategories: boolean;
+  /** Abschnitt „Neu im Shop“ (ältere API-Stände ohne). */
+  readonly showNew?: boolean;
 }
 
 export interface Design {

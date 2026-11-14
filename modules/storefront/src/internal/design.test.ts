@@ -51,6 +51,7 @@ describe("Aussehen: Rechenregeln", () => {
         heroText: "Text",
         featuredProductIds: ["0190a3c4-0000-7000-8000-000000000003"],
         showCategories: false,
+        showNew: false,
       },
       tagline: "Tee mit Herz",
       footer: { text: "Mo–Fr", links: [{ label: "Kontakt", url: "mailto:a@b.example" }] },
@@ -58,6 +59,10 @@ describe("Aussehen: Rechenregeln", () => {
     expect(readSettings(s)).toEqual(s);
     expect(sameSettings(readSettings(s), readSettings(s))).toBe(true);
     expect(sameSettings(readSettings(s), DEFAULT_DESIGN)).toBe(false);
+    // Ältere Stände ohne showNew: Standard „zeigen“.
+    const older: Record<string, unknown> = { ...s.home };
+    delete older["showNew"];
+    expect(readSettings({ ...s, home: older }).home.showNew).toBe(true);
   });
 
   it("liest kaputte Startseiten-Felder zum Standard, Reihenfolge zählt für Gleichheit", () => {

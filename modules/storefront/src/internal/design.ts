@@ -28,6 +28,8 @@ export interface HomeSettings {
   /** Produkt-IDs in der gewünschten Reihenfolge. Gelöschte oder versteckte zeigt der Shop einfach nicht. */
   readonly featuredProductIds: readonly string[];
   readonly showCategories: boolean;
+  /** Abschnitt „Neu im Shop“ mit den vier neuesten Produkten. */
+  readonly showNew: boolean;
 }
 
 /** Kopf- und Fußzeile (Teil 3). */
@@ -71,6 +73,7 @@ export const DEFAULT_HOME: HomeSettings = {
   heroText: "",
   featuredProductIds: [],
   showCategories: true,
+  showNew: true,
 };
 
 export const DEFAULT_FOOTER: FooterSettings = { text: "", links: [] };
@@ -97,6 +100,7 @@ const stored = z.object({
       heroText: z.string().max(MAX_HERO_TEXT).catch(""),
       featuredProductIds: z.array(z.uuid()).max(MAX_FEATURED).catch([]),
       showCategories: z.boolean().catch(true),
+      showNew: z.boolean().catch(true),
     })
     .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [] })),
   tagline: z.string().max(MAX_TAGLINE).catch(""),
@@ -131,6 +135,7 @@ export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
     a.home.heroTitle === b.home.heroTitle &&
     a.home.heroText === b.home.heroText &&
     a.home.showCategories === b.home.showCategories &&
+    a.home.showNew === b.home.showNew &&
     a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",") &&
     a.tagline === b.tagline &&
     a.footer.text === b.footer.text &&
