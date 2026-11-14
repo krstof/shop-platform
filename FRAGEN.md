@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(keine; Kristof stellt das Projekt auf GitHub auf „öffentlich“, danach aktualisiert Claude den Testserver)
+(keine)
 
 ## Beantwortet
 
