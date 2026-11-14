@@ -58,7 +58,11 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
       });
 
   /** Kauft über die Storefront-API ein und zahlt (oder nicht). */
-  async function buy(quantity: number, pay: boolean): Promise<string> {
+  async function buy(
+    quantity: number,
+    pay: boolean,
+    who = { email: "kim@example.org", firstName: "Kim", lastName: "Muster" },
+  ): Promise<string> {
     const base = "/store/v1/shops/laden";
     const cart = (await inject("POST", `${base}/carts`)).json().token;
     const products = (await inject("GET", `${base}/products`)).json().data;
@@ -68,10 +72,10 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
       `${base}/carts/${cart}/checkout`,
       undefined,
       {
-        email: "kim@example.org",
+        email: who.email,
         address: {
-          firstName: "Kim",
-          lastName: "Muster",
+          firstName: who.firstName,
+          lastName: who.lastName,
           street: "Teeweg 1",
           postalCode: "20095",
           city: "Hamburg",
@@ -171,5 +175,36 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
     expect((await inject("POST", `/admin/v1/orders/${paid.id}/ship`, "owner")).statusCode).toBe(409);
     expect((await inject("POST", `/admin/v1/orders/${unpaid.id}/ship`, "owner")).statusCode).toBe(409);
     expect((await inject("GET", `/admin/v1/orders/${uuidv7()}`, "reader")).statusCode).toBe(404);
+  });
+
+  it("filtert nach Stand und sucht in Bestellnummer, Name und E-Mail", async () => {
+    // Bisher: 10001 versendet, 10002 wartet auf Zahlung, 10003 bezahlt (alle Kim Muster).
+    await buy(1, true, { email: "jo.weber@example.net", firstName: "Jo", lastName: "Weber_100%" });
+    const numbers = async (query: string) => {
+      const r = await inject("GET", `/admin/v1/orders?${query}`, "reader");
+      expect(r.statusCode).toBe(200);
+      return r.json().data.map((o: { orderNumber: string }) => o.orderNumber);
+    };
+    expect(await numbers("status=pending_payment")).toEqual(["10002"]);
+    expect(await numbers("status=open")).toEqual(["10004", "10003"]);
+    expect(await numbers("status=completed")).toEqual(["10001"]);
+    expect(await numbers("q=10003")).toEqual(["10003"]);
+    expect(await numbers("q=kim%20MUSTER")).toEqual(["10003", "10002", "10001"]);
+    expect(await numbers("q=example.net")).toEqual(["10004"]);
+    expect(await numbers("q=weber")).toEqual(["10004"]);
+    // % und _ zählen als normale Zeichen, nicht als Platzhalter.
+    expect(await numbers("q=_100%25")).toEqual(["10004"]);
+    expect(await numbers("q=%25")).toEqual(["10004"]);
+    expect(await numbers("q=kim&status=open")).toEqual(["10003"]);
+    expect(await numbers("q=niemand")).toEqual([]);
+    // Seitenweise mit Filter.
+    const p1 = (await inject("GET", "/admin/v1/orders?q=kim&limit=1", "reader")).json();
+    const p2 = (
+      await inject("GET", `/admin/v1/orders?q=kim&limit=1&cursor=${p1.page.nextCursor}`, "reader")
+    ).json();
+    expect(p2.data.map((o: { orderNumber: string }) => o.orderNumber)).toEqual(["10002"]);
+    for (const bad of ["status=bezahlt", "q=", `q=${"x".repeat(101)}`]) {
+      expect((await inject("GET", `/admin/v1/orders?${bad}`, "reader")).statusCode).toBe(422);
+    }
   });
 });

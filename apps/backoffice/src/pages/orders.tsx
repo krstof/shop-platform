@@ -1,10 +1,22 @@
 // Bestellungen (M7): Liste neueste zuerst, Details mit „Als versendet markieren“.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Alert, Badge, Button, Card, Spinner } from "../components/ui.js";
+// Suche und Filter nach Stand (14.11.2026) stehen in der Adresse und gehen als Filter an die Admin-API.
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Badge, Button, Card, Input, Select, Spinner } from "../components/ui.js";
 import { ApiError, listAll, request, type Order, type OrderSummary } from "../lib/api.js";
 import { formatEuro } from "../lib/money.js";
+import {
+  isOrderFiltered,
+  orderListPath,
+  parseOrderFilter,
+  type OrderFilter,
+  type OrderStateFilter,
+} from "../lib/order-filter.js";
 import { useShop } from "./layout.js";
+
+/** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
+type FilterInput = { [K in keyof OrderFilter]?: OrderFilter[K] | undefined };
 
 const DATE = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
 
@@ -29,26 +41,73 @@ function Loading({ label }: { label: string }) {
 export function OrdersPage() {
   const shop = useShop();
   const navigate = useNavigate();
+  const filter = useSearch({ from: "/$shop/bestellungen" });
+  const filtered = isOrderFiltered(filter);
   const orders = useQuery({
-    queryKey: ["orders", shop.id],
-    queryFn: () => listAll<OrderSummary>("/admin/v1/orders", shop.id),
+    queryKey: ["orders", shop.id, "liste", filter],
+    queryFn: () => listAll<OrderSummary>(orderListPath(filter), shop.id),
+    placeholderData: keepPreviousData,
   });
-  const open = orders.data?.filter((o) => o.status === "open").length ?? 0;
+  // „N zu versenden“ immer über alle Bestellungen, nicht nur über die gefilterten.
+  const toShip = useQuery({
+    queryKey: ["orders", shop.id, "zu-versenden"],
+    queryFn: () => listAll<OrderSummary>(orderListPath({ stand: "versenden" }), shop.id),
+  });
+  const open = toShip.data?.length ?? 0;
+  const count = orders.data?.length ?? 0;
+
+  const setFilter = useCallback(
+    (next: FilterInput) =>
+      void navigate({
+        to: "/$shop/bestellungen",
+        params: { shop: shop.handle },
+        search: parseOrderFilter({ ...next }),
+        replace: true,
+      }),
+    [navigate, shop.handle],
+  );
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Bestellungen</h1>
         {orders.data && (
-          <p className="text-sm text-stone-500">
-            {orders.data.length === 1 ? "1 Bestellung" : `${orders.data.length} Bestellungen`}
-            {open > 0 && ` · ${open} zu versenden`}
+          <p className="text-sm text-stone-500" aria-live="polite">
+            {filtered
+              ? count === 1
+                ? "1 Treffer"
+                : `${count} Treffer`
+              : count === 1
+                ? "1 Bestellung"
+                : `${count} Bestellungen`}
+            {open > 0 && (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  className="text-emerald-800 hover:underline"
+                  onClick={() => setFilter({ stand: "versenden" })}
+                >
+                  {open} zu versenden
+                </button>
+              </>
+            )}
           </p>
         )}
       </div>
+      <OrderFilterBar filter={filter} onChange={setFilter} />
       {orders.isPending && <Loading label="Bestellungen werden geladen …" />}
       {orders.isError && <Alert>{orders.error.message}</Alert>}
-      {orders.data?.length === 0 && (
+      {orders.data?.length === 0 && filtered && (
+        <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
+          <p className="font-medium">Keine Bestellungen gefunden</p>
+          <p className="mt-1 text-sm text-stone-500">Keine Bestellung passt zu Suche und Filter.</p>
+          <Button variant="secondary" className="mt-4" onClick={() => setFilter({})}>
+            Filter zurücksetzen
+          </Button>
+        </div>
+      )}
+      {orders.data?.length === 0 && !filtered && (
         <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-16 text-center">
           <p className="font-medium">Noch keine Bestellungen</p>
           <p className="mt-1 text-sm text-stone-500">
@@ -57,7 +116,12 @@ export function OrdersPage() {
         </div>
       )}
       {orders.data && orders.data.length > 0 && (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200">
+        <div
+          className={
+            "overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-stone-200 transition-opacity" +
+            (orders.isPlaceholderData ? " opacity-60" : "")
+          }
+        >
           <table className="w-full text-left text-sm">
             <thead className="bg-stone-50 text-xs text-stone-500 uppercase">
               <tr>
@@ -122,6 +186,54 @@ export function OrdersPage() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Suchfeld plus Auswahl für den Stand. Die Suche wartet kurz, bis man aufhört zu tippen. */
+function OrderFilterBar({
+  filter,
+  onChange,
+}: {
+  filter: OrderFilter;
+  onChange: (next: FilterInput) => void;
+}) {
+  const [text, setText] = useState(filter.suche ?? "");
+  // Ändert sich die Adresse von außen (Zurück, „Filter zurücksetzen“), das Feld nachziehen.
+  useEffect(() => setText(filter.suche ?? ""), [filter.suche]);
+  useEffect(() => {
+    const value = text.trim();
+    if (value === (filter.suche ?? "")) return;
+    const timer = setTimeout(() => onChange({ ...filter, suche: value || undefined }), 300);
+    return () => clearTimeout(timer);
+  }, [text, filter, onChange]);
+
+  return (
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row" role="search">
+      <label className="sm:flex-1">
+        <span className="sr-only">Bestellungen suchen</span>
+        <Input
+          type="search"
+          value={text}
+          maxLength={100}
+          placeholder="Suchen nach Bestellnummer, Name oder E-Mail"
+          onChange={(e) => setText(e.target.value)}
+        />
+      </label>
+      <label className="sm:w-56">
+        <span className="sr-only">Stand</span>
+        <Select
+          value={filter.stand ?? ""}
+          onChange={(e) =>
+            onChange({ ...filter, stand: (e.target.value || undefined) as OrderStateFilter | undefined })
+          }
+        >
+          <option value="">Alle</option>
+          <option value="zahlung">Wartet auf Zahlung</option>
+          <option value="versenden">Bezahlt – zu versenden</option>
+          <option value="versendet">Versendet</option>
+        </Select>
+      </label>
     </div>
   );
 }

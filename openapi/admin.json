@@ -4272,7 +4272,7 @@
       "get": {
         "operationId": "listOrders",
         "summary": "Bestellungen auflisten",
-        "description": "Bestellungen des Shops, neueste zuerst, seitenweise mit Cursor.",
+        "description": "Bestellungen des Shops, neueste zuerst, seitenweise mit Cursor. Filter nach `status` möglich, `q` sucht ohne Groß-/Kleinschreibung in Bestellnummer, E-Mail und Name der Kundin.",
         "tags": [
           "Bestellungen"
         ],
@@ -4299,6 +4299,33 @@
               "minLength": 1,
               "maxLength": 512,
               "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "`pending_payment` wartet auf Zahlung, `open` bezahlt und offen, `completed` erledigt.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_payment",
+                "open",
+                "in_progress",
+                "completed",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Suchtext für Bestellnummer, E-Mail oder Name.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
             }
           },
           {

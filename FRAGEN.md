@@ -6,6 +6,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 1. **Schreibweise des Namens:** Du schreibst „Sloppify“ (zwei p), im Logo-Bild steht „slopify“ (ein p). Welche Schreibweise soll überall in der Plattform stehen? *Antwort: „Sloppify“ oder „Slopify“.*
 2. **Eigenes Logo:** Das geschickte Bild ist praktisch das Shopify-Logo (grüne Tasche mit „S“, gleiche Schrift), das baue ich nicht ein. Soll ich stattdessen ein eigenes, schlichtes Logo entwerfen und oben im Backoffice und in der Plattform-Verwaltung zeigen? *Antwort: „Ja“ oder „Nein“.*
+3. **Sprachmodell für den KI-Chat:** Der Chat braucht ein Sprachmodell, das antwortet. Ein gutes Modell wie Claude kostet Geld (bei ein paar Testern meist nur wenige Euro im Monat), dafür müsstest du einmal einen Zugang bei Anthropic anlegen; ich zeige dir den Weg, der Schlüssel geht nie durch den Chat. Ein kostenloses kleines Modell direkt auf dem Testserver ginge auch, wäre aber langsam und deutlich weniger klug. *Antwort: „Claude“ oder „Gratis“.*
 
 ## Beantwortet
 

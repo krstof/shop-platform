@@ -85,6 +85,11 @@ export interface OrderView {
 
 const RATE_BP = { standard: 1900, reduced: 700 } as const;
 
+/** Suchmuster für ILIKE: `%`, `_` und `\\` zählen als normale Zeichen. */
+export function likePattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
 /** Enthaltene Steuer aus dem Bruttobetrag, kaufmännisch gerundet. */
 export function taxIncluded(gross: number, rateBp: number): number {
   return Math.round((gross * rateBp) / (10_000 + rateBp));
@@ -258,7 +263,16 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
     },
 
     /** Neueste zuerst (UUIDv7 absteigend), eine Zeile mehr als verlangt (nächste Seite?). */
-    async list(f: { limit: number; beforeId?: string | undefined }): Promise<OrderSummary[]> {
+    /**
+     * Filter: `status` (Stand der Bestellung) und `search` (Teil der Bestellnummer, der E-Mail oder des
+     * Namens, ohne Groß-/Kleinschreibung; „Kim Muster“ findet Vor- plus Nachname).
+     */
+    async list(f: {
+      limit: number;
+      beforeId?: string | undefined;
+      status?: OrderStatus | undefined;
+      search?: string | undefined;
+    }): Promise<OrderSummary[]> {
       return withTenantTransaction(db, async (trx) => {
         let q = placed(trx)
           .leftJoin("orders.order_address as a", (j) =>
@@ -286,6 +300,17 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
           .orderBy("orders.order.id", "desc")
           .limit(f.limit + 1);
         if (f.beforeId !== undefined) q = q.where("orders.order.id", "<", f.beforeId);
+        if (f.status !== undefined) q = q.where("orders.order.status", "=", f.status);
+        if (f.search !== undefined) {
+          const pattern = likePattern(f.search);
+          q = q.where((eb) =>
+            eb.or([
+              eb("orders.order.order_number", "ilike", pattern),
+              eb("orders.order.email", "ilike", pattern),
+              eb(eb.fn<string>("concat_ws", [eb.val(" "), "a.first_name", "a.last_name"]), "ilike", pattern),
+            ]),
+          );
+        }
         return (await q.execute()).map((r) => ({
           id: r.id,
           orderNumber: r.order_number,

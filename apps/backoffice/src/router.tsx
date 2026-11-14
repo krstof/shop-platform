@@ -9,6 +9,7 @@ import { OrderPage, OrdersPage } from "./pages/orders.js";
 import { PlatformPage } from "./pages/platform.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
+import { parseOrderFilter } from "./lib/order-filter.js";
 import { parseProductFilter } from "./lib/product-filter.js";
 
 const root = createRootRoute({
@@ -83,7 +84,12 @@ const categoryEdit = createRoute({
 // Shop-Editor (Teil 1: Farbe, Schrift, Logo).
 const design = createRoute({ getParentRoute: () => shop, path: "/aussehen", component: DesignPage });
 
-const orders = createRoute({ getParentRoute: () => shop, path: "/bestellungen", component: OrdersPage });
+const orders = createRoute({
+  getParentRoute: () => shop,
+  path: "/bestellungen",
+  component: OrdersPage,
+  validateSearch: parseOrderFilter,
+});
 const order = createRoute({
   getParentRoute: () => shop,
   path: "/bestellungen/$orderId",

@@ -5,6 +5,7 @@ import {
   idParam,
   listQuery,
   pageOf,
+  singleLineText,
   timestamp,
   toPage,
   type Endpoint,
@@ -119,15 +120,27 @@ export function orderAdminEndpoints(repo: OrderRepository): Endpoint[] {
     path: "/orders",
     operationId: "listOrders",
     summary: "Bestellungen auflisten",
-    description: "Bestellungen des Shops, neueste zuerst, seitenweise mit Cursor.",
+    description:
+      "Bestellungen des Shops, neueste zuerst, seitenweise mit Cursor. Filter nach `status` möglich, `q` " +
+      "sucht ohne Groß-/Kleinschreibung in Bestellnummer, E-Mail und Name der Kundin.",
     tags: ["Bestellungen"],
     access: { scopes: ["orders:read"] },
-    query: listQuery(),
+    query: listQuery({
+      status: status.optional(),
+      q: singleLineText(100)
+        .optional()
+        .meta({ description: "Suchtext für Bestellnummer, E-Mail oder Name." }),
+    }),
     response: { status: 200, description: "Eine Seite mit Bestellungen.", schema: pageOf(summarySchema) },
     handler: async ({ query, locale }) => {
       const before =
         query.cursor === undefined ? undefined : decodeCursor(query.cursor, cursorKey, locale).id;
-      const rows = await repo.list({ limit: query.limit, beforeId: before });
+      const rows = await repo.list({
+        limit: query.limit,
+        beforeId: before,
+        status: query.status,
+        search: query.q,
+      });
       return toPage(
         rows,
         query.limit,
