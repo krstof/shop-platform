@@ -93,7 +93,11 @@ describe.skipIf(adminUrl === undefined)("Kaufen als Gast (M6, echte Datenbank)",
     });
     const shops = createShopDirectory({ database });
     app = await createApi({
-      endpoints: allEndpoints({ database, mailer: { send: async (m) => void mails.push(m) } }),
+      endpoints: allEndpoints({
+        database,
+        mailer: { send: async (m) => void mails.push(m) },
+        storefrontBaseUrl: "https://shop.example.test",
+      }),
       resolveActor: resolver,
       logger: createLogger({ level: "silent" }),
       idempotency: databaseIdempotencyStore(database),
@@ -224,6 +228,13 @@ describe.skipIf(adminUrl === undefined)("Kaufen als Gast (M6, echte Datenbank)",
     expect(mails[0]).toMatchObject({ to: "kim@example.org", subject: "teeladen: Deine Bestellung 10001" });
     expect(mails[0]?.text).toContain("2 × Sencha");
     expect(mails[0]?.text).toContain("Summe: 57,70 €");
+    // Link zur Bestellstatus-Seite mit dem geheimen Token; die Seite liest dieselbe Zahlung.
+    expect(mails[0]?.text).toContain(
+      `Stand deiner Bestellung: https://shop.example.test/teeladen/bestellung/${payment}`,
+    );
+    const status = (await inject("GET", `${base}/test-payments/${payment}`)).json();
+    expect(status.order).toMatchObject({ orderNumber: "10001", status: "open", paymentStatus: "paid" });
+    expect(new Date(status.order.placedAt).getTime()).toBeGreaterThan(Date.now() - 600_000);
     expect((await inject("GET", `/store/v1/shops/modeladen/test-payments/${payment}`)).statusCode).toBe(404);
   });
 

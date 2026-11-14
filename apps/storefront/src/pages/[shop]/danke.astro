@@ -2,7 +2,7 @@
 // Dankeseite (M6): Bestellung mit Nummer, Positionen, Summe und Lieferadresse.
 import Shop from "../../layouts/Shop.astro";
 import { euro } from "../../lib/format.js";
-import { loadPayment } from "../../lib/cart.js";
+import { loadPayment, paymentToken } from "../../lib/cart.js";
 import { loadShop } from "../../lib/store-api.js";
 
 const daten = await loadShop(Astro.params.shop);
@@ -13,6 +13,7 @@ const zahlung = await loadPayment(Astro.cookies, shop.handle);
 if (zahlung === undefined) return Astro.redirect(basis, 303);
 if (zahlung.status !== "captured") return Astro.redirect(`${basis}/testzahlung`, 303);
 const o = zahlung.order;
+const standLink = `${basis}/bestellung/${paymentToken(Astro.cookies, shop.handle) ?? ""}`;
 ---
 
 <Shop shop={shop} categories={categories} titel="Danke für deine Bestellung">
@@ -21,6 +22,10 @@ const o = zahlung.order;
     <p>
       Deine Bestellung <strong>{o.orderNumber}</strong> ist eingegangen und bezahlt. Eine Bestätigung ist an
       {o.email} unterwegs.
+    </p>
+    <p>
+      Den Stand deiner Bestellung siehst du jederzeit über den Link in der E-Mail oder{" "}
+      <a href={standLink}>hier</a>.
     </p>
     <h2>Deine Bestellung</h2>
     <ul class="kurz-liste">

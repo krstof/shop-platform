@@ -27,6 +27,8 @@ export interface Cart {
 
 export interface StoreOrder {
   readonly orderNumber: string;
+  /** Seit der Bestellstatus-Seite (ISO 8601); ältere API-Stände ohne. */
+  readonly placedAt?: string;
   readonly status: string;
   readonly paymentStatus: string;
   readonly email: string;
@@ -148,4 +150,19 @@ export function safeInt(value: unknown, min: number, max: number): number | unde
   if (typeof value !== "string" || !/^\d{1,3}$/.test(value.trim())) return undefined;
   const n = Number(value.trim());
   return n >= min && n <= max ? n : undefined;
+}
+
+/** Token aus der Adresse prüfen, bevor es in einen API-Pfad kommt. */
+export function safeToken(value: string | undefined): string | undefined {
+  return value !== undefined && TOKEN.test(value) ? value : undefined;
+}
+
+/** Zahlung samt Bestellung zu einem Token aus dem Link der E-Mail; `undefined`, wenn es sie nicht gibt. */
+export async function loadPaymentByToken(shop: string, token: string): Promise<TestPayment | undefined> {
+  try {
+    return await storeApi<TestPayment>(shop, `/test-payments/${token}`);
+  } catch (e) {
+    if (e instanceof StoreApiError && e.status === 404) return undefined;
+    throw e;
+  }
 }

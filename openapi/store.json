@@ -1220,7 +1220,7 @@
       "get": {
         "operationId": "getStoreTestPayment",
         "summary": "Testzahlung lesen",
-        "description": "Stand der Testzahlung und die zugehörige Bestellung (für Zahlungs- und Dankeseite).",
+        "description": "Stand der Testzahlung und die zugehörige Bestellung (für Zahlungs-, Danke- und Bestellstatus-Seite; das Token steht im Link der Bestätigungs-E-Mail).",
         "tags": [
           "Kaufen"
         ],
@@ -1934,6 +1934,10 @@
           "orderNumber": {
             "type": "string"
           },
+          "placedAt": {
+            "type": "string",
+            "description": "Zeitpunkt der Bestellung (ISO 8601)."
+          },
           "status": {
             "type": "string"
           },
@@ -2036,6 +2040,7 @@
         },
         "required": [
           "orderNumber",
+          "placedAt",
           "status",
           "paymentStatus",
           "email",

@@ -84,6 +84,8 @@ export const apiConfigSchema = baseConfigSchema.extend({
     .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, "ist kein gültiger Bereichsname"),
   /** Öffentliche Adresse der Bilder. Standard: https://media.<SHOP_DOMAIN>. */
   SHOP_MEDIA_BASE_URL: originSchema.optional(),
+  /** Öffentliche Adresse der Shops (für Links in E-Mails). Standard: https://shop.<SHOP_DOMAIN>. */
+  SHOP_STOREFRONT_BASE_URL: originSchema.optional(),
   /**
    * KI-Assistent (Welle 2): Schlüssel für die Messages-API von Anthropic. Ohne Schlüssel meldet der
    * Assistent im Backoffice „nicht eingerichtet“. Der Schlüssel erscheint nie im Protokoll.
@@ -135,8 +137,9 @@ export const apiConfigSchema = baseConfigSchema.extend({
 
 export type ApiConfig = Omit<
   z.output<typeof apiConfigSchema>,
-  "SHOP_ALLOWED_ORIGINS" | "SHOP_MAIL_FROM" | "SHOP_MEDIA_BASE_URL"
+  "SHOP_ALLOWED_ORIGINS" | "SHOP_MAIL_FROM" | "SHOP_MEDIA_BASE_URL" | "SHOP_STOREFRONT_BASE_URL"
 > & {
+  readonly SHOP_STOREFRONT_BASE_URL: string;
   readonly SHOP_ALLOWED_ORIGINS: readonly string[];
   readonly SHOP_MAIL_FROM: string;
   readonly SHOP_MEDIA_BASE_URL: string;
@@ -150,6 +153,7 @@ export function loadApiConfig(
     ...c,
     SHOP_MAIL_FROM: c.SHOP_MAIL_FROM ?? `Shop-Plattform <no-reply@${c.SHOP_DOMAIN}>`,
     SHOP_MEDIA_BASE_URL: c.SHOP_MEDIA_BASE_URL ?? `https://media.${c.SHOP_DOMAIN}`,
+    SHOP_STOREFRONT_BASE_URL: c.SHOP_STOREFRONT_BASE_URL ?? `https://shop.${c.SHOP_DOMAIN}`,
     SHOP_ALLOWED_ORIGINS: Object.freeze(
       c.SHOP_ALLOWED_ORIGINS ?? [`https://admin.${c.SHOP_DOMAIN}`, `https://platform.${c.SHOP_DOMAIN}`],
     ),

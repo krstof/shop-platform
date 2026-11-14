@@ -79,6 +79,7 @@ async function main(): Promise<void> {
       shopsOfUser: shopsOfUser({ memberships, shops }),
       media: mediaFromConfig(config, database),
       mailer,
+      storefrontBaseUrl: config.SHOP_STOREFRONT_BASE_URL,
       logger,
       assistantModel:
         config.SHOP_ASSISTANT_API_KEY === undefined

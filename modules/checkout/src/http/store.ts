@@ -25,6 +25,8 @@ export interface CheckoutDependencies {
   readonly shipping?: { quote(subtotal: number): Promise<{ name: string; amount: number }> } | undefined;
   /** Bestätigung per E-Mail (lokal und auf dem Testserver: Mailpit). Ohne Angabe: keine E-Mail. */
   readonly mailer?: MailSender | undefined;
+  /** Link zur Bestellstatus-Seite im Shop (für die E-Mail). Ohne Angabe: kein Link. */
+  readonly orderLink?: ((shopHandle: string, paymentToken: string) => string) | undefined;
   /** Name des Shops für die E-Mail. */
   readonly shopName?: (() => Promise<string | undefined>) | undefined;
   readonly onMailError?: ((error: unknown) => void) | undefined;
@@ -93,6 +95,7 @@ const checkoutInput = z.strictObject({
 const orderSchema = z
   .object({
     orderNumber: z.string(),
+    placedAt: z.string().meta({ description: "Zeitpunkt der Bestellung (ISO 8601)." }),
     status: z.string(),
     paymentStatus: z.string(),
     email: z.string(),
@@ -122,6 +125,7 @@ const testPaymentSchema = z
 function toStoreOrder(o: OrderView): z.input<typeof orderSchema> {
   return {
     orderNumber: o.orderNumber,
+    placedAt: o.placedAt.toISOString(),
     status: o.status,
     paymentStatus: o.paymentStatus,
     email: o.email,
@@ -368,7 +372,9 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
     path: "/shops/{shopHandle}/test-payments/{paymentToken}",
     operationId: "getStoreTestPayment",
     summary: "Testzahlung lesen",
-    description: "Stand der Testzahlung und die zugehörige Bestellung (für Zahlungs- und Dankeseite).",
+    description:
+      "Stand der Testzahlung und die zugehörige Bestellung (für Zahlungs-, Danke- und Bestellstatus-Seite; " +
+      "das Token steht im Link der Bestätigungs-E-Mail).",
     tags: ["Kaufen"],
     access: PUBLIC,
     params: z.strictObject({ shopHandle: handle, paymentToken: token }),
@@ -415,7 +421,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
         // Nach dem Commit, und Fehler beim Versand ändern nichts an der Bestellung.
         const shopName = (await deps.shopName?.()) ?? "Testshop";
         await deps.mailer
-          .send(confirmationMail(order, shopName))
+          .send(confirmationMail(order, shopName, deps.orderLink?.(params.shopHandle, params.paymentToken)))
           .catch((e: unknown) => deps.onMailError?.(e));
       }
       return {

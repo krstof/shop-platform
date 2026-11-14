@@ -53,6 +53,8 @@ export interface EndpointDependencies {
   readonly media?: Media;
   /** E-Mails an Kundinnen und Kunden (Bestellbestätigung, M6). Ohne Angabe: keine E-Mail. */
   readonly mailer?: MailSender;
+  /** Adresse der Shops für Links in E-Mails, etwa https://shop.example.org. Ohne Angabe: kein Link. */
+  readonly storefrontBaseUrl?: string | undefined;
   readonly logger?: Logger;
   /** Sprachmodell des KI-Assistenten (Welle 2). Ohne Angabe: „nicht eingerichtet“. */
   readonly assistantModel?: AssistantModel | undefined;
@@ -107,6 +109,12 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       payments: createPayments({ database: deps.database }),
       settings,
       mailer: deps.mailer,
+      ...(deps.storefrontBaseUrl === undefined
+        ? {}
+        : {
+            orderLink: (handle: string, paymentToken: string) =>
+              `${deps.storefrontBaseUrl}/${handle}/bestellung/${paymentToken}`,
+          }),
       shopName: async () => (await shops.getShops([getContext()?.tenantId ?? ""]))[0]?.name,
       onMailError: (error) =>
         deps.logger?.error({ err: error }, "Bestellbestätigung konnte nicht verschickt werden"),

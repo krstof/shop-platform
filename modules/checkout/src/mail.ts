@@ -18,7 +18,7 @@ const euro = (cents: number) => EUR.format(cents / 100).replace(/\s/g, " ");
 /** Zeilenumbrüche aus Eingaben entfernen (die Felder sind schon einzeilig geprüft). */
 const line = (s: string) => s.replace(/[\r\n]+/g, " ");
 
-export function confirmationMail(order: OrderView, shopName: string): OutgoingMail {
+export function confirmationMail(order: OrderView, shopName: string, link?: string): OutgoingMail {
   const a = order.address;
   const rows = order.lines.map((l) => `  ${l.quantity} × ${line(l.name)}  ${euro(l.lineTotal)}`);
   const taxes = Object.entries(order.taxByRate).map(
@@ -33,6 +33,7 @@ export function confirmationMail(order: OrderView, shopName: string): OutgoingMa
       `vielen Dank für deine Bestellung bei ${line(shopName)}. Die Zahlung ist eingegangen.`,
       "",
       `Bestellnummer: ${order.orderNumber}`,
+      ...(link === undefined ? [] : [`Stand deiner Bestellung: ${link}`]),
       "",
       ...rows,
       "",

@@ -1,0 +1,80 @@
+---
+// Bestellstatus für Kundinnen: Link aus der Bestätigungs-E-Mail (und von der Dankeseite).
+// Das Token im Pfad ist das geheime Zahlungs-Token (43 Zeichen); wer es nicht kennt, sieht 404.
+import Shop from "../../../layouts/Shop.astro";
+import { euro } from "../../../lib/format.js";
+import { loadPaymentByToken, safeToken } from "../../../lib/cart.js";
+import { loadShop } from "../../../lib/store-api.js";
+import { bestellstand } from "../../../lib/bestellstand.js";
+
+const daten = await loadShop(Astro.params.shop);
+const token = safeToken(Astro.params.token);
+if (daten === undefined || token === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const zahlung = await loadPaymentByToken(shop.handle, token);
+if (zahlung === undefined) return Astro.rewrite("/404");
+const o = zahlung.order;
+const stand = bestellstand(o);
+const datum =
+  o.placedAt === undefined
+    ? undefined
+    : new Intl.DateTimeFormat("de-DE", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "Europe/Berlin",
+      }).format(new Date(o.placedAt));
+// Die Seite nennt Name und Adresse: nicht zwischenspeichern, Link nicht weitergeben.
+Astro.response.headers.set("cache-control", "no-store");
+Astro.response.headers.set("referrer-policy", "no-referrer");
+---
+
+<Shop shop={shop} categories={categories} titel={`Bestellung ${o.orderNumber}`}>
+  <section class="danke">
+    <h1>Bestellung {o.orderNumber}</h1>
+    {datum !== undefined && <p class="klein">Bestellt am {datum}</p>}
+    <p class:list={["stand-satz", { storniert: stand.storniert }]} role="status">
+      {stand.satz}
+    </p>
+    {stand.schritte.length > 0 && (
+      <ol class="stand-schritte">
+        {stand.schritte.map((s) => (
+          <li class:list={{ erledigt: s.erledigt }}>
+            <span class="stand-punkt" aria-hidden="true">
+              {s.erledigt ? "✓" : ""}
+            </span>
+            {s.text}
+            <span class="unsichtbar">{s.erledigt ? " (erledigt)" : " (noch nicht)"}</span>
+          </li>
+        ))}
+      </ol>
+    )}
+    <h2>Artikel</h2>
+    <ul class="kurz-liste">
+      {o.lines.map((l) => (
+        <li>
+          {l.quantity} × {l.name} <span>{euro(l.lineTotal)}</span>
+        </li>
+      ))}
+    </ul>
+    <dl class="summen-zeilen">
+      <dt>Versand</dt>
+      <dd>{o.shipping === 0 ? "kostenlos" : euro(o.shipping)}</dd>
+      <dt class="gesamt">Gesamt</dt>
+      <dd class="gesamt">{euro(o.total)}</dd>
+    </dl>
+    <h2>Lieferadresse</h2>
+    <address>
+      {o.address.firstName} {o.address.lastName}
+      <br />
+      {o.address.street}
+      <br />
+      {o.address.postalCode} {o.address.city}
+    </address>
+    <p>
+      <a class="knopf" href={`/${shop.handle}`}>
+        Zum Shop
+      </a>
+    </p>
+    <p class="klein">Testshop: Es wird nichts geliefert und nichts berechnet.</p>
+  </section>
+</Shop>
