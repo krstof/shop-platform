@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Input, Select, Spinner, Textarea } from "../components/ui.js";
 import { ApiError, listAll, request, type Order, type OrderSummary } from "../lib/api.js";
+import { invoicePdf, type InvoiceSeller } from "../lib/invoice-pdf.js";
 import { formatEuro } from "../lib/money.js";
 import {
   isOrderFiltered,
@@ -15,12 +16,44 @@ import {
   type OrderStateFilter,
 } from "../lib/order-filter.js";
 import { useShop } from "./layout.js";
+import type { GeneralSettings } from "./settings.js";
 import { productsKey } from "./products.js";
 
 /** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
 type FilterInput = { [K in keyof OrderFilter]?: OrderFilter[K] | undefined };
 
 const DATE = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+
+/** Rechnung als PDF herunterladen; Absender aus „Einstellungen → Allgemein“ (sonst nur der Shop-Name). */
+async function downloadInvoice(o: Order, shop: { id: string; name: string }) {
+  let seller: InvoiceSeller = { shopName: shop.name };
+  try {
+    const g = await request<GeneralSettings>("/admin/v1/settings/general", { shopId: shop.id });
+    seller = {
+      shopName: g.shopName,
+      company: g.address.company,
+      name: `${g.address.firstName} ${g.address.lastName}`.trim(),
+      street: g.address.street,
+      addressLine2: g.address.addressLine2,
+      postalCode: g.address.postalCode,
+      city: g.address.city,
+      country: g.address.country,
+      email: g.address.email,
+      phone: g.address.phone,
+      vatId: g.vatId,
+      tradeRegister: g.tradeRegister,
+    };
+  } catch {
+    // Ohne Leserecht auf die Einstellungen: Rechnung nur mit Shop-Name.
+  }
+  const blob = new Blob([invoicePdf(o, seller) as BlobPart], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Rechnung-${o.orderNumber}.pdf`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /** Stand als Text (für die CSV-Datei). */
 export function stateText(o: { status: string; paymentStatus: string }): string {
@@ -326,6 +359,9 @@ export function OrderPage() {
           <p className="text-sm text-gray-500">{DATE.format(new Date(o.placedAt))}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => void downloadInvoice(o, shop)}>
+            Rechnung (PDF)
+          </Button>
           {canCancel && (
             <Button
               variant="secondary"
