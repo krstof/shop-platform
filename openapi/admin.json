@@ -4016,6 +4016,29 @@
                                   "caption"
                                 ],
                                 "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "bestseller"
+                                  },
+                                  "heading": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "heading"
+                                ],
+                                "additionalProperties": false
                               }
                             ]
                           }
@@ -11006,7 +11029,8 @@
               "quote",
               "divider",
               "faq",
-              "gallery"
+              "gallery",
+              "bestseller"
             ]
           }
         },
@@ -11870,6 +11894,29 @@
                         "type",
                         "imageIds",
                         "caption"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "bestseller"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading"
                       ],
                       "additionalProperties": false
                     }

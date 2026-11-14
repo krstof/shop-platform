@@ -15,7 +15,8 @@ export type FreeType =
   | "quote"
   | "divider"
   | "faq"
-  | "gallery";
+  | "gallery"
+  | "bestseller";
 export type BlockType = FixedType | FreeType;
 
 /** Inhalt eines Shop-Bereichs. Fehlende Felder: Inhalt der Startseite bzw. Standard. */
@@ -62,7 +63,8 @@ export type Block =
       readonly type: "gallery";
       readonly imageIds: readonly string[];
       readonly caption: string;
-    };
+    }
+  | { readonly id: string; readonly type: "bestseller"; readonly heading: string };
 
 export const MAX_BLOCKS = 30;
 export const MAX_BLOCK_HEADING = 120;
@@ -97,6 +99,7 @@ export const BLOCK_INFO: Record<BlockType, { readonly name: string; readonly hin
   hero: { name: "Bühne", hint: "Großes Bild mit Text" },
   featured: { name: "Empfehlungen", hint: "Ausgewählte Produkte" },
   new: { name: "Neu im Shop", hint: "Neueste Produkte" },
+  bestseller: { name: "Bestseller", hint: "Meistverkaufte Produkte" },
   categories: { name: "Kategorien", hint: "Kacheln" },
 };
 
@@ -104,7 +107,7 @@ export const BLOCK_INFO: Record<BlockType, { readonly name: string; readonly hin
 export const PALETTE: readonly { readonly title: string; readonly types: readonly BlockType[] }[] = [
   { title: "Inhalte", types: ["text", "textImage", "image", "gallery", "video", "map"] },
   { title: "Gestaltung", types: ["button", "quote", "faq", "divider", "spacer"] },
-  { title: "Shop-Bereiche", types: ["hero", "featured", "new", "categories"] },
+  { title: "Shop-Bereiche", types: ["hero", "featured", "new", "bestseller", "categories"] },
 ];
 
 /** Zufallszahl in [0, 1) aus crypto (Math.random ist im Projekt gesperrt). */
@@ -152,6 +155,8 @@ export function newBlock(type: BlockType, existing: readonly Block[], random?: (
       return { id, type, heading: "Häufige Fragen", items: [{ question: "", answer: "" }] };
     case "gallery":
       return { id, type, imageIds: [], caption: "" };
+    case "bestseller":
+      return { id, type, heading: "Bestseller" };
     case "hero":
       return { id, type, title: "", text: "", imageId: null };
     case "featured":
@@ -324,6 +329,8 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
         return { ...b, label: b.label.trim(), url: b.url.trim() };
       case "quote":
         return { ...b, text: b.text.trim(), author: b.author.trim() };
+      case "bestseller":
+        return { ...b, heading: b.heading.trim() };
       case "faq":
         return {
           ...b,

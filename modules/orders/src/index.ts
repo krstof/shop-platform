@@ -17,6 +17,7 @@ export type {
   OrderView,
   PaymentState,
 } from "./internal/orders.js";
+import { bestsellerEndpoints } from "./http/bestsellers.js";
 export { allocateDiscount, shippingRateBp, taxIncluded } from "./internal/orders.js";
 
 export interface OrdersDependencies {
@@ -34,7 +35,10 @@ export function createOrders(deps: OrdersDependencies): Orders {
   return { place: repo.place, markPaid: repo.markPaid, view: repo.view };
 }
 
-/** Endpunkte für das Backoffice (M7). */
+/** Endpunkte für das Backoffice (M7) und die Bestseller der Storefront. */
 export function orderEndpoints(deps: OrdersDependencies): Endpoint[] {
-  return orderAdminEndpoints(orderRepository(deps.database, deps.settings), deps.restock);
+  return [
+    ...orderAdminEndpoints(orderRepository(deps.database, deps.settings), deps.restock),
+    ...bestsellerEndpoints(deps.database),
+  ];
 }

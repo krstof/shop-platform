@@ -779,6 +779,32 @@ function BlockView({
         </section>
       );
     }
+    case "bestseller": {
+      // Welche Produkte sich am besten verkaufen, weiß erst der Shop; die Vorschau zeigt Beispiele.
+      const examples = ctx.products.slice(0, 4);
+      return (
+        <section className="sp-abschnitt">
+          <InlineText
+            as="h2"
+            value={b.heading}
+            onChange={(heading) => update({ heading })}
+            placeholder="Bestseller"
+            label="Überschrift"
+            maxLength={MAX_SECTION_TITLE}
+          />
+          {examples.length > 0 ? (
+            <>
+              <ProductGrid products={examples} />
+              <p className="sp-klein">
+                Im Shop stehen hier die meistverkauften Produkte der letzten 90 Tage.
+              </p>
+            </>
+          ) : (
+            <p className="sp-platz">Erscheint, sobald etwas verkauft wurde.</p>
+          )}
+        </section>
+      );
+    }
     case "categories":
       return (
         <section className="sp-abschnitt">

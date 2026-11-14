@@ -91,6 +91,91 @@
         "x-public-reason": "Jeder Besucher sieht den Namen des Shops, den er aufruft."
       }
     },
+    "/store/v1/shops/{shopHandle}/bestsellers": {
+      "get": {
+        "operationId": "getStoreBestsellers",
+        "summary": "Bestseller des Shops",
+        "description": "Die meistverkauften Produkte der letzten 90 Tage (höchstens 12), nach verkaufter Stückzahl. Nur IDs; nicht mehr sichtbare Produkte lässt der Shop weg.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Bestseller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreBestsellers"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Bestseller zeigt der Shop jedem Besucher."
+      }
+    },
     "/store/v1/shops/{shopHandle}/carts": {
       "post": {
         "operationId": "createStoreCart",
@@ -2137,6 +2222,24 @@
         "additionalProperties": false,
         "description": "Standardversand: Pauschale und Grenze für kostenlosen Versand."
       },
+      "StoreBestsellers": {
+        "type": "object",
+        "properties": {
+          "productIds": {
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "required": [
+          "productIds"
+        ],
+        "additionalProperties": false
+      },
       "StoreBlock": {
         "oneOf": [
           {
@@ -2633,7 +2736,8 @@
               "quote",
               "divider",
               "faq",
-              "gallery"
+              "gallery",
+              "bestseller"
             ]
           }
         },

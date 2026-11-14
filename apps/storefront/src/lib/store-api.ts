@@ -140,6 +140,26 @@ export async function loadOffen(handle: string): Promise<boolean> {
   }
 }
 
+/**
+ * Bestseller (höchstens vier, nur noch sichtbare Produkte aus `produkte`). Klappt die Abfrage nicht
+ * oder gibt es noch keine Verkäufe: leer, der Bereich fällt dann weg.
+ */
+export async function loadBestseller(
+  handle: string,
+  produkte: readonly StoreProduct[],
+): Promise<StoreProduct[]> {
+  try {
+    const { productIds } = await storeApi<{ productIds: string[] }>(handle, "/bestsellers");
+    const nachId = new Map(produkte.map((p) => [p.id, p]));
+    return productIds
+      .map((id) => nachId.get(id))
+      .filter((p): p is StoreProduct => p !== undefined)
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
 /** Veröffentlichtes Aussehen. Klappt das nicht, sieht der Shop aus wie vorher (Standard). */
 export async function loadDesign(handle: string): Promise<StoreDesign> {
   try {

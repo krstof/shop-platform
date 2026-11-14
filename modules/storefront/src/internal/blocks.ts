@@ -22,6 +22,7 @@ export const BLOCK_TYPES = [
   "divider",
   "faq",
   "gallery",
+  "bestseller",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -183,6 +184,8 @@ const laterBlocks = [
     imageIds: z.array(z.uuid()).max(MAX_GALLERY),
     caption: line(MAX_CAPTION),
   }),
+  /** Meistverkaufte Produkte (füllt der Shop selbst aus den Bestellungen). */
+  z.strictObject({ id, type: z.literal("bestseller"), heading: line(MAX_BLOCK_HEADING) }),
 ] as const;
 
 /** Ein Baustein, so wie er gespeichert und über die API geschrieben wird. */

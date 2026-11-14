@@ -33,6 +33,7 @@ import {
   Play,
   Quote,
   Sparkles,
+  Trophy,
   Star,
   Type,
 } from "lucide-react";
@@ -73,6 +74,7 @@ export const BLOCK_ICONS: Record<BlockType, typeof Type> = {
   hero: Star,
   featured: Heart,
   new: Sparkles,
+  bestseller: Trophy,
   categories: LayoutGrid,
 };
 

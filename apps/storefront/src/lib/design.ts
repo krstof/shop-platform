@@ -87,12 +87,22 @@ export type StoreBlock =
       readonly type: "gallery";
       readonly images: readonly StoreBlockImage[];
       readonly caption: string;
-    };
+    }
+  | { readonly id: string; readonly type: "bestseller"; readonly heading: string };
 
-/** Shop-Bereiche (Bühne, Empfehlungen, Neu im Shop, Kategorien): brauchen Produkte oder Kategorien. */
-export type StoreSection = Extract<StoreBlock, { type: "hero" | "featured" | "categories" | "new" }>;
+/** Shop-Bereiche (Bühne, Empfehlungen, Neu im Shop, Kategorien, Bestseller): brauchen Produkte oder Kategorien. */
+export type StoreSection = Extract<
+  StoreBlock,
+  { type: "hero" | "featured" | "categories" | "new" | "bestseller" }
+>;
 export function isSection(b: StoreBlock): b is StoreSection {
-  return b.type === "hero" || b.type === "featured" || b.type === "categories" || b.type === "new";
+  return (
+    b.type === "hero" ||
+    b.type === "featured" ||
+    b.type === "categories" ||
+    b.type === "new" ||
+    b.type === "bestseller"
+  );
 }
 
 /** Ziel eines Knopfs: Pfade im Shop („/seite/x“) bekommen das Shop-Kürzel davor; sonst nur sichere Ziele. */

@@ -445,6 +445,11 @@ const storeLaterBlocks = [
     images: z.array(storeImageSchema),
     caption: z.string(),
   }),
+  z.object({
+    id: z.string(),
+    type: z.literal("bestseller"),
+    heading: z.string().meta({ description: "Produkte dazu liefert GET /shops/{shopHandle}/bestsellers." }),
+  }),
 ] as const;
 
 /** Alle Arten (nur für die Typen im Code; in Antworten steht `content` offen für neue Arten). */
@@ -563,6 +568,7 @@ function storeBlock(
     case "quote":
       return b.text.trim() === "" ? [] : [{ ...b }];
     case "divider":
+    case "bestseller":
       return [{ ...b }];
     case "faq": {
       const items = b.items.filter((i) => i.question.trim() !== "");

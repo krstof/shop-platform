@@ -4,7 +4,7 @@
 // Editor „Aussehen“ eingestellt und veröffentlicht hat, bestimmt Bild, Texte und Reihenfolge.
 import Shop from "../../layouts/Shop.astro";
 import Produktkarte from "../../components/Produktkarte.astro";
-import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
+import { loadBestseller, loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
 import { DEFAULT_HOME, EXTERN_COOKIE, isSection, startseitenBausteine } from "../../lib/design.js";
 import Bereich from "../../components/Bereich.astro";
 import Baustein from "../../components/Baustein.astro";
@@ -33,6 +33,7 @@ const neu = !zeigt("new")
   : (
       await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
     ).data.slice(0, 4);
+const bestseller = zeigt("bestseller") ? await loadBestseller(shop.handle, produkte) : [];
 // Die erste Bühne ist die Hauptüberschrift; ohne Bühne gibt es eine unsichtbare.
 const ersteBuehne = bausteine.find((b) => b.type === "hero")?.id;
 ---
@@ -48,6 +49,7 @@ const ersteBuehne = bausteine.find((b) => b.type === "hero")?.id;
         shop={shop.handle}
         produkte={produkte}
         neu={neu}
+        bestseller={bestseller}
         kategorien={categories}
         hauptueberschrift={b.id === ersteBuehne}
       />

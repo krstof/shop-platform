@@ -1,6 +1,6 @@
 ---
 // Shop-Bereiche aus dem Baukasten: Bühne (großes Bild mit Begrüßung), Empfehlungen, „Neu im Shop“ und
-// Kategorien-Kacheln. Sie dürfen mehrfach und auf eigenen Seiten vorkommen; ohne eigenen Inhalt
+// Kategorien-Kacheln, dazu Bestseller (14.11.2026). Sie dürfen mehrfach und auf eigenen Seiten vorkommen; ohne eigenen Inhalt
 // (ältere Daten) gilt der Inhalt der Startseite.
 import Produktkarte from "./Produktkarte.astro";
 import type { StoreHome, StoreSection } from "../lib/design.js";
@@ -15,11 +15,23 @@ interface Props {
   produkte: readonly StoreProduct[];
   /** Die neuesten lieferbaren Produkte (für „Neu im Shop“). */
   neu: readonly StoreProduct[];
+  /** Die meistverkauften Produkte (für „Bestseller“). */
+  bestseller: readonly StoreProduct[];
   kategorien: readonly StoreCategory[];
   /** Die erste Bühne einer Startseite ist die Hauptüberschrift. */
   hauptueberschrift: boolean;
 }
-const { block: b, home, shopName, shop, produkte, neu, kategorien, hauptueberschrift } = Astro.props;
+const {
+  block: b,
+  home,
+  shopName,
+  shop,
+  produkte,
+  neu,
+  bestseller,
+  kategorien,
+  hauptueberschrift,
+} = Astro.props;
 const id = `bereich-${b.id}`;
 
 const titel = b.type === "hero" ? (b.title ?? home.heroTitle) : "";
@@ -71,6 +83,17 @@ const H = hauptueberschrift ? "h1" : "h2";
     <h2 id={id}>{b.heading ? b.heading : "Neu im Shop"}</h2>
     <ul class="raster">
       {neu.map((p) => (
+        <Produktkarte produkt={p} shop={shop} />
+      ))}
+    </ul>
+  </section>
+)}
+
+{b.type === "bestseller" && bestseller.length > 0 && (
+  <section aria-labelledby={id}>
+    <h2 id={id}>{b.heading ? b.heading : "Bestseller"}</h2>
+    <ul class="raster">
+      {bestseller.map((p) => (
         <Produktkarte produkt={p} shop={shop} />
       ))}
     </ul>
