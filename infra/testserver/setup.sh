@@ -212,6 +212,8 @@ gw_status="$("${COMPOSE[@]}" exec -T api node -e '
 fetch("http://10.213.17.200:8095/v1/messages", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
   .then((r) => console.log(r.status)).catch((e) => console.log("Fehler: " + e.message));' 2>&1 || true)"
 echo "Antwort über den Ausgang: $gw_status"
+log "KI-Assistent: eine Probefrage an das echte Modell (Bruchteil eines Cents)"
+"${COMPOSE[@]}" exec -T api node dist/assistant-check.js || echo "KI-Assistent antwortet nicht, siehe oben"
 
 log "Alte Abbilder aufräumen"
 docker image prune -f >/dev/null
