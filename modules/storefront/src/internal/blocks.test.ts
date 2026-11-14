@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  storedBlockSchema,
+  withSections,
   blockImages,
   blocksSchema,
   legacyBlocks,
@@ -26,7 +28,7 @@ describe("Bausteine", () => {
     expect(parseVideoUrl("https://www.youtube.com/watch?v=kurz")).toBeUndefined();
   });
 
-  it("prüft Eingaben: Typen, Längen, doppelte IDs, Feste Bausteine nur einmal", () => {
+  it("prüft Eingaben: Typen, Längen, doppelte IDs, Shop-Bereiche mehrfach, neue Bausteine", () => {
     const ok = blocksSchema.safeParse([
       { id: "a", type: "hero" },
       { id: "b", type: "text", heading: "Über uns", text: "Zeile 1\nZeile 2" },
@@ -40,10 +42,50 @@ describe("Bausteine", () => {
       false,
     );
     expect(blocksSchema.safeParse([{ id: "a", type: "html", html: "<script>" }]).success).toBe(false);
+    // Shop-Bereiche dürfen mehrfach vorkommen; ihr Inhalt kommt getrennt (`sections`) und wird gespeichert.
     expect(
       blocksSchema.safeParse([
         { id: "a", type: "hero" },
         { id: "b", type: "hero" },
+      ]).success,
+    ).toBe(true);
+    expect(blocksSchema.safeParse([{ id: "a", type: "hero", title: "x" }]).success).toBe(false);
+    expect(
+      withSections(
+        [
+          { id: "a", type: "hero" },
+          { id: "t", type: "divider" },
+        ],
+        { a: { title: "Sommer" } },
+      ),
+    ).toEqual([
+      { id: "a", type: "hero", title: "Sommer" },
+      { id: "t", type: "divider" },
+    ]);
+    expect(
+      storedBlockSchema.array().safeParse([
+        { id: "a", type: "hero", title: "Sommer", text: "", imageId: null },
+        { id: "b", type: "hero" },
+        { id: "c", type: "featured", heading: "Neu", productIds: [IMG] },
+      ]).success,
+    ).toBe(true);
+    expect(
+      blocksSchema.safeParse([
+        { id: "a", type: "button", label: "Los", url: "/seite/ueber-uns", style: "primary" },
+        { id: "b", type: "quote", text: "Super Tee", author: "Kim" },
+        { id: "c", type: "divider" },
+        { id: "d", type: "faq", heading: "Fragen", items: [{ question: "Versand?", answer: "Ja." }] },
+        { id: "e", type: "gallery", imageIds: [IMG], caption: "" },
+      ]).success,
+    ).toBe(true);
+    expect(
+      blocksSchema.safeParse([
+        { id: "a", type: "button", label: "x", url: "javascript:alert(1)", style: "primary" },
+      ]).success,
+    ).toBe(false);
+    expect(
+      blocksSchema.safeParse([
+        { id: "a", type: "button", label: "x", url: "//evil.example", style: "primary" },
       ]).success,
     ).toBe(false);
     expect(
@@ -73,13 +115,13 @@ describe("Bausteine", () => {
     ).toEqual([IMG]);
   });
 
-  it("Seiten: Adresse, keine Shop-Bereiche, robust gelesen", () => {
+  it("Seiten: Adresse, auch Shop-Bereiche, robust gelesen", () => {
     const page = { id: "p1", title: "Über uns", slug: "ueber-uns", inFooter: true, blocks: [] };
     expect(pagesSchema.safeParse([page]).success).toBe(true);
     expect(pagesSchema.safeParse([{ ...page, slug: "Über uns" }]).success).toBe(false);
     expect(pagesSchema.safeParse([{ ...page, title: "  " }]).success).toBe(false);
     expect(pagesSchema.safeParse([page, { ...page, id: "p2" }]).success).toBe(false);
-    expect(pagesSchema.safeParse([{ ...page, blocks: [{ id: "h", type: "hero" }] }]).success).toBe(false);
+    expect(pagesSchema.safeParse([{ ...page, blocks: [{ id: "h", type: "hero" }] }]).success).toBe(true);
     expect(
       readPages([
         {
@@ -92,7 +134,15 @@ describe("Bausteine", () => {
         { ...page, id: "p2" },
         "kaputt",
       ]),
-    ).toEqual([{ ...page, blocks: [{ id: "t", type: "spacer", size: "s" }] }]);
+    ).toEqual([
+      {
+        ...page,
+        blocks: [
+          { id: "h", type: "hero" },
+          { id: "t", type: "spacer", size: "s" },
+        ],
+      },
+    ]);
     expect(readPages(undefined)).toEqual([]);
   });
 });

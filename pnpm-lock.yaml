@@ -425,6 +425,9 @@ importers:
       astro:
         specifier: 7.4.7
         version: 7.4.7(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1)
+      simple-icons:
+        specifier: 16.36.0
+        version: 16.36.0
     devDependencies:
       '@shop/config':
         specifier: workspace:*
@@ -4122,6 +4125,10 @@ packages:
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
+  simple-icons@16.36.0:
+    resolution: {integrity: sha512-+VNPPkqSOLidFeSgBKUWX4n50WPpDC09hav+BgS26anIF1oQOlGBb8LvwGR+6fYRjo+B6CiKzNBceMPkSVXANQ==}
+    engines: {node: '>=0.12.18'}
+
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
@@ -7711,6 +7718,8 @@ snapshots:
       '@types/hast': 3.0.5
 
   signal-exit@3.0.7: {}
+
+  simple-icons@16.36.0: {}
 
   sisteransi@1.0.5: {}
 

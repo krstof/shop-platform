@@ -1862,11 +1862,15 @@
             "items": {
               "$ref": "#/components/schemas/DesignFooterLink"
             }
+          },
+          "social": {
+            "$ref": "#/components/schemas/DesignSocial"
           }
         },
         "required": [
           "text",
-          "links"
+          "links",
+          "social"
         ],
         "additionalProperties": false,
         "description": "Fußzeile: Text und Links."
@@ -1887,6 +1891,31 @@
         ],
         "additionalProperties": false,
         "description": "Link im Fuß des Shops."
+      },
+      "DesignSocial": {
+        "type": "object",
+        "properties": {
+          "instagram": {
+            "type": "string"
+          },
+          "facebook": {
+            "type": "string"
+          },
+          "tiktok": {
+            "type": "string"
+          },
+          "youtube": {
+            "type": "string"
+          },
+          "pinterest": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Profile in sozialen Netzwerken (https-Adressen); fehlende zeigt der Shop nicht."
       },
       "Problem": {
         "type": "object",
@@ -2039,6 +2068,60 @@
                   "categories",
                   "new"
                 ]
+              },
+              "title": {
+                "description": "Bühne: Überschrift; leer = Standard.",
+                "type": "string"
+              },
+              "text": {
+                "description": "Bühne: Text; leer = Standard.",
+                "type": "string"
+              },
+              "image": {
+                "description": "Bühne: großes Bild.",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "height": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "heading": {
+                "description": "Empfehlungen, Neu, Kategorien: Überschrift; leer = Standard.",
+                "type": "string"
+              },
+              "productIds": {
+                "description": "Empfehlungen: Produkte in dieser Reihenfolge; nicht sichtbare auslassen.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
               }
             },
             "required": [
@@ -2263,7 +2346,7 @@
             "additionalProperties": false
           }
         ],
-        "description": "Baustein der Startseite."
+        "description": "Baustein der Startseite (Arten bis 13.11.2026)."
       },
       "StoreCart": {
         "type": "object",
@@ -2442,6 +2525,40 @@
         ],
         "additionalProperties": false
       },
+      "StoreContentBlock": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "x-extensible-enum": [
+              "hero",
+              "featured",
+              "categories",
+              "new",
+              "text",
+              "textImage",
+              "image",
+              "video",
+              "map",
+              "spacer",
+              "button",
+              "quote",
+              "divider",
+              "faq",
+              "gallery"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "additionalProperties": {},
+        "description": "Baustein, fertig zum Anzeigen (Bilder aufgelöst, Video als Anbieter und ID). Felder je nach `type`; neue Arten können hinzukommen, unbekannte bitte überspringen."
+      },
       "StoreDesign": {
         "type": "object",
         "properties": {
@@ -2503,6 +2620,30 @@
           "footer": {
             "$ref": "#/components/schemas/DesignFooter"
           },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Hintergrundfarbe als Hex."
+          },
+          "headingFont": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebFont"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bodyFont": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebFont"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pages": {
             "type": "array",
             "items": {
@@ -2536,6 +2677,9 @@
           "home",
           "tagline",
           "footer",
+          "backgroundColor",
+          "headingFont",
+          "bodyFont",
           "pages"
         ],
         "additionalProperties": false,
@@ -2604,7 +2748,14 @@
             "items": {
               "$ref": "#/components/schemas/StoreBlock"
             },
-            "description": "Bausteine in Reihenfolge, fertig zum Anzeigen (ältere Shops: aus den Schaltern abgeleitet). Leere Video-, Karten- und Bildbausteine fehlen."
+            "description": "Bausteine in Reihenfolge, fertig zum Anzeigen (ältere Shops: aus den Schaltern abgeleitet). Leere Video-, Karten- und Bildbausteine fehlen. Nur Arten bis 13.11.2026; alle in `content`."
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreContentBlock"
+            },
+            "description": "Alle Bausteine in Reihenfolge, auch neuere Arten."
           }
         },
         "required": [
@@ -2614,7 +2765,8 @@
           "featuredProductIds",
           "showCategories",
           "showNew",
-          "blocks"
+          "blocks",
+          "content"
         ],
         "additionalProperties": false,
         "description": "Inhalt der Startseite."
@@ -2764,13 +2916,21 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/StoreBlock"
+            },
+            "description": "Nur Arten bis 13.11.2026; alle in `content`."
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreContentBlock"
             }
           }
         },
         "required": [
           "title",
           "slug",
-          "blocks"
+          "blocks",
+          "content"
         ],
         "additionalProperties": false,
         "description": "Eigene Inhaltsseite, fertig zum Anzeigen."
@@ -2983,6 +3143,34 @@
         ],
         "additionalProperties": false,
         "description": "Testzahlung mit der zugehörigen Bestellung."
+      },
+      "WebFont": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "serif",
+              "sans-serif",
+              "display",
+              "handwriting",
+              "monospace"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category"
+        ],
+        "additionalProperties": false,
+        "description": "Schrift von Google Fonts (der Shop lädt sie über Bunny Fonts)."
       }
     },
     "securitySchemes": {

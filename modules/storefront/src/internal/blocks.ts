@@ -1,6 +1,9 @@
-// Bausteine der Startseite (Baukasten-Editor): Die Händlerin zieht sie in die gewünschte
-// Reihenfolge. Reine Regeln ohne Datenbank. Gespeichert im Aussehen-JSON unter `home.blocks`.
-// Ohne `blocks` (ältere Shops) gilt die feste Reihenfolge aus den alten Schaltern (`legacyBlocks`).
+// Bausteine der Startseite und eigener Seiten (Baukasten-Editor): Die Händlerin zieht sie in die
+// gewünschte Reihenfolge. Reine Regeln ohne Datenbank. Gespeichert im Aussehen-JSON unter
+// `home.blocks` und `pages[].blocks`. Ohne `blocks` (ältere Shops) gilt die feste Reihenfolge aus den
+// alten Schaltern (`legacyBlocks`). Shop-Bereiche (Bühne, Empfehlungen …) dürfen seit 14.11.2026
+// mehrfach und auf jeder Seite vorkommen und tragen ihren Inhalt selbst; fehlt er (alte Daten),
+// gilt der Inhalt der Startseite (`home.heroTitle` usw.).
 import { z } from "zod";
 
 export const BLOCK_TYPES = [
@@ -14,6 +17,11 @@ export const BLOCK_TYPES = [
   "video",
   "map",
   "spacer",
+  "button",
+  "quote",
+  "divider",
+  "faq",
+  "gallery",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -22,24 +30,27 @@ export const MAX_BLOCK_HEADING = 120;
 export const MAX_BLOCK_TEXT = 3000;
 export const MAX_CAPTION = 200;
 export const MAX_ADDRESS = 200;
+export const MAX_BUTTON_LABEL = 40;
+export const MAX_QUOTE = 600;
+export const MAX_FAQ_ITEMS = 12;
+export const MAX_GALLERY = 8;
+export const MAX_SECTION_TITLE = 80;
+export const MAX_SECTION_TEXT = 300;
+export const MAX_SECTION_PRODUCTS = 8;
+
+/** Ziel eines Knopfs: Webseite, E-Mail, Telefon oder ein Pfad im eigenen Shop („/seite/ueber-uns“). */
+export function isSafeButtonUrl(url: string): boolean {
+  return (
+    url.length <= 300 &&
+    /^(https?:\/\/[^\s<>"]+|mailto:[^\s<>"]+|tel:\+?[0-9 ()/-]+|\/[a-z0-9/_-]*)$/i.test(url) &&
+    !url.startsWith("//")
+  );
+}
 
 const BLOCK_ID = /^[a-z0-9]{1,24}$/;
 
-export type Block =
-  | { readonly id: string; readonly type: "hero" | "featured" | "categories" | "new" }
-  | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
-  | {
-      readonly id: string;
-      readonly type: "textImage";
-      readonly heading: string;
-      readonly text: string;
-      readonly imageId: string | null;
-      readonly imageSide: "left" | "right";
-    }
-  | { readonly id: string; readonly type: "image"; readonly imageId: string | null; readonly caption: string }
-  | { readonly id: string; readonly type: "video"; readonly url: string }
-  | { readonly id: string; readonly type: "map"; readonly address: string }
-  | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" };
+/** Ein Baustein (aus dem Schema unten abgeleitet). */
+export type Block = z.infer<typeof storedBlockSchema>;
 
 /** Erlaubte Videos: YouTube und Vimeo. Wir bauen die Einbettung selbst, nie aus fremdem HTML. */
 export type VideoRef = { readonly provider: "youtube" | "vimeo"; readonly id: string };
@@ -89,9 +100,31 @@ const line = (max: number) =>
 
 const id = z.string().regex(BLOCK_ID);
 
-/** Ein Baustein, so wie er gespeichert und über die API geschrieben wird. */
-export const blockSchema = z.discriminatedUnion("type", [
-  z.strictObject({ id, type: z.enum(["hero", "featured", "categories", "new"]) }),
+const SECTION_TYPES = ["hero", "featured", "categories", "new"] as const;
+
+/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild; Empfehlungen: Überschrift, Produkte; Neu und
+ *  Kategorien: Überschrift). Fehlt ein Feld, gilt der Inhalt der Startseite bzw. der Standard. */
+export const sectionContentSchema = z.strictObject({
+  title: line(MAX_SECTION_TITLE).optional(),
+  text: text(MAX_SECTION_TEXT).optional(),
+  imageId: z.uuid().nullable().optional(),
+  heading: line(MAX_SECTION_TITLE).optional(),
+  productIds: z.array(z.uuid()).max(MAX_SECTION_PRODUCTS).optional(),
+});
+export type SectionContent = z.infer<typeof sectionContentSchema>;
+
+/** Shop-Bereich, wie die API ihn seit dem Baukasten annimmt: nur ID und Art (Vertrag unverändert).
+ *  Der Inhalt kommt getrennt im Feld `sections` (Baustein-ID → Inhalt). */
+const sectionRefSchema = z.strictObject({ id, type: z.enum(SECTION_TYPES) });
+
+/** Shop-Bereich, wie er gespeichert wird: mit Inhalt. */
+const sectionSchema = sectionRefSchema.extend(sectionContentSchema.shape);
+
+/** Inhalte der Shop-Bereiche je Baustein-ID (Eingabe beim Speichern). */
+export const sectionsSchema = z.record(z.string().regex(BLOCK_ID), sectionContentSchema);
+
+/** Bausteine bis 13.11.2026 (Text, Text mit Bild, Bild, Video, Karte, Abstand). */
+const firstBlocks = [
   z.strictObject({
     id,
     type: z.literal("text"),
@@ -117,32 +150,79 @@ export const blockSchema = z.discriminatedUnion("type", [
   }),
   z.strictObject({ id, type: z.literal("map"), address: line(MAX_ADDRESS) }),
   z.strictObject({ id, type: z.literal("spacer"), size: z.enum(["s", "m", "l"]) }),
+] as const;
+
+/** Neuere Bausteine (14.11.2026). */
+const laterBlocks = [
+  z.strictObject({
+    id,
+    type: z.literal("button"),
+    label: line(MAX_BUTTON_LABEL),
+    url: z
+      .string()
+      .max(300)
+      .refine(
+        (u) => u === "" || isSafeButtonUrl(u),
+        "Bitte eine Webadresse, E-Mail, Telefonnummer oder /seite/… angeben.",
+      ),
+    style: z.enum(["primary", "secondary"]),
+  }),
+  z.strictObject({ id, type: z.literal("quote"), text: text(MAX_QUOTE), author: line(MAX_CAPTION) }),
+  z.strictObject({ id, type: z.literal("divider") }),
+  z.strictObject({
+    id,
+    type: z.literal("faq"),
+    heading: line(MAX_BLOCK_HEADING),
+    items: z
+      .array(z.strictObject({ question: line(MAX_BLOCK_HEADING * 2), answer: text(MAX_BLOCK_TEXT) }))
+      .max(MAX_FAQ_ITEMS),
+  }),
+  z.strictObject({
+    id,
+    type: z.literal("gallery"),
+    imageIds: z.array(z.uuid()).max(MAX_GALLERY),
+    caption: line(MAX_CAPTION),
+  }),
+] as const;
+
+/** Ein Baustein, so wie er gespeichert und über die API geschrieben wird. */
+export const blockSchema = z.discriminatedUnion("type", [sectionRefSchema, ...firstBlocks, ...laterBlocks]);
+
+/** Ein Baustein, wie er gespeichert ist (Shop-Bereiche mit Inhalt). */
+export const storedBlockSchema = z.discriminatedUnion("type", [
+  sectionSchema,
+  ...firstBlocks,
+  ...laterBlocks,
+]);
+
+/** Nur die Arten, die es bis 13.11.2026 gab: für das alte Antwortfeld `blocks` (Vertrag bleibt gleich). */
+export const firstBlockSchema = z.discriminatedUnion("type", [sectionRefSchema, ...firstBlocks]);
+export const FIRST_BLOCK_TYPES: ReadonlySet<string> = new Set([
+  "hero",
+  "featured",
+  "categories",
+  "new",
+  "text",
+  "textImage",
+  "image",
+  "video",
+  "map",
+  "spacer",
 ]);
 
 export const blocksSchema = z
   .array(blockSchema)
   .max(MAX_BLOCKS)
-  .refine((bs) => new Set(bs.map((b) => b.id)).size === bs.length, "Jeder Baustein braucht eine eigene ID.")
-  .refine(
-    (bs) =>
-      ["hero", "featured", "categories", "new"].every((t) => bs.filter((b) => b.type === t).length <= 1),
-    "Bühne, Empfehlungen, Kategorien und „Neu im Shop“ gibt es je höchstens einmal.",
-  );
+  .refine((bs) => new Set(bs.map((b) => b.id)).size === bs.length, "Jeder Baustein braucht eine eigene ID.");
 
 /** Gespeichertes JSON robust lesen: kaputte Bausteine fallen einzeln weg, ohne Liste: `null`. */
 export function readBlocks(json: unknown): Block[] | null {
   if (!Array.isArray(json)) return null;
   const seen = new Set<string>();
-  const single = new Set<string>();
   const out: Block[] = [];
   for (const raw of json.slice(0, MAX_BLOCKS)) {
-    const r = blockSchema.safeParse(raw);
+    const r = storedBlockSchema.safeParse(raw);
     if (!r.success || seen.has(r.data.id)) continue;
-    const t = r.data.type;
-    if (["hero", "featured", "categories", "new"].includes(t)) {
-      if (single.has(t)) continue;
-      single.add(t);
-    }
     seen.add(r.data.id);
     out.push(r.data as Block);
   }
@@ -161,9 +241,12 @@ export function legacyBlocks(home: { showCategories: boolean; showNew: boolean }
 
 /** Bilder, die Bausteine benutzen (für das Aufräumen nicht mehr benutzter Bilder). */
 export function blockImages(blocks: readonly Block[] | null): string[] {
-  return (blocks ?? []).flatMap((b) =>
-    (b.type === "textImage" || b.type === "image") && b.imageId !== null ? [b.imageId] : [],
-  );
+  return (blocks ?? []).flatMap((b) => {
+    if ((b.type === "textImage" || b.type === "image" || b.type === "hero") && typeof b.imageId === "string")
+      return [b.imageId];
+    if (b.type === "gallery") return [...b.imageIds];
+    return [];
+  });
 }
 
 /** Eigene Inhaltsseiten (Baukasten Teil 3), etwa „Über uns“ oder „Anfahrt“. */
@@ -171,7 +254,6 @@ export const MAX_PAGES = 10;
 export const MAX_PAGE_TITLE = 60;
 export const MAX_PAGE_SLUG = 60;
 export const PAGE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const FIXED = ["hero", "featured", "categories", "new"];
 
 export interface ContentPage {
   readonly id: string;
@@ -180,7 +262,7 @@ export interface ContentPage {
   readonly slug: string;
   /** Link in der Fußzeile des Shops. */
   readonly inFooter: boolean;
-  /** Nur freie Bausteine (Text, Bild …), keine Shop-Bereiche. */
+  /** Bausteine wie auf der Startseite (auch Shop-Bereiche). */
   readonly blocks: readonly Block[];
 }
 
@@ -189,10 +271,8 @@ export const pageSchema = z.strictObject({
   title: line(MAX_PAGE_TITLE).refine((t) => t.trim() !== "", "Bitte einen Titel eingeben."),
   slug: z.string().max(MAX_PAGE_SLUG).regex(PAGE_SLUG, "Nur Kleinbuchstaben, Ziffern und Bindestriche."),
   inFooter: z.boolean(),
-  blocks: blocksSchema.refine(
-    (bs) => bs.every((b) => !FIXED.includes(b.type)),
-    "Shop-Bereiche (Bühne, Empfehlungen …) gibt es nur auf der Startseite.",
-  ),
+  blocks: blocksSchema,
+  sections: sectionsSchema.optional(),
 });
 
 export const pagesSchema = z
@@ -215,9 +295,7 @@ export function readPages(json: unknown): ContentPage[] {
     if (!head.success || ids.has(head.data.id) || slugs.has(head.data.slug)) continue;
     ids.add(head.data.id);
     slugs.add(head.data.slug);
-    const blocks = (readBlocks((raw as { blocks?: unknown }).blocks) ?? []).filter(
-      (b) => !FIXED.includes(b.type),
-    );
+    const blocks = readBlocks((raw as { blocks?: unknown }).blocks) ?? [];
     out.push({ ...head.data, blocks });
   }
   return out;
@@ -226,4 +304,27 @@ export function readPages(json: unknown): ContentPage[] {
 /** Bilder aller Seiten. */
 export function pageImages(pages: readonly ContentPage[]): string[] {
   return pages.flatMap((p) => blockImages(p.blocks));
+}
+
+/** Bausteine aus der Eingabe mit den Inhalten der Shop-Bereiche zusammenführen. */
+export function withSections(
+  blocks: readonly z.infer<typeof blockSchema>[],
+  sections: Readonly<Record<string, SectionContent>> | undefined,
+): Block[] {
+  return blocks.map((b) => {
+    const c =
+      (b.type === "hero" || b.type === "featured" || b.type === "categories" || b.type === "new") &&
+      sections?.[b.id];
+    return c ? ({ ...b, ...c } as Block) : (b as Block);
+  });
+}
+
+/** Für das alte Antwortfeld `blocks`: nur Arten bis 13.11.2026, Shop-Bereiche ohne Inhalt. */
+export function firstBlocksOf(blocks: readonly Block[]): z.infer<typeof firstBlockSchema>[] {
+  return blocks.flatMap((b) => {
+    if (!FIRST_BLOCK_TYPES.has(b.type)) return [];
+    if (b.type === "hero" || b.type === "featured" || b.type === "categories" || b.type === "new")
+      return [{ id: b.id, type: b.type }];
+    return [{ ...b } as z.infer<typeof firstBlockSchema>];
+  });
 }

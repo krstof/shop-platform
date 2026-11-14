@@ -1,0 +1,104 @@
+---
+// Shop-Bereiche aus dem Baukasten: Bühne (großes Bild mit Begrüßung), Empfehlungen, „Neu im Shop“ und
+// Kategorien-Kacheln. Sie dürfen mehrfach und auf eigenen Seiten vorkommen; ohne eigenen Inhalt
+// (ältere Daten) gilt der Inhalt der Startseite.
+import Produktkarte from "./Produktkarte.astro";
+import type { StoreHome, StoreSection } from "../lib/design.js";
+import type { StoreCategory, StoreProduct } from "../lib/store-api.js";
+
+interface Props {
+  block: StoreSection;
+  home: StoreHome;
+  shopName: string;
+  shop: string;
+  /** Alle sichtbaren Produkte (für Empfehlungen). */
+  produkte: readonly StoreProduct[];
+  /** Die neuesten lieferbaren Produkte (für „Neu im Shop“). */
+  neu: readonly StoreProduct[];
+  kategorien: readonly StoreCategory[];
+  /** Die erste Bühne einer Startseite ist die Hauptüberschrift. */
+  hauptueberschrift: boolean;
+}
+const { block: b, home, shopName, shop, produkte, neu, kategorien, hauptueberschrift } = Astro.props;
+const id = `bereich-${b.id}`;
+
+const titel = b.type === "hero" ? (b.title ?? home.heroTitle) : "";
+const text = b.type === "hero" ? (b.text ?? home.heroText) : "";
+const bild = b.type === "hero" ? (b.image === undefined ? home.heroImage : b.image) : null;
+const nachId = new Map(produkte.map((p) => [p.id, p]));
+const empfohlen =
+  b.type === "featured"
+    ? (b.productIds ?? home.featuredProductIds)
+        .map((pid) => nachId.get(pid))
+        .filter((p): p is StoreProduct => p !== undefined)
+    : [];
+const H = hauptueberschrift ? "h1" : "h2";
+---
+
+{b.type === "hero" && (
+  <section class:list={["buehne", { "buehne-bild": bild !== null }]} aria-labelledby={id}>
+    {bild !== null && (
+      <img
+        class="buehne-foto"
+        src={bild.url}
+        alt=""
+        width={bild.width}
+        height={bild.height}
+        fetchpriority={hauptueberschrift ? "high" : undefined}
+        loading={hauptueberschrift ? undefined : "lazy"}
+      />
+    )}
+    <div class="buehne-text">
+      <H id={id}>{titel !== "" ? titel : `Willkommen bei ${shopName}`}</H>
+      <p>{text !== "" ? text : "Schön, dass du da bist. Stöbere durch unser Sortiment."}</p>
+    </div>
+  </section>
+)}
+
+{b.type === "featured" && empfohlen.length > 0 && (
+  <section aria-labelledby={id}>
+    <h2 id={id}>{b.heading ? b.heading : "Empfohlen"}</h2>
+    <ul class="raster">
+      {empfohlen.map((p) => (
+        <Produktkarte produkt={p} shop={shop} />
+      ))}
+    </ul>
+  </section>
+)}
+
+{b.type === "new" && neu.length > 1 && (
+  <section aria-labelledby={id}>
+    <h2 id={id}>{b.heading ? b.heading : "Neu im Shop"}</h2>
+    <ul class="raster">
+      {neu.map((p) => (
+        <Produktkarte produkt={p} shop={shop} />
+      ))}
+    </ul>
+  </section>
+)}
+
+{b.type === "categories" && kategorien.length > 0 && (
+  <section aria-labelledby={id}>
+    <h2 id={id}>{b.heading ? b.heading : "Kategorien"}</h2>
+    <ul class="kategorien">
+      {kategorien.map((k) => (
+        <li>
+          <a href={`/${shop}/kategorie/${k.slug}`} class:list={{ "mit-bild": k.image != null }}>
+            {k.image != null && (
+              <img
+                class="kachel-bild"
+                src={k.image.thumbnailUrl}
+                alt=""
+                width="400"
+                height="300"
+                loading="lazy"
+              />
+            )}
+            <strong>{k.name}</strong>
+            {k.description && <span class="klein">{k.description}</span>}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

@@ -76,3 +76,28 @@ describe("Links im Fuß (Shop-Editor Teil 3)", () => {
     expect(startseitenBausteine({ ...DEFAULT_HOME, blocks: [] })).toEqual([]);
   });
 });
+
+describe("Editor 2: Hintergrund, Schriften, Knöpfe", () => {
+  it("setzt Hintergrund und Google-Schriften sicher ins CSS", async () => {
+    const { designCss, webFontCssUrl, buttonHref, DEFAULT_DESIGN } = await import("./design.js");
+    const d = {
+      ...DEFAULT_DESIGN,
+      backgroundColor: "#ffffff",
+      headingFont: { id: "playfair-display", name: "Playfair Display", category: "serif" as const },
+      bodyFont: { id: "x;}", name: "Böse</style>", category: "serif" as const },
+    };
+    const css = designCss(d);
+    expect(css).toContain("--grund: #ffffff;");
+    expect(css).toContain('--schrift-titel: "Playfair Display", Georgia');
+    expect(css).not.toContain("Böse");
+    expect(webFontCssUrl(d)).toBe(
+      "https://fonts.bunny.net/css?family=playfair-display:400,500,600,700&display=swap",
+    );
+    expect(webFontCssUrl(DEFAULT_DESIGN)).toBeUndefined();
+    expect(designCss(DEFAULT_DESIGN)).not.toContain("--grund");
+    expect(buttonHref("/seite/ueber-uns", "teeladen")).toBe("/teeladen/seite/ueber-uns");
+    expect(buttonHref("https://example.org", "teeladen")).toBe("https://example.org");
+    expect(buttonHref("javascript:alert(1)", "teeladen")).toBeUndefined();
+    expect(buttonHref("//evil.example", "teeladen")).toBeUndefined();
+  });
+});

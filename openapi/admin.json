@@ -3525,6 +3525,91 @@
                     "description": "Fußzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist.",
                     "$ref": "#/components/schemas/DesignFooterInput"
                   },
+                  "backgroundColor": {
+                    "description": "Hintergrundfarbe als Hex; der dunkle Text muss darauf gut lesbar bleiben. Fehlt das Feld, bleibt sie.",
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "headingFont": {
+                    "description": "Schrift der Überschriften (Google Fonts) oder null. Fehlt das Feld, bleibt sie.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "maxLength": 60,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 60,
+                            "pattern": "^[A-Za-z0-9 ]+$"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "serif",
+                              "sans-serif",
+                              "display",
+                              "handwriting",
+                              "monospace"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "category"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "bodyFont": {
+                    "description": "Schrift des Fließtexts (Google Fonts) oder null. Fehlt das Feld, bleibt sie.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "maxLength": 60,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 60,
+                            "pattern": "^[A-Za-z0-9 ]+$"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "serif",
+                              "sans-serif",
+                              "display",
+                              "handwriting",
+                              "monospace"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "category"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "pages": {
                     "description": "Eigene Inhaltsseiten (bis zu 10), nur freie Bausteine. Fehlt das Feld, bleiben sie.",
                     "maxItems": 10,
@@ -3761,8 +3846,215 @@
                                   "size"
                                 ],
                                 "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "button"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "maxLength": 300
+                                  },
+                                  "style": {
+                                    "type": "string",
+                                    "enum": [
+                                      "primary",
+                                      "secondary"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "label",
+                                  "url",
+                                  "style"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "quote"
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "maxLength": 600
+                                  },
+                                  "author": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "text",
+                                  "author"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "divider"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "faq"
+                                  },
+                                  "heading": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "items": {
+                                    "maxItems": 12,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "question": {
+                                          "type": "string",
+                                          "maxLength": 240
+                                        },
+                                        "answer": {
+                                          "type": "string",
+                                          "maxLength": 3000
+                                        }
+                                      },
+                                      "required": [
+                                        "question",
+                                        "answer"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "heading",
+                                  "items"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "gallery"
+                                  },
+                                  "imageIds": {
+                                    "maxItems": 8,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    }
+                                  },
+                                  "caption": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "imageIds",
+                                  "caption"
+                                ],
+                                "additionalProperties": false
                               }
                             ]
+                          }
+                        },
+                        "sections": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]{1,24}$"
+                          },
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              "imageId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "heading": {
+                                "type": "string",
+                                "maxLength": 80
+                              },
+                              "productIds": {
+                                "maxItems": 8,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              }
+                            },
+                            "additionalProperties": false
                           }
                         }
                       },
@@ -10151,6 +10443,32 @@
               "$ref": "#/components/schemas/DesignPage"
             },
             "description": "Eigene Inhaltsseiten wie „Über uns“."
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Hintergrundfarbe des Shops als Hex."
+          },
+          "headingFont": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebFont"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Schrift der Überschriften; null = Auswahl unter `font`."
+          },
+          "bodyFont": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebFont"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Schrift des Fließtexts; null = Auswahl unter `font`."
           }
         },
         "required": [
@@ -10160,10 +10478,47 @@
           "home",
           "tagline",
           "footer",
-          "pages"
+          "pages",
+          "backgroundColor",
+          "headingFont",
+          "bodyFont"
         ],
         "additionalProperties": false,
         "description": "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite."
+      },
+      "DesignBlock": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "x-extensible-enum": [
+              "hero",
+              "featured",
+              "categories",
+              "new",
+              "text",
+              "textImage",
+              "image",
+              "video",
+              "map",
+              "spacer",
+              "button",
+              "quote",
+              "divider",
+              "faq",
+              "gallery"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "additionalProperties": {},
+        "description": "Ein Baustein. Weitere Felder je nach `type` (siehe Eingabe beim Speichern). Neue Arten können hinzukommen; unbekannte bitte überspringen."
       },
       "DesignFooter": {
         "type": "object",
@@ -10177,11 +10532,15 @@
             "items": {
               "$ref": "#/components/schemas/DesignFooterLink"
             }
+          },
+          "social": {
+            "$ref": "#/components/schemas/DesignSocial"
           }
         },
         "required": [
           "text",
-          "links"
+          "links",
+          "social"
         ],
         "additionalProperties": false,
         "description": "Fußzeile: Text und Links."
@@ -10228,6 +10587,31 @@
               "additionalProperties": false
             },
             "description": "Bis zu 5 Links in dieser Reihenfolge."
+          },
+          "social": {
+            "description": "Profile in sozialen Netzwerken; leer oder fehlend = kein Symbol. Fehlt das Feld, bleiben sie.",
+            "type": "object",
+            "properties": {
+              "instagram": {
+                "type": "string"
+              },
+              "facebook": {
+                "type": "string"
+              },
+              "tiktok": {
+                "type": "string"
+              },
+              "youtube": {
+                "type": "string"
+              },
+              "pinterest": {
+                "type": "string"
+              },
+              "x": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [
@@ -10515,7 +10899,21 @@
                 "type": "null"
               }
             ],
-            "description": "Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge."
+            "description": "Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge. Nur die Arten bis 13.11.2026 (Vertrag unverändert); alle Arten stehen in `content`."
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DesignBlock"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alle Bausteine in Reihenfolge, auch neuere Arten; null = alte feste Reihenfolge."
           },
           "blockImages": {
             "type": "array",
@@ -10533,6 +10931,7 @@
           "showCategories",
           "showNew",
           "blocks",
+          "content",
           "blockImages"
         ],
         "additionalProperties": false,
@@ -10815,6 +11214,167 @@
                         "size"
                       ],
                       "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "button"
+                        },
+                        "label": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "url": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "style": {
+                          "type": "string",
+                          "enum": [
+                            "primary",
+                            "secondary"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "label",
+                        "url",
+                        "style"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "quote"
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 600
+                        },
+                        "author": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "text",
+                        "author"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "divider"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "faq"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "items": {
+                          "maxItems": 12,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "question": {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              "answer": {
+                                "type": "string",
+                                "maxLength": 3000
+                              }
+                            },
+                            "required": [
+                              "question",
+                              "answer"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "gallery"
+                        },
+                        "imageIds": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "caption": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "imageIds",
+                        "caption"
+                      ],
+                      "additionalProperties": false
                     }
                   ]
                 }
@@ -10823,6 +11383,53 @@
                 "type": "null"
               }
             ]
+          },
+          "sections": {
+            "description": "Inhalt der Shop-Bereiche je Baustein-ID (Bühne: title, text, imageId; Empfehlungen: heading, productIds; Neu und Kategorien: heading). Shop-Bereiche dürfen mehrfach vorkommen.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{1,24}$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "imageId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "heading": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "productIds": {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -11103,7 +11710,15 @@
                   "additionalProperties": false
                 }
               ]
-            }
+            },
+            "description": "Nur die Arten bis 13.11.2026; alle stehen in `content`."
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesignBlock"
+            },
+            "description": "Alle Bausteine in Reihenfolge."
           },
           "blockImages": {
             "type": "array",
@@ -11119,10 +11734,36 @@
           "slug",
           "inFooter",
           "blocks",
+          "content",
           "blockImages"
         ],
         "additionalProperties": false,
         "description": "Eigene Inhaltsseite aus Bausteinen."
+      },
+      "DesignSocial": {
+        "type": "object",
+        "properties": {
+          "instagram": {
+            "type": "string"
+          },
+          "facebook": {
+            "type": "string"
+          },
+          "tiktok": {
+            "type": "string"
+          },
+          "youtube": {
+            "type": "string"
+          },
+          "pinterest": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Profile in sozialen Netzwerken (https-Adressen); fehlende zeigt der Shop nicht."
       },
       "DesignState": {
         "type": "object",
@@ -12194,6 +12835,34 @@
         ],
         "additionalProperties": false,
         "description": "Standardversand: Pauschale und Grenze für kostenlosen Versand."
+      },
+      "WebFont": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "serif",
+              "sans-serif",
+              "display",
+              "handwriting",
+              "monospace"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category"
+        ],
+        "additionalProperties": false,
+        "description": "Schrift von Google Fonts (der Shop lädt sie über Bunny Fonts)."
       }
     },
     "securitySchemes": {

@@ -148,15 +148,24 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
         showCategories: true,
         showNew: true,
         blocks: [
-          { id: "buehne", type: "hero" },
-          { id: "empfohlen", type: "featured" },
-          { id: "neu", type: "new" },
-          { id: "kategorien", type: "categories" },
+          { id: "buehne", type: "hero", title: "", text: "", image: null },
+          { id: "empfohlen", type: "featured", heading: "", productIds: [] },
+          { id: "neu", type: "new", heading: "" },
+          { id: "kategorien", type: "categories", heading: "" },
+        ],
+        content: [
+          { id: "buehne", type: "hero", title: "", text: "", image: null },
+          { id: "empfohlen", type: "featured", heading: "", productIds: [] },
+          { id: "neu", type: "new", heading: "" },
+          { id: "kategorien", type: "categories", heading: "" },
         ],
       },
       tagline: "",
-      footer: { text: "", links: [] },
+      footer: { text: "", links: [], social: {} },
       pages: [],
+      backgroundColor: "#fbf8f3",
+      headingFont: null,
+      bodyFont: null,
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });
@@ -271,6 +280,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       showCategories: true,
       showNew: true,
       blocks: null,
+      content: null,
       blockImages: [],
     });
 
@@ -331,10 +341,16 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       showCategories: true,
       showNew: true,
       blocks: [
-        { id: "buehne", type: "hero" },
-        { id: "empfohlen", type: "featured" },
-        { id: "neu", type: "new" },
-        { id: "kategorien", type: "categories" },
+        { id: "buehne", type: "hero", title: "", text: "", image: null },
+        { id: "empfohlen", type: "featured", heading: "", productIds: [] },
+        { id: "neu", type: "new", heading: "" },
+        { id: "kategorien", type: "categories", heading: "" },
+      ],
+      content: [
+        { id: "buehne", type: "hero", title: "", text: "", image: null },
+        { id: "empfohlen", type: "featured", heading: "", productIds: [] },
+        { id: "neu", type: "new", heading: "" },
+        { id: "kategorien", type: "categories", heading: "" },
       ],
     });
     return heroId;
@@ -425,7 +441,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
   it("Kopf- und Fußzeile (Teil 3): Slogan, Text, Links; gefährliche Links ergeben 422", async () => {
     const start = (await call("GET", "/admin/v1/design", "a")).json();
     expect(start.draft.tagline).toBe("");
-    expect(start.draft.footer).toEqual({ text: "", links: [] });
+    expect(start.draft.footer).toEqual({ text: "", links: [], social: {} });
     const base = { accentColor: "#3f6b4a", font: "klassisch", logoImageId: null };
 
     // javascript:-Link: 422, nichts gespeichert.
@@ -479,6 +495,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
     expect((await call("GET", "/store/v1/shops/design-b/design")).json().footer).toEqual({
       text: "",
       links: [],
+      social: {},
     });
   });
   it("Baukasten: Bausteine speichern, prüfen, veröffentlichen; Bilder werden aufgeräumt", async () => {
@@ -600,10 +617,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       ],
     };
     const put = (body: object, version: number) => call("PUT", "/admin/v1/design/draft", "a", body, version);
-    expect(
-      (await put({ ...base, pages: [{ ...page, blocks: [{ id: "h", type: "hero" }] }] }, start.version))
-        .statusCode,
-    ).toBe(422);
+    expect((await put({ ...base, backgroundColor: "#202020" }, start.version)).statusCode).toBe(422);
     expect((await put({ ...base, pages: [{ ...page, slug: "Über uns" }] }, start.version)).statusCode).toBe(
       422,
     );
@@ -643,5 +657,91 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
     await call("POST", "/admin/v1/design/publish", "a");
     expect(has(imageId)).toBe(false);
     expect((await call("GET", "/store/v1/shops/design-a/pages/ueber-uns")).statusCode).toBe(404);
+  });
+
+  it("Mehrere Shop-Bereiche mit eigenem Inhalt, Hintergrund, Schriften und soziale Netzwerke", async () => {
+    const up = await call("POST", "/admin/v1/design/images", "a", { data: await logo() });
+    const imageId = up.json().id as string;
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    const body = {
+      accentColor: "#3f6b4a",
+      font: "klassisch",
+      logoImageId: null,
+      backgroundColor: "#FFFFFF",
+      headingFont: { id: "playfair-display", name: "Playfair Display", category: "serif" },
+      bodyFont: { id: "dm-sans", name: "DM Sans", category: "sans-serif" },
+      footer: {
+        text: "",
+        links: [],
+        social: { instagram: "https://instagram.com/teeladen", tiktok: "" },
+      },
+      home: {
+        heroImageId: null,
+        heroTitle: "Alt",
+        heroText: "",
+        featuredProductIds: [],
+        showCategories: true,
+        blocks: [
+          { id: "h1", type: "hero" },
+          { id: "h2", type: "hero" },
+          { id: "f1", type: "featured" },
+          { id: "g1", type: "gallery", imageIds: [imageId], caption: "Laden" },
+          { id: "b1", type: "button", label: "Über uns", url: "/seite/ueber-uns", style: "primary" },
+          { id: "q1", type: "quote", text: "Bester Tee.", author: "Kim" },
+          { id: "d1", type: "divider" },
+          { id: "x1", type: "faq", heading: "Fragen", items: [{ question: "Versand?", answer: "2 Tage." }] },
+        ],
+        sections: {
+          h1: { title: "Sommer", text: "Eistee", imageId },
+          h2: { title: "Winter", text: "", imageId: null },
+          f1: { heading: "Lieblinge", productIds: [] },
+        },
+      },
+    };
+    const bad = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      { ...body, footer: { ...body.footer, social: { instagram: "http://unsicher.example" } } },
+      start.version,
+    );
+    expect(bad.statusCode).toBe(422);
+    const saved = await call("PUT", "/admin/v1/design/draft", "a", body, start.version);
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().draft).toMatchObject({
+      backgroundColor: "#ffffff",
+      headingFont: { id: "playfair-display" },
+      footer: { social: { instagram: "https://instagram.com/teeladen" } },
+    });
+    expect(saved.json().draft.home.blockImages.map((i: { id: string }) => i.id)).toEqual([imageId, imageId]);
+    expect(saved.json().draft.home.content[0]).toEqual({
+      id: "h1",
+      type: "hero",
+      title: "Sommer",
+      text: "Eistee",
+      imageId,
+    });
+    expect(saved.json().draft.home.blocks[0]).toEqual({ id: "h1", type: "hero" });
+    await call("POST", "/admin/v1/design/publish", "a");
+    const store = (await call("GET", "/store/v1/shops/design-a/design")).json();
+    expect(store).toMatchObject({ backgroundColor: "#ffffff", bodyFont: { name: "DM Sans" } });
+    // Altes Feld `blocks`: nur alte Arten, Shop-Bereiche wie bisher; `content` hat alles.
+    expect(store.home.blocks.map((b: { type: string }) => b.type)).toEqual(["hero", "hero", "featured"]);
+    const [h1, h2, f1, g1] = store.home.content;
+    expect(h1).toMatchObject({ type: "hero", title: "Sommer", text: "Eistee" });
+    expect(h1.image.url).toContain(imageId);
+    expect(h2).toEqual({ id: "h2", type: "hero", title: "Winter", text: "", image: null });
+    expect(f1).toEqual({ id: "f1", type: "featured", heading: "Lieblinge", productIds: [] });
+    expect(g1.images).toHaveLength(1);
+    expect(store.home.content.map((b: { type: string }) => b.type)).toEqual([
+      "hero",
+      "hero",
+      "featured",
+      "gallery",
+      "button",
+      "quote",
+      "divider",
+      "faq",
+    ]);
   });
 });

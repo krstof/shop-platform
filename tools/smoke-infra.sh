@@ -113,7 +113,7 @@ echo "== Storefront (M4)"
 SH="$("${C[@]}" -D /tmp/smoke-sf-h -o /tmp/smoke-sf "https://shop.$D/teeladen"; cat /tmp/smoke-sf-h)"
 check "Storefront: Teeladen unter shop.$D/teeladen mit 200" '[[ "$SH" =~ ^HTTP/2\ 200 ]]'
 check "Storefront: Produkte und Bilder aus der API" 'grep -q "Sencha Frühlingshauch" /tmp/smoke-sf && grep -q "https://media.$D/tenants/" /tmp/smoke-sf'
-check "Storefront: strenge CSP ohne Skripte" 'grep -qiE "content-security-policy: default-src '"'"'none'"'"'; style-src '"'"'self'"'"'; img-src" <<<"$SH" && ! grep -qi "<script" /tmp/smoke-sf'
+check "Storefront: strenge CSP ohne Skripte" 'grep -qiE "content-security-policy: default-src '"'"'none'"'"'; style-src '"'"'self'"'"' https://fonts.bunny.net; font-src https://fonts.bunny.net; img-src" <<<"$SH" && ! grep -qi "<script" /tmp/smoke-sf'
 check "Storefront: unbekannter Shop ergibt 404" '[[ "$("${C[@]}" -o /dev/null -w "%{http_code}" "https://shop.$D/gibt-es-nicht")" == 404 ]]'
 check "Storefront: Container ohne Datenbank-Zugang (keine Geheimnisse)" '! docker exec shop-platform-storefront-1 env | grep -qiE "DATABASE|SECRET|PASSWORD"'
 

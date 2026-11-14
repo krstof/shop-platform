@@ -55,7 +55,14 @@ describe("Aussehen: Rechenregeln", () => {
         blocks: [{ id: "b1", type: "text", heading: "Hallo", text: "Welt" }],
       },
       tagline: "Tee mit Herz",
-      footer: { text: "Mo–Fr", links: [{ label: "Kontakt", url: "mailto:a@b.example" }] },
+      footer: {
+        text: "Mo–Fr",
+        links: [{ label: "Kontakt", url: "mailto:a@b.example" }],
+        social: { instagram: "https://instagram.com/teeladen" },
+      },
+      backgroundColor: "#ffffff",
+      headingFont: { id: "lora", name: "Lora", category: "serif" },
+      bodyFont: null,
       pages: [
         {
           id: "p1",
@@ -116,7 +123,16 @@ describe("Aussehen: Rechenregeln", () => {
   it("Kopf- und Fußzeile: fehlt bei alten Shops, gefährliche Links fallen weg", () => {
     const alt = readSettings({ accentColor: "#1f5f8b", font: "modern", logoImageId: null });
     expect(alt.tagline).toBe("");
-    expect(alt.footer).toEqual({ text: "", links: [] });
+    expect(alt.footer).toEqual({ text: "", links: [], social: {} });
+    // Zu dunkler Hintergrund und kaputte Schrift fallen auf den Standard zurück, fremde Netzwerke weg.
+    const dunkel = readSettings({
+      backgroundColor: "#111111",
+      headingFont: { id: "x y", name: "<b>", category: "serif" },
+      footer: { text: "", links: [], social: { instagram: "javascript:1", myspace: "https://x.example" } },
+    });
+    expect(dunkel.backgroundColor).toBe("#fbf8f3");
+    expect(dunkel.headingFont).toBeNull();
+    expect(dunkel.footer.social).toEqual({});
     const boese = readSettings({
       accentColor: "#1f5f8b",
       font: "modern",

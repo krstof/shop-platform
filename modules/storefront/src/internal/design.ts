@@ -54,11 +54,44 @@ export interface FooterLink {
   readonly url: string;
 }
 
+/** Netzwerke für Symbole in der Fußzeile (Reihenfolge = Reihenfolge im Shop). */
+export const SOCIAL_NETWORKS = ["instagram", "facebook", "tiktok", "youtube", "pinterest", "x"] as const;
+export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
+
 export interface FooterSettings {
   /** Kurzer Text im Fuß (etwa Öffnungszeiten); leer heißt Standardhinweis. */
   readonly text: string;
   readonly links: readonly FooterLink[];
+  /** Profile in sozialen Netzwerken (nur https-Adressen); fehlende werden nicht gezeigt. */
+  readonly social: Readonly<Partial<Record<SocialNetwork, string>>>;
 }
+
+/** Schrift von Google Fonts (ausgeliefert über Bunny Fonts, ohne Tracking). */
+export interface WebFont {
+  /** Kennung wie „lora“ oder „dm-sans“. */
+  readonly id: string;
+  /** Familienname wie „Lora“. */
+  readonly name: string;
+  readonly category: "serif" | "sans-serif" | "display" | "handwriting" | "monospace";
+}
+
+export const FONT_CATEGORIES = ["serif", "sans-serif", "display", "handwriting", "monospace"] as const;
+export const webFontSchema = z.strictObject({
+  id: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .max(60),
+  name: z
+    .string()
+    .regex(/^[A-Za-z0-9 ]+$/)
+    .min(1)
+    .max(60),
+  category: z.enum(FONT_CATEGORIES),
+});
+
+/** Hintergrund des Shops: hell genug, damit der dunkle Text (#26221e) gut lesbar bleibt. */
+export const DEFAULT_BACKGROUND = "#fbf8f3";
+export const TEXT_COLOR = "#26221e";
 
 export interface DesignSettings {
   readonly accentColor: string;
@@ -70,6 +103,11 @@ export interface DesignSettings {
   readonly footer: FooterSettings;
   /** Eigene Inhaltsseiten (Baukasten Teil 3). */
   readonly pages: readonly ContentPage[];
+  /** Hintergrundfarbe des Shops. */
+  readonly backgroundColor: string;
+  /** Schriften von Google Fonts; `null` = die Auswahl unter `font`. */
+  readonly headingFont: WebFont | null;
+  readonly bodyFont: WebFont | null;
 }
 
 export const DEFAULT_HOME: HomeSettings = {
@@ -82,7 +120,7 @@ export const DEFAULT_HOME: HomeSettings = {
   blocks: null,
 };
 
-export const DEFAULT_FOOTER: FooterSettings = { text: "", links: [] };
+export const DEFAULT_FOOTER: FooterSettings = { text: "", links: [], social: {} };
 
 export const DEFAULT_DESIGN: DesignSettings = {
   accentColor: DEFAULT_ACCENT,
@@ -92,6 +130,9 @@ export const DEFAULT_DESIGN: DesignSettings = {
   tagline: "",
   footer: DEFAULT_FOOTER,
   pages: [],
+  backgroundColor: DEFAULT_BACKGROUND,
+  headingFont: null,
+  bodyFont: null,
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -124,10 +165,38 @@ const stored = z.object({
         )
         .max(MAX_FOOTER_LINKS)
         .catch([]),
+      social: z
+        .unknown()
+        .optional()
+        .transform((v) => readSocial(v)),
     })
-    .catch(() => ({ text: "", links: [] })),
+    .catch(() => ({ text: "", links: [], social: {} })),
   pages: z.unknown().optional().transform(readPages),
+  backgroundColor: z.string().regex(HEX).refine(readableBackground).catch(DEFAULT_BACKGROUND),
+  headingFont: webFontSchema.nullable().catch(null),
+  bodyFont: webFontSchema.nullable().catch(null),
 });
+
+/** Gespeicherte Profile lesen: nur bekannte Netzwerke mit https-Adresse. */
+function readSocial(v: unknown): Partial<Record<SocialNetwork, string>> {
+  if (typeof v !== "object" || v === null) return {};
+  const out: Partial<Record<SocialNetwork, string>> = {};
+  for (const n of SOCIAL_NETWORKS) {
+    const url = (v as Record<string, unknown>)[n];
+    if (typeof url === "string" && isSocialUrl(url)) out[n] = url;
+  }
+  return out;
+}
+
+/** Profil-Adresse: nur https, ohne Leerzeichen. */
+export function isSocialUrl(url: string): boolean {
+  return url.length <= MAX_LINK_URL && /^https:\/\/[^\s<>"]+$/i.test(url);
+}
+
+/** Ist der dunkle Text auf dieser Hintergrundfarbe gut lesbar (mindestens 4,5 : 1)? */
+export function readableBackground(hex: string): boolean {
+  return HEX.test(hex) && contrast(hex, TEXT_COLOR) >= MIN_CONTRAST;
+}
 
 /** Liest gespeichertes JSON; Fehlendes oder Kaputtes wird zum Standard (alte Shops haben `{}`). */
 export function readSettings(json: unknown): DesignSettings {
@@ -136,22 +205,19 @@ export function readSettings(json: unknown): DesignSettings {
 }
 
 export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
-  return (
-    a.accentColor === b.accentColor &&
-    a.font === b.font &&
-    a.logoImageId === b.logoImageId &&
-    a.home.heroImageId === b.home.heroImageId &&
-    a.home.heroTitle === b.home.heroTitle &&
-    a.home.heroText === b.home.heroText &&
-    a.home.showCategories === b.home.showCategories &&
-    a.home.showNew === b.home.showNew &&
-    JSON.stringify(a.home.blocks) === JSON.stringify(b.home.blocks) &&
-    a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",") &&
-    a.tagline === b.tagline &&
-    a.footer.text === b.footer.text &&
-    JSON.stringify(a.footer.links) === JSON.stringify(b.footer.links) &&
-    JSON.stringify(a.pages) === JSON.stringify(b.pages)
-  );
+  return canonical(a) === canonical(b);
+}
+
+/** JSON mit sortierten Schlüsseln, ohne `undefined`: gleiche Inhalte ergeben gleichen Text. */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  if (typeof v === "object" && v !== null)
+    return `{${Object.entries(v)
+      .filter(([, x]) => x !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([k, x]) => `${JSON.stringify(k)}:${canonical(x)}`)
+      .join(",")}}`;
+  return JSON.stringify(v);
 }
 
 /** Alle Bilder (Logo, Startseitenbild), die ein Stand benutzt. */

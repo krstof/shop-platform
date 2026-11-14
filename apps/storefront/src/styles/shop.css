@@ -197,7 +197,8 @@ main:focus-visible {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
   color: #fff;
 }
-.buehne-bild .buehne-text h1 {
+.buehne-bild .buehne-text h1,
+.buehne-bild .buehne-text h2 {
   margin: 0 0 0.35rem;
 }
 .buehne-bild .buehne-text p {
@@ -1000,4 +1001,121 @@ form.gutschein:has(.knopf-leise) {
 }
 .baustein-abstand.abstand-l {
   height: 6rem;
+}
+
+/* Weitere Bausteine (14.11.2026): Knopf, Zitat, Trennlinie, Fragen und Antworten, Galerie. */
+.baustein-knopf {
+  text-align: center;
+}
+.knopf.knopf-zweit {
+  background: transparent;
+  color: var(--akzent-dunkel);
+  box-shadow: inset 0 0 0 2px var(--akzent);
+}
+.knopf.knopf-zweit:hover {
+  background: var(--flaeche);
+}
+.baustein-zitat {
+  margin-inline: auto;
+  max-width: 44rem;
+  padding: 1.5rem 0;
+  text-align: center;
+}
+.baustein-zitat blockquote {
+  margin: 0;
+  font-family: var(--schrift-titel);
+  font-size: 1.45rem;
+  line-height: 1.4;
+}
+.baustein-zitat blockquote p {
+  margin: 0 0 0.5rem;
+}
+.baustein-zitat blockquote::before {
+  content: "“";
+  display: block;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--akzent);
+}
+.baustein-zitat figcaption {
+  margin-top: 0.5rem;
+  color: var(--text-leise);
+}
+.baustein-zitat figcaption::before {
+  content: "— ";
+}
+.baustein-linie {
+  border: 0;
+  border-top: 1px solid var(--linie);
+  margin-block: 2rem;
+}
+.baustein-faq details {
+  border-bottom: 1px solid var(--linie);
+  padding: 0.9rem 0;
+}
+.baustein-faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style-position: outside;
+}
+.baustein-faq details p {
+  margin: 0.6rem 0 0;
+  color: var(--text-leise);
+}
+.galerie-raster {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 48rem) {
+  .galerie-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .galerie-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.galerie-1 {
+  grid-template-columns: 1fr;
+}
+.galerie-raster img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+.baustein-galerie figcaption {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+/* Soziale Netzwerke in der Fußzeile */
+.fuss-sozial {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.fuss-sozial a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--grund);
+  color: var(--akzent-dunkel);
+  box-shadow: inset 0 0 0 1px var(--linie);
+}
+.fuss-sozial a:hover {
+  background: var(--akzent);
+  color: #fff;
+}
+.fuss-sozial svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
 }

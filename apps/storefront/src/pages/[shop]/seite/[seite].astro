@@ -3,8 +3,9 @@
 // dieselben Bausteine wie auf der Startseite (Text, Bild, Video, Karte …), ohne JavaScript.
 import Shop from "../../../layouts/Shop.astro";
 import Baustein from "../../../components/Baustein.astro";
-import { loadShop, storeApi, StoreApiError } from "../../../lib/store-api.js";
-import { EXTERN_COOKIE, safePageSlug, type StorePage } from "../../../lib/design.js";
+import Bereich from "../../../components/Bereich.astro";
+import { loadShop, storeApi, StoreApiError, type StoreProduct } from "../../../lib/store-api.js";
+import { DEFAULT_HOME, EXTERN_COOKIE, isSection, safePageSlug, type StorePage } from "../../../lib/design.js";
 import { warenkorbAnzahl } from "../../../lib/cart.js";
 
 const slug = safePageSlug(Astro.params.seite);
@@ -21,12 +22,24 @@ try {
 }
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 const extern = Astro.cookies.get(EXTERN_COOKIE)?.value === "ja";
+const inhalt = seite.content ?? seite.blocks;
+// Shop-Bereiche auf der Seite brauchen Produkte (nur laden, wenn es welche gibt).
+const braucht = (t: string) => inhalt.some((b) => b.type === t);
+const produkte = braucht("featured")
+  ? (await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products")).data
+  : [];
+const neu = braucht("new")
+  ? (
+      await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
+    ).data.slice(0, 4)
+  : [];
+const home = shop.design?.home ?? DEFAULT_HOME;
 ---
 
 <Shop shop={shop} categories={categories} titel={seite.title} korb={korb}>
   <h1>{seite.title}</h1>
-  {seite.blocks.length === 0 && <p>Diese Seite hat noch keinen Inhalt.</p>}
-  {seite.blocks.map((b) => (
+  {inhalt.length === 0 && <p>Diese Seite hat noch keinen Inhalt.</p>}
+  {inhalt.map((b) => (
     <Baustein block={b} shop={shop.handle} extern={extern} />
   ))}
 </Shop>

@@ -13,6 +13,13 @@ import {
 import { z } from "zod";
 import {
   blocksSchema,
+  BLOCK_TYPES,
+  FIRST_BLOCK_TYPES,
+  firstBlockSchema,
+  firstBlocksOf,
+  MAX_BLOCKS,
+  sectionsSchema,
+  withSections,
   blockImages,
   legacyBlocks,
   MAX_PAGES,
@@ -24,9 +31,11 @@ import {
 import type { DB } from "../db.generated.js";
 import {
   darker,
+  FONT_CATEGORIES,
   FONTS,
   imagesOf,
   isSafeLinkUrl,
+  isSocialUrl,
   MAX_FEATURED,
   MAX_FOOTER_LINKS,
   MAX_FOOTER_TEXT,
@@ -37,8 +46,11 @@ import {
   MAX_HERO_TITLE,
   MIN_CONTRAST,
   normalizeHex,
+  readableBackground,
   readableWithWhite,
   sameSettings,
+  SOCIAL_NETWORKS,
+  webFontSchema,
   type DesignSettings,
   type FooterSettings,
   type HomeSettings,
@@ -92,6 +104,8 @@ function rejectionText(reason: ImageRejection, what: "Das Logo" | "Das Bild"): s
   }
 }
 
+const TOO_DARK =
+  "Diese Hintergrundfarbe ist zu dunkel: Der Text wäre schlecht lesbar. Bitte eine hellere Farbe wählen.";
 const TOO_LIGHT =
   "Diese Farbe ist zu hell: Weiße Schrift auf Knöpfen wäre schlecht lesbar. Bitte eine dunklere Farbe wählen.";
 
@@ -116,6 +130,20 @@ const accentSchema = z
   .regex(/^#[0-9a-fA-F]{6}$/)
   .meta({ description: "Hauptfarbe als Hex, etwa `#3f6b4a`. Für Knöpfe, Links und Markierungen." });
 
+/** Baustein in Antworten, offen für neue Arten: Clients überspringen unbekannte `type`. Die Felder je Art
+ *  stehen im Schema der Eingabe (`blocks` beim Speichern). */
+const contentItemSchema = z
+  .looseObject({
+    id: z.string(),
+    type: z.string().meta({ "x-extensible-enum": [...BLOCK_TYPES] }),
+  })
+  .meta({
+    id: "DesignBlock",
+    description:
+      "Ein Baustein. Weitere Felder je nach `type` (siehe Eingabe beim Speichern). Neue Arten können " +
+      "hinzukommen; unbekannte bitte überspringen.",
+  });
+
 const homeViewSchema = z
   .object({
     heroImage: imageSchema.nullable().meta({ description: "Großes Bild oben auf der Startseite." }),
@@ -130,9 +158,18 @@ const homeViewSchema = z
     showNew: z
       .boolean()
       .meta({ description: "Abschnitt „Neu im Shop“ mit den vier neuesten Produkten zeigen." }),
-    blocks: blocksSchema
+    blocks: z
+      .array(firstBlockSchema)
+      .max(MAX_BLOCKS)
       .nullable()
-      .meta({ description: "Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge." }),
+      .meta({
+        description:
+          "Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge. Nur die Arten bis 13.11.2026 " +
+          "(Vertrag unverändert); alle Arten stehen in `content`.",
+      }),
+    content: z.array(contentItemSchema).nullable().meta({
+      description: "Alle Bausteine in Reihenfolge, auch neuere Arten; null = alte feste Reihenfolge.",
+    }),
     blockImages: z
       .array(imageSchema)
       .meta({ description: "Die Bilder, die die Bausteine benutzen (für Vorschaubilder im Editor)." }),
@@ -148,7 +185,11 @@ const pageViewSchema = z
     title: z.string(),
     slug: z.string().meta({ description: "Adresse im Shop: /<shop>/seite/<slug>." }),
     inFooter: z.boolean().meta({ description: "Link in der Fußzeile des Shops." }),
-    blocks: blocksSchema,
+    blocks: z
+      .array(firstBlockSchema)
+      .max(MAX_BLOCKS)
+      .meta({ description: "Nur die Arten bis 13.11.2026; alle stehen in `content`." }),
+    content: z.array(contentItemSchema).meta({ description: "Alle Bausteine in Reihenfolge." }),
     blockImages: z.array(imageSchema).meta({ description: "Die Bilder der Bausteine (für den Editor)." }),
   })
   .meta({ id: "DesignPage", description: "Eigene Inhaltsseite aus Bausteinen." });
@@ -157,10 +198,22 @@ const footerLinkSchema = z
   .object({ label: z.string(), url: z.string() })
   .meta({ id: "DesignFooterLink", description: "Link im Fuß des Shops." });
 
+const socialSchema = z
+  .object(Object.fromEntries(SOCIAL_NETWORKS.map((n) => [n, z.string().optional()])))
+  .meta({
+    id: "DesignSocial",
+    description: "Profile in sozialen Netzwerken (https-Adressen); fehlende zeigt der Shop nicht.",
+  });
+
+const webFontView = z
+  .object({ id: z.string(), name: z.string(), category: z.enum(FONT_CATEGORIES) })
+  .meta({ id: "WebFont", description: "Schrift von Google Fonts (der Shop lädt sie über Bunny Fonts)." });
+
 const footerViewSchema = z
   .object({
     text: z.string().meta({ description: "Kurzer Text im Fuß; leer heißt Standardhinweis." }),
     links: z.array(footerLinkSchema),
+    social: socialSchema,
   })
   .meta({ id: "DesignFooter", description: "Fußzeile: Text und Links." });
 
@@ -173,6 +226,13 @@ const designViewSchema = z
     tagline: z.string().meta({ description: "Kurzer Text unter dem Logo; leer heißt keiner." }),
     footer: footerViewSchema,
     pages: z.array(pageViewSchema).meta({ description: "Eigene Inhaltsseiten wie „Über uns“." }),
+    backgroundColor: z.string().meta({ description: "Hintergrundfarbe des Shops als Hex." }),
+    headingFont: webFontView
+      .nullable()
+      .meta({ description: "Schrift der Überschriften; null = Auswahl unter `font`." }),
+    bodyFont: webFontView
+      .nullable()
+      .meta({ description: "Schrift des Fließtexts; null = Auswahl unter `font`." }),
   })
   .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
@@ -215,6 +275,11 @@ const homeInput = z
           "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new (je höchstens einmal) sowie " +
           "text, textImage, image, video (YouTube/Vimeo), map (Adresse) und spacer. Fehlt das Feld, bleiben sie.",
       }),
+    sections: sectionsSchema.optional().meta({
+      description:
+        "Inhalt der Shop-Bereiche je Baustein-ID (Bühne: title, text, imageId; Empfehlungen: heading, " +
+        "productIds; Neu und Kategorien: heading). Shop-Bereiche dürfen mehrfach vorkommen.",
+    }),
   })
   .meta({ id: "DesignHomeInput" });
 
@@ -237,6 +302,24 @@ const footerInput = z
       )
       .max(MAX_FOOTER_LINKS)
       .meta({ description: `Bis zu ${MAX_FOOTER_LINKS} Links in dieser Reihenfolge.` }),
+    social: z
+      .strictObject(
+        Object.fromEntries(
+          SOCIAL_NETWORKS.map((n) => [
+            n,
+            z
+              .string()
+              .trim()
+              .refine((u) => u === "" || isSocialUrl(u), "Bitte die Adresse mit https:// angeben.")
+              .optional(),
+          ]),
+        ),
+      )
+      .optional()
+      .meta({
+        description:
+          "Profile in sozialen Netzwerken; leer oder fehlend = kein Symbol. Fehlt das Feld, bleiben sie.",
+      }),
   })
   .meta({ id: "DesignFooterInput" });
 
@@ -259,6 +342,22 @@ const draftInput = z.strictObject({
   footer: footerInput
     .optional()
     .meta({ description: "Fußzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist." }),
+  backgroundColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional()
+    .meta({
+      description:
+        "Hintergrundfarbe als Hex; der dunkle Text muss darauf gut lesbar bleiben. Fehlt das Feld, bleibt sie.",
+    }),
+  headingFont: webFontSchema
+    .nullable()
+    .optional()
+    .meta({ description: "Schrift der Überschriften (Google Fonts) oder null. Fehlt das Feld, bleibt sie." }),
+  bodyFont: webFontSchema
+    .nullable()
+    .optional()
+    .meta({ description: "Schrift des Fließtexts (Google Fonts) oder null. Fehlt das Feld, bleibt sie." }),
   pages: pagesSchema.optional().meta({
     description: `Eigene Inhaltsseiten (bis zu ${MAX_PAGES}), nur freie Bausteine. Fehlt das Feld, bleiben sie.`,
   }),
@@ -274,29 +373,93 @@ const logoInput = z.strictObject({
 
 const storeImageSchema = z.object({ url: z.url(), width: z.number().int(), height: z.number().int() });
 
-const storeBlockSchema = z
-  .discriminatedUnion("type", [
-    z.object({ id: z.string(), type: z.enum(["hero", "featured", "categories", "new"]) }),
-    z.object({ id: z.string(), type: z.literal("text"), heading: z.string(), text: z.string() }),
-    z.object({
-      id: z.string(),
-      type: z.literal("textImage"),
-      heading: z.string(),
-      text: z.string(),
-      image: storeImageSchema.nullable(),
-      imageSide: z.enum(["left", "right"]),
-    }),
-    z.object({ id: z.string(), type: z.literal("image"), image: storeImageSchema, caption: z.string() }),
-    z.object({
-      id: z.string(),
-      type: z.literal("video"),
-      provider: z.enum(["youtube", "vimeo"]),
-      videoId: z.string().meta({ description: "Kennung beim Anbieter; die Einbettung baut die Storefront." }),
-    }),
-    z.object({ id: z.string(), type: z.literal("map"), address: z.string() }),
-    z.object({ id: z.string(), type: z.literal("spacer"), size: z.enum(["s", "m", "l"]) }),
-  ])
-  .meta({ id: "StoreBlock", description: "Baustein der Startseite." });
+/** Shop-Bereich in der Storefront-Antwort (eine Form für alle vier Arten, wie vor dem 14.11.2026). */
+const storeSectionSchema = z.object({
+  id: z.string(),
+  type: z.enum(["hero", "featured", "categories", "new"]),
+  title: z.string().optional().meta({ description: "Bühne: Überschrift; leer = Standard." }),
+  text: z.string().optional().meta({ description: "Bühne: Text; leer = Standard." }),
+  image: storeImageSchema.nullable().optional().meta({ description: "Bühne: großes Bild." }),
+  heading: z
+    .string()
+    .optional()
+    .meta({ description: "Empfehlungen, Neu, Kategorien: Überschrift; leer = Standard." }),
+  productIds: z
+    .array(z.uuid())
+    .optional()
+    .meta({ description: "Empfehlungen: Produkte in dieser Reihenfolge; nicht sichtbare auslassen." }),
+});
+
+const storeFirstBlocks = [
+  z.object({ id: z.string(), type: z.literal("text"), heading: z.string(), text: z.string() }),
+  z.object({
+    id: z.string(),
+    type: z.literal("textImage"),
+    heading: z.string(),
+    text: z.string(),
+    image: storeImageSchema.nullable(),
+    imageSide: z.enum(["left", "right"]),
+  }),
+  z.object({ id: z.string(), type: z.literal("image"), image: storeImageSchema, caption: z.string() }),
+  z.object({
+    id: z.string(),
+    type: z.literal("video"),
+    provider: z.enum(["youtube", "vimeo"]),
+    videoId: z.string().meta({ description: "Kennung beim Anbieter; die Einbettung baut die Storefront." }),
+  }),
+  z.object({ id: z.string(), type: z.literal("map"), address: z.string() }),
+  z.object({ id: z.string(), type: z.literal("spacer"), size: z.enum(["s", "m", "l"]) }),
+] as const;
+
+const storeLaterBlocks = [
+  z.object({
+    id: z.string(),
+    type: z.literal("button"),
+    label: z.string(),
+    url: z.string().meta({ description: "Webadresse, mailto:, tel: oder Pfad im Shop („/seite/…“)." }),
+    style: z.enum(["primary", "secondary"]),
+  }),
+  z.object({ id: z.string(), type: z.literal("quote"), text: z.string(), author: z.string() }),
+  z.object({ id: z.string(), type: z.literal("divider") }),
+  z.object({
+    id: z.string(),
+    type: z.literal("faq"),
+    heading: z.string(),
+    items: z.array(z.object({ question: z.string(), answer: z.string() })),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("gallery"),
+    images: z.array(storeImageSchema),
+    caption: z.string(),
+  }),
+] as const;
+
+/** Alle Arten (nur für die Typen im Code; in Antworten steht `content` offen für neue Arten). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- nur als Typ gebraucht
+const storeBlockSchema = z.discriminatedUnion("type", [
+  storeSectionSchema,
+  ...storeFirstBlocks,
+  ...storeLaterBlocks,
+]);
+
+/** Antwortfeld `blocks`: nur die Arten bis 13.11.2026 (Vertrag unverändert). */
+const storeFirstBlockSchema = z
+  .discriminatedUnion("type", [storeSectionSchema, ...storeFirstBlocks])
+  .meta({ id: "StoreBlock", description: "Baustein der Startseite (Arten bis 13.11.2026)." });
+
+/** Antwortfeld `content`: alle Bausteine, offen für neue Arten. */
+const storeContentSchema = z
+  .looseObject({
+    id: z.string(),
+    type: z.string().meta({ "x-extensible-enum": [...BLOCK_TYPES] }),
+  })
+  .meta({
+    id: "StoreContentBlock",
+    description:
+      "Baustein, fertig zum Anzeigen (Bilder aufgelöst, Video als Anbieter und ID). Felder je nach `type`; " +
+      "neue Arten können hinzukommen, unbekannte bitte überspringen.",
+  });
 
 const storeDesignSchema = z
   .object({
@@ -315,15 +478,21 @@ const storeDesignSchema = z
         }),
         showCategories: z.boolean(),
         showNew: z.boolean(),
-        blocks: z.array(storeBlockSchema).meta({
+        blocks: z.array(storeFirstBlockSchema).meta({
           description:
             "Bausteine in Reihenfolge, fertig zum Anzeigen (ältere Shops: aus den Schaltern abgeleitet). " +
-            "Leere Video-, Karten- und Bildbausteine fehlen.",
+            "Leere Video-, Karten- und Bildbausteine fehlen. Nur Arten bis 13.11.2026; alle in `content`.",
         }),
+        content: z
+          .array(storeContentSchema)
+          .meta({ description: "Alle Bausteine in Reihenfolge, auch neuere Arten." }),
       })
       .meta({ id: "StoreDesignHome", description: "Inhalt der Startseite." }),
     tagline: z.string().meta({ description: "Text unter dem Logo; leer heißt keiner." }),
     footer: footerViewSchema,
+    backgroundColor: z.string().meta({ description: "Hintergrundfarbe als Hex." }),
+    headingFont: webFontView.nullable(),
+    bodyFont: webFontView.nullable(),
     pages: z
       .array(z.object({ title: z.string(), slug: z.string(), inFooter: z.boolean() }))
       .meta({ description: "Eigene Inhaltsseiten (nur Titel und Adresse; Inhalt über /pages/{pageSlug})." }),
@@ -331,7 +500,14 @@ const storeDesignSchema = z
   .meta({ id: "StoreDesign", description: "Veröffentlichtes Aussehen eines Shops." });
 
 const storePageSchema = z
-  .object({ title: z.string(), slug: z.string(), blocks: z.array(storeBlockSchema) })
+  .object({
+    title: z.string(),
+    slug: z.string(),
+    blocks: z
+      .array(storeFirstBlockSchema)
+      .meta({ description: "Nur Arten bis 13.11.2026; alle in `content`." }),
+    content: z.array(storeContentSchema),
+  })
   .meta({ id: "StorePage", description: "Eigene Inhaltsseite, fertig zum Anzeigen." });
 
 /** Kleines gültiges PNG (32 × 32 Pixel) als Beispiel für Dokumentation und Tests. */
@@ -339,17 +515,53 @@ const EXAMPLE_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAA1BMVEV6mluJCzqwAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEkl" +
   "EQVQ4y2NgGAWjYBSMAuwAAAQgAAFWu83mAAAAAElFTkSuQmCC";
 
-/** Baustein für die Storefront: Bilder aufgelöst, Video als Anbieter + ID, leere Bausteine fallen weg. */
+/** Baustein für die Storefront: Bilder aufgelöst, Video als Anbieter + ID, leere Bausteine fallen weg.
+ *  Shop-Bereiche ohne eigenen Inhalt (alte Daten) übernehmen den Inhalt der Startseite. */
 function storeBlock(
   b: Block,
   image: (id: string | null) => { url: string; width: number; height: number } | null,
+  home: HomeSettings,
 ): z.input<typeof storeBlockSchema>[] {
   switch (b.type) {
     case "hero":
+      return [
+        {
+          id: b.id,
+          type: b.type,
+          title: b.title ?? home.heroTitle,
+          text: b.text ?? home.heroText,
+          image: image(b.imageId === undefined ? home.heroImageId : b.imageId),
+        },
+      ];
     case "featured":
+      return [
+        {
+          id: b.id,
+          type: b.type,
+          heading: b.heading ?? "",
+          productIds: [...(b.productIds ?? home.featuredProductIds)],
+        },
+      ];
     case "categories":
     case "new":
-      return [{ id: b.id, type: b.type }];
+      return [{ id: b.id, type: b.type, heading: b.heading ?? "" }];
+    case "button":
+      return b.label.trim() === "" || b.url === "" ? [] : [{ ...b }];
+    case "quote":
+      return b.text.trim() === "" ? [] : [{ ...b }];
+    case "divider":
+      return [{ ...b }];
+    case "faq": {
+      const items = b.items.filter((i) => i.question.trim() !== "");
+      return items.length === 0 ? [] : [{ id: b.id, type: b.type, heading: b.heading, items }];
+    }
+    case "gallery": {
+      const images = b.imageIds.flatMap((i) => {
+        const x = image(i);
+        return x === null ? [] : [x];
+      });
+      return images.length === 0 ? [] : [{ id: b.id, type: b.type, images, caption: b.caption }];
+    }
     case "text":
       return b.heading === "" && b.text === "" ? [] : [{ ...b }];
     case "textImage":
@@ -378,9 +590,26 @@ function storeBlock(
   }
 }
 
+type StoreBlockOut = z.input<typeof storeBlockSchema>;
+
+/** Antwort mit beiden Feldern: `blocks` (alte Arten, Vertrag unverändert) und `content` (alle). */
+function split(all: StoreBlockOut[]): {
+  blocks: z.input<typeof storeFirstBlockSchema>[];
+  content: StoreBlockOut[];
+} {
+  return {
+    blocks: all.filter((b): b is z.input<typeof storeFirstBlockSchema> => FIRST_BLOCK_TYPES.has(b.type)),
+    content: all,
+  };
+}
+
 /** Fußzeile für Antworten: frische Arrays statt readonly. */
 function footerView(f: FooterSettings) {
-  return { text: f.text, links: f.links.map((l) => ({ label: l.label, url: l.url })) };
+  return {
+    text: f.text,
+    links: f.links.map((l) => ({ label: l.label, url: l.url })),
+    social: { ...f.social },
+  };
 }
 
 const shopHandleParam = z
@@ -407,7 +636,8 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         ...s.home,
         featuredProductIds: [...s.home.featuredProductIds],
         heroImage: image(s.home.heroImageId),
-        blocks: s.home.blocks === null ? null : s.home.blocks.map((b) => ({ ...b })),
+        blocks: s.home.blocks === null ? null : firstBlocksOf(s.home.blocks),
+        content: s.home.blocks === null ? null : s.home.blocks.map((b) => ({ ...b })),
         blockImages: blockImages(s.home.blocks).flatMap((id) => {
           const i = found.get(id);
           return i === undefined ? [] : [i];
@@ -415,9 +645,13 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       },
       tagline: s.tagline,
       footer: footerView(s.footer),
+      backgroundColor: s.backgroundColor,
+      headingFont: s.headingFont,
+      bodyFont: s.bodyFont,
       pages: s.pages.map((p) => ({
         ...p,
-        blocks: p.blocks.map((b) => ({ ...b })),
+        blocks: firstBlocksOf(p.blocks),
+        content: p.blocks.map((b) => ({ ...b })),
         blockImages: blockImages(p.blocks).flatMap((id) => {
           const i = found.get(id);
           return i === undefined ? [] : [i];
@@ -522,9 +756,18 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           body.home === undefined
             ? current.draft.home
             : {
-                ...body.home,
+                heroImageId: body.home.heroImageId,
+                heroTitle: body.home.heroTitle,
+                heroText: body.home.heroText,
+                featuredProductIds: body.home.featuredProductIds,
+                showCategories: body.home.showCategories,
                 showNew: body.home.showNew ?? current.draft.home.showNew,
-                blocks: body.home.blocks === undefined ? current.draft.home.blocks : body.home.blocks,
+                blocks:
+                  body.home.blocks === undefined
+                    ? current.draft.home.blocks
+                    : body.home.blocks === null
+                      ? null
+                      : withSections(body.home.blocks, body.home.sections),
               };
         // Nur Bilder, die es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
         const wanted = [
@@ -535,27 +778,19 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             detail: "Dieses Bild gibt es nicht. Bitte neu hochladen.",
           },
           ...(home.blocks ?? []).flatMap((b, i) =>
-            (b.type === "image" || b.type === "textImage") && b.imageId !== null
-              ? [
-                  {
-                    id: b.imageId,
-                    path: `/home/blocks/${i}/imageId`,
-                    detail: "Ein Bild in einem Baustein gibt es nicht. Bitte neu hochladen.",
-                  },
-                ]
-              : [],
+            blockImages([b]).map((id) => ({
+              id,
+              path: `/home/blocks/${i}/${b.type === "gallery" ? "imageIds" : "imageId"}`,
+              detail: "Ein Bild in einem Baustein gibt es nicht. Bitte neu hochladen.",
+            })),
           ),
           ...(body.pages ?? []).flatMap((p, pi) =>
-            p.blocks.flatMap((b, i) =>
-              (b.type === "image" || b.type === "textImage") && b.imageId !== null
-                ? [
-                    {
-                      id: b.imageId,
-                      path: `/pages/${pi}/blocks/${i}/imageId`,
-                      detail: "Ein Bild auf einer Seite gibt es nicht. Bitte neu hochladen.",
-                    },
-                  ]
-                : [],
+            withSections(p.blocks, p.sections).flatMap((b, i) =>
+              blockImages([b]).map((id) => ({
+                id,
+                path: `/pages/${pi}/blocks/${i}/${b.type === "gallery" ? "imageIds" : "imageId"}`,
+                detail: "Ein Bild auf einer Seite gibt es nicht. Bitte neu hochladen.",
+              })),
             ),
           ),
         ];
@@ -567,10 +802,50 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
               errors: [{ path: w.path, code: "unknown_image", message: "Unbekanntes Bild." }],
             });
         const tagline = body.tagline ?? current.draft.tagline;
-        const footer: FooterSettings = body.footer ?? current.draft.footer;
-        const pages: readonly ContentPage[] = body.pages ?? current.draft.pages;
+        const footer: FooterSettings =
+          body.footer === undefined
+            ? current.draft.footer
+            : {
+                text: body.footer.text,
+                links: body.footer.links,
+                social:
+                  body.footer.social === undefined
+                    ? current.draft.footer.social
+                    : Object.fromEntries(
+                        Object.entries(body.footer.social).filter(
+                          (e): e is [string, string] => typeof e[1] === "string" && e[1] !== "",
+                        ),
+                      ),
+              };
+        const pages: readonly ContentPage[] =
+          body.pages === undefined
+            ? current.draft.pages
+            : body.pages.map((p) => ({
+                id: p.id,
+                title: p.title,
+                slug: p.slug,
+                inFooter: p.inFooter,
+                blocks: withSections(p.blocks, p.sections),
+              }));
+        const background = (body.backgroundColor ?? current.draft.backgroundColor).toLowerCase();
+        if (!readableBackground(background))
+          throw new ValidationError({
+            detail: TOO_DARK,
+            errors: [{ path: "/backgroundColor", code: "low_contrast", message: TOO_DARK }],
+          });
         return {
-          draft: { accentColor: accent, font: body.font, logoImageId: logo, home, tagline, footer, pages },
+          draft: {
+            accentColor: accent,
+            font: body.font,
+            logoImageId: logo,
+            home,
+            tagline,
+            footer,
+            pages,
+            backgroundColor: background,
+            headingFont: body.headingFont === undefined ? current.draft.headingFont : body.headingFont,
+            bodyFont: body.bodyFont === undefined ? current.draft.bodyFont : body.bodyFont,
+          },
         };
       });
     },
@@ -706,11 +981,14 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           featuredProductIds: [...home.featuredProductIds],
           showCategories: home.showCategories,
           showNew: home.showNew,
-          blocks: (home.blocks ?? legacyBlocks(home)).flatMap((b) => storeBlock(b, image)),
+          ...split((home.blocks ?? legacyBlocks(home)).flatMap((b) => storeBlock(b, image, home))),
         },
         tagline: published.tagline,
         footer: footerView(published.footer),
         pages: published.pages.map((p) => ({ title: p.title, slug: p.slug, inFooter: p.inFooter })),
+        backgroundColor: published.backgroundColor,
+        headingFont: published.headingFont,
+        bodyFont: published.bodyFont,
       };
     },
   });
@@ -739,12 +1017,16 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       const { published } = await withTenantTransaction(db, (trx) => readInstallation(trx));
       const page = published.pages.find((p) => p.slug === params.pageSlug);
       if (page === undefined) throw new NotFoundError();
-      const found = await images.get(blockImages(page.blocks));
+      const found = await images.get([...blockImages(page.blocks), ...imagesOf(published)]);
       const image = (id: string | null) => {
         const i = id === null ? undefined : found.get(id);
         return i === undefined ? null : { url: i.url, width: i.width, height: i.height };
       };
-      return { title: page.title, slug: page.slug, blocks: page.blocks.flatMap((b) => storeBlock(b, image)) };
+      return {
+        title: page.title,
+        slug: page.slug,
+        ...split(page.blocks.flatMap((b) => storeBlock(b, image, published.home))),
+      };
     },
   });
 

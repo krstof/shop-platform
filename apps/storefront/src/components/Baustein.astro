@@ -1,9 +1,10 @@
 ---
-// Inhaltsbausteine der Startseite (Baukasten): Text, Text mit Bild, Bild, Video, Karte, Abstand.
+// Inhaltsbausteine (Baukasten): Text, Text mit Bild, Bild, Video, Karte, Abstand, Knopf, Zitat,
+// Trennlinie, Fragen und Antworten (aufklappbar ohne JavaScript) und Bildergalerie.
 // Video und Karte kommen von fremden Servern; sie laden erst, wenn die Besucherin zustimmt
 // (Cookie „externe-inhalte“). Bis dahin steht dort ein Hinweis mit Knopf, ganz ohne JavaScript.
 import { absaetze } from "../lib/format.js";
-import { mapUrls, videoEmbedUrl, type StoreBlock } from "../lib/design.js";
+import { buttonHref, isExternal, mapUrls, videoEmbedUrl, type StoreBlock } from "../lib/design.js";
 
 interface Props {
   block: Exclude<StoreBlock, { type: "hero" | "featured" | "categories" | "new" }>;
@@ -15,6 +16,7 @@ const { block: b, shop, extern } = Astro.props;
 const video = b.type === "video" ? videoEmbedUrl(b.provider, b.videoId) : undefined;
 const karte = b.type === "map" ? mapUrls(b.address) : undefined;
 const anbieter = b.type === "video" ? (b.provider === "youtube" ? "YouTube" : "Vimeo") : "Google Maps";
+const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
 ---
 
 {b.type === "text" && (
@@ -107,3 +109,54 @@ const anbieter = b.type === "video" ? (b.provider === "youtube" ? "YouTube" : "V
 )}
 
 {b.type === "spacer" && <div class:list={["baustein-abstand", `abstand-${b.size}`]} aria-hidden="true" />}
+
+{b.type === "button" && ziel !== undefined && (
+  <p class="baustein baustein-knopf">
+    <a
+      href={ziel}
+      class:list={["knopf", { "knopf-zweit": b.style === "secondary" }]}
+      target={isExternal(ziel) ? "_blank" : undefined}
+      rel={isExternal(ziel) ? "noopener noreferrer" : undefined}
+    >
+      {b.label}
+    </a>
+  </p>
+)}
+
+{b.type === "quote" && (
+  <figure class="baustein baustein-zitat">
+    <blockquote>
+      {absaetze(b.text).map((a) => (
+        <p>{a}</p>
+      ))}
+    </blockquote>
+    {b.author !== "" && <figcaption>{b.author}</figcaption>}
+  </figure>
+)}
+
+{b.type === "divider" && <hr class="baustein baustein-linie" />}
+
+{b.type === "faq" && (
+  <section class="baustein baustein-faq">
+    {b.heading !== "" && <h2>{b.heading}</h2>}
+    {b.items.map((i) => (
+      <details>
+        <summary>{i.question}</summary>
+        {absaetze(i.answer).map((a) => (
+          <p class="text">{a}</p>
+        ))}
+      </details>
+    ))}
+  </section>
+)}
+
+{b.type === "gallery" && (
+  <figure class="baustein baustein-galerie">
+    <div class:list={["galerie-raster", `galerie-${Math.min(b.images.length, 4)}`]}>
+      {b.images.map((i) => (
+        <img src={i.url} alt="" width={i.width} height={i.height} loading="lazy" />
+      ))}
+    </div>
+    {b.caption !== "" && <figcaption class="klein">{b.caption}</figcaption>}
+  </figure>
+)}

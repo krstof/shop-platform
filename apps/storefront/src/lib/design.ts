@@ -20,8 +20,10 @@ export interface StoreHome {
   readonly showCategories: boolean;
   /** „Neu im Shop“ zeigen; ältere API-Stände ohne (dann ja). */
   readonly showNew?: boolean;
-  /** Bausteine in Reihenfolge (Baukasten); ältere API-Stände ohne. */
+  /** Bausteine in Reihenfolge (Baukasten), nur ältere Arten; ältere API-Stände ohne. */
   readonly blocks?: readonly StoreBlock[];
+  /** Alle Bausteine (seit 14.11.2026); unbekannte Arten überspringt der Shop. */
+  readonly content?: readonly StoreBlock[];
 }
 
 export interface StoreBlockImage {
@@ -32,7 +34,21 @@ export interface StoreBlockImage {
 
 /** Baustein der Startseite, wie die Storefront-API ihn liefert. */
 export type StoreBlock =
-  | { readonly id: string; readonly type: "hero" | "featured" | "categories" | "new" }
+  | {
+      readonly id: string;
+      readonly type: "hero";
+      /** Ältere API-Stände ohne: dann gilt der Inhalt der Startseite. */
+      readonly title?: string;
+      readonly text?: string;
+      readonly image?: StoreBlockImage | null;
+    }
+  | {
+      readonly id: string;
+      readonly type: "featured";
+      readonly heading?: string;
+      readonly productIds?: readonly string[];
+    }
+  | { readonly id: string; readonly type: "categories" | "new"; readonly heading?: string }
   | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
   | {
       readonly id: string;
@@ -50,10 +66,55 @@ export type StoreBlock =
       readonly videoId: string;
     }
   | { readonly id: string; readonly type: "map"; readonly address: string }
-  | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" };
+  | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" }
+  | {
+      readonly id: string;
+      readonly type: "button";
+      readonly label: string;
+      readonly url: string;
+      readonly style: "primary" | "secondary";
+    }
+  | { readonly id: string; readonly type: "quote"; readonly text: string; readonly author: string }
+  | { readonly id: string; readonly type: "divider" }
+  | {
+      readonly id: string;
+      readonly type: "faq";
+      readonly heading: string;
+      readonly items: readonly { readonly question: string; readonly answer: string }[];
+    }
+  | {
+      readonly id: string;
+      readonly type: "gallery";
+      readonly images: readonly StoreBlockImage[];
+      readonly caption: string;
+    };
+
+/** Shop-Bereiche (Bühne, Empfehlungen, Neu im Shop, Kategorien): brauchen Produkte oder Kategorien. */
+export type StoreSection = Extract<StoreBlock, { type: "hero" | "featured" | "categories" | "new" }>;
+export function isSection(b: StoreBlock): b is StoreSection {
+  return b.type === "hero" || b.type === "featured" || b.type === "categories" || b.type === "new";
+}
+
+/** Ziel eines Knopfs: Pfade im Shop („/seite/x“) bekommen das Shop-Kürzel davor; sonst nur sichere Ziele. */
+export function buttonHref(url: string, shop: string): string | undefined {
+  if (/^\/[a-z0-9/_-]*$/i.test(url) && !url.startsWith("//")) return `/${shop}${url === "/" ? "" : url}`;
+  return safeLink(url);
+}
+
+/** Soziale Netzwerke in der Fußzeile (Reihenfolge = Reihenfolge im Shop). */
+export const SOCIAL_NETWORKS = ["instagram", "facebook", "tiktok", "youtube", "pinterest", "x"] as const;
+export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
+
+/** Schrift von Google Fonts (geladen über Bunny Fonts). */
+export interface WebFont {
+  readonly id: string;
+  readonly name: string;
+  readonly category: "serif" | "sans-serif" | "display" | "handwriting" | "monospace";
+}
 
 /** Bausteine; ohne Liste (ältere API) die frühere feste Reihenfolge. */
 export function startseitenBausteine(home: StoreHome): readonly StoreBlock[] {
+  if (home.content !== undefined) return home.content;
   if (home.blocks !== undefined) return home.blocks;
   return [
     { id: "buehne", type: "hero" },
@@ -87,6 +148,7 @@ export const EXTERN_COOKIE = "externe-inhalte";
 export interface StoreFooter {
   readonly text: string;
   readonly links: readonly { readonly label: string; readonly url: string }[];
+  readonly social?: Readonly<Partial<Record<string, string>>>;
 }
 
 export interface StoreDesign {
@@ -99,6 +161,10 @@ export interface StoreDesign {
   readonly footer: StoreFooter;
   /** Eigene Inhaltsseiten (ältere API-Stände ohne). */
   readonly pages?: readonly StorePageRef[];
+  /** Hintergrundfarbe (ältere API-Stände ohne: Creme). */
+  readonly backgroundColor?: string;
+  readonly headingFont?: WebFont | null;
+  readonly bodyFont?: WebFont | null;
 }
 
 /** Eintrag einer eigenen Seite im Aussehen (Inhalt kommt über /pages/{slug}). */
@@ -113,6 +179,8 @@ export interface StorePage {
   readonly title: string;
   readonly slug: string;
   readonly blocks: readonly StoreBlock[];
+  /** Alle Bausteine (seit 14.11.2026). */
+  readonly content?: readonly StoreBlock[];
 }
 
 /** Adresse einer Seite prüfen (gleiche Regel wie die API). */
@@ -173,15 +241,64 @@ function safeColor(value: string, fallback: string): string {
   return HEX.test(v) ? v : fallback;
 }
 
+const FALLBACK: Record<WebFont["category"], string> = {
+  serif: 'Georgia, "Times New Roman", serif',
+  "sans-serif": 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+  display: 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+  handwriting: "cursive",
+  monospace: "ui-monospace, Menlo, Consolas, monospace",
+};
+
+/** Schrift sicher prüfen (Name nur Buchstaben, Ziffern, Leerzeichen; Kennung nur a–z, 0–9, Bindestrich). */
+export function safeWebFont(f: WebFont | null | undefined): WebFont | undefined {
+  if (f === null || f === undefined) return undefined;
+  if (!/^[A-Za-z0-9 ]{1,60}$/.test(f.name) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(f.id)) return undefined;
+  return FALLBACK[f.category] === undefined ? undefined : f;
+}
+
+/** Adresse der Schriftdatei bei Bunny Fonts (Google Fonts ohne Tracking, EU) oder `undefined`. */
+export function webFontCssUrl(design: StoreDesign): string | undefined {
+  const fonts = [safeWebFont(design.headingFont), safeWebFont(design.bodyFont)].filter(
+    (f): f is WebFont => f !== undefined,
+  );
+  if (fonts.length === 0) return undefined;
+  const ids = [...new Set(fonts.map((f) => f.id))];
+  return `https://fonts.bunny.net/css?family=${ids.map((id) => `${id}:400,500,600,700`).join("|")}&display=swap`;
+}
+
+/** Farbe `a` um `anteil` (0–1) in Richtung `b` mischen. */
+function mix(a: string, b: string, anteil: number): string {
+  const ch = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [ch(a), ch(b)];
+  return `#${x
+    .map((v, i) =>
+      Math.round(v + ((y[i] ?? v) - v) * anteil)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
 /** CSS mit den Variablen des Shops. `:root:root` gewinnt sicher gegen die Standardwerte in shop.css. */
 export function designCss(design: StoreDesign): string {
   const fonts = FONT_STACKS[design.font] ?? FONT_STACKS.klassisch;
+  const titel = safeWebFont(design.headingFont);
+  const text = safeWebFont(design.bodyFont);
+  const grund = safeColor(design.backgroundColor ?? "", "#fbf8f3");
+  const eigenerGrund = grund !== "#fbf8f3";
   return [
     ":root:root {",
     `  --akzent: ${safeColor(design.accentColor, DEFAULT_DESIGN.accentColor)};`,
     `  --akzent-dunkel: ${safeColor(design.accentDarkColor, DEFAULT_DESIGN.accentDarkColor)};`,
-    `  --schrift-titel: ${fonts.titel};`,
-    `  --schrift-text: ${fonts.text};`,
+    `  --schrift-titel: ${titel ? `"${titel.name}", ${FALLBACK[titel.category]}` : fonts.titel};`,
+    `  --schrift-text: ${text ? `"${text.name}", ${FALLBACK[text.category]}` : fonts.text};`,
+    ...(eigenerGrund
+      ? [
+          `  --grund: ${grund};`,
+          `  --flaeche: ${mix(grund, "#26221e", 0.05)};`,
+          `  --linie: ${mix(grund, "#26221e", 0.12)};`,
+        ]
+      : []),
     "}",
     "",
   ].join("\n");
@@ -189,7 +306,16 @@ export function designCss(design: StoreDesign): string {
 
 /** Kurzer Fingerabdruck für die Adresse der CSS-Datei, damit der Browser Änderungen sofort holt. */
 export function designVersion(design: StoreDesign): string {
-  const s = `${design.accentColor}|${design.accentDarkColor}|${design.font}`;
+  const s = [
+    design.accentColor,
+    design.accentDarkColor,
+    design.font,
+    design.backgroundColor ?? "",
+    design.headingFont?.id ?? "",
+    design.headingFont?.name ?? "",
+    design.bodyFont?.id ?? "",
+    design.bodyFont?.name ?? "",
+  ].join("|");
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h.toString(36);

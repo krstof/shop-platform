@@ -2,7 +2,16 @@
 // Rahmen jeder Shop-Seite (M4): Kopf mit Shopname, Kategorien und Warenkorb, Fuß mit Preishinweis.
 import "../styles/shop.css";
 import type { StoreCategory, StoreShop } from "../lib/store-api.js";
-import { DEFAULT_DESIGN, designVersion, isExternal, safeLink, safePageSlug } from "../lib/design.js";
+import {
+  DEFAULT_DESIGN,
+  designVersion,
+  isExternal,
+  safeLink,
+  safePageSlug,
+  SOCIAL_NETWORKS,
+  webFontCssUrl,
+} from "../lib/design.js";
+import { siFacebook, siInstagram, siPinterest, siTiktok, siX, siYoutube } from "simple-icons";
 import { VERSAND_KOSTENLOS, versandText } from "../lib/format.js";
 
 interface Props {
@@ -22,6 +31,22 @@ const design = shop.design ?? DEFAULT_DESIGN;
 // Kopf- und Fußzeile (Shop-Editor Teil 3). Ältere Antworten ohne diese Felder: Standard.
 const slogan = design.tagline ?? "";
 const fussText = design.footer?.text ?? "";
+// Symbole der sozialen Netzwerke (simple-icons, CC0), nur https-Profile.
+const SYMBOLE = {
+  instagram: siInstagram,
+  facebook: siFacebook,
+  tiktok: siTiktok,
+  youtube: siYoutube,
+  pinterest: siPinterest,
+  x: siX,
+} as const;
+const sozial = SOCIAL_NETWORKS.flatMap((n) => {
+  const url = design.footer?.social?.[n];
+  return typeof url === "string" && /^https:\/\/[^\s<>"]+$/i.test(url)
+    ? [{ name: SYMBOLE[n].title, url, path: SYMBOLE[n].path }]
+    : [];
+});
+const schriften = webFontCssUrl(design);
 // Eigene Seiten (Baukasten Teil 3) zuerst, danach die frei eingetragenen Links.
 const fussLinks = [
   ...(design.pages ?? [])
@@ -43,6 +68,7 @@ const fussLinks = [
     <meta name="description" content={beschreibung} />
     <title>{titel === shop.name ? titel : `${titel} – ${shop.name}`}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {schriften !== undefined && <link rel="stylesheet" href={schriften} />}
     <link rel="stylesheet" href={`${basis}/design.css?v=${designVersion(design)}`} />
   </head>
   <body>
@@ -110,6 +136,25 @@ const fussLinks = [
         <div>
           <p class="logo">{shop.name}</p>
           {fussText !== "" && <p class="fuss-text">{fussText}</p>}
+          {sozial.length > 0 && (
+            <ul class="fuss-sozial" aria-label="Soziale Netzwerke">
+              {sozial.map((n) => (
+                <li>
+                  <a
+                    href={n.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={n.name}
+                    title={n.name}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d={n.path} />
+                    </svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         {fussLinks.length > 0 && (
           <nav aria-label="Weitere Links">

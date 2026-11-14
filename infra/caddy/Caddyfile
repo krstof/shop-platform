@@ -120,7 +120,7 @@ admin.{$SHOP_DOMAIN} {
 	handle {
 		import security_headers
 		header {
-			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://media.{$SHOP_DOMAIN}; connect-src 'self'; font-src 'self'; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.bunny.net; img-src 'self' blob: https://media.{$SHOP_DOMAIN}; connect-src 'self'; font-src 'self' https://fonts.bunny.net; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 			Cross-Origin-Resource-Policy "same-origin"
 		}
 		request_body {
@@ -140,7 +140,7 @@ shop.{$SHOP_DOMAIN} {
 	import guard
 	import security_headers
 	header {
-		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' https://media.{$SHOP_DOMAIN}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+		Content-Security-Policy "default-src 'none'; style-src 'self' https://fonts.bunny.net; font-src https://fonts.bunny.net; img-src 'self' https://media.{$SHOP_DOMAIN}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 		Cross-Origin-Resource-Policy "same-origin"
 	}
 	request_body {
