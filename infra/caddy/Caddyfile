@@ -140,7 +140,7 @@ shop.{$SHOP_DOMAIN} {
 	import guard
 	import security_headers
 	header {
-		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' https://media.{$SHOP_DOMAIN}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self' https://media.{$SHOP_DOMAIN}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 		Cross-Origin-Resource-Policy "same-origin"
 	}
 	request_body {

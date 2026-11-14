@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DESIGN, designCss, designVersion, isExternal, safeLink } from "./design.js";
+import {
+  DEFAULT_DESIGN,
+  DEFAULT_HOME,
+  designCss,
+  designVersion,
+  isExternal,
+  mapUrls,
+  safeLink,
+  startseitenBausteine,
+  videoEmbedUrl,
+} from "./design.js";
 
 describe("Aussehen in der Storefront", () => {
   it("schreibt Farbe und Schrift als CSS-Variablen", () => {
@@ -44,5 +54,25 @@ describe("Links im Fuß (Shop-Editor Teil 3)", () => {
     expect(safeLink("//evil.example")).toBeUndefined();
     expect(isExternal("https://a.example")).toBe(true);
     expect(isExternal("mailto:a@b.example")).toBe(false);
+  });
+
+  it("baut Video- und Kartenadressen nur aus geprüften Teilen", () => {
+    expect(videoEmbedUrl("youtube", "dQw4w9WgXcQ")).toBe(
+      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+    );
+    expect(videoEmbedUrl("vimeo", "76979871")).toBe("https://player.vimeo.com/video/76979871?dnt=1");
+    expect(videoEmbedUrl("youtube", '"><script>')).toBeUndefined();
+    expect(mapUrls("Teeweg 1 & Co, Hamburg").embed).toBe(
+      "https://www.google.com/maps?q=Teeweg%201%20%26%20Co%2C%20Hamburg&output=embed",
+    );
+  });
+
+  it("leitet ohne Bausteine die alte Reihenfolge ab", () => {
+    expect(startseitenBausteine({ ...DEFAULT_HOME, showNew: false }).map((b) => b.type)).toEqual([
+      "hero",
+      "featured",
+      "categories",
+    ]);
+    expect(startseitenBausteine({ ...DEFAULT_HOME, blocks: [] })).toEqual([]);
   });
 });

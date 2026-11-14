@@ -52,6 +52,7 @@ describe("Aussehen: Rechenregeln", () => {
         featuredProductIds: ["0190a3c4-0000-7000-8000-000000000003"],
         showCategories: false,
         showNew: false,
+        blocks: [{ id: "b1", type: "text", heading: "Hallo", text: "Welt" }],
       },
       tagline: "Tee mit Herz",
       footer: { text: "Mo–Fr", links: [{ label: "Kontakt", url: "mailto:a@b.example" }] },

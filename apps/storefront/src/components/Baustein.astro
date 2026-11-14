@@ -1,0 +1,109 @@
+---
+// Inhaltsbausteine der Startseite (Baukasten): Text, Text mit Bild, Bild, Video, Karte, Abstand.
+// Video und Karte kommen von fremden Servern; sie laden erst, wenn die Besucherin zustimmt
+// (Cookie „externe-inhalte“). Bis dahin steht dort ein Hinweis mit Knopf, ganz ohne JavaScript.
+import { absaetze } from "../lib/format.js";
+import { mapUrls, videoEmbedUrl, type StoreBlock } from "../lib/design.js";
+
+interface Props {
+  block: Exclude<StoreBlock, { type: "hero" | "featured" | "categories" | "new" }>;
+  shop: string;
+  /** Hat die Besucherin externe Inhalte erlaubt? */
+  extern: boolean;
+}
+const { block: b, shop, extern } = Astro.props;
+const video = b.type === "video" ? videoEmbedUrl(b.provider, b.videoId) : undefined;
+const karte = b.type === "map" ? mapUrls(b.address) : undefined;
+const anbieter = b.type === "video" ? (b.provider === "youtube" ? "YouTube" : "Vimeo") : "Google Maps";
+---
+
+{b.type === "text" && (
+  <section class="baustein baustein-text">
+    {b.heading !== "" && <h2>{b.heading}</h2>}
+    {absaetze(b.text).map((a) => (
+      <p class="text">{a}</p>
+    ))}
+  </section>
+)}
+
+{b.type === "textImage" && (
+  <section class:list={["baustein", "baustein-textbild", { "bild-links": b.imageSide === "left" }]}>
+    <div class="textbild-text">
+      {b.heading !== "" && <h2>{b.heading}</h2>}
+      {absaetze(b.text).map((a) => (
+        <p class="text">{a}</p>
+      ))}
+    </div>
+    {b.image !== null && (
+      <img
+        class="textbild-bild"
+        src={b.image.url}
+        alt=""
+        width={b.image.width}
+        height={b.image.height}
+        loading="lazy"
+      />
+    )}
+  </section>
+)}
+
+{b.type === "image" && (
+  <figure class="baustein baustein-bild">
+    <img src={b.image.url} alt={b.caption} width={b.image.width} height={b.image.height} loading="lazy" />
+    {b.caption !== "" && <figcaption class="klein">{b.caption}</figcaption>}
+  </figure>
+)}
+
+{(b.type === "video" || b.type === "map") && (
+  <section class="baustein baustein-extern">
+    {extern && video !== undefined && (
+      <div class="einbettung video">
+        <iframe
+          src={video}
+          title="Video"
+          loading="lazy"
+          allow="encrypted-media; picture-in-picture; fullscreen"
+          referrerpolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+        />
+      </div>
+    )}
+    {extern && karte !== undefined && (
+      <>
+        <div class="einbettung karte">
+          <iframe
+            src={karte.embed}
+            title={`Karte: ${b.type === "map" ? b.address : ""}`}
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            sandbox="allow-scripts allow-same-origin allow-popups"
+          />
+        </div>
+        <p class="klein">
+          <a href={karte.link} target="_blank" rel="noopener noreferrer">
+            In Google Maps öffnen
+          </a>
+        </p>
+      </>
+    )}
+    {!extern && (
+      <div class="extern-hinweis">
+        <p>
+          <strong>{b.type === "video" ? "Video" : `Karte: ${b.type === "map" ? b.address : ""}`}</strong>
+        </p>
+        <p class="klein">
+          Hier ist Inhalt von {anbieter} eingebunden. Beim Anzeigen erhält {anbieter} Daten wie deine
+          IP-Adresse.
+        </p>
+        <form method="post" action={`/${shop}/externe-inhalte`}>
+          <input type="hidden" name="zurueck" value={Astro.url.pathname} />
+          <button type="submit" class="knopf-klein">
+            Externe Inhalte anzeigen
+          </button>
+        </form>
+      </div>
+    )}
+  </section>
+)}
+
+{b.type === "spacer" && <div class:list={["baustein-abstand", `abstand-${b.size}`]} aria-hidden="true" />}

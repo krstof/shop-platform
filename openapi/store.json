@@ -1927,6 +1927,248 @@
         "additionalProperties": false,
         "description": "Standardversand: Pauschale und Grenze für kostenlosen Versand."
       },
+      "StoreBlock": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "hero",
+                  "featured",
+                  "categories",
+                  "new"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "heading": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "heading",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "textImage"
+              },
+              "heading": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "image": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "height": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "url",
+                      "width",
+                      "height"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "imageSide": {
+                "type": "string",
+                "enum": [
+                  "left",
+                  "right"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "heading",
+              "text",
+              "image",
+              "imageSide"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "image"
+              },
+              "image": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              "caption": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "image",
+              "caption"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "video"
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "youtube",
+                  "vimeo"
+                ]
+              },
+              "videoId": {
+                "type": "string",
+                "description": "Kennung beim Anbieter; die Einbettung baut die Storefront."
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "provider",
+              "videoId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "map"
+              },
+              "address": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "address"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "spacer"
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "s",
+                  "m",
+                  "l"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "size"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "description": "Baustein der Startseite."
+      },
       "StoreCart": {
         "type": "object",
         "properties": {
@@ -2235,6 +2477,13 @@
           },
           "showNew": {
             "type": "boolean"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreBlock"
+            },
+            "description": "Bausteine in Reihenfolge, fertig zum Anzeigen (ältere Shops: aus den Schaltern abgeleitet). Leere Video-, Karten- und Bildbausteine fehlen."
           }
         },
         "required": [
@@ -2243,7 +2492,8 @@
           "heroText",
           "featuredProductIds",
           "showCategories",
-          "showNew"
+          "showNew",
+          "blocks"
         ],
         "additionalProperties": false,
         "description": "Inhalt der Startseite."

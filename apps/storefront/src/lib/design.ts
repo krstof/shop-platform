@@ -20,7 +20,68 @@ export interface StoreHome {
   readonly showCategories: boolean;
   /** „Neu im Shop“ zeigen; ältere API-Stände ohne (dann ja). */
   readonly showNew?: boolean;
+  /** Bausteine in Reihenfolge (Baukasten); ältere API-Stände ohne. */
+  readonly blocks?: readonly StoreBlock[];
 }
+
+export interface StoreBlockImage {
+  readonly url: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Baustein der Startseite, wie die Storefront-API ihn liefert. */
+export type StoreBlock =
+  | { readonly id: string; readonly type: "hero" | "featured" | "categories" | "new" }
+  | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
+  | {
+      readonly id: string;
+      readonly type: "textImage";
+      readonly heading: string;
+      readonly text: string;
+      readonly image: StoreBlockImage | null;
+      readonly imageSide: "left" | "right";
+    }
+  | { readonly id: string; readonly type: "image"; readonly image: StoreBlockImage; readonly caption: string }
+  | {
+      readonly id: string;
+      readonly type: "video";
+      readonly provider: "youtube" | "vimeo";
+      readonly videoId: string;
+    }
+  | { readonly id: string; readonly type: "map"; readonly address: string }
+  | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" };
+
+/** Bausteine; ohne Liste (ältere API) die frühere feste Reihenfolge. */
+export function startseitenBausteine(home: StoreHome): readonly StoreBlock[] {
+  if (home.blocks !== undefined) return home.blocks;
+  return [
+    { id: "buehne", type: "hero" },
+    { id: "empfohlen", type: "featured" },
+    ...(home.showNew === false ? [] : [{ id: "neu", type: "new" } as const]),
+    ...(home.showCategories ? [{ id: "kategorien", type: "categories" } as const] : []),
+  ];
+}
+
+/** Einbettung für Videos: wir bauen die Adresse selbst (nur bekannte Anbieter, datensparsam). */
+export function videoEmbedUrl(provider: "youtube" | "vimeo", id: string): string | undefined {
+  if (provider === "youtube" && /^[A-Za-z0-9_-]{11}$/.test(id))
+    return `https://www.youtube-nocookie.com/embed/${id}`;
+  if (provider === "vimeo" && /^\d{6,12}$/.test(id)) return `https://player.vimeo.com/video/${id}?dnt=1`;
+  return undefined;
+}
+
+/** Karte von Google Maps zu einer Adresse (Einbettung und Link). */
+export function mapUrls(address: string): { embed: string; link: string } {
+  const q = encodeURIComponent(address.trim().slice(0, 200));
+  return {
+    embed: `https://www.google.com/maps?q=${q}&output=embed`,
+    link: `https://www.google.com/maps/search/?api=1&query=${q}`,
+  };
+}
+
+/** Cookie, mit dem eine Besucherin externe Inhalte (Video, Karte) erlaubt hat. */
+export const EXTERN_COOKIE = "externe-inhalte";
 
 /** Kopf- und Fußzeile (Shop-Editor Teil 3). */
 export interface StoreFooter {

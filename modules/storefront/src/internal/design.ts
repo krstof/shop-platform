@@ -3,6 +3,7 @@
 // Datenbank, damit sie einzeln getestet werden können. Gespeichert wird als JSON in
 // storefront.theme_installation (settings_draft und settings_published).
 import { z } from "zod";
+import { blockImages, readBlocks, type Block } from "./blocks.js";
 
 /** Schriftarten: nur Systemschriften, keine Dienste von außen (Stil „schlicht“, 29.10.2026). */
 export const FONTS = ["klassisch", "modern", "freundlich"] as const;
@@ -30,6 +31,8 @@ export interface HomeSettings {
   readonly showCategories: boolean;
   /** Abschnitt „Neu im Shop“ mit den vier neuesten Produkten. */
   readonly showNew: boolean;
+  /** Bausteine in Reihenfolge (Baukasten); `null` = alte feste Reihenfolge aus den Schaltern. */
+  readonly blocks: readonly Block[] | null;
 }
 
 /** Kopf- und Fußzeile (Teil 3). */
@@ -74,6 +77,7 @@ export const DEFAULT_HOME: HomeSettings = {
   featuredProductIds: [],
   showCategories: true,
   showNew: true,
+  blocks: null,
 };
 
 export const DEFAULT_FOOTER: FooterSettings = { text: "", links: [] };
@@ -101,8 +105,9 @@ const stored = z.object({
       featuredProductIds: z.array(z.uuid()).max(MAX_FEATURED).catch([]),
       showCategories: z.boolean().catch(true),
       showNew: z.boolean().catch(true),
+      blocks: z.unknown().optional().transform(readBlocks),
     })
-    .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [] })),
+    .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [], blocks: null })),
   tagline: z.string().max(MAX_TAGLINE).catch(""),
   footer: z
     .object({
@@ -136,6 +141,7 @@ export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
     a.home.heroText === b.home.heroText &&
     a.home.showCategories === b.home.showCategories &&
     a.home.showNew === b.home.showNew &&
+    JSON.stringify(a.home.blocks) === JSON.stringify(b.home.blocks) &&
     a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",") &&
     a.tagline === b.tagline &&
     a.footer.text === b.footer.text &&
@@ -145,7 +151,9 @@ export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
 
 /** Alle Bilder (Logo, Startseitenbild), die ein Stand benutzt. */
 export function imagesOf(s: DesignSettings): string[] {
-  return [s.logoImageId, s.home.heroImageId].filter((x): x is string => x !== null);
+  return [s.logoImageId, s.home.heroImageId, ...blockImages(s.home.blocks)].filter(
+    (x): x is string => x !== null,
+  );
 }
 
 /** `#AbC123` → `#abc123`; `undefined`, wenn es keine Farbe in dieser Form ist. */

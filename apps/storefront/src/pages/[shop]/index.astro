@@ -5,7 +5,8 @@
 import Shop from "../../layouts/Shop.astro";
 import Produktkarte from "../../components/Produktkarte.astro";
 import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
-import { DEFAULT_HOME } from "../../lib/design.js";
+import { DEFAULT_HOME, EXTERN_COOKIE, startseitenBausteine } from "../../lib/design.js";
+import Baustein from "../../components/Baustein.astro";
 import { warenkorbAnzahl } from "../../lib/cart.js";
 import Sortierung from "../../components/Sortierung.astro";
 import { sortierung } from "../../lib/sortierung.js";
@@ -30,81 +31,102 @@ const empfohlen = home.featuredProductIds
 
 const titel = home.heroTitle !== "" ? home.heroTitle : `Willkommen bei ${shop.name}`;
 const text = home.heroText !== "" ? home.heroText : "Schön, dass du da bist. Stöbere durch unser Sortiment.";
-const sichtbareKategorien = home.showCategories ? categories : [];
+const bausteine = startseitenBausteine(home);
+const zeigt = (t: string) => bausteine.some((b) => b.type === t);
+const sichtbareKategorien = zeigt("categories") ? categories : [];
+const extern = Astro.cookies.get(EXTERN_COOKIE)?.value === "ja";
 // „Neu im Shop“: die vier neuesten lieferbaren Produkte (eigene Abfrage, unabhängig von der Sortierung unten).
-const neu =
-  home.showNew === false
-    ? []
-    : (
-        await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
-      ).data.slice(0, 4);
+const neu = !zeigt("new")
+  ? []
+  : (
+      await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
+    ).data.slice(0, 4);
 ---
 
 <Shop shop={shop} categories={categories} titel={shop.name} korb={korb}>
-  <section class:list={["buehne", { "buehne-bild": home.heroImage !== null }]} aria-labelledby="willkommen">
-    {home.heroImage !== null && (
-      <img
-        class="buehne-foto"
-        src={home.heroImage.url}
-        alt=""
-        width={home.heroImage.width}
-        height={home.heroImage.height}
-        fetchpriority="high"
-      />
-    )}
-    <div class="buehne-text">
-      <h1 id="willkommen">{titel}</h1>
-      <p>{text}</p>
-    </div>
-  </section>
-
-  {empfohlen.length > 0 && (
-    <section aria-labelledby="empfohlen">
-      <h2 id="empfohlen">Empfohlen</h2>
-      <ul class="raster">
-        {empfohlen.map((p) => (
-          <Produktkarte produkt={p} shop={shop.handle} />
-        ))}
-      </ul>
-    </section>
-  )}
-
-  {neu.length > 1 && (
-    <section aria-labelledby="neu-titel">
-      <h2 id="neu-titel">Neu im Shop</h2>
-      <ul class="raster">
-        {neu.map((p) => (
-          <Produktkarte produkt={p} shop={shop.handle} />
-        ))}
-      </ul>
-    </section>
-  )}
-
-  {sichtbareKategorien.length > 0 && (
-    <section aria-labelledby="kategorien-titel">
-      <h2 id="kategorien-titel">Kategorien</h2>
-      <ul class="kategorien">
-        {sichtbareKategorien.map((k) => (
-          <li>
-            <a href={`/${shop.handle}/kategorie/${k.slug}`} class:list={{ "mit-bild": k.image != null }}>
-              {k.image != null && (
-                <img
-                  class="kachel-bild"
-                  src={k.image.thumbnailUrl}
-                  alt=""
-                  width="400"
-                  height="300"
-                  loading="lazy"
-                />
-              )}
-              <strong>{k.name}</strong>
-              {k.description && <span class="klein">{k.description}</span>}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )}
+  {!zeigt("hero") && <h1 class="unsichtbar">{shop.name}</h1>}
+  {bausteine.map((b) => {
+    if (b.type === "hero")
+      return (
+        <section
+          class:list={["buehne", { "buehne-bild": home.heroImage !== null }]}
+          aria-labelledby="willkommen"
+        >
+          {home.heroImage !== null && (
+            <img
+              class="buehne-foto"
+              src={home.heroImage.url}
+              alt=""
+              width={home.heroImage.width}
+              height={home.heroImage.height}
+              fetchpriority="high"
+            />
+          )}
+          <div class="buehne-text">
+            <h1 id="willkommen">{titel}</h1>
+            <p>{text}</p>
+          </div>
+        </section>
+      );
+    if (b.type === "featured")
+      return (
+        empfohlen.length > 0 && (
+          <section aria-labelledby="empfohlen">
+            <h2 id="empfohlen">Empfohlen</h2>
+            <ul class="raster">
+              {empfohlen.map((p) => (
+                <Produktkarte produkt={p} shop={shop.handle} />
+              ))}
+            </ul>
+          </section>
+        )
+      );
+    if (b.type === "new")
+      return (
+        neu.length > 1 && (
+          <section aria-labelledby="neu-titel">
+            <h2 id="neu-titel">Neu im Shop</h2>
+            <ul class="raster">
+              {neu.map((p) => (
+                <Produktkarte produkt={p} shop={shop.handle} />
+              ))}
+            </ul>
+          </section>
+        )
+      );
+    if (b.type === "categories")
+      return (
+        sichtbareKategorien.length > 0 && (
+          <section aria-labelledby="kategorien-titel">
+            <h2 id="kategorien-titel">Kategorien</h2>
+            <ul class="kategorien">
+              {sichtbareKategorien.map((k) => (
+                <li>
+                  <a
+                    href={`/${shop.handle}/kategorie/${k.slug}`}
+                    class:list={{ "mit-bild": k.image != null }}
+                  >
+                    {k.image != null && (
+                      <img
+                        class="kachel-bild"
+                        src={k.image.thumbnailUrl}
+                        alt=""
+                        width="400"
+                        height="300"
+                        loading="lazy"
+                      />
+                    )}
+                    <strong>{k.name}</strong>
+                    {k.description && <span class="klein">{k.description}</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      );
+    return <Baustein block={b} shop={shop.handle} extern={extern} />;
+  })}
 
   <h2 id="alle">Alle Produkte</h2>
   {(produkte.length > 1 || verfuegbar) && (

@@ -3895,6 +3895,193 @@
         ]
       }
     },
+    "/admin/v1/design/images": {
+      "post": {
+        "operationId": "uploadDesignImage",
+        "summary": "Bild für einen Baustein hochladen",
+        "description": "Lädt ein Bild für einen Baustein der Startseite hoch (PNG, JPEG oder WebP als Base64, höchstens 8 MB). Die Antwort nennt die Bild-ID; sie gilt erst, wenn ein Baustein im Entwurf sie benutzt.",
+        "tags": [
+          "Aussehen"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "maxLength": 11184812,
+                    "format": "base64",
+                    "contentEncoding": "base64",
+                    "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
+                    "description": "Logo als Base64 (PNG, JPEG oder WebP, höchstens 8 MB, kein SVG)."
+                  },
+                  "filename": {
+                    "description": "Ursprünglicher Dateiname, nur zur Info.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "data"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "data": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAA1BMVEV6mluJCzqwAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQ4y2NgGAWjYBSMAuwAAAQgAAFWu83mAAAAAElFTkSuQmCC",
+                "filename": "laden.png"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Das hochgeladene Bild.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignImage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 12 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "settings:write"
+        ]
+      }
+    },
     "/admin/v1/design/logo": {
       "post": {
         "operationId": "uploadDesignLogo",
@@ -9845,6 +10032,238 @@
           "showNew": {
             "type": "boolean",
             "description": "Abschnitt „Neu im Shop“ mit den vier neuesten Produkten zeigen."
+          },
+          "blocks": {
+            "anyOf": [
+              {
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "hero",
+                            "featured",
+                            "categories",
+                            "new"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "text"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 3000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "textImage"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 3000
+                        },
+                        "imageId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "imageSide": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "text",
+                        "imageId",
+                        "imageSide"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "image"
+                        },
+                        "imageId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "imageId",
+                        "caption"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "video"
+                        },
+                        "url": {
+                          "type": "string",
+                          "maxLength": 300
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "map"
+                        },
+                        "address": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "address"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "spacer"
+                        },
+                        "size": {
+                          "type": "string",
+                          "enum": [
+                            "s",
+                            "m",
+                            "l"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "size"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge."
+          },
+          "blockImages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesignImage"
+            },
+            "description": "Die Bilder, die die Bausteine benutzen (für Vorschaubilder im Editor)."
           }
         },
         "required": [
@@ -9853,7 +10272,9 @@
           "heroText",
           "featuredProductIds",
           "showCategories",
-          "showNew"
+          "showNew",
+          "blocks",
+          "blockImages"
         ],
         "additionalProperties": false,
         "description": "Startseite: Bild mit Überschrift und Text, Empfehlungen, Kategorien."
@@ -9918,6 +10339,231 @@
           "showNew": {
             "description": "Fehlt es, bleibt der bisherige Wert.",
             "type": "boolean"
+          },
+          "blocks": {
+            "description": "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new (je höchstens einmal) sowie text, textImage, image, video (YouTube/Vimeo), map (Adresse) und spacer. Fehlt das Feld, bleiben sie.",
+            "anyOf": [
+              {
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "hero",
+                            "featured",
+                            "categories",
+                            "new"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "text"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 3000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "textImage"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 3000
+                        },
+                        "imageId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "imageSide": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "right"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "text",
+                        "imageId",
+                        "imageSide"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "image"
+                        },
+                        "imageId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "imageId",
+                        "caption"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "video"
+                        },
+                        "url": {
+                          "type": "string",
+                          "maxLength": 300
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "map"
+                        },
+                        "address": {
+                          "type": "string",
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "address"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "spacer"
+                        },
+                        "size": {
+                          "type": "string",
+                          "enum": [
+                            "s",
+                            "m",
+                            "l"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "size"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

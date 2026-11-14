@@ -922,3 +922,82 @@ form.gutschein:has(.knopf-leise) {
   gap: 0.35rem;
   font-size: 0.95rem;
 }
+
+/* --- Bausteine der Startseite (Baukasten) --- */
+.baustein {
+  margin: 2.5rem 0;
+}
+.baustein-text {
+  max-width: 46rem;
+}
+.baustein-textbild {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+@media (min-width: 48rem) {
+  .baustein-textbild {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3rem;
+  }
+  .baustein-textbild.bild-links .textbild-bild {
+    order: -1;
+  }
+}
+.textbild-bild,
+.baustein-bild img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.baustein-bild {
+  margin-left: 0;
+  margin-right: 0;
+}
+.baustein-bild figcaption {
+  margin-top: 0.5rem;
+}
+.einbettung {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--flaeche);
+}
+.einbettung.video {
+  aspect-ratio: 16 / 9;
+}
+.einbettung.karte {
+  aspect-ratio: 16 / 7;
+  min-height: 16rem;
+}
+.einbettung iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.extern-hinweis {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding: 2rem 1.5rem;
+  border: 1px dashed var(--linie);
+  border-radius: 8px;
+  background: var(--flaeche);
+}
+.extern-hinweis p {
+  margin: 0;
+  max-width: 36rem;
+}
+.baustein-abstand.abstand-s {
+  height: 1rem;
+}
+.baustein-abstand.abstand-m {
+  height: 3rem;
+}
+.baustein-abstand.abstand-l {
+  height: 6rem;
+}

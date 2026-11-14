@@ -147,6 +147,12 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
         featuredProductIds: [],
         showCategories: true,
         showNew: true,
+        blocks: [
+          { id: "buehne", type: "hero" },
+          { id: "empfohlen", type: "featured" },
+          { id: "neu", type: "new" },
+          { id: "kategorien", type: "categories" },
+        ],
       },
       tagline: "",
       footer: { text: "", links: [] },
@@ -263,6 +269,8 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       featuredProductIds: [],
       showCategories: true,
       showNew: true,
+      blocks: null,
+      blockImages: [],
     });
 
     const featured = [uuidv7(), uuidv7()];
@@ -321,6 +329,12 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       featuredProductIds: [],
       showCategories: true,
       showNew: true,
+      blocks: [
+        { id: "buehne", type: "hero" },
+        { id: "empfohlen", type: "featured" },
+        { id: "neu", type: "new" },
+        { id: "kategorien", type: "categories" },
+      ],
     });
     return heroId;
   });
@@ -465,5 +479,106 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       text: "",
       links: [],
     });
+  });
+  it("Baukasten: Bausteine speichern, prüfen, veröffentlichen; Bilder werden aufgeräumt", async () => {
+    const has = (id: string) => [...storage.objects.keys()].some((k) => k.includes(id));
+    const up = await call("POST", "/admin/v1/design/images", "a", { data: await logo() });
+    expect(up.statusCode).toBe(201);
+    const imageId = up.json().id as string;
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    const base = {
+      accentColor: "#3f6b4a",
+      font: "klassisch",
+      logoImageId: null,
+      home: {
+        heroImageId: null,
+        heroTitle: "",
+        heroText: "",
+        featuredProductIds: [],
+        showCategories: true,
+      },
+    };
+    const blocks = [
+      { id: "t1", type: "text", heading: "Über uns", text: "Seit 1998.\nMit Herz." },
+      { id: "h1", type: "hero" },
+      {
+        id: "ti",
+        type: "textImage",
+        heading: "Der Laden",
+        text: "Komm vorbei.",
+        imageId,
+        imageSide: "right",
+      },
+      { id: "v1", type: "video", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+      { id: "v2", type: "video", url: "" },
+      { id: "m1", type: "map", address: "Teeweg 1, 20095 Hamburg" },
+      { id: "s1", type: "spacer", size: "l" },
+    ];
+    const bad = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        ...base,
+        home: { ...base.home, blocks: [{ id: "x", type: "video", url: "https://evil.example/v" }] },
+      },
+      start.version,
+    );
+    expect(bad.statusCode).toBe(422);
+    const foreign = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        ...base,
+        home: { ...base.home, blocks: [{ id: "x", type: "image", imageId: uuidv7(), caption: "" }] },
+      },
+      start.version,
+    );
+    expect(foreign.statusCode).toBe(422);
+    expect(foreign.json().errors[0].path).toBe("/home/blocks/0/imageId");
+    const saved = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      { ...base, home: { ...base.home, blocks } },
+      start.version,
+    );
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().draft.home.blocks.map((b: { id: string }) => b.id)).toEqual(blocks.map((b) => b.id));
+    expect(saved.json().draft.home.blockImages.map((i: { id: string }) => i.id)).toEqual([imageId]);
+    // Ohne `blocks` im nächsten Speichern bleiben sie erhalten.
+    const kept = await call("PUT", "/admin/v1/design/draft", "a", base, saved.json().version);
+    expect(kept.json().draft.home.blocks).toHaveLength(blocks.length);
+    expect((await call("POST", "/admin/v1/design/publish", "a")).statusCode).toBe(200);
+    const store = (await call("GET", "/store/v1/shops/design-a/design")).json().home.blocks;
+    expect(store.map((b: { type: string }) => b.type)).toEqual([
+      "text",
+      "hero",
+      "textImage",
+      "video",
+      "map",
+      "spacer",
+    ]);
+    expect(store[2].image.url).toContain(imageId);
+    expect(store[3]).toEqual({ id: "v1", type: "video", provider: "youtube", videoId: "dQw4w9WgXcQ" });
+    // Bild aus dem Baustein entfernen und veröffentlichen: Dateien sind weg.
+    const next = (await call("GET", "/admin/v1/design", "a")).json();
+    const without = blocks.filter((b) => b.id !== "ti");
+    await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      { ...base, home: { ...base.home, blocks: without } },
+      next.version,
+    );
+    expect(has(imageId)).toBe(true); // noch veröffentlicht
+    await call("POST", "/admin/v1/design/publish", "a");
+    expect(has(imageId)).toBe(false);
+    expect(
+      (await call("GET", "/store/v1/shops/design-b/design"))
+        .json()
+        .home.blocks.map((b: { type: string }) => b.type),
+    ).toEqual(["hero", "featured", "new", "categories"]);
   });
 });

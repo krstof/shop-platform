@@ -1,0 +1,22 @@
+---
+// Zustimmung zu externen Inhalten (Video, Karte): setzt ein Cookie für diesen Shop und leitet
+// zurück. Nur POST; das Ziel muss im eigenen Shop liegen (keine offene Weiterleitung).
+import { EXTERN_COOKIE } from "../../lib/design.js";
+import { safeHandle } from "../../lib/store-api.js";
+
+const handle = safeHandle(Astro.params.shop);
+if (handle === undefined) return Astro.rewrite("/404");
+const basis = `/${handle}`;
+if (Astro.request.method !== "POST") return Astro.redirect(basis, 303);
+const form = await Astro.request.formData();
+const zurueck = String(form.get("zurueck") ?? "");
+const ziel = zurueck === basis || /^\/[a-z0-9-]+\/[a-z0-9/-]*$/.test(zurueck) ? zurueck : basis;
+Astro.cookies.set(EXTERN_COOKIE, "ja", {
+  path: basis,
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax",
+  maxAge: 60 * 60 * 24 * 90,
+});
+return Astro.redirect(ziel.startsWith(`${basis}/`) || ziel === basis ? ziel : basis, 303);
+---

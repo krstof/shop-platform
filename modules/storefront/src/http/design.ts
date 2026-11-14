@@ -11,6 +11,7 @@ import {
   type Database,
 } from "@shop/kernel";
 import { z } from "zod";
+import { blocksSchema, blockImages, legacyBlocks, parseVideoUrl, type Block } from "../internal/blocks.js";
 import type { DB } from "../db.generated.js";
 import {
   darker,
@@ -120,6 +121,12 @@ const homeViewSchema = z
     showNew: z
       .boolean()
       .meta({ description: "Abschnitt „Neu im Shop“ mit den vier neuesten Produkten zeigen." }),
+    blocks: blocksSchema
+      .nullable()
+      .meta({ description: "Bausteine in Reihenfolge (Baukasten); null = alte feste Reihenfolge." }),
+    blockImages: z
+      .array(imageSchema)
+      .meta({ description: "Die Bilder, die die Bausteine benutzen (für Vorschaubilder im Editor)." }),
   })
   .meta({
     id: "DesignHome",
@@ -179,6 +186,14 @@ const homeInput = z
       .meta({ description: `Bis zu ${MAX_FEATURED} Produkt-IDs, in der gewünschten Reihenfolge.` }),
     showCategories: z.boolean(),
     showNew: z.boolean().optional().meta({ description: "Fehlt es, bleibt der bisherige Wert." }),
+    blocks: blocksSchema
+      .nullable()
+      .optional()
+      .meta({
+        description:
+          "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new (je höchstens einmal) sowie " +
+          "text, textImage, image, video (YouTube/Vimeo), map (Adresse) und spacer. Fehlt das Feld, bleiben sie.",
+      }),
   })
   .meta({ id: "DesignHomeInput" });
 
@@ -235,6 +250,30 @@ const logoInput = z.strictObject({
 
 const storeImageSchema = z.object({ url: z.url(), width: z.number().int(), height: z.number().int() });
 
+const storeBlockSchema = z
+  .discriminatedUnion("type", [
+    z.object({ id: z.string(), type: z.enum(["hero", "featured", "categories", "new"]) }),
+    z.object({ id: z.string(), type: z.literal("text"), heading: z.string(), text: z.string() }),
+    z.object({
+      id: z.string(),
+      type: z.literal("textImage"),
+      heading: z.string(),
+      text: z.string(),
+      image: storeImageSchema.nullable(),
+      imageSide: z.enum(["left", "right"]),
+    }),
+    z.object({ id: z.string(), type: z.literal("image"), image: storeImageSchema, caption: z.string() }),
+    z.object({
+      id: z.string(),
+      type: z.literal("video"),
+      provider: z.enum(["youtube", "vimeo"]),
+      videoId: z.string().meta({ description: "Kennung beim Anbieter; die Einbettung baut die Storefront." }),
+    }),
+    z.object({ id: z.string(), type: z.literal("map"), address: z.string() }),
+    z.object({ id: z.string(), type: z.literal("spacer"), size: z.enum(["s", "m", "l"]) }),
+  ])
+  .meta({ id: "StoreBlock", description: "Baustein der Startseite." });
+
 const storeDesignSchema = z
   .object({
     accentColor: z.string(),
@@ -252,6 +291,11 @@ const storeDesignSchema = z
         }),
         showCategories: z.boolean(),
         showNew: z.boolean(),
+        blocks: z.array(storeBlockSchema).meta({
+          description:
+            "Bausteine in Reihenfolge, fertig zum Anzeigen (ältere Shops: aus den Schaltern abgeleitet). " +
+            "Leere Video-, Karten- und Bildbausteine fehlen.",
+        }),
       })
       .meta({ id: "StoreDesignHome", description: "Inhalt der Startseite." }),
     tagline: z.string().meta({ description: "Text unter dem Logo; leer heißt keiner." }),
@@ -263,6 +307,45 @@ const storeDesignSchema = z
 const EXAMPLE_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAA1BMVEV6mluJCzqwAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEkl" +
   "EQVQ4y2NgGAWjYBSMAuwAAAQgAAFWu83mAAAAAElFTkSuQmCC";
+
+/** Baustein für die Storefront: Bilder aufgelöst, Video als Anbieter + ID, leere Bausteine fallen weg. */
+function storeBlock(
+  b: Block,
+  image: (id: string | null) => { url: string; width: number; height: number } | null,
+): z.input<typeof storeBlockSchema>[] {
+  switch (b.type) {
+    case "hero":
+    case "featured":
+    case "categories":
+    case "new":
+      return [{ id: b.id, type: b.type }];
+    case "text":
+      return b.heading === "" && b.text === "" ? [] : [{ ...b }];
+    case "textImage":
+      return [
+        {
+          id: b.id,
+          type: b.type,
+          heading: b.heading,
+          text: b.text,
+          image: image(b.imageId),
+          imageSide: b.imageSide,
+        },
+      ];
+    case "image": {
+      const i = image(b.imageId);
+      return i === null ? [] : [{ id: b.id, type: b.type, image: i, caption: b.caption }];
+    }
+    case "video": {
+      const v = parseVideoUrl(b.url);
+      return v === undefined ? [] : [{ id: b.id, type: b.type, provider: v.provider, videoId: v.id }];
+    }
+    case "map":
+      return b.address.trim() === "" ? [] : [{ id: b.id, type: b.type, address: b.address.trim() }];
+    case "spacer":
+      return [{ ...b }];
+  }
+}
 
 /** Fußzeile für Antworten: frische Arrays statt readonly. */
 function footerView(f: FooterSettings) {
@@ -288,6 +371,11 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         ...s.home,
         featuredProductIds: [...s.home.featuredProductIds],
         heroImage: image(s.home.heroImageId),
+        blocks: s.home.blocks === null ? null : s.home.blocks.map((b) => ({ ...b })),
+        blockImages: blockImages(s.home.blocks).flatMap((id) => {
+          const i = found.get(id);
+          return i === undefined ? [] : [i];
+        }),
       },
       tagline: s.tagline,
       footer: footerView(s.footer),
@@ -389,7 +477,11 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         const home: HomeSettings =
           body.home === undefined
             ? current.draft.home
-            : { ...body.home, showNew: body.home.showNew ?? current.draft.home.showNew };
+            : {
+                ...body.home,
+                showNew: body.home.showNew ?? current.draft.home.showNew,
+                blocks: body.home.blocks === undefined ? current.draft.home.blocks : body.home.blocks,
+              };
         // Nur Bilder, die es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
         const wanted = [
           { id: logo, path: "/logoImageId", detail: "Dieses Logo gibt es nicht. Bitte neu hochladen." },
@@ -398,6 +490,17 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             path: "/home/heroImageId",
             detail: "Dieses Bild gibt es nicht. Bitte neu hochladen.",
           },
+          ...(home.blocks ?? []).flatMap((b, i) =>
+            (b.type === "image" || b.type === "textImage") && b.imageId !== null
+              ? [
+                  {
+                    id: b.imageId,
+                    path: `/home/blocks/${i}/imageId`,
+                    detail: "Ein Bild in einem Baustein gibt es nicht. Bitte neu hochladen.",
+                  },
+                ]
+              : [],
+          ),
         ];
         const found = await images.get(wanted.flatMap((w) => (w.id === null ? [] : [w.id])));
         for (const w of wanted)
@@ -548,6 +651,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           featuredProductIds: [...home.featuredProductIds],
           showCategories: home.showCategories,
           showNew: home.showNew,
+          blocks: (home.blocks ?? legacyBlocks(home)).flatMap((b) => storeBlock(b, image)),
         },
         tagline: published.tagline,
         footer: footerView(published.footer),
@@ -555,5 +659,34 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     },
   });
 
-  return [get, saveDraft, uploadLogo, uploadHero, publish, discard, store];
+  const uploadBlockImage = defineEndpoint({
+    api: "admin",
+    method: "POST",
+    path: "/design/images",
+    operationId: "uploadDesignImage",
+    summary: "Bild für einen Baustein hochladen",
+    description:
+      "Lädt ein Bild für einen Baustein der Startseite hoch (PNG, JPEG oder WebP als Base64, höchstens 8 MB). " +
+      "Die Antwort nennt die Bild-ID; sie gilt erst, wenn ein Baustein im Entwurf sie benutzt.",
+    tags: ["Aussehen"],
+    access: access.write,
+    body: logoInput,
+    bodyExample: { data: EXAMPLE_PNG, filename: "laden.png" },
+    bodyLimit: LOGO_BODY_LIMIT,
+    response: { status: 201, description: "Das hochgeladene Bild.", schema: imageSchema },
+    problems: [413],
+    handler: async ({ body }) => {
+      const prepared = await images.prepare(Buffer.from(body.data, "base64"), body.filename);
+      if (!prepared.ok) {
+        const text = rejectionText(prepared.reason, "Das Bild");
+        throw new ValidationError({
+          detail: text,
+          errors: [{ path: "/data", code: prepared.reason, message: text }],
+        });
+      }
+      return prepared.save();
+    },
+  });
+
+  return [get, saveDraft, uploadLogo, uploadHero, uploadBlockImage, publish, discard, store];
 }
