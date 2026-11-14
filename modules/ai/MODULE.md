@@ -14,4 +14,4 @@
 
 **Geplant (Architektur 3.2):** Unterhaltungen und Änderungsvorschläge speichern (`conversation`, `message`, `action_proposal`), Ereignis `ai.proposal.confirmed.v1`, Kennzeichnung „durch Assistent“ im Änderungsprotokoll, MCP-Server.
 
-**Achtung bei neuen Werkzeugen:** Die Werkzeugnamen stehen als Aufzählung (enum) in Anfrage und Antwort von `chatWithAssistant`. Ein neues Werkzeug meldet die Bruchprüfung (oasdiff) deshalb als Bruch, so am 14.11.2026 mit `add_product_photo` (CI einmal rot). Beim nächsten neuen Werkzeug die Namen in der Antwort einmalig auf `x-extensible-enum` umstellen und die Bausteine als benannte Schemas (`meta({ id })`) führen; das meldet oasdiff dann ein letztes Mal.
+**Neue Werkzeuge:** Seit 14.11.2026 (Werkzeug `copy_product`) ist der Werkzeugname im Vertrag ein Text mit `x-extensible-enum` statt eines festen enum; geprüft wird weiter gegen `TOOL_NAMES` auf dem Server. Diese Umstellung hat oasdiff ein letztes Mal als Bruch gemeldet (CI für diesen einen Stand rot, gewollt, der einzige Nutzer ist das eigene Backoffice). Neue Werkzeuge ändern den Vertrag ab jetzt nur noch in der Beschreibung.

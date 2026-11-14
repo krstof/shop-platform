@@ -89,6 +89,7 @@ describe("Werkzeuge", () => {
     expect(TOOLS.filter((t) => t.changes).map((t) => t.name)).toEqual([
       "create_product",
       "update_product",
+      "copy_product",
       "add_product_photo",
       "create_category",
       "mark_order_shipped",

@@ -742,11 +742,14 @@
                                   },
                                   "name": {
                                     "type": "string",
-                                    "enum": [
+                                    "pattern": "^[a-z][a-z_]{0,63}$",
+                                    "description": "Name eines Werkzeugs aus GET /admin/v1/assistant; die Liste kann wachsen.",
+                                    "x-extensible-enum": [
                                       "list_categories",
                                       "search_products",
                                       "create_product",
                                       "update_product",
+                                      "copy_product",
                                       "add_product_photo",
                                       "create_category",
                                       "search_orders",
@@ -7304,11 +7307,14 @@
                     },
                     "name": {
                       "type": "string",
-                      "enum": [
+                      "pattern": "^[a-z][a-z_]{0,63}$",
+                      "description": "Name eines Werkzeugs aus GET /admin/v1/assistant; die Liste kann wachsen.",
+                      "x-extensible-enum": [
                         "list_categories",
                         "search_products",
                         "create_product",
                         "update_product",
+                        "copy_product",
                         "add_product_photo",
                         "create_category",
                         "search_orders",

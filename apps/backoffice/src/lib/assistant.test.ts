@@ -28,6 +28,17 @@ describe("Werkzeuge des Assistenten im Backoffice", () => {
     });
   });
 
+  it("Angebotspreis setzen und beenden; Kopieren beschreiben", () => {
+    expect(productBody({ salePriceCents: 690 }, false)).toEqual({ salePrice: { amount: 690 } });
+    expect(productBody({ salePriceCents: null }, false)).toEqual({ salePrice: null });
+    expect(productBody({ salePriceCents: "billig" }, false)).toEqual({});
+    expect(describeChange("update_product", { salePriceCents: 690 }).lines).toContain(
+      "Angebotspreis: 6,90\u00a0€",
+    );
+    expect(describeChange("update_product", { salePriceCents: null }).lines).toContain("Angebot beenden");
+    expect(describeChange("copy_product", { productId: CAT }).title).toBe("Produkt kopieren");
+  });
+
   it("übernimmt beim Ändern nur gültige, mitgeschickte Felder", () => {
     expect(productBody({ productId: CAT, priceCents: 950 }, false)).toEqual({ price: { amount: 950 } });
     expect(productBody({ categoryId: null, published: false }, false)).toEqual({

@@ -5,10 +5,19 @@ import { defineEndpoint, type Endpoint } from "@shop/http";
 import { RateLimitedError, ServiceUnavailableError } from "@shop/kernel";
 import { z } from "zod";
 import type { AssistantModel, ChatBlock, ChatMessage } from "../internal/model.js";
-import { SYSTEM_PROMPT, TOOLS } from "../internal/tools.js";
+import { SYSTEM_PROMPT, TOOL_NAMES, TOOLS } from "../internal/tools.js";
 import type { UsageRepository } from "../internal/usage.js";
 
-const toolName = z.enum(TOOLS.map((t) => t.name) as [string, ...string[]]);
+// Kein festes enum im Vertrag: neue Werkzeuge sollen bestehende Nutzer nicht brechen
+// (x-extensible-enum, MODULE.md). Geprüft wird trotzdem gegen die Liste auf dem Server.
+const toolName = z
+  .string()
+  .regex(/^[a-z][a-z_]{0,63}$/)
+  .refine((n) => TOOL_NAMES.has(n), "Unbekanntes Werkzeug.")
+  .meta({
+    description: "Name eines Werkzeugs aus GET /admin/v1/assistant; die Liste kann wachsen.",
+    "x-extensible-enum": TOOLS.map((t) => t.name),
+  });
 const blockId = z.string().regex(/^[A-Za-z0-9_-]{1,100}$/);
 
 const textBlock = z.strictObject({ type: z.literal("text"), text: z.string().min(1).max(8000) });

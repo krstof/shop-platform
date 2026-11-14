@@ -42,7 +42,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     name: "search_products",
     description:
       "Sucht Produkte des Shops (Name oder Artikelnummer, Teiltreffer). Ohne Suchtext: alle Produkte. " +
-      "Liefert ID, Name, Preis in Cent, Bestand, Status und Kategorie.",
+      "Liefert ID, Name, Preis und Angebotspreis in Cent, Bestand, Status und Kategorie.",
     inputSchema: obj({
       query: { type: "string", maxLength: 100, description: "Suchtext, optional." },
       status: { type: "string", enum: ["draft", "published"], description: "Entwurf oder im Shop." },
@@ -73,13 +73,18 @@ export const TOOLS: readonly ToolDefinition[] = [
     name: "update_product",
     description:
       "Ändert ein bestehendes Produkt. Nur die angegebenen Felder ändern sich. `categoryId: null` " +
-      "nimmt es aus der Kategorie, `published: false` nimmt es aus dem Shop.",
+      "nimmt es aus der Kategorie, `published: false` nimmt es aus dem Shop. `salePriceCents` setzt " +
+      "einen Angebotspreis (der Shop zeigt den normalen Preis durchgestrichen), `null` beendet ihn.",
     inputSchema: obj(
       {
         productId: uuid,
         name: { type: "string", minLength: 1, maxLength: 200 },
         description: { type: "string", maxLength: 5000 },
         priceCents: cents,
+        salePriceCents: {
+          anyOf: [cents, { type: "null" }],
+          description: "Angebotspreis in Cent, kleiner als der Preis; null beendet das Angebot.",
+        },
         taxClass: { type: "string", enum: ["standard", "reduced"] },
         stock: { type: "integer", minimum: 0, maximum: 1_000_000 },
         categoryId: { anyOf: [uuid, { type: "null" }] },
@@ -87,6 +92,14 @@ export const TOOLS: readonly ToolDefinition[] = [
       },
       ["productId"],
     ),
+    changes: true,
+  },
+  {
+    name: "copy_product",
+    description:
+      "Legt eine Kopie eines Produkts an (gleicher Text, Preis, Kategorie, Bilder), als Entwurf mit " +
+      "Bestand 0 und Name „… (Kopie)“. Danach mit update_product anpassen.",
+    inputSchema: obj({ productId: uuid }, ["productId"]),
     changes: true,
   },
   {

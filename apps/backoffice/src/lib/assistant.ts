@@ -81,6 +81,7 @@ const compactProduct = (p: Product) => ({
   id: p.id,
   name: p.name,
   priceCents: p.price?.amount ?? null,
+  salePriceCents: p.salePrice?.amount ?? null,
   taxClass: p.taxClass,
   stock: p.stock,
   status: p.status,
@@ -174,6 +175,14 @@ async function run(
         };
       }
     }
+    case "copy_product": {
+      const id = str(input["productId"]) ?? "";
+      const p = await request<Product>(`/admin/v1/products/${encodeURIComponent(id)}/copy`, {
+        method: "POST",
+        shopId,
+      });
+      return { created: compactProduct(p) };
+    }
     case "add_product_photo": {
       const p = await uploadPhoto(str(input["productId"]) ?? "", str(input["photo"]) ?? "", shopId, photos);
       return { updated: compactProduct(p), images: p.images.length };
@@ -254,6 +263,9 @@ export function productBody(
   if (description !== undefined) body["description"] = description;
   const price = int(input["priceCents"]);
   if (price !== undefined) body["price"] = { amount: price };
+  if (input["salePriceCents"] === null && !create) body["salePrice"] = null;
+  const sale = int(input["salePriceCents"]);
+  if (sale !== undefined) body["salePrice"] = { amount: sale };
   const tax = TAX(input["taxClass"]);
   if (tax !== undefined) body["taxClass"] = tax;
   const stock = int(input["stock"]);
@@ -274,6 +286,7 @@ export function describeChange(
 ): { title: string; lines: string[] } {
   const lines: string[] = [];
   const price = int(input["priceCents"]);
+  const sale = int(input["salePriceCents"]);
   const tax = TAX(input["taxClass"]);
   const stock = int(input["stock"]);
   const published = bool(input["published"]);
@@ -292,9 +305,14 @@ export function describeChange(
       return { title: "Produkt anlegen", lines };
     case "add_product_photo":
       return { title: "Foto als Produktbild hinzufügen", lines };
+    case "copy_product":
+      lines.push("Kopie als Entwurf, Bestand 0, Name mit „(Kopie)“");
+      return { title: "Produkt kopieren", lines };
     case "update_product":
       add("Neuer Name", str(input["name"]));
       add("Neuer Preis", price === undefined ? undefined : formatEuro(price));
+      add("Angebotspreis", sale === undefined ? undefined : formatEuro(sale));
+      if (input["salePriceCents"] === null) lines.push("Angebot beenden");
       add("Steuer", tax === undefined ? undefined : tax === "reduced" ? "7 %" : "19 %");
       add("Neuer Bestand", stock === undefined ? undefined : String(stock));
       add("Im Shop", published === undefined ? undefined : published ? "ja" : "nein, aus dem Shop nehmen");
