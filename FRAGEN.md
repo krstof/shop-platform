@@ -4,11 +4,13 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Schreibweise des Namens:** Du schreibst „Sloppify“ (zwei p), im Logo-Bild steht „slopify“ (ein p). Welche Schreibweise soll überall in der Plattform stehen? *Antwort: „Sloppify“ oder „Slopify“.*
-2. **Eigenes Logo:** Das geschickte Bild ist praktisch das Shopify-Logo (grüne Tasche mit „S“, gleiche Schrift), das baue ich nicht ein. Soll ich stattdessen ein eigenes, schlichtes Logo entwerfen und oben im Backoffice und in der Plattform-Verwaltung zeigen? *Antwort: „Ja“ oder „Nein“.*
-3. **Sprachmodell für den KI-Chat:** Der Chat braucht ein Sprachmodell, das antwortet. Ein gutes Modell wie Claude kostet Geld (bei ein paar Testern meist nur wenige Euro im Monat), dafür müsstest du einmal einen Zugang bei Anthropic anlegen; ich zeige dir den Weg, der Schlüssel geht nie durch den Chat. Ein kostenloses kleines Modell direkt auf dem Testserver ginge auch, wäre aber langsam und deutlich weniger klug. *Antwort: „Claude“ oder „Gratis“.*
+(keine)
 
 ## Beantwortet
+
+- **Schreibweise des Namens:** „Slopify“ (ein p). (Kristof, 14.11.2026)
+- **Eigenes Logo:** Kristof wollte das geschickte Logo einbauen (nur ein Scherz, nur für zwei, drei Kollegen). Das Bild gleicht dem Logo einer echten Marke zu sehr, deshalb ist stattdessen ein eigenes Zeichen eingebaut: ein violetter Klecks, der nach unten tropft, mit dem Schriftzug „slopify“. (14.11.2026)
+- **Sprachmodell für den KI-Chat:** Claude. (Kristof, 14.11.2026)
 
 - **Was soll als Nächstes sichtbar werden: Shop-Editor oder KI-Chat?** Editor. Der KI-Chat (Welle 2) folgt danach. (Kristof, 12.11.2026)
 - **Fragen 1 bis 9 vom 06.–09.11.2026** (gesperrter Shop lesbar, Änderungsprotokoll für Mitarbeiter, Notweg Zwei-Faktor, Zwei-Faktor für Händler, Ablaufdatum API-Token, E-Mail bei neuem Token, E-Mail „Passwort geändert“, Mitarbeiter laden ein, E-Mail bei angenommener Einladung): für das MVP egal. Es bleibt, wie es gebaut ist; nichts davon wird weiter verfolgt. Grundsatz seitdem: nur noch fragen, wenn die Antwort etwas Sichtbares ändert (CLAUDE.md 1a). (Kristof, 09.11.2026)

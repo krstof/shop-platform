@@ -64,6 +64,17 @@ main:focus-visible {
   font-size: 0.9rem;
   color: var(--text-leise);
 }
+/* Hinweis auf die Plattform „Slopify“ im Fuß und Titel der Plattform-Startseite. */
+.slopify,
+.slopify-titel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.slopify-titel {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
 .sprung {
   position: absolute;
   left: -999px;

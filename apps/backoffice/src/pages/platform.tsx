@@ -19,6 +19,7 @@ import { handleFromName } from "../lib/handle.js";
 import { groupSecret, qrPath } from "../lib/qr.js";
 import { sessionKey, useSession } from "../lib/session.js";
 import { FullPageSpinner, SignOutButton } from "./layout.js";
+import { SlopifyLogo } from "../components/logo.js";
 
 const DATE = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" });
 const DATE_TIME = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
@@ -69,10 +70,11 @@ function PlatformFrame({
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
           <Link to="/plattform" className="flex items-center gap-2 font-semibold text-stone-900">
+            <SlopifyLogo />
             <span className="rounded-md bg-stone-900 px-2 py-0.5 text-xs font-medium tracking-wide text-white">
               Betrieb
             </span>
-            Plattform-Verwaltung
+            <span className="hidden sm:inline">Plattform-Verwaltung</span>
           </Link>
           {hasShops && firstShop !== undefined && (
             <Link

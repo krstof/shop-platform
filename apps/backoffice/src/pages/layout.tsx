@@ -6,6 +6,7 @@ import { createContext, useContext, useState } from "react";
 import { Button, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
 import { useSession } from "../lib/session.js";
+import { SlopifyMark } from "../components/logo.js";
 
 const ShopContext = createContext<ShopOfUser | null>(null);
 
@@ -107,8 +108,10 @@ export function ShopLayout() {
             <Link
               to="/$shop/produkte"
               params={{ shop: shop.handle }}
-              className="font-semibold text-emerald-800"
+              className="flex shrink-0 items-center gap-2 font-semibold text-emerald-800"
+              title="Slopify"
             >
+              <SlopifyMark className="hidden size-6 sm:block" />
               {shop.name}
             </Link>
             {shops.length > 1 && (

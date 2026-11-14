@@ -7,6 +7,7 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 import { useId } from "react";
+import { SlopifyLogo } from "./logo.js";
 
 function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -189,8 +190,8 @@ export function AuthFrame({
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
-        <p className="mb-6 text-center text-sm font-semibold tracking-wide text-emerald-800">
-          Shop-Plattform
+        <p className="mb-6 flex justify-center">
+          <SlopifyLogo size="lg" />
         </p>
         <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-stone-200">
           <h1 className="text-xl font-semibold text-stone-900">{title}</h1>
