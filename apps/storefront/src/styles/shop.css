@@ -778,3 +778,17 @@ main:focus-visible {
 .preis-gross .preis-alt {
   font-size: 1.1rem;
 }
+
+/* --- Galerie: kleines Bild anklicken zeigt es groß --- */
+.galerie-wahl {
+  display: block;
+  border-radius: 8px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+.galerie-wahl:hover {
+  outline-color: var(--linie);
+}
+.galerie-wahl.aktiv {
+  outline-color: var(--akzent);
+}
