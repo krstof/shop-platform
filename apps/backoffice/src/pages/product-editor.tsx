@@ -21,6 +21,8 @@ interface FormState {
   stock: string;
   categoryId: string;
   sku: string;
+  deliveryMin: string;
+  deliveryMax: string;
   published: boolean;
 }
 
@@ -33,6 +35,8 @@ const emptyForm: FormState = {
   stock: "0",
   categoryId: "",
   sku: "",
+  deliveryMin: "",
+  deliveryMax: "",
   published: true,
 };
 
@@ -46,6 +50,8 @@ function formFrom(p: Product): FormState {
     stock: String(p.stock),
     categoryId: p.categoryId ?? "",
     sku: p.sku ?? "",
+    deliveryMin: p.deliveryDays ? String(p.deliveryDays.min) : "",
+    deliveryMax: p.deliveryDays ? String(p.deliveryDays.max) : "",
     published: p.status === "published",
   };
 }
@@ -61,6 +67,16 @@ function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
   if (f.name.trim() === "") errors.name = "Bitte einen Namen angeben.";
   if (price === undefined) errors.price = "Bitte einen Preis wie 8,90 angeben.";
   if (stock === undefined) errors.stock = "Bitte eine ganze Zahl ab 0 angeben.";
+  const dMin = f.deliveryMin.trim();
+  const dMax = f.deliveryMax.trim() === "" ? dMin : f.deliveryMax.trim();
+  let deliveryDays: { min: number; max: number } | null = null;
+  if (dMin !== "" || f.deliveryMax.trim() !== "") {
+    const a = Number(dMin === "" ? dMax : dMin);
+    const b = Number(dMax);
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b > 120 || b < a)
+      errors.deliveryMin = "Bitte Werktage wie 2 bis 3 angeben.";
+    else deliveryDays = { min: a, max: b };
+  }
   if (sale === undefined) errors.salePrice = "Bitte einen Preis wie 6,90 angeben oder leer lassen.";
   else if (sale !== null && price !== undefined && sale >= price)
     errors.salePrice = "Der Angebotspreis muss kleiner als der normale Preis sein.";
@@ -77,6 +93,7 @@ function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
       stock,
       categoryId: f.categoryId === "" ? null : f.categoryId,
       sku: f.sku.trim() === "" ? null : f.sku.trim(),
+      deliveryDays,
       status: f.published ? "published" : "draft",
     },
   };
@@ -98,6 +115,7 @@ function errorsFromApi(e: unknown): Errors {
     ["/stock", "stock"],
     ["/categoryId", "categoryId"],
     ["/sku", "sku"],
+    ["/deliveryDays", "deliveryMin"],
     ["/slug", "name"],
   ];
   for (const [path, key] of map) {
@@ -328,6 +346,31 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                     value={form.stock}
                     onChange={(e) => set("stock")(e.target.value)}
                   />
+                )}
+              </Field>
+              <Field
+                label="Lieferzeit (Werktage)"
+                hint="Freiwillig, etwa 2 bis 3. Leer: „Sofort lieferbar“."
+                error={errors.deliveryMin}
+              >
+                {(p) => (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      {...p}
+                      inputMode="numeric"
+                      placeholder="von"
+                      value={form.deliveryMin}
+                      onChange={(e) => set("deliveryMin")(e.target.value)}
+                    />
+                    <span className="text-sm text-stone-500">bis</span>
+                    <Input
+                      inputMode="numeric"
+                      aria-label="Lieferzeit bis (Werktage)"
+                      placeholder="bis"
+                      value={form.deliveryMax}
+                      onChange={(e) => set("deliveryMax")(e.target.value)}
+                    />
+                  </div>
                 )}
               </Field>
               <Field label="Artikelnummer" hint="Freiwillig." error={errors.sku}>

@@ -41,3 +41,10 @@ export function absaetze(text: string): string[] {
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
 }
+
+/** „Sofort lieferbar.“ oder „Lieferzeit 2–3 Werktage.“ */
+export function lieferzeit(d: { min: number; max: number } | null | undefined): string {
+  if (d === null || d === undefined) return "Sofort lieferbar.";
+  if (d.min === d.max) return `Lieferzeit ${d.min} ${d.min === 1 ? "Werktag" : "Werktage"}.`;
+  return `Lieferzeit ${d.min}–${d.max} Werktage.`;
+}

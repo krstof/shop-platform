@@ -1,7 +1,7 @@
 ---
 // Produktseite (M4): Bilder, Preis mit Pflichtangaben, Beschreibung.
 import Shop from "../../../layouts/Shop.astro";
-import { absaetze, euro, steuerHinweis } from "../../../lib/format.js";
+import { absaetze, euro, lieferzeit, steuerHinweis } from "../../../lib/format.js";
 import { loadShop, safeSlug, storeApi, StoreApiError, type StoreProduct } from "../../../lib/store-api.js";
 import { warenkorbAnzahl } from "../../../lib/cart.js";
 import Produktkarte from "../../../components/Produktkarte.astro";
@@ -129,7 +129,7 @@ try {
             <button class="knopf" type="submit">
               In den Warenkorb
             </button>
-            <p class="klein">Sofort lieferbar.</p>
+            <p class="klein">{lieferzeit(p.deliveryDays)}</p>
           </form>
         ) : (
           <p class="hinweis-aus">Zurzeit ausverkauft</p>

@@ -20,6 +20,9 @@ export interface ProductRow {
   variant_id: string;
   sku: string | null;
   published_at: Date | null;
+  /** Lieferzeit in Werktagen, beide `null` = nicht angegeben. */
+  delivery_time_min_days: number | null;
+  delivery_time_max_days: number | null;
   created_at: Date;
   updated_at: Date;
   version: number;
@@ -48,6 +51,8 @@ function baseQuery(trx: Transaction<DB>) {
       "v.id as variant_id",
       "v.sku",
       "p.published_at",
+      "p.delivery_time_min_days",
+      "p.delivery_time_max_days",
       "p.created_at",
       "p.updated_at",
       "p.version",
@@ -145,6 +150,8 @@ export interface ProductValues {
   /** `null` nimmt das Produkt aus seiner Kategorie. */
   category_id?: string | null;
   sku?: string | null;
+  /** Lieferzeit in Werktagen; `null` entfernt die Angabe. */
+  delivery_days?: { min: number; max: number } | null;
 }
 
 /** Legt Produkt, Standardvariante, Text und Kategorie an (eine Transaktion, Prüfung A-05 am Ende). */
@@ -161,6 +168,8 @@ export async function insertProduct(
       status,
       tax_class_code: v.tax_class_code ?? "standard",
       published_at: status === "published" ? new Date() : null,
+      delivery_time_min_days: v.delivery_days?.min ?? null,
+      delivery_time_max_days: v.delivery_days?.max ?? null,
     })
     .returning("id")
     .executeTakeFirstOrThrow();
@@ -253,6 +262,12 @@ export async function updateProduct(
       ...(v.status === undefined ? {} : { status: v.status }),
       ...(v.tax_class_code === undefined ? {} : { tax_class_code: v.tax_class_code }),
       ...(firstPublish ? { published_at: new Date() } : {}),
+      ...(v.delivery_days === undefined
+        ? {}
+        : {
+            delivery_time_min_days: v.delivery_days?.min ?? null,
+            delivery_time_max_days: v.delivery_days?.max ?? null,
+          }),
       updated_at: new Date(),
     })
     .where("id", "=", id)

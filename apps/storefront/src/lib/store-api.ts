@@ -42,6 +42,8 @@ export interface StoreProduct {
   readonly maxQuantity: number;
   readonly categoryId: string | null;
   readonly images: readonly StoreImage[];
+  /** Lieferzeit in Werktagen; `null`/fehlt: sofort lieferbar. */
+  readonly deliveryDays?: { readonly min: number; readonly max: number } | null;
   /** Seit wann im Shop (für „Neu“); ältere API-Stände ohne. */
   readonly publishedAt?: string | null;
 }

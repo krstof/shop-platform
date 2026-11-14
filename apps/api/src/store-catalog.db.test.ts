@@ -299,6 +299,37 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect(await store()).toMatchObject({ price: { amount: 600 }, compareAtPrice: null });
   });
 
+  it("Lieferzeit: setzen, im Shop lesen, entfernen; von > bis 422", async () => {
+    const made = await inject("POST", "/admin/v1/products", "a", {
+      name: "Pu-Erh",
+      status: "published",
+      stock: 2,
+      price: { amount: 1590 },
+      deliveryDays: { min: 2, max: 4 },
+    });
+    expect(made.statusCode).toBe(201);
+    expect(made.json().deliveryDays).toEqual({ min: 2, max: 4 });
+    expect((await inject("GET", "/store/v1/shops/tee-a/products/pu-erh")).json().deliveryDays).toEqual({
+      min: 2,
+      max: 4,
+    });
+    const bad = await inject("POST", "/admin/v1/products", "a", {
+      name: "Falsch",
+      price: { amount: 1 },
+      deliveryDays: { min: 5, max: 2 },
+    });
+    expect(bad.statusCode).toBe(422);
+    const cleared = await inject(
+      "PATCH",
+      `/admin/v1/products/${made.json().id}`,
+      "a",
+      { deliveryDays: null },
+      { "if-match": `"${made.json().version}"` },
+    );
+    expect(cleared.json().deliveryDays).toBeNull();
+    expect((await inject("GET", "/store/v1/shops/tee-a/products/pu-erh")).json().deliveryDays).toBeNull();
+  });
+
   it("ein frisch gesperrter Shop verschwindet sofort", async () => {
     await inspect.query(`UPDATE platform.tenant SET status = 'suspended' WHERE id = $1`, [TENANT_B]);
     expect((await inject("GET", "/store/v1/shops/mode-b/products")).statusCode).toBe(404);

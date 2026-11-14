@@ -7075,6 +7075,33 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "deliveryDays": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 120
+                          },
+                          "max": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 120
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -7678,6 +7705,33 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "deliveryDays": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 120
+                          },
+                          "max": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 120
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ],
+                        "additionalProperties": false
                       },
                       {
                         "type": "null"
@@ -9597,6 +9651,27 @@
         "additionalProperties": false,
         "description": "Bestätigung, dass das Produkt gelöscht ist."
       },
+      "DeliveryDays": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "max": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "min",
+          "max"
+        ],
+        "additionalProperties": false,
+        "description": "Lieferzeit in Werktagen."
+      },
       "Design": {
         "type": "object",
         "properties": {
@@ -10792,6 +10867,17 @@
               "null"
             ]
           },
+          "deliveryDays": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryDays"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lieferzeit in Werktagen, etwa 2 bis 3; null = nicht angegeben."
+          },
           "images": {
             "type": "array",
             "items": {
@@ -10839,6 +10925,7 @@
           "stock",
           "categoryId",
           "sku",
+          "deliveryDays",
           "images",
           "publishedAt",
           "createdAt",

@@ -50,6 +50,10 @@ export const storeProductSchema = z
     maxQuantity: z.number().int().meta({ description: "Höchstens so viele passen in den Warenkorb." }),
     categoryId: z.uuid().nullable(),
     images: z.array(productImageSchema),
+    deliveryDays: z
+      .object({ min: z.number().int(), max: z.number().int() })
+      .nullable()
+      .meta({ description: "Lieferzeit in Werktagen oder null (dann „sofort lieferbar“)." }),
     publishedAt: z
       .string()
       .nullable()
@@ -114,6 +118,10 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
         maxQuantity: price === undefined ? 0 : Math.min(available, MAX_QUANTITY),
         categoryId: r.category_id,
         publishedAt: r.published_at?.toISOString() ?? null,
+        deliveryDays:
+          r.delivery_time_min_days === null || r.delivery_time_max_days === null
+            ? null
+            : { min: r.delivery_time_min_days, max: r.delivery_time_max_days },
         images: (imageIds.get(r.id) ?? [])
           .map((id) => img.get(id))
           .filter((i): i is ProductImage => i !== undefined)

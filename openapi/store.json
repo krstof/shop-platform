@@ -2485,6 +2485,34 @@
               "$ref": "#/components/schemas/ProductImage"
             }
           },
+          "deliveryDays": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "max": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "min",
+                  "max"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lieferzeit in Werktagen oder null (dann „sofort lieferbar“)."
+          },
           "publishedAt": {
             "description": "Seit wann im Shop (ISO 8601); der Shop zeigt damit „Neu“.",
             "type": [
@@ -2505,6 +2533,7 @@
           "maxQuantity",
           "categoryId",
           "images",
+          "deliveryDays",
           "publishedAt"
         ],
         "additionalProperties": false,

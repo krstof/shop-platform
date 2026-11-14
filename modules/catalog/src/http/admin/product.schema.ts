@@ -22,6 +22,14 @@ const priceSchema = z
   })
   .meta({ id: "Price" });
 
+const deliveryDaysSchema = z
+  .object({ min: z.number().int(), max: z.number().int() })
+  .meta({ id: "DeliveryDays", description: "Lieferzeit in Werktagen." });
+
+const deliveryDaysInput = z
+  .strictObject({ min: z.number().int().min(0).max(120), max: z.number().int().min(0).max(120) })
+  .refine((d) => d.max >= d.min, { message: "„bis“ muss mindestens so groß sein wie „von“.", path: ["max"] });
+
 export const productSchema = z
   .object({
     id: z.uuid(),
@@ -40,6 +48,9 @@ export const productSchema = z
     stock: z.number().int().meta({ description: "Verfügbarer Bestand (vorhanden minus reserviert)." }),
     categoryId: z.uuid().nullable(),
     sku: z.string().nullable().meta({ description: "Artikelnummer." }),
+    deliveryDays: deliveryDaysSchema
+      .nullable()
+      .meta({ description: "Lieferzeit in Werktagen, etwa 2 bis 3; null = nicht angegeben." }),
     images: z
       .array(productImageSchema)
       .meta({ description: "Bilder in Anzeigereihenfolge, das erste ist das Hauptbild." }),
@@ -71,6 +82,10 @@ export function toProduct(
     stock: stock ?? 0,
     categoryId: row.category_id,
     sku: row.sku,
+    deliveryDays:
+      row.delivery_time_min_days === null || row.delivery_time_max_days === null
+        ? null
+        : { min: row.delivery_time_min_days, max: row.delivery_time_max_days },
     images: images.map((i) => ({ ...i })),
     publishedAt: row.published_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
@@ -96,6 +111,7 @@ const fields = {
   stock: z.number().int().min(0).max(1_000_000).optional().meta({ description: "Bestand im Lager." }),
   categoryId: z.uuid().nullable().optional(),
   sku: singleLineText(64).nullable().optional(),
+  deliveryDays: deliveryDaysInput.nullable().optional(),
 };
 
 export const createProductInput = z.strictObject({ name: singleLineText(200), price: priceInput, ...fields });
@@ -115,6 +131,7 @@ export function toProductValues(input: UpdateProductInput): ProductValues {
   if (input.taxClass !== undefined) v.tax_class_code = input.taxClass;
   if (input.categoryId !== undefined) v.category_id = input.categoryId;
   if (input.sku !== undefined) v.sku = input.sku;
+  if (input.deliveryDays !== undefined) v.delivery_days = input.deliveryDays;
   return v;
 }
 
@@ -131,6 +148,7 @@ export function productFacts(p: Product): Record<string, string | number | null>
     stock: p.stock,
     categoryId: p.categoryId,
     sku: p.sku,
+    deliveryDays: p.deliveryDays === null ? null : `${p.deliveryDays.min}-${p.deliveryDays.max}`,
     images: p.images.length === 0 ? null : p.images.map((i) => i.id).join(","),
   };
 }

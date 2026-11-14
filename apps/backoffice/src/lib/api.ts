@@ -114,6 +114,8 @@ export interface Product {
   readonly stock: number;
   readonly categoryId: string | null;
   readonly sku: string | null;
+  /** Lieferzeit in Werktagen oder null. */
+  readonly deliveryDays?: { readonly min: number; readonly max: number } | null;
   readonly images: readonly ProductImage[];
   readonly version: number;
 }
@@ -197,6 +199,7 @@ export interface ProductInput {
   stock: number;
   categoryId: string | null;
   sku: string | null;
+  deliveryDays: { min: number; max: number } | null;
   status: "draft" | "published";
 }
 

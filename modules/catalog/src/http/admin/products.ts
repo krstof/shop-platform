@@ -324,6 +324,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           tax_class_code: source.taxClass,
           category_id: source.categoryId,
           sku: null,
+          delivery_days: source.deliveryDays,
         });
         if (source.price !== null)
           await prices.setBasePrice({

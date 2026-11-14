@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absaetze, euro, fehltBisKostenlos, steuerHinweis, versandText } from "./format.js";
+import { absaetze, euro, fehltBisKostenlos, lieferzeit, steuerHinweis, versandText } from "./format.js";
 
 describe("Anzeige in der Storefront", () => {
   it("zeigt Cent als Euro", () => {
@@ -20,6 +20,11 @@ describe("Anzeige in der Storefront", () => {
     expect(fehltBisKostenlos(5000, v)).toBeUndefined();
     expect(fehltBisKostenlos(0, v)).toBeUndefined();
     expect(fehltBisKostenlos(4000, { amount: 490, freeFrom: null })).toBeUndefined();
+  });
+  it("nennt die Lieferzeit", () => {
+    expect(lieferzeit(null)).toBe("Sofort lieferbar.");
+    expect(lieferzeit({ min: 2, max: 3 })).toBe("Lieferzeit 2–3 Werktage.");
+    expect(lieferzeit({ min: 1, max: 1 })).toBe("Lieferzeit 1 Werktag.");
   });
   it("teilt Text in Absätze", () => {
     expect(absaetze("Eins.\n\n  Zwei.\n \nDrei.\n")).toEqual(["Eins.", "Zwei.", "Drei."]);
