@@ -6,16 +6,23 @@ import Produktkarte from "../../components/Produktkarte.astro";
 import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
 import { warenkorbAnzahl } from "../../lib/cart.js";
 import { suchbegriff, trefferText } from "../../lib/suche.js";
+import Sortierung from "../../components/Sortierung.astro";
+import { sortierung } from "../../lib/sortierung.js";
 
 const daten = await loadShop(Astro.params.shop);
 if (daten === undefined) return Astro.rewrite("/404");
 const { shop, categories } = daten;
 const begriff = suchbegriff(Astro.url.searchParams.get("q"));
+const sort = sortierung(Astro.url.searchParams.get("sortierung"));
 const treffer =
   begriff === undefined
     ? []
-    : (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?q=${encodeURIComponent(begriff)}`))
-        .data;
+    : (
+        await storeApi<{ data: StoreProduct[] }>(
+          shop.handle,
+          `/products?q=${encodeURIComponent(begriff)}&sort=${sort}`,
+        )
+      ).data;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 ---
 
@@ -51,11 +58,16 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
           </p>
         </div>
       ) : (
-        <ul class="raster">
-          {treffer.map((p) => (
-            <Produktkarte produkt={p} shop={shop.handle} />
-          ))}
-        </ul>
+        <>
+          {treffer.length > 1 && (
+            <Sortierung aktuell={sort} anzahl={treffer.length} behalten={{ q: begriff }} />
+          )}
+          <ul class="raster">
+            {treffer.map((p) => (
+              <Produktkarte produkt={p} shop={shop.handle} />
+            ))}
+          </ul>
+        </>
       )}
     </>
   )}

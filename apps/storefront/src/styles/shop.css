@@ -700,3 +700,43 @@ main:focus-visible {
 .leer-suche p {
   margin: 0;
 }
+
+/* --- Sortieren über Produktlisten --- */
+.sortieren {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 1.25rem;
+}
+.sortieren .klein {
+  margin-right: auto;
+}
+.sortieren select {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--linie);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+.knopf-klein {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--akzent);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--akzent-dunkel);
+  cursor: pointer;
+}
+.knopf-klein:hover {
+  background: var(--flaeche);
+}
+
+/* --- „Das könnte dir auch gefallen“ unter dem Produkt --- */
+.aehnliche {
+  border-top: 1px solid var(--linie);
+  margin-bottom: 3rem;
+}

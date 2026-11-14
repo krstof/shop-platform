@@ -4,6 +4,8 @@ import Shop from "../../../layouts/Shop.astro";
 import { absaetze, euro, steuerHinweis } from "../../../lib/format.js";
 import { loadShop, safeSlug, storeApi, StoreApiError, type StoreProduct } from "../../../lib/store-api.js";
 import { warenkorbAnzahl } from "../../../lib/cart.js";
+import Produktkarte from "../../../components/Produktkarte.astro";
+import { aehnlicheProdukte } from "../../../lib/aehnliche.js";
 
 const daten = await loadShop(Astro.params.shop);
 const slug = safeSlug(Astro.params.slug);
@@ -19,6 +21,15 @@ try {
 const k = categories.find((c) => c.id === p.categoryId);
 const [hauptbild, ...weitere] = p.images;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+// Aus derselben Kategorie; ohne Kategorie die neuesten anderen Produkte. Klappt das Laden nicht,
+// fehlt nur dieser Abschnitt.
+let aehnliche: StoreProduct[] = [];
+try {
+  const pfad = k === undefined ? "/products?sort=newest" : `/products?category=${k.slug}`;
+  aehnliche = aehnlicheProdukte(p, (await storeApi<{ data: StoreProduct[] }>(shop.handle, pfad)).data);
+} catch {
+  aehnliche = [];
+}
 ---
 
 <Shop
@@ -115,4 +126,14 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
       )}
     </div>
   </article>
+  {aehnliche.length > 0 && (
+    <section class="aehnliche" aria-labelledby="aehnliche-titel">
+      <h2 id="aehnliche-titel">Das könnte dir auch gefallen</h2>
+      <ul class="raster">
+        {aehnliche.map((a) => (
+          <Produktkarte produkt={a} shop={shop.handle} />
+        ))}
+      </ul>
+    </section>
+  )}
 </Shop>

@@ -1,0 +1,33 @@
+---
+// Kleines Formular „Sortieren“ über einer Produktliste. Ohne JavaScript: Auswahl plus Knopf,
+// schickt die Seite mit ?sortierung=… neu (die Suche behält ihren Suchtext über `q`).
+import { SORTIERUNGEN, type Sortierung } from "../lib/sortierung.js";
+
+interface Props {
+  aktuell: Sortierung;
+  /** Weitere Felder, die erhalten bleiben sollen, etwa der Suchtext. */
+  behalten?: Record<string, string>;
+  anzahl: number;
+  /** Sprungmarke, damit die Seite nach dem Sortieren wieder bei der Liste steht. */
+  anker?: string;
+}
+const { aktuell, behalten = {}, anzahl, anker } = Astro.props;
+---
+
+<form class="sortieren" method="get" action={anker === undefined ? undefined : `#${anker}`}>
+  {Object.entries(behalten).map(([name, wert]) => (
+    <input type="hidden" name={name} value={wert} />
+  ))}
+  <span class="klein">{anzahl === 1 ? "1 Produkt" : `${anzahl} Produkte`}</span>
+  <label for="sortierung">Sortieren</label>
+  <select id="sortierung" name="sortierung">
+    {SORTIERUNGEN.map((s) => (
+      <option value={s.wert} selected={s.wert === aktuell}>
+        {s.text}
+      </option>
+    ))}
+  </select>
+  <button type="submit" class="knopf-klein">
+    Anwenden
+  </button>
+</form>

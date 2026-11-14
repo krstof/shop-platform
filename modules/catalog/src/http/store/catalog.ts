@@ -12,6 +12,7 @@ import {
   findPublishedProductBySlug,
   type ProductRow,
 } from "../../internal/product-repository.js";
+import { STORE_SORTS, sortStoreProducts } from "./sort.js";
 import type { ProductImage, ProductImages, ProductPrices, ProductStock } from "../../ports.js";
 import { CURRENCY, productImageSchema } from "../admin/product.schema.js";
 
@@ -136,7 +137,7 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
     operationId: "listStoreProducts",
     summary: "Produkte des Shops",
     description:
-      "Veröffentlichte Produkte in Anlagereihenfolge (höchstens 200), wahlweise nur einer Kategorie oder nur Treffer einer Suche.",
+      "Veröffentlichte Produkte (höchstens 200), wahlweise nur einer Kategorie oder nur Treffer einer Suche, sortiert nach `sort`.",
     tags: ["Storefront"],
     access: PUBLIC,
     params: z.strictObject({ shopHandle: shopHandleParam }),
@@ -144,6 +145,10 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
       category: slugParam.optional(),
       q: singleLineText(100).optional().meta({
         description: "Suchtext für Name oder Beschreibung (Teiltreffer, Groß-/Kleinschreibung egal).",
+      }),
+      sort: z.enum(STORE_SORTS).default("standard").meta({
+        description:
+          "`standard` (Anlagereihenfolge), `newest` (zuletzt angelegt zuerst), `price-asc`, `price-desc`, `name`. Ohne Preis immer am Ende.",
       }),
     }),
     response: {
@@ -167,7 +172,7 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
           categoryId,
           searchText: query.q,
         });
-        return { data: await read(trx, rows.slice(0, 200)) };
+        return { data: sortStoreProducts(await read(trx, rows.slice(0, 200)), query.sort) };
       }),
   });
 

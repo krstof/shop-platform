@@ -7,13 +7,16 @@ import Produktkarte from "../../components/Produktkarte.astro";
 import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
 import { DEFAULT_HOME } from "../../lib/design.js";
 import { warenkorbAnzahl } from "../../lib/cart.js";
+import Sortierung from "../../components/Sortierung.astro";
+import { sortierung } from "../../lib/sortierung.js";
 
 const daten = await loadShop(Astro.params.shop);
 if (daten === undefined) return Astro.rewrite("/404");
 const { shop, categories } = daten;
 const home = shop.design?.home ?? DEFAULT_HOME;
 
-const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products")).data;
+const sort = sortierung(Astro.url.searchParams.get("sortierung"));
+const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?sort=${sort}`)).data;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 
 // Hervorgehobene Produkte in der vom Händler gewählten Reihenfolge; nicht mehr sichtbare fallen weg.
@@ -72,7 +75,8 @@ const sichtbareKategorien = home.showCategories ? categories : [];
     </section>
   )}
 
-  <h2>Alle Produkte</h2>
+  <h2 id="alle">Alle Produkte</h2>
+  {produkte.length > 1 && <Sortierung aktuell={sort} anzahl={produkte.length} anker="alle" />}
   {produkte.length === 0 ? (
     <p>Hier gibt es noch keine Produkte.</p>
   ) : (

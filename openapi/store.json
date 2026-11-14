@@ -903,7 +903,7 @@
       "get": {
         "operationId": "listStoreProducts",
         "summary": "Produkte des Shops",
-        "description": "Veröffentlichte Produkte in Anlagereihenfolge (höchstens 200), wahlweise nur einer Kategorie oder nur Treffer einer Suche.",
+        "description": "Veröffentlichte Produkte (höchstens 200), wahlweise nur einer Kategorie oder nur Treffer einer Suche, sortiert nach `sort`.",
         "tags": [
           "Storefront"
         ],
@@ -938,6 +938,23 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "`standard` (Anlagereihenfolge), `newest` (zuletzt angelegt zuerst), `price-asc`, `price-desc`, `name`. Ohne Preis immer am Ende.",
+            "schema": {
+              "default": "standard",
+              "type": "string",
+              "enum": [
+                "standard",
+                "newest",
+                "price-asc",
+                "price-desc",
+                "name"
+              ]
             }
           }
         ],

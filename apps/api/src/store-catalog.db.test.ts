@@ -195,6 +195,30 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect((await inject("GET", `/store/v1/shops/tee-a/products?q=${"x".repeat(101)}`)).statusCode).toBe(422);
   });
 
+  it("sortiert nach Preis, Name und Neuheit; falsche Sortierung 422", async () => {
+    await inject("POST", "/admin/v1/products", "a", {
+      name: "Assam",
+      status: "published",
+      stock: 1,
+      price: { amount: 590 },
+    });
+    const names = async (sort: string) =>
+      (await inject("GET", `/store/v1/shops/tee-a/products?sort=${sort}`))
+        .json()
+        .data.map((p: { name: string }) => p.name);
+    const standard = await names("standard");
+    expect(await names("newest")).toEqual([...standard].reverse());
+    expect((await names("price-asc"))[0]).toBe("Assam");
+    expect((await names("price-desc"))[0]).toBe("Oolong Bergnebel");
+    expect(await names("name")).toEqual([...standard].sort((a, b) => a.localeCompare(b, "de")));
+    expect(
+      (await inject("GET", "/store/v1/shops/tee-a/products?sort=name&q=a&category=gruentee"))
+        .json()
+        .data.map((p: { name: string }) => p.name),
+    ).toEqual(["Matcha", "Sencha"]);
+    expect((await inject("GET", "/store/v1/shops/tee-a/products?sort=billig")).statusCode).toBe(422);
+  });
+
   it("ein frisch gesperrter Shop verschwindet sofort", async () => {
     await inspect.query(`UPDATE platform.tenant SET status = 'suspended' WHERE id = $1`, [TENANT_B]);
     expect((await inject("GET", "/store/v1/shops/mode-b/products")).statusCode).toBe(404);
