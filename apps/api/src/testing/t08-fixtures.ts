@@ -14,6 +14,13 @@ export const T08_FIXTURES: Readonly<Record<string, Fixture>> = {
     );
     return rows[0]?.id ?? "";
   },
+  couponId: async (db, tenantId) => {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO pricing.coupon (tenant_id, code, kind, value) VALUES ($1, $2, 'percent', 10) RETURNING id`,
+      [tenantId, `T08-${randomBytes(4).toString("hex").toUpperCase()}`],
+    );
+    return rows[0]?.id ?? "";
+  },
   // Kategorie mit deutschem Namen (ohne Übersetzung ist sie in der API unsichtbar).
   categoryId: async (db, tenantId) => {
     const { rows } = await db.query<{ id: string }>(
