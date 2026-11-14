@@ -50,7 +50,9 @@ describe("Produkte als Tabelle", () => {
     expect(readImport("Titel\nx", [], []).errors[0]?.message).toContain("Name");
     // Vorhandenes Produkt: nur Spalten aus der Tabelle ändern.
     const upd = readImport("Name;Artikelnummer;Preis\nTee;T-1;9\n", [{ id: "t", sku: "T-1" }], []);
-    expect(importBody(upd.rows[0]!, upd.columns)).toEqual({
+    const [row] = upd.rows;
+    if (row === undefined) throw new Error("Zeile fehlt");
+    expect(importBody(row, upd.columns)).toEqual({
       name: "Tee",
       price: { amount: 900 },
       sku: "T-1",
