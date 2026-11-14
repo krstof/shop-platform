@@ -33,7 +33,7 @@ const resolver: ActorResolver = async ({ headers }) => {
   const auth: AuthenticatedActor = {
     actor: { type: "user", id: uuidv7() },
     tenantId: TENANT_A,
-    scopes: new Set(["products:read", "products:write"]),
+    scopes: new Set(["products:read", "products:write", "orders:read", "orders:write"]),
   };
   return auth;
 };
@@ -249,5 +249,52 @@ describe.skipIf(adminUrl === undefined)("Kaufen als Gast (M6, echte Datenbank)",
       { "idempotency-key": randomUUID() },
     );
     expect(r.json().orderNumber).toBe("10002");
+  });
+
+  it("Bestellung per Hand: Preise wie im Shop, Bestand weg, bezahlt oder offen; zu viel 409", async () => {
+    const asA = { "x-test-shop": "a" };
+    const mate = (
+      await inject(
+        "POST",
+        "/admin/v1/products",
+        { name: "Mate", price: { amount: 890 }, taxClass: "reduced", stock: 10, status: "published" },
+        asA,
+      )
+    ).json().id;
+    const stock = async () =>
+      (await inject("GET", `/admin/v1/products/${mate}`, undefined, asA)).json().stock;
+    const body = { email: "tel@example.org", address: ADDRESS, lines: [{ productId: mate, quantity: 2 }] };
+    const paid = await inject("POST", "/admin/v1/orders", { ...body, paid: true, note: "Telefon" }, asA);
+    expect(paid.statusCode).toBe(201);
+    expect(paid.json()).toMatchObject({ orderNumber: "10003" });
+    const view = (await inject("GET", `/admin/v1/orders/${paid.json().id}`, undefined, asA)).json();
+    expect(view).toMatchObject({
+      status: "open",
+      paymentStatus: "paid",
+      subtotal: 1780,
+      customerNote: "Telefon",
+    });
+    expect(view.total).toBe(paid.json().total);
+    expect(await stock()).toBe(8);
+    const open = await inject("POST", "/admin/v1/orders", { ...body, paid: false, shipping: false }, asA);
+    expect((await inject("GET", `/admin/v1/orders/${open.json().id}`, undefined, asA)).json()).toMatchObject({
+      status: "pending_payment",
+      shipping: 0,
+    });
+    const tooMany = await inject(
+      "POST",
+      "/admin/v1/orders",
+      { ...body, paid: true, lines: [{ productId: mate, quantity: 50 }] },
+      asA,
+    );
+    expect(tooMany.statusCode).toBe(409);
+    const unknown = await inject(
+      "POST",
+      "/admin/v1/orders",
+      { ...body, paid: true, lines: [{ productId: randomUUID(), quantity: 1 }] },
+      asA,
+    );
+    expect(unknown.statusCode).toBe(422);
+    expect((await inject("POST", "/admin/v1/orders", { ...body, paid: true })).statusCode).toBe(401);
   });
 });

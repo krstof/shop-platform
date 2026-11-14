@@ -5,6 +5,7 @@ import { auditEndpoints } from "@shop/audit";
 import { createCarts } from "@shop/cart";
 import { catalogEndpoints, createCatalogReader, type ProductImages } from "@shop/catalog";
 import { checkoutEndpoints, type MailSender } from "@shop/checkout";
+import { customerEndpoints } from "@shop/customers";
 import type { Endpoint } from "@shop/http";
 import {
   apiTokenEndpoints,
@@ -99,6 +100,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       restock: (lines, id) => stock.putBack(lines, id),
     }),
     // Kaufen in der Storefront (M6): Warenkorb, Kasse, Testzahlung, Bestellbestätigung.
+    ...customerEndpoints({ database: deps.database }),
     ...checkoutEndpoints({
       database: deps.database,
       carts: createCarts({ database: deps.database }),

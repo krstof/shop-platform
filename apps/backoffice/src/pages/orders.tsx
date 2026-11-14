@@ -153,11 +153,20 @@ export function OrdersPage() {
             </p>
           )}
         </div>
-        {orders.data && orders.data.length > 0 && (
-          <Button variant="secondary" onClick={() => downloadCsv(orders.data, shop.handle)}>
-            Als Tabelle herunterladen
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {orders.data && orders.data.length > 0 && (
+            <Button variant="secondary" onClick={() => downloadCsv(orders.data, shop.handle)}>
+              Als Tabelle herunterladen
+            </Button>
+          )}
+          <Link
+            to="/$shop/bestellungen/neu"
+            params={{ shop: shop.handle }}
+            className="inline-flex min-h-9 items-center gap-2 rounded-md bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-xs hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+          >
+            <span aria-hidden="true">+</span> Bestellung anlegen
+          </Link>
+        </div>
       </div>
       <OrderFilterBar filter={filter} onChange={setFilter} />
       {orders.isPending && <Loading label="Bestellungen werden geladen …" />}

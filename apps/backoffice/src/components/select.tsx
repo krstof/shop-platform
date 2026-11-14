@@ -227,7 +227,11 @@ export function Select({
               aria-disabled={item.disabled || undefined}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => choose(i)}
+              onClick={(e) => {
+                // In einem <label> würde der Klick sonst den Knopf erneut auslösen.
+                e.preventDefault();
+                choose(i);
+              }}
               className={
                 "flex cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 py-1.5 whitespace-nowrap " +
                 (item.disabled ? "cursor-default text-gray-400 " : "text-gray-800 ") +
@@ -376,7 +380,10 @@ export function MultiSelect({
                 aria-selected={on}
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => toggle(o.value)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggle(o.value);
+                }}
                 className={
                   "flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-800 " +
                   (i === active ? "bg-gray-100" : "")

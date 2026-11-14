@@ -4,7 +4,7 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-(keine)
+1. **Neue Bestellungen auf der Galaxy Watch (15.11.2026):** Einfachster Weg ohne eigene Uhr-App: Das Backoffice lässt sich aufs Handy „installieren“ und schickt bei jeder neuen Bestellung eine Mitteilung; die Galaxy Watch zeigt Handy-Mitteilungen automatisch an. Eine echte Uhr-App ginge auch, müsste aber per Entwicklermodus auf die Uhr gespielt werden. Antwort: „Mitteilung“ (so bauen), „Uhr-App“ oder „später“.
 
 ## Beantwortet
 

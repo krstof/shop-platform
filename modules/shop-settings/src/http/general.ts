@@ -2,7 +2,7 @@
 // Handelsregister, „Shop ist geöffnet“ und der Shop-Name. Der Name gehört der Plattform (platform.tenant);
 // die API-App reicht dafür Lesen und Umbenennen herein, damit dieses Modul nicht von platform abhängt.
 // In der Storefront-API steht nur, ob der Shop geöffnet ist.
-import { defineEndpoint, singleLineText, type Endpoint } from "@shop/http";
+import { defineEndpoint, singleLineText, type Endpoint, emailInput } from "@shop/http";
 import {
   getContext,
   NotFoundError,
@@ -56,7 +56,7 @@ const input = z.strictObject({
     company: opt(200),
     firstName: required(100, "Vorname"),
     lastName: required(100, "Nachname"),
-    email: z.email({ error: "Bitte eine gültige E-Mail-Adresse." }).max(254),
+    email: emailInput(),
     phone: opt(40),
     fax: opt(40),
     country: z.enum(COUNTRIES),

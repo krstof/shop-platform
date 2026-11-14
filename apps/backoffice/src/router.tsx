@@ -10,6 +10,7 @@ import { HomeRedirect, ShopLayout } from "./pages/layout.js";
 import { OrderPage, OrdersPage } from "./pages/orders.js";
 import { OverviewPage } from "./pages/overview.js";
 import { PlatformPage } from "./pages/platform.js";
+import { NewOrderPage } from "./pages/order-new.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
 import { CouponsPage } from "./pages/coupons.js";
@@ -147,6 +148,11 @@ const order = createRoute({
   path: "/bestellungen/$orderId",
   component: OrderPage,
 });
+const newOrder = createRoute({
+  getParentRoute: () => shop,
+  path: "/bestellungen/neu",
+  component: NewOrderPage,
+});
 
 const routeTree = root.addChildren([
   home,
@@ -166,6 +172,7 @@ const routeTree = root.addChildren([
     categoryNew,
     categoryEdit,
     orders,
+    newOrder,
     order,
     design,
     designOld,

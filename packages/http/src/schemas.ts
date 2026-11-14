@@ -37,6 +37,17 @@ export function multiLineText(max: number) {
 /** Zeitpunkt in der Ausgabe: ISO 8601 in UTC. */
 export const timestamp = z.iso.datetime({ offset: false });
 
+/**
+ * E-Mail-Adresse als Eingabe: Format wie `z.email()`, höchstens 254 Zeichen und vor dem @ höchstens 64
+ * (RFC 5321). Gefunden mit Schemathesis (15.11.2026): ohne die 64 nahm die API zu lange Adressen an.
+ */
+export function emailInput(message = "Bitte eine gültige E-Mail-Adresse.") {
+  return z
+    .email({ error: message })
+    .max(254)
+    .refine((e) => (e.split("@")[0] ?? "").length <= 64, message);
+}
+
 /** Fehlerantwort nach RFC 9457 (Problem Details), so wie toProblemDetails im Kernel sie baut. */
 export const problemSchema = z
   .object({

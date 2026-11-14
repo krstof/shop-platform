@@ -67,6 +67,14 @@ export const T08_FIXTURES: Readonly<Record<string, Fixture>> = {
     );
     return rows[0]?.id ?? "";
   },
+  // Kundenkarte (Modul customers, 15.11.2026).
+  customerId: async (db, tenantId) => {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO customers.customer (tenant_id, email, first_name, last_name) VALUES ($1, $2, 'T', '08') RETURNING id`,
+      [tenantId, `t08-${randomBytes(4).toString("hex")}@example.org`],
+    );
+    return rows[0]?.id ?? "";
+  },
   apiTokenId: async (db, tenantId) => {
     const token = `shp_at_${randomBytes(32).toString("base64url")}`;
     const { rows } = await db.query<{ id: string }>(
