@@ -79,11 +79,13 @@ const text = (max: number) =>
     .string()
     .max(max)
     .refine((v) => !CONTROL.test(v), "Steuerzeichen sind nicht erlaubt.");
+// eslint-disable-next-line no-control-regex -- einzeilig: keine Steuerzeichen, auch kein Umbruch
+const SINGLE_LINE_FORBIDDEN = /[\u0000-\u001f\u007f]/;
 const line = (max: number) =>
   z
     .string()
     .max(max)
-    .refine((v) => !/[\u0000-\u001f\u007f]/.test(v), "Bitte nur eine Zeile.");
+    .refine((v) => !SINGLE_LINE_FORBIDDEN.test(v), "Bitte nur eine Zeile.");
 
 const id = z.string().regex(BLOCK_ID);
 
