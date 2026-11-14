@@ -7,9 +7,31 @@ export function euro(cents: number): string {
   return EUR.format(cents / 100);
 }
 
+/** Versandkosten des Shops (Storefront-API /shipping). */
+export interface Versand {
+  readonly amount: number;
+  readonly freeFrom: number | null;
+}
+
+export const VERSAND_KOSTENLOS: Versand = { amount: 0, freeFrom: null };
+
+/** „versandkostenfrei“ oder „zzgl. 4,90 € Versand (ab 50,00 € versandkostenfrei)“. */
+export function versandText(v: Versand): string {
+  if (v.amount === 0) return "versandkostenfrei";
+  const grenze = v.freeFrom === null ? "" : ` (ab ${euro(v.freeFrom)} versandkostenfrei)`;
+  return `zzgl. ${euro(v.amount)} Versand${grenze}`;
+}
+
 /** Pflichtangabe neben dem Preis (Preisangabenverordnung). */
-export function steuerHinweis(prozent: number): string {
-  return `inkl. ${prozent} % MwSt., versandkostenfrei`;
+export function steuerHinweis(prozent: number, versand: Versand = VERSAND_KOSTENLOS): string {
+  return `inkl. ${prozent} % MwSt., ${versandText(versand)}`;
+}
+
+/** Wie viel fehlt noch bis zum kostenlosen Versand? `undefined`, wenn das nicht passt. */
+export function fehltBisKostenlos(zwischensumme: number, v: Versand): number | undefined {
+  if (v.amount === 0 || v.freeFrom === null || zwischensumme <= 0 || zwischensumme >= v.freeFrom)
+    return undefined;
+  return v.freeFrom - zwischensumme;
 }
 
 /** Absätze aus Klartext (getrennt durch Leerzeilen). Ausgabe immer als Text, nie als HTML. */

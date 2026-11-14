@@ -2,7 +2,7 @@
 // Warenkorb (M6): Mengen ändern, entfernen, weiter zur Kasse. Formulare ohne JavaScript; nach jeder
 // Änderung leitet der Server zurück (POST, dann GET), damit Neuladen nichts doppelt tut.
 import Shop from "../../layouts/Shop.astro";
-import { euro } from "../../lib/format.js";
+import { euro, fehltBisKostenlos, VERSAND_KOSTENLOS } from "../../lib/format.js";
 import { loadCart, safeId, safeInt, setQuantity } from "../../lib/cart.js";
 import { loadShop, StoreApiError } from "../../lib/store-api.js";
 
@@ -49,6 +49,7 @@ if (Astro.request.method === "POST") {
 const hinweis = Astro.cookies.get("hinweis")?.value;
 if (hinweis !== undefined) Astro.cookies.delete("hinweis", { path: basis });
 const korb = await loadCart(Astro.cookies, shop.handle);
+const fehlt = fehltBisKostenlos(korb?.subtotal ?? 0, shop.versand ?? VERSAND_KOSTENLOS);
 const zeilen = korb?.lines ?? [];
 ---
 
@@ -115,9 +116,12 @@ const zeilen = korb?.lines ?? [];
           <dt>Zwischensumme</dt>
           <dd>{euro(korb?.subtotal ?? 0)}</dd>
           <dt>Versand</dt>
-          <dd>kostenlos</dd>
+          <dd>{(korb?.shipping ?? 0) === 0 ? "kostenlos" : euro(korb?.shipping ?? 0)}</dd>
           <dt class="gesamt">Gesamt</dt>
           <dd class="gesamt">{euro(korb?.total ?? 0)}</dd>
+          {fehlt !== undefined && (
+            <dd class="versand-hinweis">Noch {euro(fehlt)} bis zum kostenlosen Versand.</dd>
+          )}
           {Object.entries(korb?.taxByRate ?? {}).map(([satz, betrag]) => (
             <>
               <dt class="klein">enthaltene MwSt. {satz} %</dt>

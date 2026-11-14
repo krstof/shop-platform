@@ -33,6 +33,7 @@
     "@shop/payments": "workspace:*",
     "@shop/platform": "workspace:*",
     "@shop/pricing": "workspace:*",
+    "@shop/shipping": "workspace:*",
     "@shop/shop-settings": "workspace:*",
     "@shop/storefront-design": "workspace:*",
     "fastify": "5.12.7",

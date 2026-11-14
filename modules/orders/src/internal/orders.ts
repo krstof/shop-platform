@@ -31,6 +31,23 @@ export interface NewOrder {
   readonly lines: readonly NewOrderLine[];
   readonly paymentMethodName: string;
   readonly paymentProvider: string;
+  /** Versand (Name und Betrag brutto in Cent). Ohne Angabe: kostenloser Standardversand. */
+  readonly shipping?: { readonly name: string; readonly amount: number } | undefined;
+}
+
+/**
+ * Steuersatz der Versandkosten: der Satz mit dem größten Warenwert im Warenkorb (Nebenleistung
+ * folgt der Hauptleistung, vereinfachte Fassung). Gleich groß: der höhere Satz.
+ */
+export function shippingRateBp(byRate: ReadonlyMap<number, { gross: number }>): number {
+  let best = 1900;
+  let bestGross = -1;
+  for (const [rate, g] of byRate)
+    if (g.gross > bestGross || (g.gross === bestGross && rate > best)) {
+      best = rate;
+      bestGross = g.gross;
+    }
+  return best;
 }
 
 export type OrderStatus = "pending_payment" | "open" | "in_progress" | "completed" | "cancelled";
@@ -226,6 +243,17 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
           const g = byRate.get(l.rateBp) ?? { gross: 0, tax: 0 };
           byRate.set(l.rateBp, { gross: g.gross + l.total, tax: g.tax + l.tax });
         }
+        const shipping = input.shipping ?? { name: "Standardversand (kostenlos)", amount: 0 };
+        if (!Number.isSafeInteger(shipping.amount) || shipping.amount < 0)
+          throw new RangeError("Versand ungültig");
+        if (shipping.amount > 0) {
+          const rate = shippingRateBp(byRate);
+          const g = byRate.get(rate) ?? { gross: 0, tax: 0 };
+          byRate.set(rate, {
+            gross: g.gross + shipping.amount,
+            tax: g.tax + taxIncluded(shipping.amount, rate),
+          });
+        }
         const tax = [...byRate.values()].reduce((a, g) => a + g.tax, 0);
         const order = await trx
           .insertInto("orders.order")
@@ -238,11 +266,11 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
             currency: "EUR",
             tax_display: "gross",
             subtotal_amount: subtotal,
-            shipping_amount: 0,
+            shipping_amount: shipping.amount,
             discount_amount: 0,
             tax_amount: tax,
-            total_amount: subtotal,
-            shipping_method_name: "Standardversand (kostenlos)",
+            total_amount: subtotal + shipping.amount,
+            shipping_method_name: shipping.name,
             payment_method_name: input.paymentMethodName,
             payment_provider: input.paymentProvider,
           })

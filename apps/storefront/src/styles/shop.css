@@ -792,3 +792,14 @@ main:focus-visible {
 .galerie-wahl.aktiv {
   outline-color: var(--akzent);
 }
+
+/* --- Versand: Hinweis im Warenkorb --- */
+.versand-hinweis {
+  grid-column: 1 / -1;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: var(--flaeche);
+  font-size: 0.9rem;
+  text-align: left;
+}

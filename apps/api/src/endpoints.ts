@@ -32,6 +32,7 @@ import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { createPricing } from "@shop/pricing";
 import { createShopSettings } from "@shop/shop-settings";
+import { createShipping, shippingEndpoints } from "@shop/shipping";
 import { storefrontEndpoints } from "@shop/storefront-design";
 
 export interface EndpointDependencies {
@@ -96,6 +97,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       database: deps.database,
       carts: createCarts({ database: deps.database }),
       catalog: createCatalogReader({ database: deps.database, prices, stock, images }),
+      shipping: createShipping({ database: deps.database }),
       inventory: stock,
       orders: createOrders({ database: deps.database, settings }),
       payments: createPayments({ database: deps.database }),
@@ -108,6 +110,8 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...storeShopEndpoints(shops),
     // Aussehen des Shops (Shop-Editor Teil 1): Farbe, Schrift, Logo; dieselben Bildfunktionen.
     ...storefrontEndpoints({ database: deps.database, images }),
+    // Versandkosten (Pauschale, kostenlos ab Warenwert).
+    ...shippingEndpoints({ database: deps.database }),
     ...auditEndpoints(deps),
     // KI-Assistent (Welle 2): Übergang zum Sprachmodell, Werkzeuge laufen im Backoffice.
     ...aiEndpoints({

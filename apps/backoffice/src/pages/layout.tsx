@@ -93,6 +93,7 @@ const MENU = [
   { to: "/$shop/kategorien", label: "Kategorien" },
   { to: "/$shop/bestellungen", label: "Bestellungen" },
   { to: "/$shop/aussehen", label: "Aussehen" },
+  { to: "/$shop/versand", label: "Versand" },
 ] as const;
 
 /** Nur Inhaber:innen verwalten das Team. */

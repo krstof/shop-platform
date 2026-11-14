@@ -17,7 +17,7 @@ export type {
   OrderView,
   PaymentState,
 } from "./internal/orders.js";
-export { taxIncluded } from "./internal/orders.js";
+export { shippingRateBp, taxIncluded } from "./internal/orders.js";
 
 export interface OrdersDependencies {
   /** Verbindung als Rolle shop_app. */

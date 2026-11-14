@@ -1,12 +1,15 @@
 // Zugriff auf die Storefront-API (M4) vom Server der Storefront aus, nie aus dem Browser.
 // Adresse: SHOP_STORE_API_URL, im Container http://api:3000 (internes Netz).
 import { DEFAULT_DESIGN, type StoreDesign } from "./design.js";
+import { VERSAND_KOSTENLOS, type Versand } from "./format.js";
 
 export interface StoreShop {
   readonly handle: string;
   readonly name: string;
   /** Veröffentlichtes Aussehen (Shop-Editor Teil 1). Fehlt es, gilt der Standard. */
   readonly design?: StoreDesign;
+  /** Versandkosten des Shops. Fehlen sie, gilt kostenlos. */
+  readonly versand?: Versand;
 }
 
 export interface StoreCategory {
@@ -106,12 +109,13 @@ export async function loadShop(
   const h = safeHandle(handle);
   if (h === undefined) return undefined;
   try {
-    const [shop, categories, design] = await Promise.all([
+    const [shop, categories, design, versand] = await Promise.all([
       storeApi<StoreShop>(h, ""),
       storeApi<{ data: StoreCategory[] }>(h, "/categories"),
       loadDesign(h),
+      loadVersand(h),
     ]);
-    return { shop: { ...shop, design }, categories: categories.data };
+    return { shop: { ...shop, design, versand }, categories: categories.data };
   } catch (e) {
     if (e instanceof StoreApiError && e.status === 404) return undefined;
     throw e;
@@ -125,5 +129,15 @@ export async function loadDesign(handle: string): Promise<StoreDesign> {
   } catch (e) {
     if (e instanceof StoreApiError && e.status === 404) throw e;
     return DEFAULT_DESIGN;
+  }
+}
+
+/** Versandkosten. Klappt das nicht, zeigt der Shop „versandkostenfrei“ (Warenkorb rechnet trotzdem richtig). */
+export async function loadVersand(handle: string): Promise<Versand> {
+  try {
+    const v = await storeApi<Versand>(handle, "/shipping");
+    return { amount: v.amount, freeFrom: v.freeFrom };
+  } catch {
+    return VERSAND_KOSTENLOS;
   }
 }

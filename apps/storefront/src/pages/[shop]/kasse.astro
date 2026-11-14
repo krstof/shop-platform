@@ -149,7 +149,7 @@ const autocomplete: Record<Feld, string> = {
         </ul>
         <dl>
           <dt>Versand</dt>
-          <dd>kostenlos</dd>
+          <dd>{korb.shipping === 0 ? "kostenlos" : euro(korb.shipping)}</dd>
           <dt class="gesamt">Gesamt</dt>
           <dd class="gesamt">{euro(korb.total)}</dd>
         </dl>

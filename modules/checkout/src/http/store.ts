@@ -7,7 +7,7 @@ import type { CatalogReader, SellableProduct } from "@shop/catalog";
 import { defineEndpoint, idParam, singleLineText, type Endpoint } from "@shop/http";
 import { OutOfStockError, type Inventory } from "@shop/inventory";
 import { ConflictError, NotFoundError, withTenantTransaction, type Database } from "@shop/kernel";
-import { taxIncluded, type Orders, type OrderView } from "@shop/orders";
+import { shippingRateBp, taxIncluded, type Orders, type OrderView } from "@shop/orders";
 import type { Payments } from "@shop/payments";
 import type { ShopSettings } from "@shop/shop-settings";
 import { z } from "zod";
@@ -21,6 +21,8 @@ export interface CheckoutDependencies {
   readonly orders: Orders;
   readonly payments: Payments;
   readonly settings: ShopSettings;
+  /** Versandkosten (Modul shipping). Ohne Angabe: Versand kostenlos. */
+  readonly shipping?: { quote(subtotal: number): Promise<{ name: string; amount: number }> } | undefined;
   /** Bestätigung per E-Mail (lokal und auf dem Testserver: Mailpit). Ohne Angabe: keine E-Mail. */
   readonly mailer?: MailSender | undefined;
   /** Name des Shops für die E-Mail. */
@@ -58,16 +60,21 @@ const cartLineSchema = z.object({
 
 const totalsShape = {
   subtotal: money.meta({ description: "Summe brutto in Cent." }),
-  shipping: money,
+  shipping: money.meta({ description: "Versandkosten brutto in Cent (0 = kostenlos)." }),
   total: money,
   taxByRate: z.record(z.string(), money).meta({ description: "Enthaltene MwSt. je Satz in Cent." }),
 };
 
 const cartSchema = z
-  .object({ count: z.number().int(), lines: z.array(cartLineSchema), ...totalsShape })
+  .object({
+    count: z.number().int(),
+    lines: z.array(cartLineSchema),
+    ...totalsShape,
+    shippingName: z.string().meta({ description: "Name der Versandart, etwa „Standardversand“." }),
+  })
   .meta({
     id: "StoreCart",
-    description: "Warenkorb mit aktuellen Preisen. Versand ist im Testshop kostenlos.",
+    description: "Warenkorb mit aktuellen Preisen und Versandkosten des Shops.",
   });
 
 const addressInput = z.strictObject({
@@ -153,13 +160,26 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
       const quantity = l.quantity;
       return [{ product: p, quantity, total: p.price.amount * quantity }];
     });
-    const taxByRate: Record<string, number> = {};
-    for (const l of out) {
-      const key = String(l.product.taxRatePercent);
-      taxByRate[key] = (taxByRate[key] ?? 0) + taxIncluded(l.total, l.product.taxRatePercent * 100);
-    }
     const subtotal = out.reduce((a, l) => a + l.total, 0);
+    const shipping = (await deps.shipping?.quote(subtotal)) ?? {
+      name: "Standardversand (kostenlos)",
+      amount: 0,
+    };
+    const byRate = new Map<number, { gross: number }>();
+    for (const l of out) {
+      const bp = l.product.taxRatePercent * 100;
+      byRate.set(bp, { gross: (byRate.get(bp)?.gross ?? 0) + l.total });
+    }
+    // Wie beim Bestellen (Modul orders): Steuer je Position, Versand zum Satz mit dem größten Warenwert.
+    const taxByRate: Record<string, number> = {};
+    const addTax = (bp: number, gross: number) => {
+      const key = String(bp / 100);
+      taxByRate[key] = (taxByRate[key] ?? 0) + taxIncluded(gross, bp);
+    };
+    for (const l of out) addTax(l.product.taxRatePercent * 100, l.total);
+    if (shipping.amount > 0) addTax(shippingRateBp(byRate), shipping.amount);
     return {
+      shipping,
       items: out,
       view: {
         count: out.reduce((a, l) => a + l.quantity, 0),
@@ -175,8 +195,9 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
           taxRatePercent: l.product.taxRatePercent,
         })),
         subtotal,
-        shipping: 0,
-        total: subtotal,
+        shipping: shipping.amount,
+        shippingName: shipping.name,
+        total: subtotal + shipping.amount,
         taxByRate,
       },
     };
@@ -290,7 +311,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
     problems: [404, 409],
     handler: async ({ params, body }) => {
       const cart = await requireCart(params.cartToken);
-      const { items } = await cartView(cart.lines);
+      const { items, shipping } = await cartView(cart.lines);
       if (items.length === 0) throw new ConflictError({ detail: "Der Warenkorb ist leer." });
       try {
         return await withTenantTransaction(deps.database, async () => {
@@ -299,6 +320,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
             address: { ...body.address, countryCode: "DE" },
             paymentMethodName: "Testzahlung",
             paymentProvider: "test",
+            shipping,
             lines: items.map((l) => ({
               productId: l.product.id,
               variantId: l.product.variantId,

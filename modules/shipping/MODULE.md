@@ -1,6 +1,6 @@
 # Modul `shipping`
 
-> Landkarte für spätere Läufe (Architektur 8.4). Fassade und Ereignisse sind geplant, Code entsteht ab Etappe E4.
+> Landkarte für spätere Läufe (Architektur 8.4). Seit 14.11.2026 mit Code: Standardversand mit Pauschale.
 
 **Aufgabe:** Versandarten, Versandkosten (pauschal), Sendungen. Bekommt Land und Zone vom Aufrufer, damit es nicht von shop-settings abhängt.
 
@@ -11,6 +11,8 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Darf aufrufen** (`module.json` → `dependsOn`): keine. Alles andere nur über Ereignisse.
 
-**Fassade (geplant):** quote(lines, destination), createShipment(...)
+**Heute:** Eine Versandart `standard` (Pauschale in `shipping_rate`, Grenze für kostenlosen Versand in `shipping_method.free_shipping_threshold_amount`, nur EUR, alle Länder). Ohne Eintrag: kostenlos. Fassade `createShipping().quote(subtotal)`; Regeln in `internal/rules.ts`. API: `GET/PUT /admin/v1/shipping` (`settings:read`/`settings:write`), `GET /store/v1/shops/{h}/shipping`. Checkout ruft `quote` über eine eigene Schnittstelle auf (zusammengesteckt in apps/api); die MwSt. auf den Versand rechnet orders (`shippingRateBp`: Satz mit dem größten Warenwert).
+
+**Fassade (geplant, später):** quote(lines, destination) mit Gewicht und Zonen, createShipment(...)
 
 **Ereignisse (geplant):** shipping.shipment.created.v1

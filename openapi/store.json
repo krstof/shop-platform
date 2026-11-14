@@ -1131,6 +1131,91 @@
         "x-public-reason": "Die Storefront zeigt jedem Besucher die veröffentlichten Produkte des Shops."
       }
     },
+    "/store/v1/shops/{shopHandle}/shipping": {
+      "get": {
+        "operationId": "getStoreShipping",
+        "summary": "Versandkosten des Shops",
+        "description": "Pauschale und Grenze für kostenlosen Versand, für Hinweise im Shop.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Versandkosten.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShippingSettings"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Jeder Besucher muss die Versandkosten vor dem Kauf sehen."
+      }
+    },
     "/store/v1/shops/{shopHandle}/test-payments/{paymentToken}": {
       "get": {
         "operationId": "getStoreTestPayment",
@@ -1526,6 +1611,41 @@
         "additionalProperties": false,
         "description": "Produktbild, ausgeliefert über media.<Domain>."
       },
+      "ShippingSettings": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Pauschale brutto in Cent; 0 = Versand immer kostenlos."
+          },
+          "freeFrom": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ab diesem Warenwert (brutto, Cent) kostenlos; null = keine Grenze."
+          },
+          "currency": {
+            "type": "string",
+            "const": "EUR"
+          }
+        },
+        "required": [
+          "amount",
+          "freeFrom",
+          "currency"
+        ],
+        "additionalProperties": false,
+        "description": "Standardversand: Pauschale und Grenze für kostenlosen Versand."
+      },
       "StoreCart": {
         "type": "object",
         "properties": {
@@ -1605,7 +1725,8 @@
           "shipping": {
             "type": "integer",
             "minimum": -9007199254740991,
-            "maximum": 9007199254740991
+            "maximum": 9007199254740991,
+            "description": "Versandkosten brutto in Cent (0 = kostenlos)."
           },
           "total": {
             "type": "integer",
@@ -1623,6 +1744,10 @@
               "maximum": 9007199254740991
             },
             "description": "Enthaltene MwSt. je Satz in Cent."
+          },
+          "shippingName": {
+            "type": "string",
+            "description": "Name der Versandart, etwa „Standardversand“."
           }
         },
         "required": [
@@ -1631,10 +1756,11 @@
           "subtotal",
           "shipping",
           "total",
-          "taxByRate"
+          "taxByRate",
+          "shippingName"
         ],
         "additionalProperties": false,
-        "description": "Warenkorb mit aktuellen Preisen. Versand ist im Testshop kostenlos."
+        "description": "Warenkorb mit aktuellen Preisen und Versandkosten des Shops."
       },
       "StoreCategory": {
         "type": "object",
@@ -1887,7 +2013,8 @@
           "shipping": {
             "type": "integer",
             "minimum": -9007199254740991,
-            "maximum": 9007199254740991
+            "maximum": 9007199254740991,
+            "description": "Versandkosten brutto in Cent (0 = kostenlos)."
           },
           "total": {
             "type": "integer",

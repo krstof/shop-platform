@@ -3,6 +3,7 @@
 import "../styles/shop.css";
 import type { StoreCategory, StoreShop } from "../lib/store-api.js";
 import { DEFAULT_DESIGN, designVersion, isExternal, safeLink } from "../lib/design.js";
+import { VERSAND_KOSTENLOS, versandText } from "../lib/format.js";
 
 interface Props {
   shop: StoreShop;
@@ -121,7 +122,7 @@ const fussLinks = (design.footer?.links ?? []).flatMap((l) => {
             </ul>
           </nav>
         )}
-        <p class="klein">Alle Preise inkl. MwSt., Versand kostenlos.</p>
+        <p class="klein">Alle Preise inkl. MwSt., {versandText(shop.versand ?? VERSAND_KOSTENLOS)}.</p>
         <p class="klein slopify">
           <img src="/favicon.svg" alt="" width="16" height="16" /> Ein Testshop auf <strong>slopify</strong>
         </p>

@@ -32,7 +32,7 @@ const o = zahlung.order;
     </ul>
     <dl class="summen-zeilen">
       <dt>Versand</dt>
-      <dd>kostenlos</dd>
+      <dd>{o.shipping === 0 ? "kostenlos" : euro(o.shipping)}</dd>
       <dt class="gesamt">Gesamt</dt>
       <dd class="gesamt">{euro(o.total)}</dd>
       {Object.entries(o.taxByRate).map(([satz, betrag]) => (
