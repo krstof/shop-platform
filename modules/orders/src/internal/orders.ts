@@ -99,6 +99,54 @@ function placed(trx: Transaction<DB>) {
   return trx.selectFrom("orders.order");
 }
 
+export interface OrderSummaryStats {
+  /** Älteste zuerst, je Kalendertag in deutscher Zeit, auch Tage ohne Bestellung. */
+  readonly days: readonly { readonly date: string; readonly orders: number; readonly revenue: number }[];
+  readonly toShip: number;
+  readonly awaitingPayment: number;
+}
+
+const BERLIN = "Europe/Berlin";
+const DAY_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BERLIN,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Kalendertag in deutscher Zeit, etwa „2026-11-14“. */
+export function berlinDate(at: Date): string {
+  return DAY_FORMAT.format(at);
+}
+
+/** Die letzten `days` Kalendertage in deutscher Zeit bis einschließlich heute, älteste zuerst. */
+export function berlinDates(now: Date, days: number): string[] {
+  const out: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    // Mittag UTC liegt sicher im richtigen deutschen Tag, auch bei Sommer- und Winterzeit.
+    const [y, m, d] = berlinDate(now).split("-").map(Number) as [number, number, number];
+    out.push(berlinDate(new Date(Date.UTC(y, m - 1, d - i, 12))));
+  }
+  return out;
+}
+
+/** Mitternacht eines deutschen Kalendertags als Zeitpunkt. */
+export function berlinMidnight(date: string): Date {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  // Deutschland liegt 1 oder 2 Stunden vor UTC: den Kandidaten nehmen, der dort 00:00 zeigt.
+  for (const offset of [1, 2]) {
+    const candidate = new Date(Date.UTC(y, m - 1, d, -offset));
+    const time = new Intl.DateTimeFormat("de-DE", {
+      timeZone: BERLIN,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(candidate);
+    if (berlinDate(candidate) === date && time === "00:00") return candidate;
+  }
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
 export function orderRepository(database: Database<unknown>, settings: ShopSettings) {
   const db = database as Database<DB>;
   const tenant = () => getContext()?.tenantId ?? "";
@@ -355,6 +403,40 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
         const order = await view(trx, id);
         if (order === undefined) return { kind: "not_found" as const };
         return { kind: "ok" as const, order };
+      });
+    },
+
+    /**
+     * Kennzahlen für die Übersicht: bezahlte Bestellungen und Umsatz je Tag (deutsche Zeit) der letzten
+     * `days` Tage, dazu wie viele zu versenden sind und wie viele auf die Zahlung warten.
+     */
+    async summary(now: Date, days: number): Promise<OrderSummaryStats> {
+      return withTenantTransaction(db, async (trx) => {
+        const dates = berlinDates(now, days);
+        const from = berlinMidnight(dates[0] ?? "");
+        const paid = await placed(trx)
+          .select(["placed_at", "total_amount"])
+          .where("payment_status", "=", "paid")
+          .where("placed_at", ">=", from)
+          .execute();
+        const byDay = new Map(dates.map((d) => [d, { date: d, orders: 0, revenue: 0 }]));
+        for (const o of paid) {
+          const day = byDay.get(berlinDate(o.placed_at));
+          if (day === undefined) continue;
+          day.orders += 1;
+          day.revenue += Number(o.total_amount);
+        }
+        const counts = await placed(trx)
+          .select((eb) => [
+            eb.fn.countAll<string>().filterWhere("status", "=", "open").as("to_ship"),
+            eb.fn.countAll<string>().filterWhere("status", "=", "pending_payment").as("awaiting"),
+          ])
+          .executeTakeFirstOrThrow();
+        return {
+          days: [...byDay.values()],
+          toShip: Number(counts.to_ship),
+          awaitingPayment: Number(counts.awaiting),
+        };
       });
     },
 

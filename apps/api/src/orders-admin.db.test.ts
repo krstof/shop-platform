@@ -207,4 +207,17 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
       expect((await inject("GET", `/admin/v1/orders?${bad}`, "reader")).statusCode).toBe(422);
     }
   });
+
+  it("liefert Kennzahlen: Umsatz heute aus bezahlten Bestellungen, zu versenden, wartet auf Zahlung", async () => {
+    // Bisher: 10001 bezahlt und versendet (17,80 €), 10002 unbezahlt, 10003 bezahlt (26,70 €), 10004 bezahlt (8,90 €).
+    const r = await inject("GET", "/admin/v1/orders/summary", "reader");
+    expect(r.statusCode).toBe(200);
+    const stats = r.json();
+    expect(stats).toMatchObject({ currency: "EUR", toShip: 2, awaitingPayment: 1 });
+    expect(stats.days).toHaveLength(7);
+    expect(stats.days.at(-1)).toMatchObject({ orders: 3, revenue: 5340 });
+    expect(stats.days.slice(0, 6).every((d: { orders: number }) => d.orders === 0)).toBe(true);
+    // Ohne Leserecht für Bestellungen nichts.
+    expect((await inject("GET", "/admin/v1/orders/summary")).statusCode).toBe(401);
+  });
 });

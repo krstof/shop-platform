@@ -2,21 +2,16 @@
 // (/<handle>/produkte), damit Links und Neuladen den gewählten Shop behalten.
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ShopContext, useShop } from "../lib/shop.js";
 import { Button, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
 import { useSession } from "../lib/session.js";
 import { SlopifyMark } from "../components/logo.js";
 import { AssistantChat, AssistantProvider, useAssistant } from "./assistant.js";
 
-const ShopContext = createContext<ShopOfUser | null>(null);
-
-/** Der gewählte Shop. Nur innerhalb von ShopLayout verwenden. */
-export function useShop(): ShopOfUser {
-  const shop = useContext(ShopContext);
-  if (shop === null) throw new Error("useShop außerhalb eines Shops");
-  return shop;
-}
+// Der Shop-Kontext liegt in lib/shop.ts (sonst Kreis mit pages/assistant.tsx); hier weitergereicht.
+export { useShop };
 
 export function FullPageSpinner() {
   return (
@@ -36,7 +31,7 @@ export function HomeRedirect() {
   // Betreiberkonto ohne eigenen Shop: gleich in die Plattform-Verwaltung (M8).
   if (first === undefined && session.data.platformOperator) return <Navigate to="/plattform" replace />;
   if (first === undefined) return <NoShop />;
-  return <Navigate to="/$shop/produkte" params={{ shop: first.handle }} replace />;
+  return <Navigate to="/$shop/uebersicht" params={{ shop: first.handle }} replace />;
 }
 
 function NoShop() {
@@ -93,6 +88,7 @@ export function SignOutButton({ className }: { className?: string }) {
 
 /** Menüpunkte des Shops. Reihenfolge = Reihenfolge im Menü. */
 const MENU = [
+  { to: "/$shop/uebersicht", label: "Übersicht" },
   { to: "/$shop/produkte", label: "Produkte" },
   { to: "/$shop/kategorien", label: "Kategorien" },
   { to: "/$shop/bestellungen", label: "Bestellungen" },
@@ -147,9 +143,9 @@ function ShopFrame({
       <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Link
-            to="/$shop/produkte"
+            to="/$shop/uebersicht"
             params={{ shop: shop.handle }}
-            className="flex min-w-0 shrink items-center gap-2 font-semibold text-emerald-800 lg:shrink-0"
+            className="flex min-w-0 shrink items-center gap-2 font-semibold text-emerald-800 xl:shrink-0"
             title="Slopify"
           >
             <SlopifyMark className="size-6 shrink-0" />
@@ -161,11 +157,11 @@ function ShopFrame({
               <ShopSelect
                 shops={shops}
                 value={shop.handle}
-                onChange={(h) => void navigate({ to: "/$shop/produkte", params: { shop: h } })}
+                onChange={(h) => void navigate({ to: "/$shop/uebersicht", params: { shop: h } })}
               />
             </label>
           )}
-          <nav className="ml-2 hidden gap-1 text-sm lg:flex" aria-label="Hauptmenü">
+          <nav className="ml-2 hidden gap-1 text-sm xl:flex" aria-label="Hauptmenü">
             {MENU.map((m) => (
               <Link
                 key={m.to}
@@ -179,7 +175,7 @@ function ShopFrame({
             ))}
             <AssistantToggle open={panelOpen} hidden={onAssistantPage} onClick={toggleAssistant} />
           </nav>
-          <div className="ml-auto hidden items-center gap-2 lg:flex">
+          <div className="ml-auto hidden items-center gap-2 xl:flex">
             {operator && (
               <Link
                 to="/plattform"
@@ -188,15 +184,15 @@ function ShopFrame({
                 Plattform
               </Link>
             )}
-            <span className="hidden text-sm text-stone-500 xl:inline">{email}</span>
+            <span className="hidden text-sm text-stone-500 2xl:inline">{email}</span>
             <SignOutButton />
           </div>
-          <div className="ml-auto lg:hidden">
+          <div className="ml-auto xl:hidden">
             <AssistantToggle open={panelOpen} hidden={onAssistantPage} onClick={toggleAssistant} />
           </div>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100 lg:hidden"
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100 xl:hidden"
             aria-expanded={menuOpen}
             aria-controls="handy-menue"
             onClick={() => setMenuOpen((o) => !o)}
@@ -206,7 +202,7 @@ function ShopFrame({
           </button>
         </div>
         {menuOpen && (
-          <div id="handy-menue" className="border-t border-stone-200 bg-white lg:hidden">
+          <div id="handy-menue" className="border-t border-stone-200 bg-white xl:hidden">
             <nav className="mx-auto flex max-w-6xl flex-col px-4 py-2 sm:px-6" aria-label="Hauptmenü">
               {MENU.map((m) => (
                 <Link
@@ -233,7 +229,7 @@ function ShopFrame({
                   <ShopSelect
                     shops={shops}
                     value={shop.handle}
-                    onChange={(h) => void navigate({ to: "/$shop/produkte", params: { shop: h } })}
+                    onChange={(h) => void navigate({ to: "/$shop/uebersicht", params: { shop: h } })}
                   />
                 </label>
               )}

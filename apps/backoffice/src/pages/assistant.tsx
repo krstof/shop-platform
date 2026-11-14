@@ -29,7 +29,7 @@ import {
   type ChatBlock,
   type ChatMessage,
 } from "../lib/assistant.js";
-import { useShop } from "./layout.js";
+import { useShop } from "../lib/shop.js";
 
 type ToolUse = Extract<ChatBlock, { type: "tool_use" }>;
 type Decision = "approved" | "declined";

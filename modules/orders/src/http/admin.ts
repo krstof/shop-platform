@@ -113,7 +113,42 @@ function toOrder(o: OrderView): z.input<typeof orderSchema> {
 
 const cursorKey = z.strictObject({ id: z.uuid() });
 
+const summaryResponse = z
+  .object({
+    currency: z.literal("EUR"),
+    days: z
+      .array(
+        z.object({
+          date: z.iso.date().meta({ description: "Kalendertag in deutscher Zeit." }),
+          orders: z.number().int().meta({ description: "Bezahlte Bestellungen an diesem Tag." }),
+          revenue: z.number().int().meta({ description: "Umsatz brutto in Cent (bezahlte Bestellungen)." }),
+        }),
+      )
+      .meta({ description: "Die letzten 7 Tage bis heute, älteste zuerst, auch Tage ohne Bestellung." }),
+    toShip: z.number().int().meta({ description: "Bezahlt und noch nicht versendet." }),
+    awaitingPayment: z.number().int().meta({ description: "Warten auf die Zahlung." }),
+  })
+  .meta({ id: "OrderStats", description: "Kennzahlen für die Übersicht im Backoffice." });
+
 export function orderAdminEndpoints(repo: OrderRepository): Endpoint[] {
+  const stats = defineEndpoint({
+    api: "admin",
+    method: "GET",
+    path: "/orders/summary",
+    operationId: "getOrderStats",
+    summary: "Kennzahlen der Bestellungen",
+    description:
+      "Umsatz und Zahl der bezahlten Bestellungen je Tag der letzten 7 Tage (deutsche Zeit), dazu wie " +
+      "viele Bestellungen zu versenden sind und wie viele auf die Zahlung warten.",
+    tags: ["Bestellungen"],
+    access: { scopes: ["orders:read"] },
+    response: { status: 200, description: "Die Kennzahlen.", schema: summaryResponse },
+    handler: async () => {
+      const r = await repo.summary(new Date(), 7);
+      return { currency: "EUR" as const, ...r, days: [...r.days] };
+    },
+  });
+
   const list = defineEndpoint({
     api: "admin",
     method: "GET",
@@ -193,5 +228,5 @@ export function orderAdminEndpoints(repo: OrderRepository): Endpoint[] {
     },
   });
 
-  return [list, get, ship];
+  return [stats, list, get, ship];
 }

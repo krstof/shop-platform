@@ -5179,6 +5179,109 @@
         ]
       }
     },
+    "/admin/v1/orders/summary": {
+      "get": {
+        "operationId": "getOrderStats",
+        "summary": "Kennzahlen der Bestellungen",
+        "description": "Umsatz und Zahl der bezahlten Bestellungen je Tag der letzten 7 Tage (deutsche Zeit), dazu wie viele Bestellungen zu versenden sind und wie viele auf die Zahlung warten.",
+        "tags": [
+          "Bestellungen"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Kennzahlen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderStats"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "orders:read"
+        ]
+      }
+    },
     "/admin/v1/products": {
       "get": {
         "operationId": "listProducts",
@@ -8279,6 +8382,68 @@
         ],
         "additionalProperties": false,
         "description": "Bestellung mit Positionen, Adresse und Summen (Momentaufnahme)."
+      },
+      "OrderStats": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "const": "EUR"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                  "description": "Kalendertag in deutscher Zeit."
+                },
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Bezahlte Bestellungen an diesem Tag."
+                },
+                "revenue": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Umsatz brutto in Cent (bezahlte Bestellungen)."
+                }
+              },
+              "required": [
+                "date",
+                "orders",
+                "revenue"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Die letzten 7 Tage bis heute, älteste zuerst, auch Tage ohne Bestellung."
+          },
+          "toShip": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bezahlt und noch nicht versendet."
+          },
+          "awaitingPayment": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Warten auf die Zahlung."
+          }
+        },
+        "required": [
+          "currency",
+          "days",
+          "toShip",
+          "awaitingPayment"
+        ],
+        "additionalProperties": false,
+        "description": "Kennzahlen für die Übersicht im Backoffice."
       },
       "OrderSummary": {
         "type": "object",

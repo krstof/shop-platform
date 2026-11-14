@@ -7,6 +7,7 @@ import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.
 import { AcceptInvitationPage } from "./pages/invitation.js";
 import { HomeRedirect, ShopLayout } from "./pages/layout.js";
 import { OrderPage, OrdersPage } from "./pages/orders.js";
+import { OverviewPage } from "./pages/overview.js";
 import { PlatformPage } from "./pages/platform.js";
 import { EditProductPage, NewProductPage } from "./pages/product-editor.js";
 import { ProductsPage } from "./pages/products.js";
@@ -46,9 +47,12 @@ const shopHome = createRoute({
   path: "/",
   component: function ShopHome() {
     const { shop: handle } = shop.useParams();
-    return <Navigate to="/$shop/produkte" params={{ shop: handle }} replace />;
+    return <Navigate to="/$shop/uebersicht" params={{ shop: handle }} replace />;
   },
 });
+// Übersicht (Startseite des Shops).
+const overview = createRoute({ getParentRoute: () => shop, path: "/uebersicht", component: OverviewPage });
+
 const products = createRoute({
   getParentRoute: () => shop,
   path: "/produkte",
@@ -109,6 +113,7 @@ const routeTree = root.addChildren([
   platform,
   shop.addChildren([
     shopHome,
+    overview,
     products,
     productNew,
     productEdit,

@@ -78,7 +78,7 @@ function PlatformFrame({
           </Link>
           {hasShops && firstShop !== undefined && (
             <Link
-              to="/$shop/produkte"
+              to="/$shop/uebersicht"
               params={{ shop: firstShop }}
               className="rounded-md px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"
             >
