@@ -435,6 +435,49 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
     },
 
     /**
+     * Storniert eine noch nicht versendete Bestellung. Bezahlte gelten danach als erstattet
+     * (Testzahlung). `restock` legt die Ware in derselben Transaktion zurück ins Lager.
+     */
+    async cancel(
+      id: string,
+      restock: (lines: { variantId: string; quantity: number }[]) => Promise<void>,
+    ): Promise<{ kind: "ok"; order: OrderView } | { kind: "not_found" | "not_allowed" }> {
+      return withTenantTransaction(db, async (trx) => {
+        const o = await placed(trx)
+          .select(["status", "payment_status", "fulfillment_status"])
+          .where("id", "=", id)
+          .forUpdate()
+          .executeTakeFirst();
+        if (o === undefined) return { kind: "not_found" as const };
+        if (o.status === "cancelled" || o.fulfillment_status !== "unfulfilled")
+          return { kind: "not_allowed" as const };
+        await trx
+          .updateTable("orders.order")
+          .set({
+            status: "cancelled",
+            payment_status: o.payment_status === "paid" ? "refunded" : o.payment_status,
+            cancelled_at: new Date(),
+            cancel_reason: "Im Backoffice storniert",
+            seen_at: new Date(),
+            updated_at: new Date(),
+          })
+          .where("id", "=", id)
+          .execute();
+        const lines = await trx
+          .selectFrom("orders.order_line")
+          .select(["variant_id", "quantity"])
+          .where("order_id", "=", id)
+          .execute();
+        await restock(
+          lines.filter((l) => l.quantity > 0).map((l) => ({ variantId: l.variant_id, quantity: l.quantity })),
+        );
+        const order = await view(trx, id);
+        if (order === undefined) return { kind: "not_found" as const };
+        return { kind: "ok" as const, order };
+      });
+    },
+
+    /**
      * Kennzahlen für die Übersicht: bezahlte Bestellungen und Umsatz je Tag (deutsche Zeit) der letzten
      * `days` Tage, dazu wie viele zu versenden sind und wie viele auf die Zahlung warten.
      */

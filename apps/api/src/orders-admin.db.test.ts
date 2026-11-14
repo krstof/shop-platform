@@ -220,4 +220,41 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
     // Ohne Leserecht für Bestellungen nichts.
     expect((await inject("GET", "/admin/v1/orders/summary")).statusCode).toBe(401);
   });
+  it("storniert: Ware zurück ins Lager, bezahlt gilt als erstattet; versendet oder schon storniert 409", async () => {
+    const stock = async () =>
+      (await inject("GET", "/admin/v1/products", "owner")).json().data[0].stock as number;
+    const before = await stock();
+    const paidNumber = await buy(4, true);
+    const unpaidNumber = await buy(2, false);
+    expect(await stock()).toBe(before - 6);
+    const byNumber = async (n: string) =>
+      (await inject("GET", `/admin/v1/orders?q=${n}`, "reader")).json().data[0].id as string;
+    const paid = await byNumber(paidNumber);
+    expect((await inject("POST", `/admin/v1/orders/${paid}/cancel`, "reader")).statusCode).toBe(403);
+    const r = await inject("POST", `/admin/v1/orders/${paid}/cancel`, "owner");
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({
+      status: "cancelled",
+      paymentStatus: "refunded",
+      fulfillmentStatus: "unfulfilled",
+    });
+    expect(await stock()).toBe(before - 2);
+    const unpaid = await byNumber(unpaidNumber);
+    expect((await inject("POST", `/admin/v1/orders/${unpaid}/cancel`, "owner")).json()).toMatchObject({
+      status: "cancelled",
+      paymentStatus: "unpaid",
+    });
+    expect(await stock()).toBe(before);
+    expect((await inject("POST", `/admin/v1/orders/${paid}/cancel`, "owner")).statusCode).toBe(409);
+    expect((await inject("POST", `/admin/v1/orders/${paid}/ship`, "owner")).statusCode).toBe(409);
+    // Versendete Bestellung (10001) lässt sich nicht stornieren; unbekannte 404.
+    expect(
+      (await inject("POST", `/admin/v1/orders/${await byNumber("10001")}/cancel`, "owner")).statusCode,
+    ).toBe(409);
+    expect((await inject("POST", `/admin/v1/orders/${uuidv7()}/cancel`, "owner")).statusCode).toBe(404);
+    // Stornierte zählen nicht als „wartet auf Zahlung“ oder „zu versenden“ und nicht zum Umsatz.
+    const stats = (await inject("GET", "/admin/v1/orders/summary", "reader")).json();
+    expect(stats).toMatchObject({ toShip: 2, awaitingPayment: 1 });
+    expect(stats.days.at(-1)).toMatchObject({ revenue: 5340 });
+  });
 });

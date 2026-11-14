@@ -91,7 +91,11 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     // Katalog mit Preisen, Bestand und Bildern aus den Modulen pricing, inventory und media (M2).
     ...catalogEndpoints({ database: deps.database, prices, stock, images }),
     // Bestellungen im Backoffice (M7).
-    ...orderEndpoints({ database: deps.database, settings }),
+    ...orderEndpoints({
+      database: deps.database,
+      settings,
+      restock: (lines, id) => stock.putBack(lines, id),
+    }),
     // Kaufen in der Storefront (M6): Warenkorb, Kasse, Testzahlung, Bestellbestätigung.
     ...checkoutEndpoints({
       database: deps.database,

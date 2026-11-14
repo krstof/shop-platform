@@ -3,7 +3,7 @@
 import type { Endpoint } from "@shop/http";
 import type { Database } from "@shop/kernel";
 import type { ShopSettings } from "@shop/shop-settings";
-import { orderAdminEndpoints } from "./http/admin.js";
+import { orderAdminEndpoints, type Restock } from "./http/admin.js";
 import { orderRepository, type OrderRepository } from "./internal/orders.js";
 
 export type {
@@ -23,6 +23,8 @@ export interface OrdersDependencies {
   /** Verbindung als Rolle shop_app. */
   readonly database: Database<unknown>;
   readonly settings: ShopSettings;
+  /** Ware stornierter Bestellungen zurücklegen (Modul inventory). Ohne Angabe: nichts zurücklegen. */
+  readonly restock?: Restock | undefined;
 }
 
 export type Orders = Pick<OrderRepository, "place" | "markPaid" | "view">;
@@ -34,5 +36,5 @@ export function createOrders(deps: OrdersDependencies): Orders {
 
 /** Endpunkte für das Backoffice (M7). */
 export function orderEndpoints(deps: OrdersDependencies): Endpoint[] {
-  return orderAdminEndpoints(orderRepository(deps.database, deps.settings));
+  return orderAdminEndpoints(orderRepository(deps.database, deps.settings), deps.restock);
 }

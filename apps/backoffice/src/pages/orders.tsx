@@ -14,6 +14,7 @@ import {
   type OrderStateFilter,
 } from "../lib/order-filter.js";
 import { useShop } from "./layout.js";
+import { productsKey } from "./products.js";
 
 /** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
 type FilterInput = { [K in keyof OrderFilter]?: OrderFilter[K] | undefined };
@@ -256,6 +257,17 @@ export function OrderPage() {
     },
   });
 
+  const cancel = useMutation({
+    mutationFn: () =>
+      request<Order>(`/admin/v1/orders/${orderId ?? ""}/cancel`, { method: "POST", shopId: shop.id }),
+    onSuccess: (o) => {
+      queryClient.setQueryData(key, o);
+      void queryClient.invalidateQueries({ queryKey: ["orders", shop.id] });
+      // Bestand der Produkte hat sich geändert.
+      void queryClient.invalidateQueries({ queryKey: productsKey(shop.id) });
+    },
+  });
+
   if (order.isPending) return <Loading label="Bestellung wird geladen …" />;
   if (order.isError)
     return (
@@ -267,6 +279,7 @@ export function OrderPage() {
     );
   const o = order.data;
   const canShip = o.status === "open" && o.paymentStatus === "paid" && o.fulfillmentStatus === "unfulfilled";
+  const canCancel = o.status !== "cancelled" && o.fulfillmentStatus === "unfulfilled";
 
   return (
     <div>
@@ -284,15 +297,39 @@ export function OrderPage() {
           </h1>
           <p className="text-sm text-stone-500">{DATE.format(new Date(o.placedAt))}</p>
         </div>
-        {canShip && (
-          <Button busy={ship.isPending} onClick={() => ship.mutate()}>
-            Als versendet markieren
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canCancel && (
+            <Button
+              variant="secondary"
+              busy={cancel.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Bestellung ${o.orderNumber} stornieren? Die Ware kommt zurück ins Lager${
+                      o.paymentStatus === "paid" ? ", die Testzahlung gilt als erstattet" : ""
+                    }. Das lässt sich nicht rückgängig machen.`,
+                  )
+                )
+                  cancel.mutate();
+              }}
+            >
+              Stornieren
+            </Button>
+          )}
+          {canShip && (
+            <Button busy={ship.isPending} onClick={() => ship.mutate()}>
+              Als versendet markieren
+            </Button>
+          )}
+        </div>
       </div>
       <div className="space-y-4" aria-live="polite">
         {ship.isError && <Alert>{ship.error.message}</Alert>}
         {ship.isSuccess && <Alert tone="success">Als versendet markiert. Die Bestellung ist erledigt.</Alert>}
+        {cancel.isError && <Alert>{cancel.error.message}</Alert>}
+        {cancel.isSuccess && (
+          <Alert tone="success">Storniert. Die Ware ist wieder im Lager und im Shop bestellbar.</Alert>
+        )}
         {o.status === "pending_payment" && (
           <Alert tone="info">
             Die Zahlung fehlt noch. Erst nach der Zahlung kann die Bestellung versendet werden.
@@ -361,7 +398,14 @@ export function OrderPage() {
           </Card>
           <Card title="Zahlung">
             <p className="text-sm">
-              {o.paymentMethodName ?? "–"}: {o.paymentStatus === "paid" ? "bezahlt" : "noch offen"}
+              {o.paymentMethodName ?? "–"}:{" "}
+              {o.paymentStatus === "paid"
+                ? "bezahlt"
+                : o.paymentStatus === "refunded"
+                  ? "erstattet (storniert)"
+                  : o.status === "cancelled"
+                    ? "storniert"
+                    : "noch offen"}
             </p>
           </Card>
         </div>

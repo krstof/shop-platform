@@ -130,7 +130,10 @@ const summaryResponse = z
   })
   .meta({ id: "OrderStats", description: "Kennzahlen für die Übersicht im Backoffice." });
 
-export function orderAdminEndpoints(repo: OrderRepository): Endpoint[] {
+/** Legt Ware zurück ins Lager (Modul inventory, zusammengesteckt in apps/api). */
+export type Restock = (lines: { variantId: string; quantity: number }[], orderId: string) => Promise<void>;
+
+export function orderAdminEndpoints(repo: OrderRepository, restock?: Restock): Endpoint[] {
   const stats = defineEndpoint({
     api: "admin",
     method: "GET",
@@ -228,5 +231,31 @@ export function orderAdminEndpoints(repo: OrderRepository): Endpoint[] {
     },
   });
 
-  return [stats, list, get, ship];
+  const cancel = defineEndpoint({
+    api: "admin",
+    method: "POST",
+    path: "/orders/{orderId}/cancel",
+    operationId: "cancelOrder",
+    summary: "Bestellung stornieren",
+    description:
+      "Storniert eine noch nicht versendete Bestellung und legt die Ware zurück ins Lager. War sie bezahlt, " +
+      "gilt die (Test-)Zahlung als erstattet. Schon versendete oder stornierte Bestellungen ergeben 409.",
+    tags: ["Bestellungen"],
+    access: { scopes: ["orders:write"] },
+    params: z.strictObject({ orderId: idParam }),
+    response: { status: 200, description: "Die Bestellung danach.", schema: orderSchema },
+    problems: [404, 409],
+    handler: async ({ params }) => {
+      const r = await repo.cancel(params.orderId, (lines) =>
+        restock === undefined || lines.length === 0 ? Promise.resolve() : restock(lines, params.orderId),
+      );
+      if (r.kind === "ok") return toOrder(r.order);
+      if (r.kind === "not_found") throw new NotFoundError();
+      throw new ConflictError({
+        detail: "Nur noch nicht versendete Bestellungen lassen sich stornieren.",
+      });
+    },
+  });
+
+  return [stats, list, get, ship, cancel];
 }

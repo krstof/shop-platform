@@ -24,6 +24,8 @@ export interface Inventory {
    * Position nicht, wirft es OutOfStockError, und die Transaktion des Aufrufers rollt alles zurück.
    */
   take(lines: readonly { variantId: string; quantity: number }[], orderId: string): Promise<void>;
+  /** Legt Ware einer stornierten Bestellung zurück ins Standardlager (Bewegung „cancellation“). */
+  putBack(lines: readonly { variantId: string; quantity: number }[], orderId: string): Promise<void>;
   /** Setzt den Bestand einer Variante im Standardlager auf genau diese Zahl. */
   setOnHand(variantId: string, quantity: number): Promise<void>;
   /** Verfügbarer Bestand (vorhanden minus reserviert) je Variante über alle Lager. Ohne Bestand: fehlt. */
@@ -125,6 +127,38 @@ export function createInventory(deps: InventoryDependencies): Inventory {
               location_id: locationId,
               quantity_delta: -quantity,
               reason: "sale",
+              reference_type: "order",
+              reference_id: orderId,
+            })
+            .execute();
+        }
+      });
+    },
+
+    async putBack(lines, orderId) {
+      const tenantId = getContext()?.tenantId ?? "";
+      await withTenantTransaction(db, async (trx) => {
+        const locationId = await defaultLocationId(trx, tenantId);
+        for (const { variantId, quantity } of lines) {
+          if (!Number.isSafeInteger(quantity) || quantity < 1)
+            throw new RangeError("Menge muss ganz und ≥ 1 sein");
+          const row = await trx
+            .updateTable("inventory.stock_level")
+            .set((eb) => ({ on_hand: eb("on_hand", "+", quantity) }))
+            .where("variant_id", "=", variantId)
+            .where("location_id", "=", locationId)
+            .returning("variant_id")
+            .executeTakeFirst();
+          // Ohne Bestandszeile (Produkt inzwischen anders verwaltet): nichts zurückzulegen.
+          if (row === undefined) continue;
+          await trx
+            .insertInto("inventory.stock_movement")
+            .values({
+              tenant_id: tenantId,
+              variant_id: variantId,
+              location_id: locationId,
+              quantity_delta: quantity,
+              reason: "cancellation",
               reference_type: "order",
               reference_id: orderId,
             })
