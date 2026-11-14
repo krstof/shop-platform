@@ -113,6 +113,7 @@ BEGIN
 
   -- pricing (Preisverlauf entsteht automatisch per Trigger)
   INSERT INTO pricing.price (tenant_id, variant_id, currency, amount) VALUES (t, v_variant, 'EUR', 1299) RETURNING id INTO v_price;
+  INSERT INTO pricing.coupon (tenant_id, code, kind, value) VALUES (t, 'SOMMER10', 'percent', 10);
 
   -- inventory
   INSERT INTO inventory.stock_location (tenant_id, code, name, is_default) VALUES (t, 'main', 'Hauptlager', true) RETURNING id INTO v_loc;
