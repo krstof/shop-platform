@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { scriptedModel } from "@shop/ai";
 import { createIdentityService } from "@shop/identity";
 import { connectDatabase, createLogger, createSecretBox, uuidv7 } from "@shop/kernel";
 import { runMigrations } from "@shop/kernel/migrate";
@@ -89,7 +90,13 @@ try {
   const actor = { type: "user", id: ownerId };
   const generous = { limit: 1_000_000, windowMs: 60_000 };
   app = await createApi({
-    endpoints: allEndpoints({ database, identity }),
+    endpoints: allEndpoints({
+      database,
+      identity,
+      // KI-Assistent: nachgebildetes Modell (kein Netz, keine Kosten), Tageslimit praktisch aus.
+      assistantModel: scriptedModel(() => [{ type: "text", text: "Alles klar." }]),
+      assistantDailyLimit: 100_000,
+    }),
     resolveActor: async ({ headers }) =>
       headers["x-test-shop"] === "a"
         ? // Passwort gerade bestätigt, damit auch „API-Token anlegen“ bis in die Logik kommt.
