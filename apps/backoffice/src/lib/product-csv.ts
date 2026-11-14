@@ -24,6 +24,7 @@ interface ProductLike {
   readonly salePrice: { readonly amount: number } | null;
   readonly stock: number;
   readonly categoryId: string | null;
+  readonly categoryIds?: readonly string[];
   readonly status: "draft" | "published";
   readonly taxClass: "standard" | "reduced";
   readonly deliveryDays?: { readonly min: number; readonly max: number } | null;
@@ -45,7 +46,11 @@ export function productsCsv(
       euro(p.price?.amount),
       euro(p.salePrice?.amount),
       p.stock,
-      categoryName(p.categoryId),
+      // Mehrere Kategorien mit Komma, die Hauptkategorie zuerst.
+      (p.categoryIds ?? (p.categoryId === null ? [] : [p.categoryId]))
+        .map((id) => categoryName(id))
+        .filter((n) => n !== "")
+        .join(", "),
       p.status === "published" ? "ja" : "nein",
       p.taxClass === "reduced" ? "7" : "19",
       p.deliveryDays?.min ?? "",
@@ -100,7 +105,8 @@ export interface ImportRow {
   readonly price: number;
   readonly salePrice: number | null;
   readonly stock: number;
-  readonly categoryId: string | null;
+  /** Alle Kategorien, die erste ist die Hauptkategorie. */
+  readonly categoryIds: string[];
   readonly status: "draft" | "published";
   readonly taxClass: "standard" | "reduced";
   readonly deliveryDays: { min: number; max: number } | null;
@@ -163,10 +169,17 @@ export function readImport(
     const stock = stockRaw === "" ? 0 : Number(stockRaw);
     if (!Number.isInteger(stock) || stock < 0)
       return errors.push({ line, message: "Bestand muss eine ganze Zahl ab 0 sein." });
-    const catName = get("Kategorie");
-    const categoryId = catName === "" ? null : (byCategory.get(catName.toLowerCase()) ?? undefined);
-    if (categoryId === undefined)
-      return errors.push({ line, message: `Kategorie „${catName}“ gibt es nicht.` });
+    // Mehrere Kategorien mit Komma trennen; ein Name mit Komma passt auch als Ganzes.
+    const catCell = get("Kategorie");
+    const whole = byCategory.get(catCell.toLowerCase());
+    const catNames =
+      catCell === "" ? [] : whole !== undefined ? [catCell] : catCell.split(",").map((c) => c.trim());
+    const categoryIds: string[] = [];
+    for (const n of catNames.filter((c) => c !== "")) {
+      const id = byCategory.get(n.toLowerCase());
+      if (id === undefined) return errors.push({ line, message: `Kategorie „${n}“ gibt es nicht.` });
+      if (!categoryIds.includes(id)) categoryIds.push(id);
+    }
     const shop = get("Im Shop").toLowerCase();
     const tax = get("Mehrwertsteuer").replace("%", "").trim();
     if (tax !== "" && tax !== "7" && tax !== "19")
@@ -194,7 +207,7 @@ export function readImport(
       price,
       salePrice: sale ?? null,
       stock,
-      categoryId,
+      categoryIds,
       status: ["ja", "x", "1", "true", "yes"].includes(shop) ? "published" : "draft",
       taxClass: tax === "7" ? "reduced" : "standard",
       deliveryDays,
@@ -214,7 +227,7 @@ export function importBody(r: ImportRow, columns: readonly string[]): Record<str
   if (has("Angebotspreis")) body["salePrice"] = r.salePrice === null ? null : { amount: r.salePrice };
   if (has("Mehrwertsteuer")) body["taxClass"] = r.taxClass;
   if (has("Bestand")) body["stock"] = r.stock;
-  if (has("Kategorie")) body["categoryId"] = r.categoryId;
+  if (has("Kategorie")) body["categoryIds"] = r.categoryIds;
   if (has("Artikelnummer")) body["sku"] = r.sku;
   if (has("Lieferzeit von") || has("Lieferzeit bis")) body["deliveryDays"] = r.deliveryDays;
   if (has("Im Shop")) body["status"] = r.status;
@@ -232,7 +245,11 @@ export const CSV_HELP: readonly { column: (typeof CSV_COLUMNS)[number]; text: st
   { column: "Preis", text: "Pflicht, in Euro mit Komma.", example: "8,90" },
   { column: "Angebotspreis", text: "Leer = kein Angebot; muss unter dem Preis liegen.", example: "6,90" },
   { column: "Bestand", text: "Ganze Zahl, leer = 0.", example: "25" },
-  { column: "Kategorie", text: "Name einer vorhandenen Kategorie, leer = keine.", example: "Grüntee" },
+  {
+    column: "Kategorie",
+    text: "Name einer vorhandenen Kategorie, mehrere mit Komma (die erste ist die Hauptkategorie), leer = keine.",
+    example: "Grüntee, Neuheiten",
+  },
   { column: "Im Shop", text: "„ja“ = sichtbar, sonst Entwurf.", example: "ja" },
   { column: "Mehrwertsteuer", text: "19 oder 7, leer = 19.", example: "7" },
   { column: "Lieferzeit von", text: "Werktage, freiwillig.", example: "2" },

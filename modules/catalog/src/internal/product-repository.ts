@@ -2,6 +2,7 @@
 // Hauptkategorie. Preis und Bestand gehören den Modulen pricing und inventory und kommen über
 // deren Fassaden dazu (siehe products.ts). Läuft immer in withTenantTransaction (RLS).
 import type { Transaction } from "@shop/kernel";
+import { sql } from "kysely";
 import type { DB } from "../db.generated.js";
 import { LOCALE } from "./category-repository.js";
 import { docFromText, firstFreeSlug, slugify, textFromDoc } from "./text.js";
@@ -17,6 +18,8 @@ export interface ProductRow {
   description: string;
   tax_class_code: TaxClass;
   category_id: string | null;
+  /** Alle Kategorien (15.11.2026), die Hauptkategorie zuerst. */
+  category_ids: string[];
   variant_id: string;
   sku: string | null;
   published_at: Date | null;
@@ -48,6 +51,9 @@ function baseQuery(trx: Transaction<DB>) {
       "t.description",
       "p.tax_class_code",
       "pc.category_id",
+      sql<string[]>`coalesce((
+        select array_agg(x.category_id order by x.is_primary desc, x.position, x.category_id)
+        from catalog.product_category x where x.product_id = p.id), '{}')`.as("category_ids"),
       "v.id as variant_id",
       "v.sku",
       "p.published_at",
@@ -95,7 +101,19 @@ export async function findProducts(trx: Transaction<DB>, f: ProductFilter): Prom
     .limit(f.limit + 1);
   if (f.afterId !== undefined) q = q.where("p.id", ">", f.afterId);
   if (f.status !== undefined) q = q.where("p.status", "=", f.status);
-  if (f.categoryId !== undefined) q = q.where("pc.category_id", "=", f.categoryId);
+  // In der Kategorie heißt: Haupt- oder weitere Kategorie (seit 15.11.2026 mehrere je Produkt).
+  if (f.categoryId !== undefined) {
+    const categoryId = f.categoryId;
+    q = q.where((eb) =>
+      eb.exists(
+        eb
+          .selectFrom("catalog.product_category as x")
+          .select(eb.lit(1).as("eins"))
+          .whereRef("x.product_id", "=", "p.id")
+          .where("x.category_id", "=", categoryId),
+      ),
+    );
+  }
   if (f.search !== undefined) {
     const pattern = likePattern(f.search);
     q = q.where((eb) => eb.or([eb("t.name", "ilike", pattern), eb("v.sku", "ilike", pattern)]));
@@ -147,11 +165,51 @@ export interface ProductValues {
   description?: string | null;
   status?: ProductStatus;
   tax_class_code?: TaxClass;
-  /** `null` nimmt das Produkt aus seiner Kategorie. */
+  /** Hauptkategorie ersetzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien. */
   category_id?: string | null;
+  /** Alle Kategorien neu setzen, die erste ist die Hauptkategorie; geht vor `category_id`. */
+  category_ids?: readonly string[];
   sku?: string | null;
   /** Lieferzeit in Werktagen; `null` entfernt die Angabe. */
   delivery_days?: { min: number; max: number } | null;
+}
+
+/**
+ * Kategorien nach einer Änderung, Hauptkategorie zuerst: `category_ids` ersetzt alle; `category_id`
+ * ersetzt nur die Hauptkategorie (ältere Aufrufer), `null` leert alles.
+ */
+export function categoriesOf(
+  v: Pick<ProductValues, "category_id" | "category_ids">,
+  current: readonly string[],
+  currentPrimary: string | null = current[0] ?? null,
+): string[] {
+  if (v.category_ids !== undefined) return [...new Set(v.category_ids)];
+  if (v.category_id === undefined) return [...current];
+  if (v.category_id === null) return [];
+  const others = current.filter((c) => c !== currentPrimary && c !== v.category_id);
+  return [v.category_id, ...others];
+}
+
+async function setCategories(
+  trx: Transaction<DB>,
+  tenantId: string,
+  productId: string,
+  ids: readonly string[],
+): Promise<void> {
+  await trx.deleteFrom("catalog.product_category").where("product_id", "=", productId).execute();
+  if (ids.length === 0) return;
+  await trx
+    .insertInto("catalog.product_category")
+    .values(
+      ids.map((category_id, i) => ({
+        tenant_id: tenantId,
+        product_id: productId,
+        category_id,
+        is_primary: i === 0,
+        position: i,
+      })),
+    )
+    .execute();
 }
 
 /** Legt Produkt, Standardvariante, Text und Kategorie an (eine Transaktion, Prüfung A-05 am Ende). */
@@ -188,12 +246,7 @@ export async function insertProduct(
       description: JSON.stringify(docFromText(v.description)),
     })
     .execute();
-  if (v.category_id !== undefined && v.category_id !== null) {
-    await trx
-      .insertInto("catalog.product_category")
-      .values({ tenant_id: tenantId, product_id: p.id, category_id: v.category_id, is_primary: true })
-      .execute();
-  }
+  await setCategories(trx, tenantId, p.id, categoriesOf(v, []));
   const row = await findProductById(trx, p.id);
   if (row === undefined) throw new Error("Produkt nach dem Anlegen nicht lesbar");
   return row;
@@ -246,15 +299,8 @@ export async function updateProduct(
       .where("id", "=", before.variant_id)
       .execute();
   }
-  if (v.category_id !== undefined && v.category_id !== before.category_id) {
-    await trx.deleteFrom("catalog.product_category").where("product_id", "=", id).execute();
-    if (v.category_id !== null) {
-      await trx
-        .insertInto("catalog.product_category")
-        .values({ tenant_id: tenantId, product_id: id, category_id: v.category_id, is_primary: true })
-        .execute();
-    }
-  }
+  const categories = categoriesOf(v, before.category_ids, before.category_id);
+  if (categories.join() !== before.category_ids.join()) await setCategories(trx, tenantId, id, categories);
   const firstPublish = v.status === "published" && before.published_at === null;
   await trx
     .updateTable("catalog.product")

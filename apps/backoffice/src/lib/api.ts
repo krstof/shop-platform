@@ -113,6 +113,8 @@ export interface Product {
   readonly salePrice: { readonly amount: number; readonly currency: "EUR" } | null;
   readonly stock: number;
   readonly categoryId: string | null;
+  /** Alle Kategorien, die Hauptkategorie zuerst (seit 15.11.2026; ältere Antworten ohne). */
+  readonly categoryIds?: readonly string[];
   readonly sku: string | null;
   /** Lieferzeit in Werktagen oder null. */
   readonly deliveryDays?: { readonly min: number; readonly max: number } | null;
@@ -219,10 +221,17 @@ export interface ProductInput {
   salePrice: { amount: number } | null;
   taxClass: "standard" | "reduced";
   stock: number;
-  categoryId: string | null;
+  /** Alle Kategorien, die erste ist die Hauptkategorie. */
+  categoryIds: string[];
   sku: string | null;
   deliveryDays: { min: number; max: number } | null;
   status: "draft" | "published";
+}
+
+/** Kategorien eines Produkts, auch bei älteren Antworten nur mit `categoryId`. */
+export function categoryIdsOf(p: { categoryId: string | null; categoryIds?: readonly string[] }): string[] {
+  if (p.categoryIds !== undefined) return [...p.categoryIds];
+  return p.categoryId === null ? [] : [p.categoryId];
 }
 
 /** Alle Seiten einer Liste holen (für das MVP reichen wenige Seiten). */

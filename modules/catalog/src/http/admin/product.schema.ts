@@ -46,7 +46,10 @@ export const productSchema = z
         "Angebotspreis (brutto). Gesetzt: Der Shop verkauft zu diesem Preis und zeigt `price` durchgestrichen.",
     }),
     stock: z.number().int().meta({ description: "Verfügbarer Bestand (vorhanden minus reserviert)." }),
-    categoryId: z.uuid().nullable(),
+    categoryId: z.uuid().nullable().meta({ description: "Hauptkategorie (erste aus `categoryIds`)." }),
+    categoryIds: z
+      .array(z.uuid())
+      .meta({ description: "Alle Kategorien des Produkts, die Hauptkategorie zuerst." }),
     sku: z.string().nullable().meta({ description: "Artikelnummer." }),
     deliveryDays: deliveryDaysSchema
       .nullable()
@@ -81,6 +84,7 @@ export function toProduct(
     salePrice: salePrice === undefined ? null : { amount: salePrice, currency: CURRENCY },
     stock: stock ?? 0,
     categoryId: row.category_id,
+    categoryIds: [...row.category_ids],
     sku: row.sku,
     deliveryDays:
       row.delivery_time_min_days === null || row.delivery_time_max_days === null
@@ -93,6 +97,9 @@ export function toProduct(
     version: row.version,
   };
 }
+
+/** Höchstens so viele Kategorien je Produkt. */
+export const MAX_CATEGORIES_PER_PRODUCT = 10;
 
 const priceInput = z.strictObject({
   amount: z.number().int().min(0).max(100_000_000).meta({ description: "Bruttopreis in Cent." }),
@@ -109,7 +116,16 @@ const fields = {
   status: z.enum(["draft", "published"]).optional(),
   taxClass: z.enum(["standard", "reduced"]).optional(),
   stock: z.number().int().min(0).max(1_000_000).optional().meta({ description: "Bestand im Lager." }),
-  categoryId: z.uuid().nullable().optional(),
+  categoryId: z.uuid().nullable().optional().meta({
+    description: "Hauptkategorie setzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien.",
+  }),
+  categoryIds: z
+    .array(z.uuid())
+    .max(MAX_CATEGORIES_PER_PRODUCT)
+    .optional()
+    .meta({
+      description: `Alle Kategorien neu setzen (bis zu ${MAX_CATEGORIES_PER_PRODUCT}), die erste ist die Hauptkategorie. Geht vor \`categoryId\`.`,
+    }),
   sku: singleLineText(64).nullable().optional(),
   deliveryDays: deliveryDaysInput.nullable().optional(),
 };
@@ -130,6 +146,7 @@ export function toProductValues(input: UpdateProductInput): ProductValues {
   if (input.status !== undefined) v.status = input.status;
   if (input.taxClass !== undefined) v.tax_class_code = input.taxClass;
   if (input.categoryId !== undefined) v.category_id = input.categoryId;
+  if (input.categoryIds !== undefined) v.category_ids = input.categoryIds;
   if (input.sku !== undefined) v.sku = input.sku;
   if (input.deliveryDays !== undefined) v.delivery_days = input.deliveryDays;
   return v;
@@ -147,6 +164,7 @@ export function productFacts(p: Product): Record<string, string | number | null>
     salePrice: p.salePrice?.amount ?? null,
     stock: p.stock,
     categoryId: p.categoryId,
+    categories: p.categoryIds.length === 0 ? null : p.categoryIds.join(","),
     sku: p.sku,
     deliveryDays: p.deliveryDays === null ? null : `${p.deliveryDays.min}-${p.deliveryDays.max}`,
     images: p.images.length === 0 ? null : p.images.map((i) => i.id).join(","),

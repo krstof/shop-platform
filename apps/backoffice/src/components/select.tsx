@@ -2,7 +2,7 @@
 // Gleiche Schreibweise wie <select>: Kinder sind <option value="…">Text</option>, onChange bekommt
 // { target: { value } }. Bedienung wie ein Combobox-Knopf nach WAI-ARIA: Enter/Leertaste/Pfeil öffnen,
 // Pfeile wählen, Enter übernimmt, Escape schließt, Buchstaben springen zum passenden Eintrag.
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import {
   Children,
   isValidElement,
@@ -238,6 +238,163 @@ export function Select({
               {item.value === value && <Check className="size-4 text-brand-600" aria-hidden="true" />}
             </li>
           ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Mehrfachauswahl (15.11.2026: Produkt in mehreren Kategorien). Gewählte Einträge stehen als Chips im
+ * Feld, die Liste hat Häkchen. Reihenfolge = Reihenfolge des Anklickens; der erste ist der Hauptwert
+ * (`firstLabel`, etwa „Hauptkategorie“).
+ */
+export function MultiSelect({
+  options,
+  value,
+  onChange,
+  id,
+  placeholder = "Keine",
+  firstLabel,
+  emptyText = "Noch nichts zum Auswählen.",
+  ...aria
+}: {
+  options: readonly { readonly value: string; readonly label: string }[];
+  value: readonly string[];
+  onChange: (next: string[]) => void;
+  id?: string;
+  placeholder?: string;
+  firstLabel?: string;
+  emptyText?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean | "true" | "false";
+}) {
+  const listId = useId();
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const label = new Map(options.map((o) => [o.value, o.label]));
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+
+  function onKey(e: KeyboardEvent) {
+    if (!open) {
+      if (["ArrowDown", "Enter", " "].includes(e.key)) {
+        e.preventDefault();
+        setActive(0);
+        setOpen(true);
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((a) => Math.min(options.length - 1, a + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(0, a - 1));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const o = options[active];
+      if (o !== undefined) toggle(o.value);
+    } else if (e.key === "Tab") setOpen(false);
+  }
+
+  return (
+    <div ref={box} className="relative">
+      <div className="flex min-h-[38px] w-full flex-wrap items-center gap-1.5 rounded-md bg-white py-1.5 pr-9 pl-2 shadow-xs ring-1 ring-gray-200 focus-within:ring-2 focus-within:ring-brand-500">
+        {value.length === 0 && <span className="px-1 text-sm text-gray-400">{placeholder}</span>}
+        {value.map((v, i) => (
+          <span
+            key={v}
+            className="inline-flex items-center gap-1 rounded-md bg-gray-100 py-0.5 pr-1 pl-2 text-sm text-gray-800"
+          >
+            {label.get(v) ?? "Unbekannt"}
+            {i === 0 && firstLabel && value.length > 1 && (
+              <span className="text-[0.7rem] text-gray-500">· {firstLabel}</span>
+            )}
+            <button
+              type="button"
+              aria-label={`${label.get(v) ?? "Eintrag"} entfernen`}
+              onClick={() => onChange(value.filter((x) => x !== v))}
+              className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          </span>
+        ))}
+        <button
+          ref={button}
+          id={id}
+          type="button"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-activedescendant={open ? `${listId}-${active}` : undefined}
+          aria-describedby={aria["aria-describedby"]}
+          aria-invalid={aria["aria-invalid"]}
+          onClick={() => setOpen((o) => !o)}
+          onKeyDown={onKey}
+          className="absolute inset-y-0 right-0 flex w-full items-center justify-end pr-2.5 focus:outline-none"
+          style={{ width: value.length === 0 ? "100%" : "2.25rem" }}
+        >
+          <span className="sr-only">{value.length === 0 ? placeholder : `${value.length} gewählt`}</span>
+          <ChevronDown
+            className={"size-4 text-gray-400 transition-transform " + (open ? "rotate-180" : "")}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+      {open && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-multiselectable="true"
+          className="absolute top-full left-0 z-50 mt-1 max-h-72 min-w-full overflow-y-auto rounded-lg bg-white p-1 text-sm shadow-lg ring-1 ring-black/10"
+        >
+          {options.length === 0 && <li className="px-2.5 py-1.5 text-gray-500">{emptyText}</li>}
+          {options.map((o, i) => {
+            const on = value.includes(o.value);
+            return (
+              <li
+                key={o.value}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={on}
+                onMouseEnter={() => setActive(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => toggle(o.value)}
+                className={
+                  "flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-gray-800 " +
+                  (i === active ? "bg-gray-100" : "")
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className={
+                    "flex size-4 shrink-0 items-center justify-center rounded border " +
+                    (on ? "border-brand-600 bg-brand-600 text-white" : "border-gray-300 bg-white")
+                  }
+                >
+                  {on && <Check className="size-3" />}
+                </span>
+                {o.label}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

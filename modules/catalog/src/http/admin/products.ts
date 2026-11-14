@@ -95,13 +95,22 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
   const { db, prices, stock } = deps;
   const withDetails = productReader(deps);
 
-  async function requireCategory(trx: Transaction<DB>, id: string | null | undefined): Promise<void> {
-    if (id === undefined || id === null) return;
-    if (!(await categoryExists(trx, id)))
+  async function requireCategory(
+    trx: Transaction<DB>,
+    id: string | null | undefined,
+    ids?: readonly string[],
+  ): Promise<void> {
+    if (id !== undefined && id !== null && !(await categoryExists(trx, id)))
       throw new ValidationError({
         detail: UNKNOWN_CATEGORY,
         errors: [{ path: "/categoryId", code: "unknown_category", message: UNKNOWN_CATEGORY }],
       });
+    for (const [i, c] of (ids ?? []).entries())
+      if (!(await categoryExists(trx, c)))
+        throw new ValidationError({
+          detail: UNKNOWN_CATEGORY,
+          errors: [{ path: `/categoryIds/${i}`, code: "unknown_category", message: UNKNOWN_CATEGORY }],
+        });
   }
 
   const list = defineEndpoint({
@@ -195,7 +204,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
       const tenantId = getContext()?.tenantId ?? "";
       return withConflictMapping(() =>
         withTenantTransaction(db, async (trx) => {
-          await requireCategory(trx, body.categoryId);
+          await requireCategory(trx, body.categoryId, body.categoryIds);
           requireSaleBelow(body.salePrice?.amount, body.price.amount);
           const slug = body.slug ?? (await freeProductSlug(trx, body.name));
           const row = await insertProduct(trx, tenantId, { ...toProductValues(body), name: body.name, slug });
@@ -236,7 +245,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
       const tenantId = getContext()?.tenantId ?? "";
       const result = await withConflictMapping(() =>
         withTenantTransaction(db, async (trx) => {
-          await requireCategory(trx, body.categoryId);
+          await requireCategory(trx, body.categoryId, body.categoryIds);
           const r = await updateProduct(trx, tenantId, params.productId, ifMatch ?? 0, toProductValues(body));
           if (r.kind !== "updated") return r;
           const [before] = await withDetails(trx, [r.before]);
@@ -322,7 +331,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           description: source.description === "" ? null : source.description,
           status: "draft",
           tax_class_code: source.taxClass,
-          category_id: source.categoryId,
+          category_ids: source.categoryIds,
           sku: null,
           delivery_days: source.deliveryDays,
         });

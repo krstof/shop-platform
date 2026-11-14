@@ -48,7 +48,8 @@ export const storeProductSchema = z
     taxRatePercent: z.number().int().meta({ description: "19 oder 7 (Deutschland), im Preis enthalten." }),
     inStock: z.boolean(),
     maxQuantity: z.number().int().meta({ description: "Höchstens so viele passen in den Warenkorb." }),
-    categoryId: z.uuid().nullable(),
+    categoryId: z.uuid().nullable().meta({ description: "Hauptkategorie." }),
+    categoryIds: z.array(z.uuid()).meta({ description: "Alle Kategorien, die Hauptkategorie zuerst." }),
     images: z.array(productImageSchema),
     deliveryDays: z
       .object({ min: z.number().int(), max: z.number().int() })
@@ -117,6 +118,7 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
         inStock: available > 0 && price !== undefined,
         maxQuantity: price === undefined ? 0 : Math.min(available, MAX_QUANTITY),
         categoryId: r.category_id,
+        categoryIds: [...r.category_ids],
         publishedAt: r.published_at?.toISOString() ?? null,
         deliveryDays:
           r.delivery_time_min_days === null || r.delivery_time_max_days === null

@@ -15,6 +15,7 @@ const p = (name: string, amount: number | null): StoreProduct => ({
   inStock: true,
   maxQuantity: 1,
   categoryId: null,
+  categoryIds: [],
   images: [],
 });
 const list = [p("Sencha", 890), p("Ohne Preis", null), p("Assam", 590), p("Öl-Tee", 1290), p("Bancha", 590)];

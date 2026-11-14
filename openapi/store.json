@@ -3234,7 +3234,17 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Hauptkategorie."
+          },
+          "categoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "Alle Kategorien, die Hauptkategorie zuerst."
           },
           "images": {
             "type": "array",
@@ -3289,6 +3299,7 @@
           "inStock",
           "maxQuantity",
           "categoryId",
+          "categoryIds",
           "images",
           "deliveryDays",
           "publishedAt"

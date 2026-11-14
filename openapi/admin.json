@@ -7990,6 +7990,7 @@
                     "maximum": 1000000
                   },
                   "categoryId": {
+                    "description": "Hauptkategorie setzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien.",
                     "anyOf": [
                       {
                         "type": "string",
@@ -8000,6 +8001,16 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "categoryIds": {
+                    "description": "Alle Kategorien neu setzen (bis zu 10), die erste ist die Hauptkategorie. Geht vor `categoryId`.",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   },
                   "sku": {
                     "anyOf": [
@@ -8625,6 +8636,7 @@
                     "maximum": 1000000
                   },
                   "categoryId": {
+                    "description": "Hauptkategorie setzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien.",
                     "anyOf": [
                       {
                         "type": "string",
@@ -8635,6 +8647,16 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "categoryIds": {
+                    "description": "Alle Kategorien neu setzen (bis zu 10), die erste ist die Hauptkategorie. Geht vor `categoryId`.",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   },
                   "sku": {
                     "anyOf": [
@@ -13418,7 +13440,17 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Hauptkategorie (erste aus `categoryIds`)."
+          },
+          "categoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "Alle Kategorien des Produkts, die Hauptkategorie zuerst."
           },
           "sku": {
             "description": "Artikelnummer.",
@@ -13484,6 +13516,7 @@
           "salePrice",
           "stock",
           "categoryId",
+          "categoryIds",
           "sku",
           "deliveryDays",
           "images",

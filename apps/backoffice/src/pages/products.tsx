@@ -5,7 +5,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Download, Upload } from "lucide-react";
 import { Alert, Badge, Button, Input, Select, Spinner } from "../components/ui.js";
-import { listAll, request, type Category, type Product } from "../lib/api.js";
+import { categoryIdsOf, listAll, request, type Category, type Product } from "../lib/api.js";
 import { bulkMessage, bulkTargets, categoryMessage, categoryTargets, type BulkAction } from "../lib/bulk.js";
 import { importBody, productsCsv, readImport, type ImportResult } from "../lib/product-csv.js";
 import { ImportDialog } from "./product-import.js";
@@ -427,7 +427,10 @@ export function ProductsPage() {
                     </div>
                   </td>
                   <td className="hidden px-4 py-3 text-gray-600 md:table-cell">
-                    {p.categoryId === null ? "–" : (categoryName.get(p.categoryId) ?? "–")}
+                    {categoryIdsOf(p)
+                      .map((id) => categoryName.get(id))
+                      .filter((n) => n !== undefined)
+                      .join(", ") || "–"}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {p.price === null ? (

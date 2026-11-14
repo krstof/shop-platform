@@ -293,6 +293,55 @@ describe.skipIf(adminUrl === undefined)("Produkte und Kategorien (M2, echte Date
     expect(p.json().categoryId).toBeNull();
   });
 
+  it("ein Produkt in mehreren Kategorien (Hauptkategorie zuerst), Filter findet es in jeder", async () => {
+    const cat = async (name: string) => (await call("POST", "/admin/v1/categories", "a", { name })).json().id;
+    const [k1, k2, k3] = [await cat("Mehrfach 1"), await cat("Mehrfach 2"), await cat("Mehrfach 3")];
+    const created = await call("POST", "/admin/v1/products", "a", {
+      name: "Mehrfach-Tee",
+      price: { amount: 500 },
+      categoryIds: [k1, k2, k1],
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ categoryId: k1, categoryIds: [k1, k2] });
+    const id = created.json().id;
+    const inK2 = await call("GET", `/admin/v1/products?categoryId=${k2}`, "a");
+    expect(inK2.json().data.map((p: { id: string }) => p.id)).toEqual([id]);
+    // Nur die Hauptkategorie ändern (ältere Aufrufer): weitere bleiben.
+    const primary = await call(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { categoryId: k3 },
+      { "if-match": '"1"' },
+    );
+    expect(primary.json()).toMatchObject({ categoryId: k3, categoryIds: [k3, k2] });
+    const all = await call(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { categoryIds: [k2] },
+      { "if-match": '"2"' },
+    );
+    expect(all.json()).toMatchObject({ categoryId: k2, categoryIds: [k2] });
+    const unknown = await call(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { categoryIds: [k2, "0190a0b0-0000-7000-8000-000000000000"] },
+      { "if-match": '"3"' },
+    );
+    expect(unknown.statusCode).toBe(422);
+    expect(unknown.json().errors[0].path).toBe("/categoryIds/1");
+    const none = await call(
+      "PATCH",
+      `/admin/v1/products/${id}`,
+      "a",
+      { categoryId: null },
+      { "if-match": '"3"' },
+    );
+    expect(none.json()).toMatchObject({ categoryId: null, categoryIds: [] });
+  });
+
   it("Produkt löschen: weg aus Liste und Shop, Artikelnummer wieder frei, fremder Shop 404", async () => {
     const made = await call("POST", "/admin/v1/products", "b", {
       name: "Mütze",

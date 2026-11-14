@@ -4,7 +4,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Alert, Button, Card, Field, Input, Select, Spinner, Textarea } from "../components/ui.js";
-import { ApiError, fileToBase64, request, type Product, type ProductInput } from "../lib/api.js";
+import { MultiSelect } from "../components/select.js";
+import {
+  ApiError,
+  categoryIdsOf,
+  fileToBase64,
+  request,
+  type Product,
+  type ProductInput,
+} from "../lib/api.js";
 import { centsToInput, parseEuro } from "../lib/money.js";
 import { AiDescriptionButton } from "./ai-description.js";
 import { useShop } from "./layout.js";
@@ -21,7 +29,7 @@ interface FormState {
   salePrice: string;
   taxClass: "standard" | "reduced";
   stock: string;
-  categoryId: string;
+  categoryIds: string[];
   sku: string;
   deliveryMin: string;
   deliveryMax: string;
@@ -35,7 +43,7 @@ const emptyForm: FormState = {
   salePrice: "",
   taxClass: "standard",
   stock: "0",
-  categoryId: "",
+  categoryIds: [],
   sku: "",
   deliveryMin: "",
   deliveryMax: "",
@@ -50,7 +58,7 @@ function formFrom(p: Product): FormState {
     salePrice: p.salePrice === null ? "" : centsToInput(p.salePrice.amount),
     taxClass: p.taxClass,
     stock: String(p.stock),
-    categoryId: p.categoryId ?? "",
+    categoryIds: categoryIdsOf(p),
     sku: p.sku ?? "",
     deliveryMin: p.deliveryDays ? String(p.deliveryDays.min) : "",
     deliveryMax: p.deliveryDays ? String(p.deliveryDays.max) : "",
@@ -93,7 +101,7 @@ function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
       salePrice: sale === null ? null : { amount: sale },
       taxClass: f.taxClass,
       stock,
-      categoryId: f.categoryId === "" ? null : f.categoryId,
+      categoryIds: f.categoryIds,
       sku: f.sku.trim() === "" ? null : f.sku.trim(),
       deliveryDays,
       status: f.published ? "published" : "draft",
@@ -115,7 +123,8 @@ function errorsFromApi(e: unknown): Errors {
     ["/price", "price"],
     ["/salePrice", "salePrice"],
     ["/stock", "stock"],
-    ["/categoryId", "categoryId"],
+    ["/categoryIds", "categoryIds"],
+    ["/categoryId", "categoryIds"],
     ["/sku", "sku"],
     ["/deliveryDays", "deliveryMin"],
     ["/slug", "name"],
@@ -267,7 +276,7 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                 <AiDescriptionButton
                   shopId={shop.id}
                   name={form.name}
-                  category={(categories.data ?? []).find((c) => c.id === form.categoryId)?.name}
+                  category={(categories.data ?? []).find((c) => c.id === form.categoryIds[0])?.name}
                   current={form.description}
                   onApply={(text) => set("description")(text)}
                 />
@@ -415,19 +424,20 @@ function ProductEditor({ product }: { product: Product | undefined }) {
           </Card>
           <Card>
             <Field
-              label="Kategorie"
-              hint="Neue Kategorien unter „Kategorien“ im Menü anlegen."
-              error={errors.categoryId}
+              label="Kategorien"
+              hint="Ein Produkt kann in mehreren Kategorien stehen; die erste ist die Hauptkategorie. Neue Kategorien unter „Kategorien“ im Menü anlegen."
+              error={errors.categoryIds}
             >
               {(p) => (
-                <Select {...p} value={form.categoryId} onChange={(e) => set("categoryId")(e.target.value)}>
-                  <option value="">Keine</option>
-                  {(categories.data ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
+                <MultiSelect
+                  {...p}
+                  options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                  value={form.categoryIds}
+                  onChange={(ids) => set("categoryIds")(ids)}
+                  placeholder="Keine Kategorie"
+                  firstLabel="Hauptkategorie"
+                  emptyText="Noch keine Kategorien angelegt."
+                />
               )}
             </Field>
           </Card>

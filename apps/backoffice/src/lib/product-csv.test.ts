@@ -25,13 +25,32 @@ describe("Produkte als Tabelle", () => {
       name: "Sencha; grün",
       price: 890,
       stock: 5,
-      categoryId: "k1",
+      categoryIds: ["k1"],
       status: "published",
       taxClass: "reduced",
       deliveryDays: { min: 2, max: 3 },
       description: "Zeile 1\nZeile 2",
       existingId: "p1",
     });
+  });
+
+  it("schreibt und liest mehrere Kategorien mit Komma (Hauptkategorie zuerst)", () => {
+    const cats = [
+      { id: "k1", name: "Grüntee" },
+      { id: "k2", name: "Neu, frisch" },
+      { id: "k3", name: "Japan" },
+    ];
+    const name = (id: string | null) => cats.find((c) => c.id === id)?.name ?? "";
+    const csv = productsCsv([{ ...p, categoryIds: ["k3", "k1"] }], name);
+    expect(csv).toContain(";Japan, Grüntee;");
+    expect(readImport(csv, [], cats).rows[0]?.categoryIds).toEqual(["k3", "k1"]);
+    // Ein Name mit Komma passt als Ganzes.
+    expect(readImport("Name;Preis;Kategorie\nTee;1;Neu, frisch\n", [], cats).rows[0]?.categoryIds).toEqual([
+      "k2",
+    ]);
+    expect(
+      readImport("Name;Preis;Kategorie\nTee;1;Japan, Gibtsnicht\n", [], cats).errors[0]?.message,
+    ).toContain("Gibtsnicht");
   });
 
   it("liest auch Komma-CSV und meldet Fehler mit Zeile", () => {
