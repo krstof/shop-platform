@@ -10,8 +10,10 @@ interface Props {
   anzahl: number;
   /** Sprungmarke, damit die Seite nach dem Sortieren wieder bei der Liste steht. */
   anker?: string;
+  /** Häkchen „Nur verfügbare“ gesetzt? */
+  nurVerfuegbar?: boolean;
 }
-const { aktuell, behalten = {}, anzahl, anker } = Astro.props;
+const { aktuell, behalten = {}, anzahl, anker, nurVerfuegbar = false } = Astro.props;
 ---
 
 <form class="sortieren" method="get" action={anker === undefined ? undefined : `#${anker}`}>
@@ -19,6 +21,10 @@ const { aktuell, behalten = {}, anzahl, anker } = Astro.props;
     <input type="hidden" name={name} value={wert} />
   ))}
   <span class="klein">{anzahl === 1 ? "1 Produkt" : `${anzahl} Produkte`}</span>
+  <label class="nur-verfuegbar">
+    <input type="checkbox" name="verfuegbar" value="ja" checked={nurVerfuegbar} />
+    Nur verfügbare
+  </label>
   <label for="sortierung">Sortieren</label>
   <select id="sortierung" name="sortierung">
     {SORTIERUNGEN.map((s) => (

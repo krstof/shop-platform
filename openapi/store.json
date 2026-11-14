@@ -1209,6 +1209,19 @@
             }
           },
           {
+            "name": "available",
+            "in": "query",
+            "required": false,
+            "description": "`true`: nur Produkte, die man gerade kaufen kann.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -2467,6 +2480,13 @@
             "items": {
               "$ref": "#/components/schemas/ProductImage"
             }
+          },
+          "publishedAt": {
+            "description": "Seit wann im Shop (ISO 8601); der Shop zeigt damit „Neu“.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -2480,7 +2500,8 @@
           "inStock",
           "maxQuantity",
           "categoryId",
-          "images"
+          "images",
+          "publishedAt"
         ],
         "additionalProperties": false,
         "description": "Produkt, wie Besucher eines Shops es sehen."

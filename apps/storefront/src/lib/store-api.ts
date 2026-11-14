@@ -42,6 +42,8 @@ export interface StoreProduct {
   readonly maxQuantity: number;
   readonly categoryId: string | null;
   readonly images: readonly StoreImage[];
+  /** Seit wann im Shop (für „Neu“); ältere API-Stände ohne. */
+  readonly publishedAt?: string | null;
 }
 
 /** Fehler der API mit Statuscode; 404 heißt „gibt es nicht“ (Seite 404), alles andere 500. */

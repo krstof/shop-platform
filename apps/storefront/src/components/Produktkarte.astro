@@ -1,6 +1,7 @@
 ---
 import type { StoreProduct } from "../lib/store-api.js";
 import { euro } from "../lib/format.js";
+import { istNeu } from "../lib/neu.js";
 
 interface Props {
   produkt: StoreProduct;
@@ -9,6 +10,7 @@ interface Props {
 const { produkt: p, shop } = Astro.props;
 const bild = p.images[0];
 const statt = p.compareAtPrice ?? null;
+const neu = statt === null && istNeu(p.publishedAt);
 ---
 
 <li class="karte">
@@ -27,6 +29,7 @@ const statt = p.compareAtPrice ?? null;
       />
     )}
     {statt !== null && <span class="angebot-marke">Angebot</span>}
+    {neu && <span class="angebot-marke neu-marke">Neu</span>}
     <span class="karte-name">{p.name}</span>
   </a>
   <p class="karte-preis">

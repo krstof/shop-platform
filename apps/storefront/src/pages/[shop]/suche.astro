@@ -8,19 +8,22 @@ import { warenkorbAnzahl } from "../../lib/cart.js";
 import { suchbegriff, trefferText } from "../../lib/suche.js";
 import Sortierung from "../../components/Sortierung.astro";
 import { sortierung } from "../../lib/sortierung.js";
+import { nurVerfuegbar } from "../../lib/neu.js";
 
 const daten = await loadShop(Astro.params.shop);
 if (daten === undefined) return Astro.rewrite("/404");
 const { shop, categories } = daten;
 const begriff = suchbegriff(Astro.url.searchParams.get("q"));
 const sort = sortierung(Astro.url.searchParams.get("sortierung"));
+const verfuegbar = nurVerfuegbar(Astro.url.searchParams.get("verfuegbar"));
+const filter = `&sort=${sort}${verfuegbar ? "&available=true" : ""}`;
 const treffer =
   begriff === undefined
     ? []
     : (
         await storeApi<{ data: StoreProduct[] }>(
           shop.handle,
-          `/products?q=${encodeURIComponent(begriff)}&sort=${sort}`,
+          `/products?q=${encodeURIComponent(begriff)}${filter}`,
         )
       ).data;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
@@ -43,6 +46,13 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
       </p>
       {treffer.length === 0 ? (
         <div class="leer-suche">
+          {verfuegbar && (
+            <p>
+              <a href={`/${shop.handle}/suche?q=${encodeURIComponent(begriff)}`}>
+                Auch ausverkaufte Produkte zeigen
+              </a>
+            </p>
+          )}
           <p>Dazu haben wir leider nichts gefunden. Versuch es mit einem anderen Wort oder stöbere hier:</p>
           {categories.length > 0 && (
             <ul class="nav">
@@ -59,8 +69,13 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
         </div>
       ) : (
         <>
-          {treffer.length > 1 && (
-            <Sortierung aktuell={sort} anzahl={treffer.length} behalten={{ q: begriff }} />
+          {(treffer.length > 1 || verfuegbar) && (
+            <Sortierung
+              nurVerfuegbar={verfuegbar}
+              aktuell={sort}
+              anzahl={treffer.length}
+              behalten={{ q: begriff }}
+            />
           )}
           <ul class="raster">
             {treffer.map((p) => (

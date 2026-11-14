@@ -223,6 +223,11 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
         .data.map((p: { name: string }) => p.name),
     ).toEqual(["Matcha", "Sencha"]);
     expect((await inject("GET", "/store/v1/shops/tee-a/products?sort=billig")).statusCode).toBe(422);
+    // Nur verfügbare: Matcha (Bestand 0) fällt weg; publishedAt für „Neu“.
+    const avail = (await inject("GET", "/store/v1/shops/tee-a/products?available=true")).json().data;
+    expect(avail.map((p: { name: string }) => p.name)).not.toContain("Matcha");
+    expect(avail.every((p: { inStock: boolean }) => p.inStock)).toBe(true);
+    expect(Date.parse(avail[0].publishedAt)).toBeGreaterThan(Date.now() - 600_000);
   });
 
   it("Angebotspreis: Shop verkauft günstiger und nennt den alten Preis; Prüfungen 422", async () => {

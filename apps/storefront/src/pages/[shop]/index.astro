@@ -9,6 +9,7 @@ import { DEFAULT_HOME } from "../../lib/design.js";
 import { warenkorbAnzahl } from "../../lib/cart.js";
 import Sortierung from "../../components/Sortierung.astro";
 import { sortierung } from "../../lib/sortierung.js";
+import { nurVerfuegbar } from "../../lib/neu.js";
 
 const daten = await loadShop(Astro.params.shop);
 if (daten === undefined) return Astro.rewrite("/404");
@@ -16,7 +17,9 @@ const { shop, categories } = daten;
 const home = shop.design?.home ?? DEFAULT_HOME;
 
 const sort = sortierung(Astro.url.searchParams.get("sortierung"));
-const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?sort=${sort}`)).data;
+const verfuegbar = nurVerfuegbar(Astro.url.searchParams.get("verfuegbar"));
+const filter = `&sort=${sort}${verfuegbar ? "&available=true" : ""}`;
+const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?${filter.slice(1)}`)).data;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 
 // Hervorgehobene Produkte in der vom Händler gewählten Reihenfolge; nicht mehr sichtbare fallen weg.
@@ -86,7 +89,9 @@ const sichtbareKategorien = home.showCategories ? categories : [];
   )}
 
   <h2 id="alle">Alle Produkte</h2>
-  {produkte.length > 1 && <Sortierung aktuell={sort} anzahl={produkte.length} anker="alle" />}
+  {(produkte.length > 1 || verfuegbar) && (
+    <Sortierung nurVerfuegbar={verfuegbar} aktuell={sort} anzahl={produkte.length} anker="alle" />
+  )}
   {produkte.length === 0 ? (
     <p>Hier gibt es noch keine Produkte.</p>
   ) : (

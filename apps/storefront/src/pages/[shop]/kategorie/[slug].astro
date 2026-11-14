@@ -6,6 +6,7 @@ import { loadShop, safeSlug, storeApi, type StoreProduct } from "../../../lib/st
 import { warenkorbAnzahl } from "../../../lib/cart.js";
 import Sortierung from "../../../components/Sortierung.astro";
 import { sortierung } from "../../../lib/sortierung.js";
+import { nurVerfuegbar } from "../../../lib/neu.js";
 
 const daten = await loadShop(Astro.params.shop);
 const slug = safeSlug(Astro.params.slug);
@@ -13,8 +14,10 @@ const k = daten?.categories.find((c) => c.slug === slug);
 if (daten === undefined || k === undefined) return Astro.rewrite("/404");
 const { shop, categories } = daten;
 const sort = sortierung(Astro.url.searchParams.get("sortierung"));
+const verfuegbar = nurVerfuegbar(Astro.url.searchParams.get("verfuegbar"));
+const filter = `&sort=${sort}${verfuegbar ? "&available=true" : ""}`;
 const produkte = (
-  await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?category=${k.slug}&sort=${sort}`)
+  await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?category=${k.slug}${filter}`)
 ).data;
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 ---
@@ -38,10 +41,17 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
   <h1>{k.name}</h1>
   {k.description && <p class="klein">{k.description}</p>}
   {produkte.length === 0 ? (
-    <p>In dieser Kategorie gibt es noch keine Produkte.</p>
+    verfuegbar ? (
+      <>
+        <Sortierung nurVerfuegbar={verfuegbar} aktuell={sort} anzahl={0} />
+        <p>Gerade ist hier nichts vorrätig.</p>
+      </>
+    ) : (
+      <p>In dieser Kategorie gibt es noch keine Produkte.</p>
+    )
   ) : (
     <>
-      <Sortierung aktuell={sort} anzahl={produkte.length} />
+      <Sortierung nurVerfuegbar={verfuegbar} aktuell={sort} anzahl={produkte.length} />
       <ul class="raster">
         {produkte.map((p) => (
           <Produktkarte produkt={p} shop={shop.handle} />

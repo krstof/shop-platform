@@ -50,6 +50,10 @@ export const storeProductSchema = z
     maxQuantity: z.number().int().meta({ description: "Höchstens so viele passen in den Warenkorb." }),
     categoryId: z.uuid().nullable(),
     images: z.array(productImageSchema),
+    publishedAt: z
+      .string()
+      .nullable()
+      .meta({ description: "Seit wann im Shop (ISO 8601); der Shop zeigt damit „Neu“." }),
   })
   .meta({ id: "StoreProduct", description: "Produkt, wie Besucher eines Shops es sehen." });
 
@@ -109,6 +113,7 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
         inStock: available > 0 && price !== undefined,
         maxQuantity: price === undefined ? 0 : Math.min(available, MAX_QUANTITY),
         categoryId: r.category_id,
+        publishedAt: r.published_at?.toISOString() ?? null,
         images: (imageIds.get(r.id) ?? [])
           .map((id) => img.get(id))
           .filter((i): i is ProductImage => i !== undefined)
@@ -175,6 +180,10 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
       q: singleLineText(100).optional().meta({
         description: "Suchtext für Name oder Beschreibung (Teiltreffer, Groß-/Kleinschreibung egal).",
       }),
+      available: z
+        .enum(["true", "false"])
+        .optional()
+        .meta({ description: "`true`: nur Produkte, die man gerade kaufen kann." }),
       sort: z.enum(STORE_SORTS).default("standard").meta({
         description:
           "`standard` (Anlagereihenfolge), `newest` (zuletzt angelegt zuerst), `price-asc`, `price-desc`, `name`. Ohne Preis immer am Ende.",
@@ -201,7 +210,9 @@ export function storeCatalogEndpoints(deps: StoreCatalogDependencies): Endpoint[
           categoryId,
           searchText: query.q,
         });
-        return { data: sortStoreProducts(await read(trx, rows.slice(0, 200)), query.sort) };
+        const products = await read(trx, rows.slice(0, 200));
+        const shown = query.available === "true" ? products.filter((p) => p.inStock) : products;
+        return { data: sortStoreProducts(shown, query.sort) };
       }),
   });
 

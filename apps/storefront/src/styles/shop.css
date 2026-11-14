@@ -911,3 +911,14 @@ form.gutschein:has(.knopf-leise) {
   border-radius: 8px;
   margin: 0 0 1.25rem;
 }
+
+/* --- „Neu“ und „Nur verfügbare“ --- */
+.neu-marke {
+  background: var(--akzent);
+}
+.nur-verfuegbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
