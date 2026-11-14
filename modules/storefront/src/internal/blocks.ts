@@ -165,3 +165,65 @@ export function blockImages(blocks: readonly Block[] | null): string[] {
     (b.type === "textImage" || b.type === "image") && b.imageId !== null ? [b.imageId] : [],
   );
 }
+
+/** Eigene Inhaltsseiten (Baukasten Teil 3), etwa „Über uns“ oder „Anfahrt“. */
+export const MAX_PAGES = 10;
+export const MAX_PAGE_TITLE = 60;
+export const MAX_PAGE_SLUG = 60;
+export const PAGE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const FIXED = ["hero", "featured", "categories", "new"];
+
+export interface ContentPage {
+  readonly id: string;
+  readonly title: string;
+  /** Teil der Adresse: /<shop>/seite/<slug>. */
+  readonly slug: string;
+  /** Link in der Fußzeile des Shops. */
+  readonly inFooter: boolean;
+  /** Nur freie Bausteine (Text, Bild …), keine Shop-Bereiche. */
+  readonly blocks: readonly Block[];
+}
+
+export const pageSchema = z.strictObject({
+  id,
+  title: line(MAX_PAGE_TITLE).refine((t) => t.trim() !== "", "Bitte einen Titel eingeben."),
+  slug: z.string().max(MAX_PAGE_SLUG).regex(PAGE_SLUG, "Nur Kleinbuchstaben, Ziffern und Bindestriche."),
+  inFooter: z.boolean(),
+  blocks: blocksSchema.refine(
+    (bs) => bs.every((b) => !FIXED.includes(b.type)),
+    "Shop-Bereiche (Bühne, Empfehlungen …) gibt es nur auf der Startseite.",
+  ),
+});
+
+export const pagesSchema = z
+  .array(pageSchema)
+  .max(MAX_PAGES)
+  .refine((ps) => new Set(ps.map((p) => p.id)).size === ps.length, "Jede Seite braucht eine eigene ID.")
+  .refine((ps) => new Set(ps.map((p) => p.slug)).size === ps.length, "Zwei Seiten haben dieselbe Adresse.");
+
+/** Gespeicherte Seiten robust lesen: kaputte fallen einzeln weg. */
+export function readPages(json: unknown): ContentPage[] {
+  if (!Array.isArray(json)) return [];
+  const ids = new Set<string>();
+  const slugs = new Set<string>();
+  const out: ContentPage[] = [];
+  for (const raw of json.slice(0, MAX_PAGES)) {
+    if (typeof raw !== "object" || raw === null) continue;
+    const head = pageSchema
+      .omit({ blocks: true })
+      .safeParse(Object.fromEntries(Object.entries(raw).filter(([k]) => k !== "blocks")));
+    if (!head.success || ids.has(head.data.id) || slugs.has(head.data.slug)) continue;
+    ids.add(head.data.id);
+    slugs.add(head.data.slug);
+    const blocks = (readBlocks((raw as { blocks?: unknown }).blocks) ?? []).filter(
+      (b) => !FIXED.includes(b.type),
+    );
+    out.push({ ...head.data, blocks });
+  }
+  return out;
+}
+
+/** Bilder aller Seiten. */
+export function pageImages(pages: readonly ContentPage[]): string[] {
+  return pages.flatMap((p) => blockImages(p.blocks));
+}

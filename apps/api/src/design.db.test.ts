@@ -156,6 +156,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       },
       tagline: "",
       footer: { text: "", links: [] },
+      pages: [],
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });
@@ -580,5 +581,67 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
         .json()
         .home.blocks.map((b: { type: string }) => b.type),
     ).toEqual(["hero", "featured", "new", "categories"]);
+  });
+
+  it("Eigene Seiten: speichern, prüfen, veröffentlichen, nur im eigenen Shop", async () => {
+    const up = await call("POST", "/admin/v1/design/images", "a", { data: await logo() });
+    const imageId = up.json().id as string;
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    const base = { accentColor: "#3f6b4a", font: "klassisch", logoImageId: null };
+    const page = {
+      id: "p1",
+      title: "Über uns",
+      slug: "ueber-uns",
+      inFooter: true,
+      blocks: [
+        { id: "t1", type: "text", heading: "Wer wir sind", text: "Seit 1998." },
+        { id: "i1", type: "image", imageId, caption: "Der Laden" },
+        { id: "m1", type: "map", address: "Teeweg 1, 20095 Hamburg" },
+      ],
+    };
+    const put = (body: object, version: number) => call("PUT", "/admin/v1/design/draft", "a", body, version);
+    expect(
+      (await put({ ...base, pages: [{ ...page, blocks: [{ id: "h", type: "hero" }] }] }, start.version))
+        .statusCode,
+    ).toBe(422);
+    expect((await put({ ...base, pages: [{ ...page, slug: "Über uns" }] }, start.version)).statusCode).toBe(
+      422,
+    );
+    expect((await put({ ...base, pages: [page, { ...page, id: "p2" }] }, start.version)).statusCode).toBe(
+      422,
+    );
+    const foreign = await put(
+      { ...base, pages: [{ ...page, blocks: [{ id: "i", type: "image", imageId: uuidv7(), caption: "" }] }] },
+      start.version,
+    );
+    expect(foreign.json().errors[0].path).toBe("/pages/0/blocks/0/imageId");
+    const saved = await put({ ...base, pages: [page] }, start.version);
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().draft.pages[0]).toMatchObject({ slug: "ueber-uns", inFooter: true });
+    expect(saved.json().draft.pages[0].blockImages.map((i: { id: string }) => i.id)).toEqual([imageId]);
+    expect(saved.json().hasUnpublishedChanges).toBe(true);
+    // Vor dem Veröffentlichen gibt es die Seite im Shop nicht.
+    expect((await call("GET", "/store/v1/shops/design-a/pages/ueber-uns")).statusCode).toBe(404);
+    await call("POST", "/admin/v1/design/publish", "a");
+    expect((await call("GET", "/store/v1/shops/design-a/design")).json().pages).toEqual([
+      { title: "Über uns", slug: "ueber-uns", inFooter: true },
+    ]);
+    const store = await call("GET", "/store/v1/shops/design-a/pages/ueber-uns");
+    expect(store.statusCode).toBe(200);
+    expect(store.json().title).toBe("Über uns");
+    expect(store.json().blocks.map((b: { type: string }) => b.type)).toEqual(["text", "image", "map"]);
+    expect(store.json().blocks[1].image.url).toContain(imageId);
+    // Anderer Shop sieht die Seite nicht.
+    expect((await call("GET", "/store/v1/shops/design-b/pages/ueber-uns")).statusCode).toBe(404);
+    expect((await call("GET", "/store/v1/shops/design-a/pages/gibt-es-nicht")).statusCode).toBe(404);
+    // Seite löschen und veröffentlichen: Bild ist weg.
+    const has = (id: string) => [...storage.objects.keys()].some((k) => k.includes(id));
+    expect(
+      (await put({ ...base, pages: [] }, (await call("GET", "/admin/v1/design", "a")).json().version))
+        .statusCode,
+    ).toBe(200);
+    await call("POST", "/admin/v1/design/publish", "a");
+    expect(has(imageId)).toBe(false);
+    expect((await call("GET", "/store/v1/shops/design-a/pages/ueber-uns")).statusCode).toBe(404);
   });
 });

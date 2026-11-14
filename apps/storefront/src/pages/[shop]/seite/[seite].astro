@@ -1,0 +1,32 @@
+---
+// Eigene Inhaltsseite eines Shops (Baukasten Teil 3), etwa „Über uns“ oder „Anfahrt“. Inhalt sind
+// dieselben Bausteine wie auf der Startseite (Text, Bild, Video, Karte …), ohne JavaScript.
+import Shop from "../../../layouts/Shop.astro";
+import Baustein from "../../../components/Baustein.astro";
+import { loadShop, storeApi, StoreApiError } from "../../../lib/store-api.js";
+import { EXTERN_COOKIE, safePageSlug, type StorePage } from "../../../lib/design.js";
+import { warenkorbAnzahl } from "../../../lib/cart.js";
+
+const slug = safePageSlug(Astro.params.seite);
+const daten = slug === undefined ? undefined : await loadShop(Astro.params.shop);
+if (daten === undefined || slug === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+
+let seite: StorePage;
+try {
+  seite = await storeApi<StorePage>(shop.handle, `/pages/${slug}`);
+} catch (e) {
+  if (e instanceof StoreApiError && e.status === 404) return Astro.rewrite("/404");
+  throw e;
+}
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+const extern = Astro.cookies.get(EXTERN_COOKIE)?.value === "ja";
+---
+
+<Shop shop={shop} categories={categories} titel={seite.title} korb={korb}>
+  <h1>{seite.title}</h1>
+  {seite.blocks.length === 0 && <p>Diese Seite hat noch keinen Inhalt.</p>}
+  {seite.blocks.map((b) => (
+    <Baustein block={b} shop={shop.handle} extern={extern} />
+  ))}
+</Shop>

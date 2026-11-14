@@ -194,3 +194,53 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
     }
   });
 }
+
+/** Eigene Inhaltsseiten (Baukasten Teil 3), gleiche Grenzen wie die API. */
+export const MAX_PAGES = 10;
+export const MAX_PAGE_TITLE = 60;
+export const MAX_PAGE_SLUG = 60;
+
+export interface ContentPage {
+  readonly id: string;
+  readonly title: string;
+  readonly slug: string;
+  readonly inFooter: boolean;
+  readonly blocks: readonly Block[];
+}
+
+/** Adresse aus dem Titel: „Über uns“ → „ueber-uns“. */
+export function slugify(title: string): string {
+  const s = title
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, MAX_PAGE_SLUG)
+    .replace(/-+$/g, "");
+  return s === "" ? "seite" : s;
+}
+
+/** Freie Adresse: hängt -2, -3 … an, wenn eine andere Seite sie schon hat. */
+export function uniqueSlug(wanted: string, pages: readonly ContentPage[], ownId?: string): string {
+  const taken = new Set(pages.filter((p) => p.id !== ownId).map((p) => p.slug));
+  if (!taken.has(wanted)) return wanted;
+  for (let i = 2; ; i++) {
+    const s = `${wanted.slice(0, MAX_PAGE_SLUG - String(i).length - 1)}-${i}`;
+    if (!taken.has(s)) return s;
+  }
+}
+
+/** Fehlertext für eine Seite oder `undefined`. */
+export function pageProblem(p: ContentPage, pages: readonly ContentPage[]): string | undefined {
+  if (p.title.trim() === "") return "Bitte einen Titel eingeben.";
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug) || p.slug.length > MAX_PAGE_SLUG)
+    return "Die Adresse darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.";
+  if (pages.some((o) => o.id !== p.id && o.slug === p.slug))
+    return "Eine andere Seite hat schon diese Adresse.";
+  return p.blocks.map(blockProblem).find((x) => x !== undefined);
+}

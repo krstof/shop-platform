@@ -202,9 +202,18 @@ export function BuilderDnd({
 }
 
 /** Leiste mit Bausteinen: ziehen oder anklicken. */
-export function Palette({ blocks, onAdd }: { blocks: readonly Block[]; onAdd: (type: BlockType) => void }) {
+export function Palette({
+  blocks,
+  onAdd,
+  allowFixed = true,
+}: {
+  blocks: readonly Block[];
+  onAdd: (type: BlockType) => void;
+  /** Shop-Bereiche (Bühne, Empfehlungen …) nur auf der Startseite. */
+  allowFixed?: boolean;
+}) {
   const full = blocks.length >= MAX_BLOCKS;
-  const fixed = missingFixed(blocks);
+  const fixed = allowFixed ? missingFixed(blocks) : [];
   return (
     <div>
       <p className="mb-3 text-sm text-stone-500">

@@ -3524,6 +3524,257 @@
                   "footer": {
                     "description": "Fußzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist.",
                     "$ref": "#/components/schemas/DesignFooterInput"
+                  },
+                  "pages": {
+                    "description": "Eigene Inhaltsseiten (bis zu 10), nur freie Bausteine. Fehlt das Feld, bleiben sie.",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "title": {
+                          "type": "string",
+                          "maxLength": 60
+                        },
+                        "slug": {
+                          "type": "string",
+                          "maxLength": 60,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "inFooter": {
+                          "type": "boolean"
+                        },
+                        "blocks": {
+                          "maxItems": 30,
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "hero",
+                                      "featured",
+                                      "categories",
+                                      "new"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "text"
+                                  },
+                                  "heading": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "maxLength": 3000
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "heading",
+                                  "text"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "textImage"
+                                  },
+                                  "heading": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "maxLength": 3000
+                                  },
+                                  "imageId": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "imageSide": {
+                                    "type": "string",
+                                    "enum": [
+                                      "left",
+                                      "right"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "heading",
+                                  "text",
+                                  "imageId",
+                                  "imageSide"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "image"
+                                  },
+                                  "imageId": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "caption": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "imageId",
+                                  "caption"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "video"
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "maxLength": 300
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "url"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "map"
+                                  },
+                                  "address": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "address"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "spacer"
+                                  },
+                                  "size": {
+                                    "type": "string",
+                                    "enum": [
+                                      "s",
+                                      "m",
+                                      "l"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "size"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "slug",
+                        "inFooter",
+                        "blocks"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -9893,6 +10144,13 @@
           },
           "footer": {
             "$ref": "#/components/schemas/DesignFooter"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesignPage"
+            },
+            "description": "Eigene Inhaltsseiten wie „Über uns“."
           }
         },
         "required": [
@@ -9901,7 +10159,8 @@
           "logo",
           "home",
           "tagline",
-          "footer"
+          "footer",
+          "pages"
         ],
         "additionalProperties": false,
         "description": "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite."
@@ -10611,6 +10870,259 @@
         ],
         "additionalProperties": false,
         "description": "Bild, ausgeliefert über media.<Domain> (WebP)."
+      },
+      "DesignPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Adresse im Shop: /<shop>/seite/<slug>."
+          },
+          "inFooter": {
+            "type": "boolean",
+            "description": "Link in der Fußzeile des Shops."
+          },
+          "blocks": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "hero",
+                        "featured",
+                        "categories",
+                        "new"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "heading": {
+                      "type": "string",
+                      "maxLength": 120
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 3000
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "heading",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "textImage"
+                    },
+                    "heading": {
+                      "type": "string",
+                      "maxLength": 120
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 3000
+                    },
+                    "imageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageSide": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "heading",
+                    "text",
+                    "imageId",
+                    "imageSide"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "image"
+                    },
+                    "imageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "caption": {
+                      "type": "string",
+                      "maxLength": 200
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "imageId",
+                    "caption"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "video"
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 300
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "map"
+                    },
+                    "address": {
+                      "type": "string",
+                      "maxLength": 200
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "address"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]{1,24}$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "spacer"
+                    },
+                    "size": {
+                      "type": "string",
+                      "enum": [
+                        "s",
+                        "m",
+                        "l"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "size"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "blockImages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DesignImage"
+            },
+            "description": "Die Bilder der Bausteine (für den Editor)."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "inFooter",
+          "blocks",
+          "blockImages"
+        ],
+        "additionalProperties": false,
+        "description": "Eigene Inhaltsseite aus Bausteinen."
       },
       "DesignState": {
         "type": "object",

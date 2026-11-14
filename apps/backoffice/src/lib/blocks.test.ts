@@ -60,3 +60,20 @@ describe("Baukasten im Backoffice", () => {
     ]);
   });
 });
+
+describe("Eigene Seiten", () => {
+  it("macht aus Titeln Adressen und hält sie eindeutig", async () => {
+    const { slugify, uniqueSlug, pageProblem } = await import("./blocks.js");
+    expect(slugify("Über uns")).toBe("ueber-uns");
+    expect(slugify("  Anfahrt & Öffnungszeiten! ")).toBe("anfahrt-oeffnungszeiten");
+    expect(slugify("???")).toBe("seite");
+    const p0 = { id: "a", title: "Über uns", slug: "ueber-uns", inFooter: true, blocks: [] };
+    const pages = [p0];
+    expect(uniqueSlug("ueber-uns", pages)).toBe("ueber-uns-2");
+    expect(uniqueSlug("ueber-uns", pages, "a")).toBe("ueber-uns");
+    expect(pageProblem({ ...p0, id: "b" }, pages)).toBe("Eine andere Seite hat schon diese Adresse.");
+    expect(pageProblem({ ...p0, title: " " }, pages)).toBe("Bitte einen Titel eingeben.");
+    expect(pageProblem({ ...p0, slug: "Über" }, pages)).toBeDefined();
+    expect(pageProblem(p0, pages)).toBeUndefined();
+  });
+});

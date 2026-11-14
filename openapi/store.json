@@ -1167,6 +1167,102 @@
         "x-public-reason": "Jeder Besucher sieht das Aussehen des Shops, den er aufruft."
       }
     },
+    "/store/v1/shops/{shopHandle}/pages/{pageSlug}": {
+      "get": {
+        "operationId": "getStorePage",
+        "summary": "Eigene Seite des Shops",
+        "description": "Eine veröffentlichte Inhaltsseite (etwa „Über uns“) mit ihren Bausteinen. Unbekannt: 404.",
+        "tags": [
+          "Storefront"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops, etwa `teeladen`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "in": "path",
+            "required": true,
+            "description": "Adresse der Seite, etwa `ueber-uns`.",
+            "schema": {
+              "type": "string",
+              "maxLength": 60,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Seite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Jeder Besucher sieht die Seiten des Shops, den er aufruft."
+      }
+    },
     "/store/v1/shops/{shopHandle}/products": {
       "get": {
         "operationId": "listStoreProducts",
@@ -2406,6 +2502,30 @@
           },
           "footer": {
             "$ref": "#/components/schemas/DesignFooter"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "inFooter": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "title",
+                "slug",
+                "inFooter"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Eigene Inhaltsseiten (nur Titel und Adresse; Inhalt über /pages/{pageSlug})."
           }
         },
         "required": [
@@ -2415,7 +2535,8 @@
           "logo",
           "home",
           "tagline",
-          "footer"
+          "footer",
+          "pages"
         ],
         "additionalProperties": false,
         "description": "Veröffentlichtes Aussehen eines Shops."
@@ -2629,6 +2750,30 @@
           "taxByRate"
         ],
         "additionalProperties": false
+      },
+      "StorePage": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreBlock"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "slug",
+          "blocks"
+        ],
+        "additionalProperties": false,
+        "description": "Eigene Inhaltsseite, fertig zum Anzeigen."
       },
       "StoreProduct": {
         "type": "object",

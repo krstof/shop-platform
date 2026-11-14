@@ -152,7 +152,14 @@ export interface Design {
   /** Text unter dem Logo (Teil 3). */
   readonly tagline: string;
   readonly footer: DesignFooter;
+  /** Eigene Inhaltsseiten (ältere API-Stände ohne). */
+  readonly pages?: readonly DesignPage[];
 }
+
+/** Eigene Inhaltsseite (Baukasten Teil 3). */
+export type DesignPage = import("./blocks.js").ContentPage & {
+  readonly blockImages: readonly DesignImage[];
+};
 
 /** Fußzeile (Shop-Editor Teil 3). */
 export interface DesignFooter {

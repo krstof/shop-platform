@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 14.11.2026 (Baukasten-Editor für die Startseite: Bausteine per Ziehen)
+Stand: 14.11.2026 (Baukasten-Editor fertig: Startseite und eigene Seiten per Ziehen)
 
 ## Erledigt
 
@@ -135,8 +135,8 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
 25. **Baukasten-Editor** (Kristof 14.11.2026: „das Wichtigste ist ein richtiger Drag-and-drop-Editor mit Inhaltselementen“; die übrigen Punkte aus „10 weitere Sachen“ warten bis danach):
     - ~~Teil 1, Bausteine in API und Shop~~ (erledigt 14.11.2026): Startseite besteht aus einer Liste von Bausteinen (`home.blocks`): Text, Text mit Bild (links/rechts), Bild mit Unterschrift, Video (nur YouTube/Vimeo, Einbettung selbst gebaut), Karte (Google Maps zu einer Adresse), Abstand, dazu die bisherigen Bereiche Bühne, Empfehlungen, Neu im Shop, Kategorien (je höchstens einmal). Ältere Shops ohne Liste behalten ihre Reihenfolge. Video und Karte laden im Shop erst nach Klick auf „Externe Inhalte anzeigen“ (Cookie je Shop, ohne JavaScript); CSP erlaubt nur diese drei Quellen als Rahmen. Bild-Upload `POST /admin/v1/design/images`.
     - ~~Teil 2, Editor zum Ziehen~~ (erledigt 14.11.2026): Unter „Aussehen“ zwei Reiter, „Startseite“ und „Farben, Logo, Fußzeile“. Leiste „Bausteine“: in die Vorschau ziehen (eine Linie zeigt, wo er landet) oder anklicken (kommt ans Ende). In der Vorschau Bausteine per Ziehen umsortieren, anklicken öffnet links die Felder. Liste „Aufbau der Startseite“ mit ↑/↓/✕ als Alternative. Ziehen geht mit Maus, Finger (kurz halten) und Tastatur (Leertaste, Pfeile). Leere Bausteine zeigt die Vorschau gestrichelt, der Shop lässt sie weg. Technik: dnd-kit (core 6.3.1, sortable 10.0.0). Getestet: Unit-Tests der Regeln, Browserdurchlauf am Computer und Handy (Ziehen aus der Leiste, Umsortieren per Maus und Tastatur, Bild hochladen, falscher Videolink sperrt Speichern, gespeicherte Reihenfolge stimmt, kein seitliches Scrollen).
-    - **Teil 3 (nächster Schritt):** eigene Inhaltsseiten („Über uns“, „Anfahrt“) aus denselben Bausteinen, verlinkt in der Fußzeile.
-26. **Danach:** die übrigen Wünsche aus „10 weitere Sachen“ (Bestseller, Produkte als CSV, Sammelaktion Kategorie, Kontaktformular, Merkzettel, Rechnung als PDF, Plattform-Kennzahlen), außer Kristof will erst testen (Frage 1).
+    - ~~Teil 3, eigene Seiten~~ (erledigt 14.11.2026): Im Reiter „Seiten“ oben „+ Neue Seite“ und Umschalten zwischen Startseite und eigenen Seiten (bis zu 10). Je Seite Titel, Adresse (folgt dem Titel, „Über uns“ → `ueber-uns`, doppelte bekommen -2), Häkchen „In der Fußzeile verlinken“, „Seite löschen“; Inhalt mit denselben Bausteinen und demselben Ziehen (ohne Shop-Bereiche). Gespeichert im Aussehen (`pages`), sichtbar erst nach „Veröffentlichen“. Shop: `/<shop>/seite/<adresse>`, Link in der Fußzeile vor den eigenen Links. Neue Store-API `GET /shops/{shopHandle}/pages/{pageSlug}`; das Aussehen nennt nur Titel und Adressen. Getestet: Datenbanktest (falsche Adresse, doppelte Adresse, Shop-Bereich auf Seite, fremdes Bild ergeben 422; erst nach Veröffentlichen sichtbar; anderer Shop 404; gelöschte Seite räumt ihr Bild weg), Unit-Tests, Browserdurchlauf am Computer und Handy, Schemathesis.
+26. **Nächste Schritte** (Kristof 14.11.2026: „weiterbauen“): die übrigen Wünsche aus „10 weitere Sachen“, je eine Etappe: Bestseller auf der Startseite (als Baustein), Produkte als CSV herunterladen/hochladen, Sammelaktion „Kategorie setzen“, Kontaktformular mit Posteingang, Merkzettel, Rechnung als PDF, Plattform-Kennzahlen.
 
 
 ## Später (nicht fürs MVP)

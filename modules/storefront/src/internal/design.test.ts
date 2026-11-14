@@ -56,6 +56,15 @@ describe("Aussehen: Rechenregeln", () => {
       },
       tagline: "Tee mit Herz",
       footer: { text: "Mo–Fr", links: [{ label: "Kontakt", url: "mailto:a@b.example" }] },
+      pages: [
+        {
+          id: "p1",
+          title: "Über uns",
+          slug: "ueber-uns",
+          inFooter: true,
+          blocks: [{ id: "b2", type: "map", address: "Teeweg 1" }],
+        },
+      ],
     };
     expect(readSettings(s)).toEqual(s);
     expect(sameSettings(readSettings(s), readSettings(s))).toBe(true);

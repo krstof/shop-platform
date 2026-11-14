@@ -97,6 +97,29 @@ export interface StoreDesign {
   readonly home: StoreHome;
   readonly tagline: string;
   readonly footer: StoreFooter;
+  /** Eigene Inhaltsseiten (ältere API-Stände ohne). */
+  readonly pages?: readonly StorePageRef[];
+}
+
+/** Eintrag einer eigenen Seite im Aussehen (Inhalt kommt über /pages/{slug}). */
+export interface StorePageRef {
+  readonly title: string;
+  readonly slug: string;
+  readonly inFooter: boolean;
+}
+
+/** Eine eigene Seite mit ihren Bausteinen. */
+export interface StorePage {
+  readonly title: string;
+  readonly slug: string;
+  readonly blocks: readonly StoreBlock[];
+}
+
+/** Adresse einer Seite prüfen (gleiche Regel wie die API). */
+export function safePageSlug(slug: string | undefined): string | undefined {
+  return slug !== undefined && slug.length <= 60 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)
+    ? slug
+    : undefined;
 }
 
 /** Nur sichere Linkziele ausgeben (https/http, mailto, tel), auch wenn die API schon prüft. */
@@ -140,6 +163,7 @@ export const DEFAULT_DESIGN: StoreDesign = {
   home: DEFAULT_HOME,
   tagline: "",
   footer: { text: "", links: [] },
+  pages: [],
 };
 
 const HEX = /^#[0-9a-f]{6}$/;

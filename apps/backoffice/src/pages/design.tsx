@@ -4,7 +4,7 @@
 // wird erst „Veröffentlichen“. Die Vorschau ist ein Nachbau des Shops mit echten Daten.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type ChangeEvent } from "react";
-import { Alert, Badge, Button, Card, Input, Spinner, Textarea } from "../components/ui.js";
+import { Alert, Badge, Button, Card, Field, Input, Spinner, Textarea } from "../components/ui.js";
 import {
   ApiError,
   fileToBase64,
@@ -42,9 +42,16 @@ import {
   blockProblem,
   canAdd,
   legacyBlocks,
+  MAX_PAGE_TITLE,
+  MAX_PAGES,
   newBlock,
+  newId,
+  pageProblem,
+  slugify,
+  uniqueSlug,
   type Block,
   type BlockType,
+  type ContentPage,
 } from "../lib/blocks.js";
 import { BlockOutline, BuilderDnd, Canvas, EmptyHint, FreeBlockPreview, Palette } from "./design-blocks.js";
 import { useShop } from "./layout.js";
@@ -72,6 +79,19 @@ interface Form {
   tagline: string;
   footerText: string;
   footerLinks: FooterLinkForm[];
+  /** Eigene Inhaltsseiten (Baukasten Teil 3). */
+  pages: ContentPage[];
+}
+
+/** Seiten fürs Speichern und Vergleichen: Titel ohne Leerzeichen am Rand, Bausteine bereinigt. */
+function cleanPages(pages: readonly ContentPage[]): ContentPage[] {
+  return pages.map((p) => ({
+    id: p.id,
+    title: p.title.trim(),
+    slug: p.slug,
+    inFooter: p.inFooter,
+    blocks: cleanBlocks(p.blocks),
+  }));
 }
 
 const designKey = (shopId: string) => ["design", shopId] as const;
@@ -96,6 +116,13 @@ function formOf(state: DesignState): Form {
     tagline: state.draft.tagline,
     footerText: state.draft.footer.text,
     footerLinks: state.draft.footer.links.map((l) => ({ label: l.label, url: l.url })),
+    pages: (state.draft.pages ?? []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      inFooter: p.inFooter,
+      blocks: [...p.blocks],
+    })),
   };
 }
 
@@ -135,14 +162,19 @@ function sameForm(a: Form, b: Form): boolean {
     sameHome(a.home, b.home) &&
     a.tagline.trim() === b.tagline.trim() &&
     a.footerText.trim() === b.footerText.trim() &&
-    JSON.stringify(cleanLinks(a.footerLinks)) === JSON.stringify(cleanLinks(b.footerLinks))
+    JSON.stringify(cleanLinks(a.footerLinks)) === JSON.stringify(cleanLinks(b.footerLinks)) &&
+    JSON.stringify(cleanPages(a.pages)) === JSON.stringify(cleanPages(b.pages))
   );
 }
 
 /** Bilder der Bausteine (Entwurf und veröffentlicht) zu den schon bekannten dazu. */
 function imageMap(known: ReadonlyMap<string, DesignImage>, state: DesignState): Map<string, DesignImage> {
   const m = new Map(known);
-  for (const i of [...(state.draft.home.blockImages ?? []), ...(state.published.home.blockImages ?? [])])
+  for (const i of [
+    ...(state.draft.home.blockImages ?? []),
+    ...(state.published.home.blockImages ?? []),
+    ...[...(state.draft.pages ?? []), ...(state.published.pages ?? [])].flatMap((p) => p.blockImages),
+  ])
     m.set(i.id, i);
   return m;
 }
@@ -190,7 +222,12 @@ function DesignEditor({ initial }: { initial: DesignState }) {
   const readable = readableWithWhite(form.accentColor);
   const linksOk = form.footerLinks.every((l) => linkProblem(l) === undefined);
   const blocksOk = form.home.blocks.every((b) => blockProblem(b) === undefined);
-  const valid = readable && linksOk && blocksOk;
+  const pagesOk = form.pages.every((p) => pageProblem(p, form.pages) === undefined);
+  const valid = readable && linksOk && blocksOk && pagesOk;
+  // Welche Seite der Baukasten gerade bearbeitet: die Startseite oder eine eigene Seite.
+  const [pageId, setPageId] = useState<string>("home");
+  const currentPage = form.pages.find((p) => p.id === pageId);
+  const currentBlocks: readonly Block[] = currentPage?.blocks ?? form.home.blocks;
   const [tab, setTab] = useState<"startseite" | "stil">("startseite");
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [images, setImages] = useState<ReadonlyMap<string, DesignImage>>(() => imageMap(new Map(), initial));
@@ -202,15 +239,48 @@ function DesignEditor({ initial }: { initial: DesignState }) {
     setMessage(undefined);
   }
 
+  function setPage(id: string, change: Partial<ContentPage>) {
+    setForm((f) => ({ ...f, pages: f.pages.map((p) => (p.id === id ? { ...p, ...change } : p)) }));
+    setMessage(undefined);
+  }
+
   function setBlocks(blocks: Block[]) {
-    setHome({ blocks });
+    if (currentPage) setPage(currentPage.id, { blocks });
+    else setHome({ blocks });
   }
 
   function addBlock(type: BlockType) {
-    if (!canAdd(form.home.blocks, type)) return;
-    const block = newBlock(type, form.home.blocks);
-    setBlocks([...form.home.blocks, block]);
+    if (!canAdd(currentBlocks, type)) return;
+    const block = newBlock(type, currentBlocks);
+    setBlocks([...currentBlocks, block]);
     setSelectedId(block.id);
+  }
+
+  function showPage(id: string) {
+    setPageId(id);
+    setSelectedId(undefined);
+  }
+
+  function addPage() {
+    if (form.pages.length >= MAX_PAGES) return;
+    const title = "Neue Seite";
+    const page: ContentPage = {
+      id: newId(form.pages.map((p) => ({ id: p.id, type: "spacer", size: "s" }))),
+      title,
+      slug: uniqueSlug(slugify(title), form.pages),
+      inFooter: true,
+      blocks: [{ id: "text1", type: "text", heading: "", text: "" }],
+    };
+    setForm((f) => ({ ...f, pages: [...f.pages, page] }));
+    setMessage(undefined);
+    setPageId(page.id);
+    setSelectedId("text1");
+  }
+
+  function removePage(id: string) {
+    setForm((f) => ({ ...f, pages: f.pages.filter((p) => p.id !== id) }));
+    setMessage(undefined);
+    showPage("home");
   }
 
   const uploadBlockImage = async (file: File): Promise<DesignImage> => {
@@ -263,6 +333,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
         },
         tagline: form.tagline.trim(),
         footer: { text: form.footerText.trim(), links: cleanLinks(form.footerLinks) },
+        pages: cleanPages(form.pages),
       },
     });
 
@@ -507,12 +578,12 @@ function DesignEditor({ initial }: { initial: DesignState }) {
         {message && <Alert tone={message.tone}>{message.text}</Alert>}
       </div>
 
-      <BuilderDnd blocks={form.home.blocks} onChange={setBlocks} onSelect={setSelectedId}>
+      <BuilderDnd blocks={currentBlocks} onChange={setBlocks} onSelect={setSelectedId}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
           <div className="space-y-6">
             <div role="tablist" aria-label="Bereich" className="flex rounded-lg bg-stone-100 p-1">
               {[
-                { id: "startseite", name: "Startseite" },
+                { id: "startseite", name: "Seiten" },
                 { id: "stil", name: "Farben, Logo, Fußzeile" },
               ].map((t) => (
                 <button
@@ -535,12 +606,126 @@ function DesignEditor({ initial }: { initial: DesignState }) {
 
             {tab === "startseite" && (
               <>
+                <div>
+                  <p className="mb-2 text-sm font-medium text-stone-700">Welche Seite bearbeiten?</p>
+                  <div role="radiogroup" aria-label="Seite" className="flex flex-wrap gap-2">
+                    {[{ id: "home", title: "Startseite" }, ...form.pages].map((p) => {
+                      const active = (currentPage?.id ?? "home") === p.id;
+                      const problem =
+                        p.id !== "home" && pageProblem(p as ContentPage, form.pages) !== undefined;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => showPage(p.id)}
+                          className={
+                            "max-w-full truncate rounded-full px-3 py-1.5 text-sm ring-1 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 " +
+                            (active
+                              ? "bg-stone-900 text-white ring-stone-900"
+                              : problem
+                                ? "bg-white text-red-700 ring-red-300 hover:bg-red-50"
+                                : "bg-white text-stone-700 ring-stone-300 hover:bg-stone-50")
+                          }
+                        >
+                          {p.title.trim() || "Ohne Titel"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addPage}
+                    disabled={form.pages.length >= MAX_PAGES}
+                    className="mt-2 rounded-full px-3 py-1.5 text-sm text-emerald-800 ring-1 ring-emerald-700/40 ring-dashed transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {form.pages.length >= MAX_PAGES ? `Höchstens ${MAX_PAGES} Seiten` : "+ Neue Seite"}
+                  </button>
+                </div>
+
+                {currentPage && (
+                  <Card title="Seite">
+                    <div className="space-y-4">
+                      <Field
+                        label="Titel"
+                        hint="Steht oben auf der Seite und in der Fußzeile."
+                        error={currentPage.title.trim() === "" ? "Bitte einen Titel eingeben." : undefined}
+                      >
+                        {(p) => (
+                          <Input
+                            {...p}
+                            value={currentPage.title}
+                            maxLength={MAX_PAGE_TITLE}
+                            onChange={(e) => {
+                              const title = e.target.value;
+                              // Adresse folgt dem Titel, solange sie noch zum alten Titel passt.
+                              const follows =
+                                currentPage.slug ===
+                                uniqueSlug(slugify(currentPage.title), form.pages, currentPage.id);
+                              setPage(currentPage.id, {
+                                title,
+                                ...(follows
+                                  ? { slug: uniqueSlug(slugify(title), form.pages, currentPage.id) }
+                                  : {}),
+                              });
+                            }}
+                          />
+                        )}
+                      </Field>
+                      <Field
+                        label="Adresse"
+                        hint={`${storefrontUrl(shop.handle, window.location)}/seite/${currentPage.slug}`}
+                        error={(() => {
+                          const p = pageProblem({ ...currentPage, title: "x", blocks: [] }, form.pages);
+                          return p;
+                        })()}
+                      >
+                        {(p) => (
+                          <Input
+                            {...p}
+                            value={currentPage.slug}
+                            maxLength={60}
+                            onChange={(e) =>
+                              setPage(currentPage.id, {
+                                slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+                              })
+                            }
+                            onBlur={() =>
+                              setPage(currentPage.id, {
+                                slug: uniqueSlug(slugify(currentPage.slug), form.pages, currentPage.id),
+                              })
+                            }
+                          />
+                        )}
+                      </Field>
+                      <label className="flex items-start gap-2.5 text-sm text-stone-800">
+                        <input
+                          type="checkbox"
+                          checked={currentPage.inFooter}
+                          onChange={(e) => setPage(currentPage.id, { inFooter: e.target.checked })}
+                          className="mt-0.5 size-4 rounded border-stone-300 text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                        />
+                        <span>
+                          In der Fußzeile verlinken
+                          <span className="block text-xs text-stone-500">
+                            Aus heißt: Die Seite ist nur über ihre Adresse erreichbar.
+                          </span>
+                        </span>
+                      </label>
+                      <Button variant="danger" onClick={() => removePage(currentPage.id)}>
+                        Seite löschen
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+
                 <Card title="Bausteine">
-                  <Palette blocks={form.home.blocks} onAdd={addBlock} />
+                  <Palette blocks={currentBlocks} onAdd={addBlock} allowFixed={!currentPage} />
                 </Card>
-                <Card title="Aufbau der Startseite">
+                <Card title={currentPage ? "Aufbau der Seite" : "Aufbau der Startseite"}>
                   <BlockOutline
-                    blocks={form.home.blocks}
+                    blocks={currentBlocks}
                     onChange={setBlocks}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
@@ -548,7 +733,11 @@ function DesignEditor({ initial }: { initial: DesignState }) {
                     uploadImage={uploadBlockImage}
                     renderFixed={fixedFields}
                   />
-                  <p className="mt-3 text-xs text-stone-500">Darunter zeigt der Shop immer alle Produkte.</p>
+                  {!currentPage && (
+                    <p className="mt-3 text-xs text-stone-500">
+                      Darunter zeigt der Shop immer alle Produkte.
+                    </p>
+                  )}
                 </Card>
               </>
             )}
@@ -834,6 +1023,7 @@ function DesignEditor({ initial }: { initial: DesignState }) {
               products={published}
               categories={(categories.data ?? []).filter((c) => c.visible)}
               images={images}
+              page={currentPage}
               selectedId={selectedId}
               onSelect={(id) => {
                 setSelectedId(id);
@@ -1013,6 +1203,7 @@ function Preview({
   products,
   categories,
   images,
+  page,
   selectedId,
   onSelect,
 }: {
@@ -1021,6 +1212,8 @@ function Preview({
   products: Product[];
   categories: Category[];
   images: ReadonlyMap<string, DesignImage>;
+  /** Eigene Seite statt Startseite. */
+  page: ContentPage | undefined;
   selectedId: string | undefined;
   onSelect: (id: string) => void;
 }) {
@@ -1041,6 +1234,12 @@ function Preview({
     .filter((p) => p.stock > 0)
     .reverse()
     .slice(0, 4);
+  const footerLabels = [
+    ...form.pages.filter((p) => p.inFooter && p.title.trim() !== "").map((p) => p.title.trim()),
+    ...cleanLinks(form.footerLinks)
+      .filter((l) => l.label !== "")
+      .map((l) => l.label),
+  ];
   const heroTitle =
     form.home.heroTitle.trim() !== "" ? form.home.heroTitle.trim() : `Willkommen bei ${shop.name}`;
   const heroText =
@@ -1081,7 +1280,7 @@ function Preview({
 
   return (
     <div
-      aria-label="Vorschau der Startseite"
+      aria-label={page ? `Vorschau der Seite „${page.title}“` : "Vorschau der Startseite"}
       role="region"
       className={
         "overflow-hidden rounded-xl shadow-sm ring-1 ring-stone-200 " +
@@ -1121,8 +1320,13 @@ function Preview({
       </div>
 
       <div className="px-5 py-6">
+        {page && (
+          <p className="mb-2 text-3xl leading-tight" style={titel}>
+            {page.title.trim() || "Ohne Titel"}
+          </p>
+        )}
         <Canvas
-          blocks={form.home.blocks}
+          blocks={page?.blocks ?? form.home.blocks}
           selectedId={selectedId}
           onSelect={onSelect}
           accent={accent}
@@ -1186,10 +1390,14 @@ function Preview({
           }}
         />
 
-        <p className="mt-7 text-xl" style={titel}>
-          Alle Produkte
-        </p>
-        <PreviewGrid items={all} mobile={mobile} accent={accent} titel={titel} />
+        {!page && (
+          <>
+            <p className="mt-7 text-xl" style={titel}>
+              Alle Produkte
+            </p>
+            <PreviewGrid items={all} mobile={mobile} accent={accent} titel={titel} />
+          </>
+        )}
       </div>
       <div className="px-5 py-5 text-sm" style={{ background: "#f1ebe1", borderTop: "1px solid #e2d9cb" }}>
         <p className="text-lg" style={titel}>
@@ -1200,15 +1408,13 @@ function Preview({
             {form.footerText.trim()}
           </p>
         )}
-        {cleanLinks(form.footerLinks).filter((l) => l.label !== "").length > 0 && (
+        {footerLabels.length > 0 && (
           <ul className="mt-3 space-y-1">
-            {cleanLinks(form.footerLinks)
-              .filter((l) => l.label !== "")
-              .map((l, i) => (
-                <li key={i} style={{ color: dark, textDecoration: "underline" }}>
-                  {l.label}
-                </li>
-              ))}
+            {footerLabels.map((label, i) => (
+              <li key={i} style={{ color: dark, textDecoration: "underline" }}>
+                {label}
+              </li>
+            ))}
           </ul>
         )}
         <p className="mt-3 text-xs" style={{ color: "#5e554c" }}>

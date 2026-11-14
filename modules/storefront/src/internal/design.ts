@@ -3,7 +3,7 @@
 // Datenbank, damit sie einzeln getestet werden können. Gespeichert wird als JSON in
 // storefront.theme_installation (settings_draft und settings_published).
 import { z } from "zod";
-import { blockImages, readBlocks, type Block } from "./blocks.js";
+import { blockImages, pageImages, readBlocks, readPages, type Block, type ContentPage } from "./blocks.js";
 
 /** Schriftarten: nur Systemschriften, keine Dienste von außen (Stil „schlicht“, 29.10.2026). */
 export const FONTS = ["klassisch", "modern", "freundlich"] as const;
@@ -68,6 +68,8 @@ export interface DesignSettings {
   /** Kurzer Text unter dem Logo (Slogan); leer heißt keiner. */
   readonly tagline: string;
   readonly footer: FooterSettings;
+  /** Eigene Inhaltsseiten (Baukasten Teil 3). */
+  readonly pages: readonly ContentPage[];
 }
 
 export const DEFAULT_HOME: HomeSettings = {
@@ -89,6 +91,7 @@ export const DEFAULT_DESIGN: DesignSettings = {
   home: DEFAULT_HOME,
   tagline: "",
   footer: DEFAULT_FOOTER,
+  pages: [],
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -123,6 +126,7 @@ const stored = z.object({
         .catch([]),
     })
     .catch(() => ({ text: "", links: [] })),
+  pages: z.unknown().optional().transform(readPages),
 });
 
 /** Liest gespeichertes JSON; Fehlendes oder Kaputtes wird zum Standard (alte Shops haben `{}`). */
@@ -145,13 +149,14 @@ export function sameSettings(a: DesignSettings, b: DesignSettings): boolean {
     a.home.featuredProductIds.join(",") === b.home.featuredProductIds.join(",") &&
     a.tagline === b.tagline &&
     a.footer.text === b.footer.text &&
-    JSON.stringify(a.footer.links) === JSON.stringify(b.footer.links)
+    JSON.stringify(a.footer.links) === JSON.stringify(b.footer.links) &&
+    JSON.stringify(a.pages) === JSON.stringify(b.pages)
   );
 }
 
 /** Alle Bilder (Logo, Startseitenbild), die ein Stand benutzt. */
 export function imagesOf(s: DesignSettings): string[] {
-  return [s.logoImageId, s.home.heroImageId, ...blockImages(s.home.blocks)].filter(
+  return [s.logoImageId, s.home.heroImageId, ...blockImages(s.home.blocks), ...pageImages(s.pages)].filter(
     (x): x is string => x !== null,
   );
 }

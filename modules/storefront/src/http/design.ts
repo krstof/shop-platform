@@ -11,7 +11,16 @@ import {
   type Database,
 } from "@shop/kernel";
 import { z } from "zod";
-import { blocksSchema, blockImages, legacyBlocks, parseVideoUrl, type Block } from "../internal/blocks.js";
+import {
+  blocksSchema,
+  blockImages,
+  legacyBlocks,
+  MAX_PAGES,
+  pagesSchema,
+  parseVideoUrl,
+  type Block,
+  type ContentPage,
+} from "../internal/blocks.js";
 import type { DB } from "../db.generated.js";
 import {
   darker,
@@ -133,6 +142,17 @@ const homeViewSchema = z
     description: "Startseite: Bild mit Überschrift und Text, Empfehlungen, Kategorien.",
   });
 
+const pageViewSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    slug: z.string().meta({ description: "Adresse im Shop: /<shop>/seite/<slug>." }),
+    inFooter: z.boolean().meta({ description: "Link in der Fußzeile des Shops." }),
+    blocks: blocksSchema,
+    blockImages: z.array(imageSchema).meta({ description: "Die Bilder der Bausteine (für den Editor)." }),
+  })
+  .meta({ id: "DesignPage", description: "Eigene Inhaltsseite aus Bausteinen." });
+
 const footerLinkSchema = z
   .object({ label: z.string(), url: z.string() })
   .meta({ id: "DesignFooterLink", description: "Link im Fuß des Shops." });
@@ -152,6 +172,7 @@ const designViewSchema = z
     home: homeViewSchema,
     tagline: z.string().meta({ description: "Kurzer Text unter dem Logo; leer heißt keiner." }),
     footer: footerViewSchema,
+    pages: z.array(pageViewSchema).meta({ description: "Eigene Inhaltsseiten wie „Über uns“." }),
   })
   .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
@@ -238,6 +259,9 @@ const draftInput = z.strictObject({
   footer: footerInput
     .optional()
     .meta({ description: "Fußzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist." }),
+  pages: pagesSchema.optional().meta({
+    description: `Eigene Inhaltsseiten (bis zu ${MAX_PAGES}), nur freie Bausteine. Fehlt das Feld, bleiben sie.`,
+  }),
 });
 
 const logoInput = z.strictObject({
@@ -300,8 +324,15 @@ const storeDesignSchema = z
       .meta({ id: "StoreDesignHome", description: "Inhalt der Startseite." }),
     tagline: z.string().meta({ description: "Text unter dem Logo; leer heißt keiner." }),
     footer: footerViewSchema,
+    pages: z
+      .array(z.object({ title: z.string(), slug: z.string(), inFooter: z.boolean() }))
+      .meta({ description: "Eigene Inhaltsseiten (nur Titel und Adresse; Inhalt über /pages/{pageSlug})." }),
   })
   .meta({ id: "StoreDesign", description: "Veröffentlichtes Aussehen eines Shops." });
+
+const storePageSchema = z
+  .object({ title: z.string(), slug: z.string(), blocks: z.array(storeBlockSchema) })
+  .meta({ id: "StorePage", description: "Eigene Inhaltsseite, fertig zum Anzeigen." });
 
 /** Kleines gültiges PNG (32 × 32 Pixel) als Beispiel für Dokumentation und Tests. */
 const EXAMPLE_PNG =
@@ -352,6 +383,11 @@ function footerView(f: FooterSettings) {
   return { text: f.text, links: f.links.map((l) => ({ label: l.label, url: l.url })) };
 }
 
+const shopHandleParam = z
+  .string()
+  .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/)
+  .meta({ description: "Kürzel des Shops, etwa `teeladen`." });
+
 export interface DesignEndpointDependencies {
   readonly db: Database<DB>;
   readonly images: DesignImages;
@@ -379,6 +415,14 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       },
       tagline: s.tagline,
       footer: footerView(s.footer),
+      pages: s.pages.map((p) => ({
+        ...p,
+        blocks: p.blocks.map((b) => ({ ...b })),
+        blockImages: blockImages(p.blocks).flatMap((id) => {
+          const i = found.get(id);
+          return i === undefined ? [] : [i];
+        }),
+      })),
     });
     return {
       draft: view(i.draft),
@@ -501,6 +545,19 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
                 ]
               : [],
           ),
+          ...(body.pages ?? []).flatMap((p, pi) =>
+            p.blocks.flatMap((b, i) =>
+              (b.type === "image" || b.type === "textImage") && b.imageId !== null
+                ? [
+                    {
+                      id: b.imageId,
+                      path: `/pages/${pi}/blocks/${i}/imageId`,
+                      detail: "Ein Bild auf einer Seite gibt es nicht. Bitte neu hochladen.",
+                    },
+                  ]
+                : [],
+            ),
+          ),
         ];
         const found = await images.get(wanted.flatMap((w) => (w.id === null ? [] : [w.id])));
         for (const w of wanted)
@@ -511,7 +568,10 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             });
         const tagline = body.tagline ?? current.draft.tagline;
         const footer: FooterSettings = body.footer ?? current.draft.footer;
-        return { draft: { accentColor: accent, font: body.font, logoImageId: logo, home, tagline, footer } };
+        const pages: readonly ContentPage[] = body.pages ?? current.draft.pages;
+        return {
+          draft: { accentColor: accent, font: body.font, logoImageId: logo, home, tagline, footer, pages },
+        };
       });
     },
   });
@@ -622,12 +682,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       "Veröffentlichte Hauptfarbe, Schrift, Logo und Startseite. Unbekannte oder gesperrte Shops ergeben 404.",
     tags: ["Storefront"],
     access: { public: true, reason: "Jeder Besucher sieht das Aussehen des Shops, den er aufruft." },
-    params: z.strictObject({
-      shopHandle: z
-        .string()
-        .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/)
-        .meta({ description: "Kürzel des Shops, etwa `teeladen`." }),
-    }),
+    params: z.strictObject({ shopHandle: shopHandleParam }),
     response: { status: 200, description: "Das Aussehen.", schema: storeDesignSchema },
     problems: [404],
     handler: async () => {
@@ -655,7 +710,41 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         },
         tagline: published.tagline,
         footer: footerView(published.footer),
+        pages: published.pages.map((p) => ({ title: p.title, slug: p.slug, inFooter: p.inFooter })),
       };
+    },
+  });
+
+  const storePage = defineEndpoint({
+    api: "store",
+    method: "GET",
+    path: "/shops/{shopHandle}/pages/{pageSlug}",
+    operationId: "getStorePage",
+    summary: "Eigene Seite des Shops",
+    description: "Eine veröffentlichte Inhaltsseite (etwa „Über uns“) mit ihren Bausteinen. Unbekannt: 404.",
+    tags: ["Storefront"],
+    access: { public: true, reason: "Jeder Besucher sieht die Seiten des Shops, den er aufruft." },
+    params: z.strictObject({
+      shopHandle: shopHandleParam,
+      pageSlug: z
+        .string()
+        .max(60)
+        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+        .meta({ description: "Adresse der Seite, etwa `ueber-uns`." }),
+    }),
+    response: { status: 200, description: "Die Seite.", schema: storePageSchema },
+    problems: [404],
+    handler: async ({ params }) => {
+      if (getContext()?.tenantId === undefined) throw new NotFoundError();
+      const { published } = await withTenantTransaction(db, (trx) => readInstallation(trx));
+      const page = published.pages.find((p) => p.slug === params.pageSlug);
+      if (page === undefined) throw new NotFoundError();
+      const found = await images.get(blockImages(page.blocks));
+      const image = (id: string | null) => {
+        const i = id === null ? undefined : found.get(id);
+        return i === undefined ? null : { url: i.url, width: i.width, height: i.height };
+      };
+      return { title: page.title, slug: page.slug, blocks: page.blocks.flatMap((b) => storeBlock(b, image)) };
     },
   });
 
@@ -688,5 +777,5 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     },
   });
 
-  return [get, saveDraft, uploadLogo, uploadHero, uploadBlockImage, publish, discard, store];
+  return [get, saveDraft, uploadLogo, uploadHero, uploadBlockImage, publish, discard, store, storePage];
 }

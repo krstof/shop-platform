@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { blockImages, blocksSchema, legacyBlocks, parseVideoUrl, readBlocks } from "./blocks.js";
+import {
+  blockImages,
+  blocksSchema,
+  legacyBlocks,
+  pagesSchema,
+  parseVideoUrl,
+  readBlocks,
+  readPages,
+} from "./blocks.js";
 
 const IMG = "0190a3c4-0000-7000-8000-000000000001";
 
@@ -63,5 +71,28 @@ describe("Bausteine", () => {
         { id: "b", type: "textImage", heading: "", text: "", imageId: null, imageSide: "right" },
       ]),
     ).toEqual([IMG]);
+  });
+
+  it("Seiten: Adresse, keine Shop-Bereiche, robust gelesen", () => {
+    const page = { id: "p1", title: "Über uns", slug: "ueber-uns", inFooter: true, blocks: [] };
+    expect(pagesSchema.safeParse([page]).success).toBe(true);
+    expect(pagesSchema.safeParse([{ ...page, slug: "Über uns" }]).success).toBe(false);
+    expect(pagesSchema.safeParse([{ ...page, title: "  " }]).success).toBe(false);
+    expect(pagesSchema.safeParse([page, { ...page, id: "p2" }]).success).toBe(false);
+    expect(pagesSchema.safeParse([{ ...page, blocks: [{ id: "h", type: "hero" }] }]).success).toBe(false);
+    expect(
+      readPages([
+        {
+          ...page,
+          blocks: [
+            { id: "h", type: "hero" },
+            { id: "t", type: "spacer", size: "s" },
+          ],
+        },
+        { ...page, id: "p2" },
+        "kaputt",
+      ]),
+    ).toEqual([{ ...page, blocks: [{ id: "t", type: "spacer", size: "s" }] }]);
+    expect(readPages(undefined)).toEqual([]);
   });
 });

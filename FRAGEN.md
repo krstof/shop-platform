@@ -4,10 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Erst testen oder weiterbauen?** Das MVP ist seit dem 11.11. fertig, seitdem kam viel dazu (zuletzt der Baukasten). Soll ich nach den Inhaltsseiten eine Pause bei neuen Funktionen machen, damit du und die Kollegen auf dem Testserver ausprobieren und Fehler melden? Antwort: **Testen** oder **Weiterbauen**.
+(keine)
 
 ## Beantwortet
 
+- **Erst testen oder weiterbauen?** Weiterbauen. (Kristof, 14.11.2026)
 - **Schreibweise des Namens:** „Slopify“ (ein p). (Kristof, 14.11.2026)
 - **Eigenes Logo:** Kristof wollte das geschickte Logo einbauen (nur ein Scherz, nur für zwei, drei Kollegen). Das Bild gleicht dem Logo einer echten Marke zu sehr, deshalb ist stattdessen ein eigenes Zeichen eingebaut: ein violetter Klecks, der nach unten tropft, mit dem Schriftzug „slopify“. (14.11.2026)
 - **Sprachmodell für den KI-Chat:** Claude. (Kristof, 14.11.2026)
