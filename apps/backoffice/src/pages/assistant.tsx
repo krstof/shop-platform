@@ -1,8 +1,19 @@
 // KI-Assistent (Welle 2): Chat mit dem Sprachmodell. Lesende Werkzeuge laufen sofort, ändernde erst
 // nach „Ausführen“. Alles läuft über die Admin-API mit der Sitzung des Händlers (lib/assistant.ts).
 // Der Verlauf bleibt nur in diesem Browser-Tab (sessionStorage), auf dem Server wird nichts gespeichert.
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useLocation } from "@tanstack/react-router";
+import {
+  createContext,
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { SlopifyMark } from "../components/logo.js";
 import { Alert, Button, Spinner, Textarea } from "../components/ui.js";
 import { ApiError, request, type Order, type Product } from "../lib/api.js";
@@ -72,8 +83,42 @@ function toolUses(m: ChatMessage | undefined): ToolUse[] {
   return m.content.filter((b): b is ToolUse => b.type === "tool_use");
 }
 
-export function AssistantPage() {
+interface AssistantApi {
+  readonly status: ReturnType<typeof useQuery<AssistantStatus>>;
+  readonly messages: readonly ChatMessage[];
+  readonly decisions: Readonly<Record<string, Decision>>;
+  readonly busy: string | null;
+  readonly error: string | null;
+  readonly text: string;
+  readonly setText: (t: string) => void;
+  readonly attachment: Attachment | null;
+  readonly setAttachment: (a: Attachment | null) => void;
+  readonly attachError: string | null;
+  readonly attach: (file: File | undefined) => Promise<void>;
+  readonly send: (value: string) => void;
+  readonly decide: (id: string, d: Decision) => void;
+  readonly reset: () => void;
+  /** Seitenleiste offen? */
+  readonly open: boolean;
+  readonly setOpen: (open: boolean) => void;
+}
+
+const AssistantContext = createContext<AssistantApi | null>(null);
+
+export function useAssistant(): AssistantApi {
+  const a = useContext(AssistantContext);
+  if (a === null) throw new Error("useAssistant außerhalb von AssistantProvider");
+  return a;
+}
+
+/**
+ * Hält den Chat für den ganzen Shop: Er bleibt beim Seitenwechsel erhalten und ist auf der Seite
+ * „Assistent“ und in der Seitenleiste derselbe.
+ */
+export function AssistantProvider({ children }: { children: ReactNode }) {
   const shop = useShop();
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const status = useQuery({
     queryKey: ["assistant", shop.id],
@@ -87,18 +132,12 @@ export function AssistantPage() {
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
   const photosRef = useRef(new Map<string, Blob>());
-  const fileRef = useRef<HTMLInputElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
   useEffect(() => {
     saveHistory(shop.id, messages);
   }, [shop.id, messages]);
-  useEffect(() => {
-    // Neuere Browser geben hier ein Promise zurück; ein Effekt darf nur eine Aufräumfunktion liefern.
-    void endRef.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
-  }, [messages, busy]);
 
   const update = useCallback((next: ChatMessage[]) => {
     messagesRef.current = next;
@@ -202,12 +241,14 @@ export function AssistantPage() {
           })),
         },
       ];
+    const note = pageNote(location.pathname, shop.id, queryClient);
+    const prefix = note === undefined ? "" : `[Seite: ${note}] `;
     const content: ChatBlock[] =
       photo === null
-        ? [{ type: "text", text: t }]
+        ? [{ type: "text", text: `${prefix}${t}` }]
         : [
             { type: "image", source: { type: "base64", media_type: "image/jpeg", data: photo.forModel } },
-            { type: "text", text: `[Foto ${photo.id}] ${t || "Bitte leg das als Produkt an."}` },
+            { type: "text", text: `[Foto ${photo.id}] ${prefix}${t || "Bitte leg das als Produkt an."}` },
           ];
     const next: ChatMessage[] = [...base, { role: "user", content }];
     // Zwei Nachrichten der Person hintereinander zusammenlegen (die API erwartet abwechselnde Rollen).
@@ -230,6 +271,85 @@ export function AssistantPage() {
     setError(null);
   };
 
+  const api: AssistantApi = {
+    status,
+    messages,
+    decisions,
+    busy,
+    error,
+    text,
+    setText,
+    attachment,
+    setAttachment,
+    attachError,
+    attach,
+    send,
+    decide,
+    reset,
+    open,
+    setOpen,
+  };
+  return <AssistantContext.Provider value={api}>{children}</AssistantContext.Provider>;
+}
+
+/** Was die Person gerade sieht, als kurzer Hinweis für das Modell (ohne Kundendaten). */
+export function pageNote(pathname: string, shopId: string, queryClient: QueryClient): string | undefined {
+  const parts = pathname.split("/").filter(Boolean).slice(1);
+  const [section, id] = parts;
+  if (section === "produkte" && id === "neu") return "Formular „Neues Produkt“";
+  if (section === "produkte" && id !== undefined) {
+    const p = queryClient.getQueryData<Product>(["product", shopId, id]);
+    return p === undefined ? `Produkt mit ID ${id}` : `Produkt „${p.name}“ (ID ${id})`;
+  }
+  if (section === "produkte") return "Produktliste";
+  if (section === "bestellungen" && id !== undefined) {
+    const o = queryClient.getQueryData<Order>(["order", shopId, id]);
+    return o === undefined ? `Bestellung mit ID ${id}` : `Bestellung Nr. ${o.orderNumber} (ID ${id})`;
+  }
+  if (section === "bestellungen") return "Bestellliste";
+  if (section === "kategorien") return "Kategorien";
+  if (section === "aussehen") return "Aussehen des Shops";
+  if (section === "uebersicht") return "Übersicht";
+  return undefined;
+}
+
+/** Hinweise vor dem Text („[Foto foto-1] [Seite: …] “) nicht anzeigen. */
+export function visibleText(text: string): string {
+  return text.replace(/^(\[(Foto foto-\d+|Seite: [^\]]*)\] )+/, "");
+}
+
+export function AssistantPage() {
+  return <AssistantChat variant="page" />;
+}
+
+/** Der Chat selbst: als eigene Seite oder schmal in der Seitenleiste. */
+export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
+  const shop = useShop();
+  const {
+    status,
+    messages,
+    decisions,
+    busy,
+    error,
+    text,
+    setText,
+    attachment,
+    setAttachment,
+    attachError,
+    attach,
+    send,
+    decide,
+    reset,
+    setOpen,
+  } = useAssistant();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Neuere Browser geben hier ein Promise zurück; ein Effekt darf nur eine Aufräumfunktion liefern.
+    void endRef.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
+  }, [messages, busy]);
+  const panel = variant === "panel";
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     send(text);
@@ -242,22 +362,45 @@ export function AssistantPage() {
   const unavailable = status.data !== undefined && !status.data.available;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-            <SlopifyMark className="size-7" /> Assistent
-          </h1>
-          <p className="text-sm text-stone-500">
-            Sag einfach, was du brauchst. Änderungen führe ich erst aus, wenn du sie bestätigst.
-          </p>
+    <div className={panel ? "flex h-full flex-col" : "mx-auto flex max-w-3xl flex-col"}>
+      {panel ? (
+        <div className="flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-3">
+          <h2 className="flex items-center gap-2 font-semibold">
+            <SlopifyMark className="size-5" /> Assistent
+          </h2>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <Button variant="ghost" className="px-2 py-1" onClick={reset} disabled={busy !== null}>
+                Neuer Chat
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="px-2 py-1"
+              aria-label="Assistent schließen"
+              onClick={() => setOpen(false)}
+            >
+              Schließen
+            </Button>
+          </div>
         </div>
-        {messages.length > 0 && (
-          <Button variant="secondary" className="shrink-0" onClick={reset} disabled={busy !== null}>
-            Neuer Chat
-          </Button>
-        )}
-      </div>
+      ) : (
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+              <SlopifyMark className="size-7" /> Assistent
+            </h1>
+            <p className="text-sm text-stone-500">
+              Sag einfach, was du brauchst. Änderungen führe ich erst aus, wenn du sie bestätigst.
+            </p>
+          </div>
+          {messages.length > 0 && (
+            <Button variant="secondary" className="shrink-0" onClick={reset} disabled={busy !== null}>
+              Neuer Chat
+            </Button>
+          )}
+        </div>
+      )}
 
       {unavailable && (
         <Alert tone="info">
@@ -265,7 +408,7 @@ export function AssistantPage() {
         </Alert>
       )}
 
-      <div className="space-y-4" aria-live="polite">
+      <div className={panel ? "flex-1 space-y-4 overflow-y-auto px-4 py-4" : "space-y-4"} aria-live="polite">
         {messages.length === 0 && !unavailable && (
           <div className="rounded-xl border-2 border-dashed border-stone-300 px-6 py-10 text-center">
             <p className="font-medium">Womit kann ich helfen?</p>
@@ -293,7 +436,7 @@ export function AssistantPage() {
               if (b.type === "text")
                 return (
                   <Bubble key={j} mine={m.role === "user"}>
-                    <RichText text={m.role === "user" ? b.text.replace(/^\[Foto foto-\d+\] /, "") : b.text} />
+                    <RichText text={m.role === "user" ? visibleText(b.text) : b.text} />
                   </Bubble>
                 );
               if (b.type === "image")
@@ -339,8 +482,15 @@ export function AssistantPage() {
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={onSubmit} className="sticky bottom-0 mt-6 bg-stone-50 pt-2 pb-4">
-        <label className="sr-only" htmlFor="assistent-eingabe">
+      <form
+        onSubmit={onSubmit}
+        className={
+          panel
+            ? "border-t border-stone-200 bg-stone-50 px-4 pt-2 pb-3"
+            : "sticky bottom-0 mt-6 bg-stone-50 pt-2 pb-4"
+        }
+      >
+        <label className="sr-only" htmlFor={`assistent-eingabe-${variant}`}>
           Nachricht an den Assistenten
         </label>
         {attachment !== null && (
@@ -382,7 +532,7 @@ export function AssistantPage() {
             Foto
           </Button>
           <Textarea
-            id="assistent-eingabe"
+            id={`assistent-eingabe-${variant}`}
             rows={2}
             className="min-h-0! resize-none"
             maxLength={4000}
