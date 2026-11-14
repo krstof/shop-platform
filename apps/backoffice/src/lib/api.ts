@@ -261,6 +261,10 @@ export interface Order {
   readonly total: number;
   readonly taxByRate: Readonly<Record<string, number>>;
   readonly paymentMethodName: string | null;
+  /** Anmerkung der Kundin aus der Kasse. */
+  readonly customerNote?: string | null;
+  /** Interne Notiz des Shops. */
+  readonly merchantNote?: string | null;
   readonly lines: readonly {
     readonly position: number;
     readonly productId: string;

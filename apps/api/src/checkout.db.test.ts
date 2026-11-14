@@ -168,7 +168,7 @@ describe.skipIf(adminUrl === undefined)("Kaufen als Gast (M6, echte Datenbank)",
 
   it("bestellen: Bestellnummer, Bestand weg, Warenkorb verbraucht; doppelter Klick bestellt nicht doppelt", async () => {
     const key = randomUUID();
-    const body = { email: "kim@example.org", address: ADDRESS };
+    const body = { email: "kim@example.org", address: ADDRESS, note: "Bitte bei Nachbarn\nabgeben" };
     const first = await inject("POST", `${base}/carts/${cart}/checkout`, body, { "idempotency-key": key });
     expect(first.statusCode).toBe(201);
     expect(first.json()).toMatchObject({ orderNumber: "10001", total: 5770 });
@@ -228,6 +228,7 @@ describe.skipIf(adminUrl === undefined)("Kaufen als Gast (M6, echte Datenbank)",
     expect(mails[0]).toMatchObject({ to: "kim@example.org", subject: "teeladen: Deine Bestellung 10001" });
     expect(mails[0]?.text).toContain("2 × Sencha");
     expect(mails[0]?.text).toContain("Summe: 57,70 €");
+    expect(mails[0]?.text).toContain("Deine Anmerkung:\n  Bitte bei Nachbarn abgeben");
     // Link zur Bestellstatus-Seite mit dem geheimen Token; die Seite liest dieselbe Zahlung.
     expect(mails[0]?.text).toContain(
       `Stand deiner Bestellung: https://shop.example.test/teeladen/bestellung/${payment}`,

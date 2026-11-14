@@ -257,4 +257,22 @@ describe.skipIf(adminUrl === undefined)("Bestellungen im Backoffice (M7, echte D
     expect(stats).toMatchObject({ toShip: 2, awaitingPayment: 1 });
     expect(stats.days.at(-1)).toMatchObject({ revenue: 5340 });
   });
+  it("interne Notiz setzen und löschen; Leserecht reicht nicht; unbekannt 404", async () => {
+    const id = (await inject("GET", "/admin/v1/orders", "reader")).json().data[0].id as string;
+    expect((await inject("GET", `/admin/v1/orders/${id}`, "reader")).json()).toMatchObject({
+      customerNote: null,
+      merchantNote: null,
+    });
+    const url = `/admin/v1/orders/${id}/note`;
+    expect((await inject("PUT", url, "reader", { note: "x" })).statusCode).toBe(403);
+    const set = await inject("PUT", url, "owner", { note: "Als Geschenk verpacken.\nDanke!" });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().merchantNote).toBe("Als Geschenk verpacken.\nDanke!");
+    expect((await inject("PUT", url, "owner", { note: null })).json().merchantNote).toBeNull();
+    expect((await inject("PUT", url, "owner", { note: "   " })).statusCode).toBe(422);
+    expect((await inject("PUT", url, "owner", { note: "x".repeat(2001) })).statusCode).toBe(422);
+    expect(
+      (await inject("PUT", `/admin/v1/orders/${uuidv7()}/note`, "owner", { note: null })).statusCode,
+    ).toBe(404);
+  });
 });

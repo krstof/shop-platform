@@ -41,6 +41,7 @@ export function confirmationMail(order: OrderView, shopName: string, link?: stri
       `  Summe: ${euro(order.total)}`,
       ...taxes,
       "",
+      ...(order.customerNote === null ? [] : ["Deine Anmerkung:", `  ${line(order.customerNote)}`, ""]),
       "Lieferadresse:",
       `  ${line(a.firstName)} ${line(a.lastName)}`,
       `  ${line(a.street)}`,

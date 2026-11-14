@@ -4,7 +4,7 @@
 // Cookie (HttpOnly) und ruft die API nur von ihrem Server aus auf.
 import type { Carts } from "@shop/cart";
 import type { CatalogReader, SellableProduct } from "@shop/catalog";
-import { defineEndpoint, idParam, singleLineText, type Endpoint } from "@shop/http";
+import { defineEndpoint, idParam, multiLineText, singleLineText, type Endpoint } from "@shop/http";
 import { OutOfStockError, type Inventory } from "@shop/inventory";
 import { ConflictError, NotFoundError, withTenantTransaction, type Database } from "@shop/kernel";
 import { shippingRateBp, taxIncluded, type Orders, type OrderView } from "@shop/orders";
@@ -90,6 +90,7 @@ const addressInput = z.strictObject({
 const checkoutInput = z.strictObject({
   email: z.email().max(254),
   address: addressInput,
+  note: multiLineText(500).optional().meta({ description: "Anmerkung zur Bestellung, freiwillig." }),
 });
 
 const orderSchema = z
@@ -325,6 +326,7 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
             paymentMethodName: "Testzahlung",
             paymentProvider: "test",
             shipping,
+            customerNote: body.note,
             lines: items.map((l) => ({
               productId: l.product.id,
               variantId: l.product.variantId,

@@ -4,6 +4,7 @@ import {
   defineEndpoint,
   idParam,
   listQuery,
+  multiLineText,
   pageOf,
   singleLineText,
   timestamp,
@@ -66,6 +67,11 @@ const orderSchema = z
     total: z.number().int(),
     taxByRate: z.record(z.string(), z.number().int()),
     paymentMethodName: z.string().nullable(),
+    customerNote: z.string().nullable().meta({ description: "Anmerkung der Kundin aus der Kasse." }),
+    merchantNote: z
+      .string()
+      .nullable()
+      .meta({ description: "Interne Notiz des Shops, sieht die Kundin nie." }),
     lines: z.array(
       z.object({
         position: z.number().int(),
@@ -91,6 +97,8 @@ function toOrder(o: OrderView): z.input<typeof orderSchema> {
     fulfillmentStatus: o.fulfillmentStatus,
     email: o.email,
     address: { ...o.address },
+    customerNote: o.customerNote,
+    merchantNote: o.merchantNote,
     currency: o.currency,
     subtotal: o.subtotal,
     shipping: o.shipping,
@@ -257,5 +265,26 @@ export function orderAdminEndpoints(repo: OrderRepository, restock?: Restock): E
     },
   });
 
-  return [stats, list, get, ship, cancel];
+  const note = defineEndpoint({
+    api: "admin",
+    method: "PUT",
+    path: "/orders/{orderId}/note",
+    operationId: "setOrderNote",
+    summary: "Interne Notiz setzen",
+    description: "Setzt die interne Notiz einer Bestellung (sieht nur der Shop). `null` löscht sie.",
+    tags: ["Bestellungen"],
+    access: { scopes: ["orders:write"] },
+    params: z.strictObject({ orderId: idParam }),
+    body: z.strictObject({ note: multiLineText(2000).nullable() }),
+    bodyExample: { note: "Kundin hat angerufen: bitte als Geschenk verpacken." },
+    response: { status: 200, description: "Die Bestellung danach.", schema: orderSchema },
+    problems: [404],
+    handler: async ({ params, body }) => {
+      const o = await repo.setMerchantNote(params.orderId, body.note);
+      if (o === undefined) throw new NotFoundError();
+      return toOrder(o);
+    },
+  });
+
+  return [stats, list, get, ship, cancel, note];
 }

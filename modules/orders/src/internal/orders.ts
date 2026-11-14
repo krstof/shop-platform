@@ -33,6 +33,8 @@ export interface NewOrder {
   readonly paymentProvider: string;
   /** Versand (Name und Betrag brutto in Cent). Ohne Angabe: kostenloser Standardversand. */
   readonly shipping?: { readonly name: string; readonly amount: number } | undefined;
+  /** Anmerkung der Kundin aus der Kasse. */
+  readonly customerNote?: string | undefined;
 }
 
 /**
@@ -98,6 +100,10 @@ export interface OrderView {
   readonly paymentMethodName: string | null;
   readonly placedAt: Date;
   readonly lines: readonly OrderLineView[];
+  /** Anmerkung der Kundin (Kasse). */
+  readonly customerNote: string | null;
+  /** Interne Notiz des Shops (nur im Backoffice). */
+  readonly merchantNote: string | null;
 }
 
 const RATE_BP = { standard: 1900, reduced: 700 } as const;
@@ -209,6 +215,8 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
       taxByRate: Object.fromEntries(taxes.map((t) => [String(t.rate_bp / 100), Number(t.tax_amount)])),
       paymentMethodName: o.payment_method_name,
       placedAt: o.placed_at,
+      customerNote: o.customer_note,
+      merchantNote: o.merchant_note,
       lines: lines.map((l) => ({
         position: l.position,
         productId: l.product_id,
@@ -272,6 +280,8 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
             total_amount: subtotal + shipping.amount,
             shipping_method_name: shipping.name,
             payment_method_name: input.paymentMethodName,
+            customer_note:
+              input.customerNote === undefined || input.customerNote === "" ? null : input.customerNote,
             payment_provider: input.paymentProvider,
           })
           .returning("id")
@@ -431,6 +441,19 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
         const order = await view(trx, id);
         if (order === undefined) return { kind: "not_found" as const };
         return { kind: "ok" as const, order };
+      });
+    },
+
+    /** Interne Notiz setzen oder löschen (`null`). */
+    async setMerchantNote(id: string, note: string | null): Promise<OrderView | undefined> {
+      return withTenantTransaction(db, async (trx) => {
+        const r = await trx
+          .updateTable("orders.order")
+          .set({ merchant_note: note, updated_at: new Date() })
+          .where("id", "=", id)
+          .executeTakeFirst();
+        if (r.numUpdatedRows === 0n) return undefined;
+        return view(trx, id);
       });
     },
 

@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Input, Select, Spinner } from "../components/ui.js";
+import { Alert, Badge, Button, Card, Input, Select, Spinner, Textarea } from "../components/ui.js";
 import { ApiError, listAll, request, type Order, type OrderSummary } from "../lib/api.js";
 import { formatEuro } from "../lib/money.js";
 import {
@@ -426,6 +426,12 @@ export function OrderPage() {
               Deutschland
             </address>
           </Card>
+          {o.customerNote && (
+            <Card title="Anmerkung der Kundin">
+              <p className="text-sm whitespace-pre-line">{o.customerNote}</p>
+            </Card>
+          )}
+          <NoteCard order={o} onSaved={(next) => queryClient.setQueryData(key, next)} />
           <Card title="Zahlung">
             <p className="text-sm">
               {o.paymentMethodName ?? "–"}:{" "}
@@ -441,5 +447,48 @@ export function OrderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Interne Notiz zur Bestellung (sieht die Kundin nie). Speichert auf Knopfdruck. */
+function NoteCard({ order, onSaved }: { order: Order; onSaved: (o: Order) => void }) {
+  const shop = useShop();
+  const [text, setText] = useState(order.merchantNote ?? "");
+  useEffect(() => setText(order.merchantNote ?? ""), [order.merchantNote]);
+  const save = useMutation({
+    mutationFn: () =>
+      request<Order>(`/admin/v1/orders/${order.id}/note`, {
+        method: "PUT",
+        body: { note: text.trim() === "" ? null : text },
+        shopId: shop.id,
+      }),
+    onSuccess: onSaved,
+  });
+  const changed = text !== (order.merchantNote ?? "");
+  return (
+    <Card title="Interne Notiz">
+      <label className="sr-only" htmlFor="interne-notiz">
+        Interne Notiz
+      </label>
+      <Textarea
+        id="interne-notiz"
+        rows={3}
+        maxLength={2000}
+        value={text}
+        placeholder="Nur für dich und dein Team sichtbar"
+        onChange={(e) => setText(e.target.value)}
+      />
+      {save.isError && (
+        <div className="mt-2">
+          <Alert>{save.error.message}</Alert>
+        </div>
+      )}
+      <div className="mt-3 flex items-center gap-3">
+        <Button variant="secondary" busy={save.isPending} disabled={!changed} onClick={() => save.mutate()}>
+          Notiz speichern
+        </Button>
+        {save.isSuccess && !changed && <span className="text-sm text-emerald-800">Gespeichert</span>}
+      </div>
+    </Card>
   );
 }

@@ -24,6 +24,7 @@ const werte: Record<Feld, string> = {
   city: "",
 };
 const fehler: Partial<Record<Feld, string>> = {};
+let anmerkung = "";
 let meldung = "";
 let schluessel = randomUUID();
 
@@ -33,6 +34,10 @@ if (Astro.request.method === "POST") {
     werte[f] = String(form.get(f) ?? "")
       .trim()
       .slice(0, 300);
+  anmerkung = String(form.get("anmerkung") ?? "")
+    .replace(/\r\n/g, "\n")
+    .trim()
+    .slice(0, 500);
   const k = String(form.get("schluessel") ?? "");
   if (/^[0-9a-f-]{36}$/.test(k)) schluessel = k;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(werte.email))
@@ -54,6 +59,7 @@ if (Astro.request.method === "POST") {
             postalCode: werte.postalCode,
             city: werte.city,
           },
+          ...(anmerkung === "" ? {} : { note: anmerkung }),
         },
         schluessel,
       );
@@ -125,6 +131,10 @@ const autocomplete: Record<Feld, string> = {
           </div>
         ))}
         <p class="klein">Land: Deutschland. Wir liefern im Testshop nur nach Deutschland.</p>
+        <div class="feld">
+          <label for="anmerkung">Anmerkung zur Bestellung (freiwillig)</label>
+          <textarea id="anmerkung" name="anmerkung" rows="3" maxlength="500">{anmerkung}</textarea>
+        </div>
       </fieldset>
       <fieldset>
         <legend>Zahlung</legend>

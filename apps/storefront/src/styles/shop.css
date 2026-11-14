@@ -429,7 +429,8 @@ main:focus-visible {
 }
 .kauf-form select,
 .korb-menge input,
-.feld input {
+.feld input,
+.feld textarea {
   font: inherit;
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--linie);
@@ -845,4 +846,9 @@ main:focus-visible {
   background: var(--akzent);
   border-color: var(--akzent);
   color: #fff;
+}
+
+.feld textarea {
+  width: 100%;
+  resize: vertical;
 }
