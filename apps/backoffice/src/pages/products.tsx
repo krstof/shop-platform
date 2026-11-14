@@ -9,8 +9,11 @@ import { formatEuro } from "../lib/money.js";
 import {
   isFiltered,
   parseProductFilter,
+  PRODUCT_SORTS,
   productListPath,
+  sortProducts,
   type ProductFilter,
+  type ProductSort,
 } from "../lib/product-filter.js";
 import { useShop } from "./layout.js";
 
@@ -42,10 +45,11 @@ export function ProductsPage() {
   const filter = useSearch({ from: "/$shop/produkte" });
   const filtered = isFiltered(filter);
   const products = useQuery({
-    queryKey: [...productsKey(shop.id), "liste", filter],
+    queryKey: [...productsKey(shop.id), "liste", { ...filter, sortierung: undefined }],
     queryFn: () => listAll<Product>(productListPath(filter), shop.id),
     placeholderData: keepPreviousData,
   });
+  const sorted = products.data === undefined ? undefined : sortProducts(products.data, filter.sortierung);
   const categories = useCategories(shop.id);
   const categoryName = new Map((categories.data ?? []).map((c) => [c.id, c.name]));
 
@@ -136,7 +140,7 @@ export function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {products.data.map((p) => (
+              {(sorted ?? []).map((p) => (
                 <tr
                   key={p.id}
                   className="cursor-pointer hover:bg-stone-50"
@@ -171,7 +175,19 @@ export function ProductsPage() {
                     {p.categoryId === null ? "–" : (categoryName.get(p.categoryId) ?? "–")}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {p.price === null ? "–" : formatEuro(p.price.amount)}
+                    {p.price === null ? (
+                      "–"
+                    ) : p.salePrice === null ? (
+                      formatEuro(p.price.amount)
+                    ) : (
+                      <span className="flex flex-col items-end">
+                        <span className="font-medium text-red-700">{formatEuro(p.salePrice.amount)}</span>
+                        <span className="text-xs text-stone-400 line-through">
+                          <span className="sr-only">statt </span>
+                          {formatEuro(p.price.amount)}
+                        </span>
+                      </span>
+                    )}
                   </td>
                   <td className="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
                     {p.stock === 0 ? <Badge tone="amber">ausverkauft</Badge> : p.stock}
@@ -228,6 +244,24 @@ function FilterBar({
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label className="sm:w-52">
+        <span className="sr-only">Sortieren</span>
+        <Select
+          value={filter.sortierung ?? "neueste"}
+          onChange={(e) =>
+            onChange({
+              ...filter,
+              sortierung: e.target.value === "neueste" ? undefined : (e.target.value as ProductSort),
+            })
+          }
+        >
+          {PRODUCT_SORTS.map((x) => (
+            <option key={x.value} value={x.value}>
+              {x.label}
             </option>
           ))}
         </Select>
