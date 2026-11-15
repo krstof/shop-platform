@@ -2602,6 +2602,435 @@
         ]
       }
     },
+    "/admin/v1/contact-messages": {
+      "get": {
+        "operationId": "listContactMessages",
+        "summary": "Posteingang",
+        "description": "Nachrichten aus dem Kontaktformular, neueste zuerst (bis 500), dazu die Zahl der ungelesenen.",
+        "tags": [
+          "Kontakt"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Nachrichten.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContactMessage"
+                      }
+                    },
+                    "unread": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "unread"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "customers:read"
+        ]
+      }
+    },
+    "/admin/v1/contact-messages/{messageId}": {
+      "delete": {
+        "operationId": "deleteContactMessage",
+        "summary": "Nachricht löschen",
+        "description": "Löscht eine Nachricht aus dem Posteingang.",
+        "tags": [
+          "Kontakt"
+        ],
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gelöscht.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedContactMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "customers:write"
+        ]
+      },
+      "patch": {
+        "operationId": "updateContactMessage",
+        "summary": "Nachricht als gelesen oder ungelesen markieren",
+        "description": "Setzt den Lesestand einer Nachricht.",
+        "tags": [
+          "Kontakt"
+        ],
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "read": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "read"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "read": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Die Nachricht danach.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "customers:write"
+        ]
+      }
+    },
     "/admin/v1/coupons": {
       "get": {
         "operationId": "listCoupons",
@@ -11725,6 +12154,47 @@
         "additionalProperties": false,
         "description": "Kategorie (Warengruppe) im Shop."
       },
+      "ContactMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Betreff; leer, wenn keiner angegeben wurde."
+          },
+          "message": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "subject",
+          "message",
+          "read",
+          "createdAt"
+        ],
+        "additionalProperties": false,
+        "description": "Nachricht aus dem Kontaktformular des Shops."
+      },
       "Coupon": {
         "type": "object",
         "properties": {
@@ -12053,6 +12523,25 @@
         ],
         "additionalProperties": false,
         "description": "Bestätigung, dass die Kategorie gelöscht ist."
+      },
+      "DeletedContactMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "id",
+          "deleted"
+        ],
+        "additionalProperties": false
       },
       "DeletedCoupon": {
         "type": "object",

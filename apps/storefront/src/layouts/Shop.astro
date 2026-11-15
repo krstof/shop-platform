@@ -59,6 +59,8 @@ const fussLinks = [
     const url = safeLink(l.url);
     return url === undefined ? [] : [{ label: l.label, url, extern: isExternal(url) }];
   }),
+  // Kontaktformular (Posteingang im Backoffice), in jedem Shop.
+  { label: "Kontakt", url: `${basis}/kontakt`, extern: false },
 ];
 ---
 

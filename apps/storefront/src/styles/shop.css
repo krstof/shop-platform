@@ -1557,3 +1557,25 @@ body.vorlage-editorial {
     display: none;
   }
 }
+
+/* Kontaktformular */
+.kontakt {
+  max-width: 36rem;
+  margin-bottom: 3rem;
+}
+.kontakt .feld textarea {
+  resize: vertical;
+}
+.feld textarea[aria-invalid="true"] {
+  border-color: #b4441f;
+}
+.meldung-ok {
+  padding: 1rem 1.2rem;
+  border-radius: 6px;
+  background: #e8f4ec;
+  color: #1d4d2e;
+  border: 1px solid #b9dcc5;
+}
+.meldung-ok p {
+  margin: 0.3rem 0;
+}

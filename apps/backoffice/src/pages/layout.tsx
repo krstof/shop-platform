@@ -1,7 +1,7 @@
 // Rahmen für alles im Shop (M3, Redesign 14.11.2026): Seitenleiste links mit Shop, Menü in Gruppen,
 // Assistent und Konto (am Handy als ausklappbare Leiste). Der Shop steht im Pfad (/<handle>/produkte),
 // damit Links und Neuladen den gewählten Shop behalten.
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronsUpDown,
   ExternalLink,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ import { storefrontUrl } from "../lib/design.js";
 import { ShopContext, useShop } from "../lib/shop.js";
 import { Button, Select, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
+import { inboxKey, type ContactMessage } from "../lib/inbox.js";
 import { useSession } from "../lib/session.js";
 import { SlopifyMark } from "../components/logo.js";
 import { AssistantChat, AssistantProvider, useAssistant } from "./assistant.js";
@@ -111,6 +113,8 @@ export function SignOutButton({ className, compact = false }: { className?: stri
 type Icon = ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" }>;
 type MenuItem = { readonly to: string; readonly label: string; readonly icon: Icon; readonly color: string };
 
+const INBOX = "/$shop/posteingang";
+
 /** Menü in Gruppen (Reihenfolge = Reihenfolge in der Seitenleiste). Farbe = Feld hinter dem Symbol. */
 const GROUPS: readonly { readonly title?: string; readonly items: readonly MenuItem[] }[] = [
   { items: [{ to: "/$shop/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "#5b6472" }] },
@@ -119,6 +123,7 @@ const GROUPS: readonly { readonly title?: string; readonly items: readonly MenuI
     items: [
       { to: "/$shop/bestellungen", label: "Bestellungen", icon: ShoppingBag, color: "#3354e0" },
       { to: "/$shop/kunden", label: "Kunden", icon: Users, color: "#0d8f7f" },
+      { to: INBOX, label: "Posteingang", icon: Inbox, color: "#0b7fb3" },
       { to: "/$shop/gutscheine", label: "Gutscheine", icon: TicketPercent, color: "#d6337a" },
     ],
   },
@@ -455,6 +460,7 @@ function Sidebar({
                   >
                     <MenuIcon icon={m.icon} color={m.color} />
                     {m.label}
+                    {m.to === INBOX && <UnreadCount />}
                   </Link>
                 </li>
               ))}
@@ -468,6 +474,26 @@ function Sidebar({
         slopify
       </div>
     </div>
+  );
+}
+
+/** Zahl der ungelesenen Nachrichten hinter „Posteingang“ (alle 60 Sekunden neu). */
+function UnreadCount() {
+  const shop = useShop();
+  const q = useQuery({
+    queryKey: inboxKey(shop.id),
+    queryFn: () =>
+      request<{ data: ContactMessage[]; unread: number }>("/admin/v1/contact-messages", { shopId: shop.id }),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const n = q.data?.unread ?? 0;
+  if (n === 0) return null;
+  return (
+    <span className="ml-auto rounded-full bg-brand-600 px-1.5 py-px text-[0.7rem] font-semibold text-white tabular-nums">
+      {n > 99 ? "99+" : n}
+      <span className="sr-only"> ungelesen</span>
+    </span>
   );
 }
 

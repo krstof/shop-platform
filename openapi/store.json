@@ -1167,6 +1167,186 @@
         "x-public-reason": "Die Storefront zeigt jedem Besucher die veröffentlichten Produkte des Shops."
       }
     },
+    "/store/v1/shops/{shopHandle}/contact-messages": {
+      "post": {
+        "operationId": "sendStoreContactMessage",
+        "summary": "Nachricht an den Shop schicken",
+        "description": "Kontaktformular: Die Nachricht landet im Posteingang des Backoffice. Die Antwort enthält nur die Bestätigung, nicht die Nachricht.",
+        "tags": [
+          "Kontakt"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kürzel des Shops.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "message"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "name": "Kim Muster",
+                "email": "kim@example.org",
+                "subject": "Frage zum Sencha",
+                "message": "Hallo, ist der Sencha auch in 250 g zu haben?"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Angekommen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactMessageReceived"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Besucherinnen schreiben dem Shop ohne Konto."
+      }
+    },
     "/store/v1/shops/{shopHandle}/design": {
       "get": {
         "operationId": "getStoreDesign",
@@ -2020,6 +2200,19 @@
   },
   "components": {
     "schemas": {
+      "ContactMessageReceived": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "received"
+        ],
+        "additionalProperties": false
+      },
       "DesignFooter": {
         "type": "object",
         "properties": {

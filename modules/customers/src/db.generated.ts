@@ -77,6 +77,21 @@ export interface CustomersConsentEvent {
   wording: string | null;
 }
 
+export interface CustomersContactMessage {
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  email: string;
+  id: Generated<string>;
+  message: string;
+  name: string;
+  read_at: Timestamp | null;
+  subject: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: Generated<string | null>;
+  version: Generated<number>;
+}
+
 export interface CustomersCustomer {
   account_status: Generated<string>;
   anonymized_at: Timestamp | null;
@@ -160,6 +175,7 @@ export interface DB {
   "customers.company": CustomersCompany;
   "customers.company_member": CustomersCompanyMember;
   "customers.consent_event": CustomersConsentEvent;
+  "customers.contact_message": CustomersContactMessage;
   "customers.customer": CustomersCustomer;
   "customers.customer_address": CustomersCustomerAddress;
   "customers.customer_group": CustomersCustomerGroup;

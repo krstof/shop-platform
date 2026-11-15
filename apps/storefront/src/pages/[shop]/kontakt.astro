@@ -1,0 +1,146 @@
+---
+// Kontaktformular: Name, E-Mail, Betreff (freiwillig), Nachricht. Landet im Posteingang des Backoffice
+// (Storefront-API POST /contact-messages). Ohne JavaScript; nach dem Absenden leitet die Seite auf
+// ?gesendet=1 um, damit Neuladen nicht doppelt schickt. Ein für Menschen unsichtbares Feld „website“
+// fängt einfache Spam-Programme ab (ist es ausgefüllt, tut die Seite so, als wäre alles angekommen).
+import Shop from "../../layouts/Shop.astro";
+import { warenkorbAnzahl } from "../../lib/cart.js";
+import { kontaktFelder, pruefeKontakt, type KontaktWerte } from "../../lib/kontakt.js";
+import { loadShop, storeApi, StoreApiError } from "../../lib/store-api.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const basis = `/${shop.handle}`;
+
+let werte: KontaktWerte = { name: "", email: "", subject: "", message: "" };
+let fehler: Partial<Record<keyof KontaktWerte, string>> = {};
+let meldung = "";
+const gesendet = Astro.url.searchParams.get("gesendet") === "1";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const roh = Object.fromEntries(kontaktFelder.map((f) => [f, String(form.get(f) ?? "")]));
+  const ergebnis = pruefeKontakt(roh);
+  werte = ergebnis.werte;
+  if (String(form.get("website") ?? "") !== "") return Astro.redirect(`${basis}/kontakt?gesendet=1`, 303);
+  if (ergebnis.ok) {
+    try {
+      await storeApi(shop.handle, "/contact-messages", {
+        method: "POST",
+        body: {
+          name: werte.name,
+          email: werte.email,
+          ...(werte.subject === "" ? {} : { subject: werte.subject }),
+          message: werte.message,
+        },
+      });
+      return Astro.redirect(`${basis}/kontakt?gesendet=1`, 303);
+    } catch (e) {
+      if (!(e instanceof StoreApiError) || e.status >= 500) throw e;
+      meldung = e.message;
+      for (const f of e.fields) {
+        const name = f.path.split("/").pop() as keyof KontaktWerte;
+        if (kontaktFelder.includes(name)) fehler[name] = f.message;
+      }
+    }
+  } else {
+    fehler = ergebnis.fehler;
+    meldung = "Bitte die markierten Felder prüfen.";
+  }
+}
+
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop shop={shop} categories={categories} titel="Kontakt" korb={korb}>
+  <div class="kontakt">
+    <h1>Kontakt</h1>
+    {gesendet ? (
+      <div class="meldung-ok" role="status">
+        <p>
+          <strong>Danke, deine Nachricht ist angekommen.</strong>
+        </p>
+        <p>Wir melden uns per E-Mail bei dir.</p>
+        <p>
+          <a href={basis}>Weiter einkaufen</a>
+        </p>
+      </div>
+    ) : (
+      <form method="post" class="formular" novalidate>
+        <p>Fragen zu einem Produkt oder zu deiner Bestellung? Schreib uns, wir antworten per E-Mail.</p>
+        {meldung && (
+          <p class="meldung" role="alert">
+            {meldung}
+          </p>
+        )}
+        <div class="feld">
+          <label for="name">Name</label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            autocomplete="name"
+            maxlength="100"
+            required
+            value={werte.name}
+            aria-invalid={fehler.name ? "true" : undefined}
+            aria-describedby={fehler.name ? "name-fehler" : undefined}
+          />
+          {fehler.name && (
+            <span id="name-fehler" class="feld-fehler">
+              {fehler.name}
+            </span>
+          )}
+        </div>
+        <div class="feld">
+          <label for="email">E-Mail-Adresse</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            maxlength="254"
+            required
+            value={werte.email}
+            aria-invalid={fehler.email ? "true" : undefined}
+            aria-describedby={fehler.email ? "email-fehler" : undefined}
+          />
+          {fehler.email && (
+            <span id="email-fehler" class="feld-fehler">
+              {fehler.email}
+            </span>
+          )}
+        </div>
+        <div class="feld">
+          <label for="subject">Betreff (freiwillig)</label>
+          <input id="subject" name="subject" type="text" maxlength="150" value={werte.subject} />
+        </div>
+        <div class="feld">
+          <label for="message">Nachricht</label>
+          <textarea
+            id="message"
+            name="message"
+            rows="6"
+            maxlength="5000"
+            required
+            aria-invalid={fehler.message ? "true" : undefined}
+            aria-describedby={fehler.message ? "message-fehler" : undefined}
+          >{werte.message}</textarea>
+          {fehler.message && (
+            <span id="message-fehler" class="feld-fehler">
+              {fehler.message}
+            </span>
+          )}
+        </div>
+        <div class="unsichtbar" aria-hidden="true">
+          <label for="website">Bitte leer lassen</label>
+          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+        <button class="knopf" type="submit">
+          Nachricht senden
+        </button>
+      </form>
+    )}
+  </div>
+</Shop>

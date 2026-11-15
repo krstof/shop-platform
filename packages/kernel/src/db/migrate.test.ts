@@ -150,7 +150,7 @@ describe.skipIf(adminUrl === undefined)("Migrationslauf mit echter Datenbank", (
       expect(again.alreadyApplied).toBeGreaterThanOrEqual(20);
     });
 
-    it("legt 21 Schemas und 114 Tabellen an, 95 davon mit Mandantentrennung, dazu die Warteschlange", async () => {
+    it("legt 21 Schemas und 115 Tabellen an, 96 davon mit Mandantentrennung, dazu die Warteschlange", async () => {
       const [row] = await query<{ schemas: string; tables: string; rls: string; queue: string }>(
         url,
         `SELECT (SELECT count(*) FROM pg_namespace WHERE nspowner = 'shop_owner'::regrole AND nspname <> 'pgboss') AS schemas,
@@ -161,8 +161,8 @@ describe.skipIf(adminUrl === undefined)("Migrationslauf mit echter Datenbank", (
           WHERE c.relkind IN ('r','p') AND n.nspowner = 'shop_owner'::regrole`,
       );
       expect(Number(row?.schemas)).toBe(21);
-      expect(Number(row?.tables)).toBe(114);
-      expect(Number(row?.rls)).toBe(95);
+      expect(Number(row?.tables)).toBe(115);
+      expect(Number(row?.rls)).toBe(96);
       // pg-boss (Etappe E5): eigenes Schema, gehört ebenfalls shop_owner, ohne RLS (db/global-tables.yaml).
       expect(Number(row?.queue)).toBeGreaterThan(5);
     });

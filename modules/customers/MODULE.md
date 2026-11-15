@@ -6,7 +6,7 @@
 
 **Welle:** 1 (Kundenkonto ab 2, Firmen ab 3)
 
-**Datenbankschema:** `customers`, Tabellen: `customer_group`, `company`, `customer`, `customer_group_member`, `company_member`, `customer_address`, `consent_event`, `processed_event`.
+**Datenbankschema:** `customers`, Tabellen: `customer_group`, `company`, `customer`, `customer_group_member`, `company_member`, `customer_address`, `consent_event`, `processed_event`, `contact_message` (Kontaktformular, Posteingang).
 Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand ändern).
 
 **Darf aufrufen** (`module.json` → `dependsOn`): keine. Alles andere nur über Ereignisse.
