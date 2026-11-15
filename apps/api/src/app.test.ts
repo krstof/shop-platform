@@ -221,6 +221,9 @@ describe("Eingabeprüfung (Q-02)", () => {
   it("fehlender Inhalt ergibt 422, kaputtes JSON 400, Text statt JSON 415", async () => {
     const empty = await fastify().inject({ method: "POST", url: "/admin/v1/things", headers: auth });
     expect(empty.statusCode).toBe(422);
+    expect(empty.json().errors).toEqual([
+      { path: "/body", code: "required", message: "Dieser Endpunkt erwartet einen Inhalt (JSON)." },
+    ]);
     const broken = await fastify().inject({
       method: "POST",
       url: "/admin/v1/things",

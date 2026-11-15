@@ -41,6 +41,11 @@ import { sendProblem } from "./problem-reply.js";
 const NO_QUERY = z.strictObject({});
 const NO_PARAMS = z.strictObject({});
 
+const BODY_REQUIRED: Readonly<Record<Locale, string>> = {
+  de: "Dieser Endpunkt erwartet einen Inhalt (JSON).",
+  en: "This endpoint requires a body (JSON).",
+};
+
 const BODY_NOT_ALLOWED: Readonly<Record<Locale, string>> = {
   de: "Dieser Endpunkt erwartet keinen Inhalt.",
   en: "This endpoint does not accept a body.",
@@ -331,6 +336,12 @@ async function handle(
     const query = parse(endpoint.query ?? NO_QUERY, request.query, "/query", locale);
     let body: unknown;
     if (endpoint.body !== undefined) {
+      // OpenAPI nennt den Inhalt Pflicht; fehlt er ganz, nicht still als {} nehmen (Schemathesis ST201).
+      if (request.body === undefined || request.body === null)
+        throw new ValidationError({
+          detail: BODY_REQUIRED[locale],
+          errors: [{ path: "/body", code: "required", message: BODY_REQUIRED[locale] }],
+        });
       body = parse(endpoint.body, request.body, "/body", locale);
     } else if (request.body !== undefined && request.body !== null) {
       throw new ValidationError({
