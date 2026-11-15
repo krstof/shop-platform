@@ -73,6 +73,8 @@ function fakeIdentity() {
     setPasswordForTestData: async () => false,
     prepareInvitee: async () => undefined,
     issueInvitationCode: async () => ({ code: "", expiresAt: new Date(0) }),
+    issueDevicePairingCode: async () => ({ code: "", expiresAt: new Date(0) }),
+    claimDevicePairingCode: async () => undefined,
     findInvitation: async () => undefined,
     redeemInvitation: async () => false,
     withdrawInvitation: async () => undefined,

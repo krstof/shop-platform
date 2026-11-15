@@ -164,7 +164,8 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
     - **Assistent:** Antwortknöpfe unter Fragen mit 2–4 möglichen Antworten (etwa Ja/Nein), Foto-Symbol statt „Foto“, Platzhalter „Gib hier deine Frage ein“.
     - Nebenbei: E-Mail-Adressen mit mehr als 64 Zeichen vor dem @ lehnt die API jetzt ab (gefunden von den Zufallstests).
     - Getestet: neue Datenbanktests (Bestellung per Hand, Kundenkarten, mehrere Kategorien, KI-Beschreibung), T-08 mit neuer Testfabrik, Einheitstests (Antwortknöpfe, Kundenliste, CSV), alle Tests mit Datenbank, Zufallstests der API (6685 Fälle), Browser-Durchgänge mit Pop-ups, Auswahlmenüs, Import, KI-Beschreibung, Kunde und Bestellung anlegen.
-32. **Nächste Schritte:** Kontaktformular mit Posteingang, Plattform-Kennzahlen; danach Kristofs nächste Wünsche.
+32. **Uhr-App für die Galaxy Watch** (Kristof 15.11.2026: „Uhr-App“, dann „abbrechen, später weitermachen“) – **pausiert**. Fertig: Kopplung per 8-stelligem Code in der API (`POST /admin/v1/device-pairings`, `POST /auth/v1/device-pairings/claim`, Token nur `orders:read`, getestet) und der App-Code in `apps/watch` (Wear OS, Kotlin/Compose: Code eintippen, Bestellliste, Prüfung alle 15 Minuten mit Mitteilung). Offen: Seite „Einstellungen → Uhr“ im Backoffice, GitHub-Workflow zum Bauen der APK, fester Signierschlüssel als Secret, Anleitung zum Aufspielen ohne Befehle, Test am echten Gerät. Einzelheiten und Reihenfolge in `apps/watch/README.md`.
+33. **Nächste Schritte:** Kontaktformular mit Posteingang, Plattform-Kennzahlen; danach Kristofs nächste Wünsche.
 
 
 ## Später (nicht fürs MVP)

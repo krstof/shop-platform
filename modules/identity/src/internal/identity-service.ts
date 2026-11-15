@@ -14,6 +14,12 @@ import {
   type AuthOptions,
 } from "./auth.js";
 import { INVITATION_SECONDS, invitationIdentifier, parseInvitationIdentifier } from "./invitations.js";
+import {
+  DEVICE_PAIRING_SECONDS,
+  hashPairingCode,
+  newPairingCode,
+  PAIRING_CODE_PATTERN,
+} from "./device-pairing.js";
 import { LoginThrottle, type AttemptKeys } from "./login-throttle.js";
 import { checkNewPassword, hashPassword, verifyPassword, type PasswordProblem } from "./password.js";
 import {
@@ -242,6 +248,18 @@ export interface IdentityService {
     readonly tenantId: string;
     readonly userId: string;
   }): Promise<{ readonly code: string; readonly expiresAt: Date }>;
+  /**
+   * Uhr verbinden (15.11.2026): neuer Kopplungscode (8 Ziffern, 10 Minuten), ersetzt einen älteren
+   * für dasselbe Konto im selben Shop.
+   */
+  issueDevicePairingCode(input: {
+    readonly tenantId: string;
+    readonly userId: string;
+  }): Promise<{ readonly code: string; readonly expiresAt: Date }>;
+  /** Verbraucht einen Kopplungscode (genau einmal). Ungültig oder abgelaufen: `undefined`. */
+  claimDevicePairingCode(
+    code: string,
+  ): Promise<{ readonly tenantId: string; readonly userId: string } | undefined>;
   /** Liest einen Einladungscode, ohne ihn zu verbrauchen. Ungültig, abgelaufen oder Konto nicht aktiv: `undefined`. */
   findInvitation(code: string): Promise<PendingInvitation | undefined>;
   /**
@@ -1006,6 +1024,52 @@ export function createIdentityService(options: IdentityServiceOptions): Identity
           .execute();
       });
       return { code, expiresAt };
+    },
+
+    async issueDevicePairingCode(input) {
+      if (!isUuid(input.tenantId) || !isUuid(input.userId)) throw new TypeError("Keine UUID");
+      const identifier = invitationIdentifier(input.tenantId, input.userId);
+      const at = new Date(now());
+      const expiresAt = new Date(at.getTime() + DEVICE_PAIRING_SECONDS * 1000);
+      for (let attempt = 0; ; attempt++) {
+        const code = newPairingCode();
+        try {
+          await db.transaction().execute(async (trx) => {
+            await trx
+              .deleteFrom("identity.verification")
+              .where("purpose", "=", "device_pairing")
+              .where((eb) => eb.or([eb("identifier", "=", identifier), eb("expires_at", "<=", at)]))
+              .execute();
+            await trx
+              .insertInto("identity.verification")
+              .values({
+                identifier,
+                value_hash: hashPairingCode(code),
+                purpose: "device_pairing",
+                expires_at: expiresAt,
+                created_at: at,
+              })
+              .execute();
+          });
+          return { code, expiresAt };
+        } catch (error) {
+          // Zufällig gleicher Code wie ein anderer gerade gültiger: neuer Versuch.
+          if (attempt >= 4) throw error;
+        }
+      }
+    },
+
+    async claimDevicePairingCode(code) {
+      if (!PAIRING_CODE_PATTERN.test(code)) return undefined;
+      const row = await db
+        .deleteFrom("identity.verification")
+        .where("value_hash", "=", hashPairingCode(code))
+        .where("purpose", "=", "device_pairing")
+        .where("expires_at", ">", new Date(now()))
+        .returning("identifier")
+        .executeTakeFirst();
+      if (row === undefined) return undefined;
+      return parseInvitationIdentifier(row.identifier);
     },
 
     async findInvitation(code) {

@@ -9,6 +9,7 @@ import { customerEndpoints } from "@shop/customers";
 import type { Endpoint } from "@shop/http";
 import {
   apiTokenEndpoints,
+  deviceEndpoints,
   authEndpoints,
   createApiTokenService,
   createMemberService,
@@ -153,6 +154,11 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
         deps.logger?.error({ err: error }, "Sprachmodell des Assistenten antwortet nicht"),
     }),
     ...apiTokenEndpoints({ tokens: deps.tokens ?? createApiTokenService({ database: deps.database }) }),
+    ...deviceEndpoints({
+      identity: deps.identity ?? unconnectedIdentity,
+      tokens: deps.tokens ?? createApiTokenService({ database: deps.database }),
+      shopName: async (tenantId) => (await shops.getShops([tenantId]))[0]?.name,
+    }),
     ...memberEndpoints({ members }),
     ...authEndpoints(deps.identity ?? unconnectedIdentity, {
       ...(deps.shopsOfUser === undefined ? {} : { shopsOfUser: deps.shopsOfUser }),
@@ -206,6 +212,8 @@ export const unconnectedIdentity: IdentityService = {
   setPasswordForTestData: notConnected,
   prepareInvitee: notConnected,
   issueInvitationCode: notConnected,
+  issueDevicePairingCode: notConnected,
+  claimDevicePairingCode: notConnected,
   findInvitation: notConnected,
   redeemInvitation: notConnected,
   withdrawInvitation: notConnected,

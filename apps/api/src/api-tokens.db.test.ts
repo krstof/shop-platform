@@ -330,6 +330,46 @@ describe.skipIf(adminUrl === undefined)("API-Token über die API (E6 Teil 5, ech
     expect((await asToken(b.json().token, "GET", "/admin/v1/manufacturers")).statusCode).toBe(200);
   });
 
+  it("Uhr verbinden: Code aus dem Backoffice gibt ein Token nur zum Lesen von Bestellungen, genau einmal", async () => {
+    const claim = (code: string, ip = "198.51.100.88") =>
+      inject({
+        method: "POST",
+        url: "/auth/v1/device-pairings/claim",
+        remoteAddress: ip,
+        headers: { "content-type": "application/json" },
+        payload: JSON.stringify({ code }),
+      });
+    // Mitarbeiterin darf Bestellungen lesen, also auch eine Uhr verbinden.
+    const made = await asUser("staff", "POST", "/admin/v1/device-pairings", {});
+    expect(made.statusCode, made.body).toBe(201);
+    const { code } = made.json() as { code: string };
+    expect(code).toMatch(/^\d{8}$/);
+    const ok = await claim(`${code.slice(0, 4)} ${code.slice(4)}`);
+    expect(ok.statusCode, ok.body).toBe(200);
+    expect(ok.json()).toMatchObject({ shopId: SHOP_A, shopName: "teeladen" });
+    const token = ok.json().token as string;
+    expect(
+      (await asToken(token, "GET", "/admin/v1/orders", undefined, { "shop-id": SHOP_A })).statusCode,
+    ).toBe(200);
+    expect(
+      (await asToken(token, "GET", "/admin/v1/products", undefined, { "shop-id": SHOP_A })).statusCode,
+    ).toBe(403);
+    // Nur einmal; ein neuer Code widerruft das alte Uhr-Token.
+    expect((await claim(code)).statusCode).toBe(404);
+    const again = (await asUser("staff", "POST", "/admin/v1/device-pairings", {})).json().code as string;
+    expect((await claim(again)).statusCode).toBe(200);
+    expect(
+      (await asToken(token, "GET", "/admin/v1/orders", undefined, { "shop-id": SHOP_A })).statusCode,
+    ).toBe(401);
+    // Mit einem Token lässt sich keine Uhr verbinden; falsche Codes werden gebremst.
+    expect(
+      (await asToken(token, "POST", "/admin/v1/device-pairings", {}, { "shop-id": SHOP_A })).statusCode,
+    ).toBe(401);
+    for (let i = 0; i < 10; i++) expect((await claim("00000000", "198.51.100.99")).statusCode).toBe(404);
+    expect((await claim("00000000", "198.51.100.99")).statusCode).toBe(429);
+    expect((await claim("1234")).statusCode).toBe(422);
+  });
+
   it("Inhaberin verliert die Mitgliedschaft oder der Shop wird gesperrt: Token gilt nicht mehr", async () => {
     const t = await createToken();
     await inspect.query(`UPDATE platform.tenant SET status = 'suspended' WHERE id = $1`, [SHOP_A]);

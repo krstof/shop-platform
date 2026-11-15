@@ -4,10 +4,11 @@ Offene Fragen stehen oben. Kristof antwortet im Chat, Claude trägt die Antwort 
 
 ## Offen
 
-1. **Neue Bestellungen auf der Galaxy Watch (15.11.2026):** Einfachster Weg ohne eigene Uhr-App: Das Backoffice lässt sich aufs Handy „installieren“ und schickt bei jeder neuen Bestellung eine Mitteilung; die Galaxy Watch zeigt Handy-Mitteilungen automatisch an. Eine echte Uhr-App ginge auch, müsste aber per Entwicklermodus auf die Uhr gespielt werden. Antwort: „Mitteilung“ (so bauen), „Uhr-App“ oder „später“.
+(keine)
 
 ## Beantwortet
 
+- **Neue Bestellungen auf der Galaxy Watch:** „Uhr-App“; danach pausiert, später nahtlos weitermachen (Stand in `apps/watch/README.md`). (Kristof, 15.11.2026)
 - **Testserver ohne GitHub-Kosten:** Öffentlich ist in Ordnung („egal, wenn jeder den Code sehen kann“), nichts soll kaputtgehen. Geheimnis-Prüfung des ganzen Verlaufs vorher: nichts gefunden. (Kristof, 14.11.2026)
 - **GitHub-Abrechnung:** Kein Geld für GitHub; es soll ohne Kosten gehen. (Kristof, 14.11.2026)
 

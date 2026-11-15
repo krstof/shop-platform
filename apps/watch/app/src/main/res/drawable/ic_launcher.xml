@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Slopify-Zeichen: violetter Kreis mit Tropfen. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#7C3AED" android:pathData="M24,2a22,22 0,1 0,0.001 0z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M15,18c0,-4 4,-7 9,-7s9,3 9,7c0,3 -2,4 -2,7c0,2 1,4 1,6c0,2 -1.5,3 -3,3s-2.5,-1 -2.5,-3c0,-1.5 -1,-2.5 -2.5,-2.5s-2.5,1 -2.5,2.5c0,4 -1.5,6 -3.5,6s-3,-1.5 -3,-4c0,-3 2,-5 2,-8c0,-3 -1,-4 -1,-7z" />
+</vector>

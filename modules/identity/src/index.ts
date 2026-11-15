@@ -66,6 +66,8 @@ export {
   type AuthenticatedApiToken,
 } from "./internal/api-tokens.js";
 export { apiTokenEndpoints, type ApiTokenEndpointOptions } from "./http/api-tokens.js";
+export { deviceEndpoints, type DeviceEndpointOptions } from "./http/devices.js";
+export { formatPairingCode, WATCH_TOKEN_NAME } from "./internal/device-pairing.js";
 export {
   apiTokenCreated,
   apiTokenRevoked,
