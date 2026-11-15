@@ -20,7 +20,7 @@ import {
   type ShopOfUser,
 } from "@shop/identity";
 import { createInventory } from "@shop/inventory";
-import { getContext, type Database, type Logger } from "@shop/kernel";
+import { getContext, runWithContext, type Database, type Logger } from "@shop/kernel";
 import { createMedia, memoryStorage, type Media } from "@shop/media";
 import {
   createShopAdministration,
@@ -91,6 +91,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
   };
   const settings = createShopSettings({ database: deps.database });
   const shops = createShopDirectory({ database: deps.database });
+  const platformOrders = createOrders({ database: deps.database, settings });
   return [
     // Katalog mit Preisen, Bestand und Bildern aus den Modulen pricing, inventory und media (M2).
     ...catalogEndpoints({ database: deps.database, prices, stock, images }),
@@ -182,6 +183,15 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
           return { ok: true, invitationSent: r.invitationSent, invitationExpiresAt: r.invitationExpiresAt };
         if (r.reason === "invalid_email") return { ok: false, reason: "invalid_email" };
         throw new Error(`Einladung der Inhaberin gescheitert: ${r.reason}`);
+      },
+      // Plattform-Kennzahlen: je Shop dieselbe Abfrage wie im Dashboard, als shop_app im Kontext genau
+      // dieses Shops (RLS wie immer). Die Plattform-API selbst sieht nie Bestellungen.
+      shopStats: (tenantId) => {
+        const context = getContext();
+        return runWithContext(
+          { ...context, requestId: context?.requestId ?? "platform-stats", tenantId },
+          () => platformOrders.summary(new Date(), 7),
+        );
       },
     }),
   ];

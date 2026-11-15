@@ -17,6 +17,8 @@ Datenbanktypen: `src/db.generated.ts` (erzeugt mit `pnpm db:types`, nie von Hand
 
 **Seit M1 (09.11.2026):** `createShopAdministration({ database })` mit Verbindung als **shop_platform** (in `apps/api` eigener Pool `SHOP_PLATFORM_DATABASE_URL`): `list`, `get`, `create` (je Shop ein eigener Händler-Eintrag, Shop sofort `active`), `setStatus` (sperren/freischalten). Endpunkte `GET/POST /platform/v1/shops`, `POST /platform/v1/shops/{shopId}/suspend` und `/reactivate`. Die Einladung der Inhaberin setzt `apps/api` mit `identity` zusammen (Option `inviteOwner`, Rolle `owner`). Testdaten: `apps/api/src/seed.ts` (`pnpm dev:seed`).
 
+**Seit 15.11.2026:** `GET /platform/v1/stats` (Plattform-Kennzahlen). Option `shopStats(tenantId)` setzt `apps/api` mit der Fassade `summary` des Moduls orders zusammen (je Shop im eigenen Kontext, als shop_app); `combineStats` rechnet zusammen. Das Modul selbst liest keine Shopdaten.
+
 **Fassade (geplant):** resolveTenantByHost(host), isFeatureEnabled(tenantId, feature), createTenant(...)
 
 **Ereignisse (geplant):** platform.tenant.created.v1, platform.tenant.suspended.v1, platform.tenant.deleted.v1

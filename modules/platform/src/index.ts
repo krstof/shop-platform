@@ -27,8 +27,11 @@ export {
   type ShopRecord,
 } from "./internal/shop-admin.js";
 export {
+  combineStats,
   platformEndpoints,
+  STATS_MAX_SHOPS,
   type OwnerInvitationResult,
   type PlatformEndpointOptions,
+  type ShopOrderStats,
 } from "./http/platform.js";
 export { storeShopEndpoints } from "./http/store.js";

@@ -1,5 +1,5 @@
 // Plattform-Verwaltung (M8): Shops auflisten, anlegen (lädt die Inhaberin ein), sperren und wieder
-// freischalten. Nur für Betreiberkonten mit bestätigtem zweitem Faktor; wer noch keinen hat, richtet
+// freischalten, darüber Kennzahlen aller Shops (Umsatz, Bestellungen, offene Aufgaben). Nur für Betreiberkonten mit bestätigtem zweitem Faktor; wer noch keinen hat, richtet
 // ihn hier ein. Nutzt nur die Platform-API und die Auth-API, nie eine Shop-Id.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
@@ -13,9 +13,13 @@ import {
   type CurrentSession,
   type OperatorRole,
   type PlatformShop,
+  type PlatformStats,
   type TwoFactorSetup,
 } from "../lib/api.js";
 import { handleFromName } from "../lib/handle.js";
+import { formatEuro } from "../lib/money.js";
+import { dayLabel } from "./overview.js";
+import { Clock, Euro, PackageCheck, Store, TrendingUp } from "lucide-react";
 import { groupSecret, qrPath } from "../lib/qr.js";
 import { sessionKey, useSession } from "../lib/session.js";
 import { FullPageSpinner, SignOutButton } from "./layout.js";
@@ -237,6 +241,7 @@ function TwoFactorSetupCard() {
 // --- Shops ---
 
 const shopsKey = ["platform", "shops"] as const;
+const statsKey = ["platform", "stats"] as const;
 
 function ShopsAdmin() {
   const queryClient = useQueryClient();
@@ -248,20 +253,28 @@ function ShopsAdmin() {
     queryKey: shopsKey,
     queryFn: () => listAllPlatform<PlatformShop>("/platform/v1/shops"),
   });
+  const stats = useQuery({
+    queryKey: statsKey,
+    queryFn: () => request<PlatformStats>("/platform/v1/stats"),
+  });
   const canWrite = operator.data?.role === "owner" || operator.data?.role === "operator";
   const [showForm, setShowForm] = useState(false);
   const [created, setCreated] = useState<CreatedPlatformShop>();
 
   // Betreibersitzung abgelaufen (1 Stunde ohne Aktivität): zurück zum Anmelden.
-  const expired = [operator.error, shops.error].some((e) => e instanceof ApiError && e.status === 401);
+  const expired = [operator.error, shops.error, stats.error].some(
+    (e) => e instanceof ApiError && e.status === 401,
+  );
   useEffect(() => {
     if (expired) queryClient.removeQueries({ queryKey: sessionKey });
   }, [expired, queryClient]);
   if (expired) return <Navigate to="/anmelden" replace />;
 
   const active = shops.data?.filter((s) => s.status === "active").length ?? 0;
+  const perShop = new Map(stats.data?.perShop.map((p) => [p.id, p]));
   return (
     <div>
+      <PlatformStatsSection stats={stats.data} error={stats.isError ? stats.error.message : undefined} />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-gray-900">Shops</h1>
@@ -290,6 +303,7 @@ function ShopsAdmin() {
             setShowForm(false);
             setCreated(shop);
             void queryClient.invalidateQueries({ queryKey: shopsKey });
+            void queryClient.invalidateQueries({ queryKey: statsKey });
           }}
         />
       )}
@@ -315,6 +329,12 @@ function ShopsAdmin() {
                 <th scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">
                   Angelegt
                 </th>
+                <th scope="col" className="hidden px-4 py-3 text-right font-medium lg:table-cell">
+                  Heute
+                </th>
+                <th scope="col" className="px-4 py-3 text-right font-medium">
+                  7 Tage
+                </th>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Stand
                 </th>
@@ -327,7 +347,7 @@ function ShopsAdmin() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {shops.data.map((s) => (
-                <ShopRow key={s.id} shop={s} canWrite={canWrite} />
+                <ShopRow key={s.id} shop={s} canWrite={canWrite} numbers={perShop.get(s.id)} />
               ))}
             </tbody>
           </table>
@@ -337,7 +357,15 @@ function ShopsAdmin() {
   );
 }
 
-function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) {
+function ShopRow({
+  shop,
+  canWrite,
+  numbers,
+}: {
+  shop: PlatformShop;
+  canWrite: boolean;
+  numbers: PlatformStats["perShop"][number] | undefined;
+}) {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const suspended = shop.status === "suspended";
@@ -350,6 +378,7 @@ function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) 
       queryClient.setQueryData<PlatformShop[]>(shopsKey, (old) =>
         old?.map((s) => (s.id === updated.id ? updated : s)),
       );
+      void queryClient.invalidateQueries({ queryKey: statsKey });
     },
   });
   return (
@@ -373,6 +402,19 @@ function ShopRow({ shop, canWrite }: { shop: PlatformShop; canWrite: boolean }) 
       <td className="hidden px-4 py-3 text-gray-600 md:table-cell">{shop.ownerEmail ?? "–"}</td>
       <td className="hidden px-4 py-3 text-gray-600 sm:table-cell">
         {DATE.format(new Date(shop.createdAt))}
+      </td>
+      <td className="hidden px-4 py-3 text-right text-gray-600 tabular-nums lg:table-cell">
+        {numbers === undefined ? "–" : formatEuro(numbers.revenueToday)}
+      </td>
+      <td className="px-4 py-3 text-right tabular-nums">
+        {numbers === undefined ? (
+          "–"
+        ) : (
+          <>
+            <div className="text-gray-900">{formatEuro(numbers.revenue7d)}</div>
+            <div className="text-xs text-gray-500">{orderCount(numbers.orders7d)}</div>
+          </>
+        )}
       </td>
       <td className="px-4 py-3">
         {shop.status === "active" ? (
@@ -554,6 +596,183 @@ function CreatedNotice({ shop, onClose }: { shop: CreatedPlatformShop; onClose: 
           </button>
         </p>
       </Alert>
+    </div>
+  );
+}
+
+// --- Kennzahlen aller Shops ---
+
+function orderCount(n: number): string {
+  return n === 1 ? "1 Bestellung" : `${n} Bestellungen`;
+}
+
+/** Summe der Umsätze der letzten 7 Tage und Zahl der Bestellungen. */
+export function weekTotals(days: PlatformStats["days"]): { revenue: number; orders: number } {
+  return days.reduce((t, d) => ({ revenue: t.revenue + d.revenue, orders: t.orders + d.orders }), {
+    revenue: 0,
+    orders: 0,
+  });
+}
+
+function PlatformStatsSection({
+  stats,
+  error,
+}: {
+  stats: PlatformStats | undefined;
+  error: string | undefined;
+}) {
+  if (error !== undefined)
+    return (
+      <div className="mb-8">
+        <Alert>Die Kennzahlen ließen sich gerade nicht laden: {error}</Alert>
+      </div>
+    );
+  if (stats === undefined)
+    return (
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-hidden="true">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-28 animate-pulse rounded-xl bg-white ring-1 ring-gray-200" />
+        ))}
+      </div>
+    );
+  const today = stats.days.at(-1) ?? { orders: 0, revenue: 0 };
+  const week = weekTotals(stats.days);
+  return (
+    <section className="mb-8" aria-labelledby="kennzahlen">
+      <h2 id="kennzahlen" className="mb-3 text-sm font-medium text-gray-500">
+        Alle Shops auf einen Blick
+      </h2>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          icon={Store}
+          color="#7c3aed"
+          label="Shops"
+          value={String(stats.shops)}
+          note={`${stats.activeShops} geöffnet${stats.suspendedShops > 0 ? ` · ${stats.suspendedShops} gesperrt` : ""}`}
+        />
+        <StatTile
+          icon={Euro}
+          color="#16a34a"
+          label="Umsatz heute"
+          value={formatEuro(today.revenue)}
+          note={orderCount(today.orders)}
+        />
+        <StatTile
+          icon={TrendingUp}
+          color="#2563eb"
+          label="Umsatz 7 Tage"
+          value={formatEuro(week.revenue)}
+          note={orderCount(week.orders)}
+        />
+        <StatTile
+          icon={PackageCheck}
+          color="#d97706"
+          label="Zu versenden"
+          value={String(stats.toShip)}
+          note={`${stats.awaitingPayment} warten auf Zahlung`}
+          noteIcon
+        />
+      </div>
+      {stats.days.length > 0 && (
+        <div className="mt-3 rounded-xl bg-white p-4 ring-1 ring-gray-200 sm:p-5">
+          <p className="mb-3 text-sm text-gray-600">
+            Umsatz je Tag, alle Shops zusammen (nur bezahlte Bestellungen)
+          </p>
+          <WeekChart days={stats.days} />
+        </div>
+      )}
+      {stats.truncated && (
+        <p className="mt-2 text-xs text-gray-500">
+          Es gibt sehr viele Shops; eingerechnet sind die ältesten.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function StatTile({
+  icon: I,
+  color,
+  label,
+  value,
+  note,
+  noteIcon = false,
+}: {
+  icon: typeof Euro;
+  color: string;
+  label: string;
+  value: string;
+  note: string;
+  noteIcon?: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200/80 sm:p-5">
+      <p className="flex items-center gap-2 text-sm text-gray-600">
+        <span
+          aria-hidden="true"
+          className="flex size-7 items-center justify-center rounded-md"
+          style={{ background: `${color}1a`, color }}
+        >
+          <I className="size-4" aria-hidden="true" />
+        </span>
+        {label}
+      </p>
+      <p className="mt-3 text-2xl font-semibold tracking-[-0.01em] text-gray-900 tabular-nums">{value}</p>
+      <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+        {noteIcon && <Clock className="size-3" aria-hidden="true" />}
+        {note}
+      </p>
+    </div>
+  );
+}
+
+/** Ein Balken je Tag; Betrag steht beim Zeigen darüber und für Screenreader im Label. */
+function WeekChart({ days }: { days: PlatformStats["days"] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const max = Math.max(...days.map((d) => d.revenue), 1);
+  return (
+    <div>
+      <div className="flex h-32 items-end gap-2 border-b border-gray-200 sm:gap-3" role="list">
+        {days.map((d, i) => {
+          const label = dayLabel(d.date);
+          const height = d.revenue === 0 ? 0 : Math.max(4, Math.round((d.revenue / max) * 100));
+          return (
+            <div
+              key={d.date}
+              role="listitem"
+              aria-label={`${label.weekday} ${label.day}: ${formatEuro(d.revenue)}, ${orderCount(d.orders)}`}
+              className="relative flex h-full flex-1 items-end justify-center"
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+            >
+              {hover === i && (
+                <div className="pointer-events-none absolute bottom-full z-10 mb-1 rounded-md bg-gray-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow">
+                  {formatEuro(d.revenue)} · {orderCount(d.orders)}
+                </div>
+              )}
+              <div
+                className={
+                  "w-full max-w-10 rounded-t " + (i === days.length - 1 ? "bg-brand-700" : "bg-brand-600/70")
+                }
+                style={{ height: `${height}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex gap-2 sm:gap-3" aria-hidden="true">
+        {days.map((d, i) => {
+          const label = dayLabel(d.date);
+          return (
+            <div key={d.date} className="flex-1 text-center text-xs text-gray-500">
+              <div className={i === days.length - 1 ? "font-medium text-gray-800" : undefined}>
+                {i === days.length - 1 ? "Heute" : label.weekday}
+              </div>
+              <div className="hidden sm:block">{label.day}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

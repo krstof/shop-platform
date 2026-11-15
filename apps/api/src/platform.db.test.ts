@@ -411,5 +411,52 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
         ]);
       }
     });
+
+    it("Kennzahlen aller Shops: Summen und je Shop, nur für Betreiber", async () => {
+      // Zweiter Shop ohne Bestellungen; im ersten zwei bezahlte (heute 25 €, vor 3 Tagen 10 €) und eine offene Zahlung.
+      const second = await post(
+        "/platform/v1/shops",
+        { handle: "buchladen", name: "Buchladen", ownerEmail: "inhaber@buchladen.example" },
+        cookie,
+      );
+      expect(second.statusCode).toBe(201);
+      for (const [total, status, daysAgo] of [
+        [2500, "open", 0],
+        [1000, "completed", 3],
+        [700, "pending_payment", 0],
+      ] as const)
+        await inspect.query(
+          `WITH c AS (INSERT INTO shop_settings.sales_channel (tenant_id, code, kind, name)
+                      VALUES ($1, $2, 'storefront', 'Test') RETURNING id)
+           INSERT INTO orders."order" (tenant_id, order_number, channel_id, email, locale, currency, tax_display,
+                                       subtotal_amount, tax_amount, total_amount, status, payment_status, placed_at)
+           SELECT $1, $2, c.id, 'k@example.org', 'de', 'EUR', 'gross', $3, 0, $3, $4,
+                  CASE WHEN $4 = 'pending_payment' THEN 'unpaid' ELSE 'paid' END,
+                  now() - make_interval(days => $5) FROM c`,
+          [shopId, `p-${randomBytes(4).toString("hex")}`, total, status, daysAgo],
+        );
+      const r = await get("/platform/v1/stats", cookie);
+      expect(r.statusCode).toBe(200);
+      const stats = r.json();
+      expect(stats).toMatchObject({
+        currency: "EUR",
+        shops: 2,
+        activeShops: 2,
+        suspendedShops: 0,
+        toShip: 1,
+        awaitingPayment: 1,
+        truncated: false,
+      });
+      expect(stats.days).toHaveLength(7);
+      expect(stats.days.at(-1)).toMatchObject({ orders: 1, revenue: 2500 });
+      expect(stats.days.reduce((n: number, d: { revenue: number }) => n + d.revenue, 0)).toBe(3500);
+      expect(stats.perShop).toEqual([
+        { id: shopId, ordersToday: 1, revenueToday: 2500, orders7d: 2, revenue7d: 3500, toShip: 1 },
+        { id: second.json().id, ordersToday: 0, revenueToday: 0, orders7d: 0, revenue7d: 0, toShip: 0 },
+      ]);
+      const merchant = await signIn(MERCHANT);
+      expect((await get("/platform/v1/stats", merchant.cookie)).statusCode).toBe(403);
+      expect((await get("/platform/v1/stats", "")).statusCode).toBe(401);
+    });
   });
 });

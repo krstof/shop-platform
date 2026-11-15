@@ -28,11 +28,13 @@ export interface OrdersDependencies {
   readonly restock?: Restock | undefined;
 }
 
-export type Orders = Pick<OrderRepository, "place" | "markPaid" | "view">;
+/** `summary`: Kennzahlen des Shops im Anfrage-Kontext (auch für die Plattform-Kennzahlen, je Shop einzeln). */
+export type Orders = Pick<OrderRepository, "place" | "markPaid" | "view" | "summary">;
+export type { OrderSummaryStats } from "./internal/orders.js";
 
 export function createOrders(deps: OrdersDependencies): Orders {
   const repo = orderRepository(deps.database, deps.settings);
-  return { place: repo.place, markPaid: repo.markPaid, view: repo.view };
+  return { place: repo.place, markPaid: repo.markPaid, view: repo.view, summary: repo.summary };
 }
 
 /** Endpunkte für das Backoffice (M7) und die Bestseller der Storefront. */

@@ -34,7 +34,22 @@ export interface PlatformEndpointOptions {
     readonly invitedBy: string;
     readonly locale: Locale;
   }) => Promise<OwnerInvitationResult>;
+  /**
+   * Kennzahlen der Bestellungen eines Shops (Modul orders, zusammengesteckt in apps/api, läuft als
+   * shop_app im Kontext genau dieses Shops). Ohne Angabe gibt es `GET /platform/v1/stats` nicht.
+   */
+  readonly shopStats?: (tenantId: string) => Promise<ShopOrderStats>;
 }
+
+/** Kennzahlen eines Shops wie in seinem Dashboard: letzte 7 Tage, zu versenden, Zahlung offen. */
+export interface ShopOrderStats {
+  readonly days: readonly { readonly date: string; readonly orders: number; readonly revenue: number }[];
+  readonly toShip: number;
+  readonly awaitingPayment: number;
+}
+
+/** Höchstens so viele Shops gehen in die Kennzahlen ein (Testplattform mit wenigen Shops). */
+export const STATS_MAX_SHOPS = 200;
 
 const shopSchema = z
   .object({
@@ -233,5 +248,114 @@ export function platformEndpoints(options: PlatformEndpointOptions): Endpoint[] 
       },
     });
 
-  return [me, list, create, changeStatus("suspended"), changeStatus("active")];
+  const endpoints = [me, list, create, changeStatus("suspended"), changeStatus("active")];
+  if (options.shopStats !== undefined) endpoints.push(statsEndpoint(shops, options.shopStats));
+  return endpoints;
+}
+
+const dayStats = z.object({
+  date: z.iso.date().meta({ description: "Kalendertag in deutscher Zeit." }),
+  orders: z.number().int().meta({ description: "Bezahlte Bestellungen an diesem Tag." }),
+  revenue: z.number().int().meta({ description: "Umsatz brutto in Cent (bezahlte Bestellungen)." }),
+});
+
+const statsSchema = z
+  .object({
+    currency: z.literal("EUR"),
+    shops: z.number().int().meta({ description: "Alle Shops außer gelöschten." }),
+    activeShops: z.number().int().meta({ description: "Davon geöffnet." }),
+    suspendedShops: z.number().int().meta({ description: "Davon gesperrt." }),
+    days: z
+      .array(dayStats)
+      .meta({ description: "Die letzten 7 Tage bis heute, älteste zuerst, über alle Shops zusammen." }),
+    toShip: z.number().int().meta({ description: "Bezahlt und noch nicht versendet, alle Shops." }),
+    awaitingPayment: z.number().int().meta({ description: "Warten auf die Zahlung, alle Shops." }),
+    perShop: z
+      .array(
+        z.object({
+          id: z.uuid(),
+          ordersToday: z.number().int(),
+          revenueToday: z.number().int().meta({ description: "Cent." }),
+          orders7d: z.number().int(),
+          revenue7d: z.number().int().meta({ description: "Cent." }),
+          toShip: z.number().int(),
+        }),
+      )
+      .meta({ description: "Je Shop (Kennung wie in GET /shops), Reihenfolge wie dort." }),
+    truncated: z
+      .boolean()
+      .meta({ description: `true: mehr als ${STATS_MAX_SHOPS} Shops, nur die ältesten sind eingerechnet.` }),
+  })
+  .meta({ id: "PlatformStats", description: "Kennzahlen aller Shops für die Plattform-Verwaltung." });
+
+/** Kennzahlen aller Shops zusammenrechnen (rein, für Tests). */
+export function combineStats(
+  shopList: readonly Pick<ShopRecord, "id" | "status">[],
+  stats: readonly ShopOrderStats[],
+  truncated: boolean,
+) {
+  const days = new Map<string, { date: string; orders: number; revenue: number }>();
+  let toShip = 0;
+  let awaitingPayment = 0;
+  const perShop = shopList.map((shop, i) => {
+    const s = stats[i] ?? { days: [], toShip: 0, awaitingPayment: 0 };
+    for (const d of s.days) {
+      const day = days.get(d.date) ?? { date: d.date, orders: 0, revenue: 0 };
+      day.orders += d.orders;
+      day.revenue += d.revenue;
+      days.set(d.date, day);
+    }
+    toShip += s.toShip;
+    awaitingPayment += s.awaitingPayment;
+    const today = s.days.at(-1);
+    return {
+      id: shop.id,
+      ordersToday: today?.orders ?? 0,
+      revenueToday: today?.revenue ?? 0,
+      orders7d: s.days.reduce((n, d) => n + d.orders, 0),
+      revenue7d: s.days.reduce((n, d) => n + d.revenue, 0),
+      toShip: s.toShip,
+    };
+  });
+  return {
+    currency: "EUR" as const,
+    shops: shopList.length,
+    activeShops: shopList.filter((s) => s.status === "active").length,
+    suspendedShops: shopList.filter((s) => s.status === "suspended").length,
+    days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    toShip,
+    awaitingPayment,
+    perShop,
+    truncated,
+  };
+}
+
+function statsEndpoint(
+  shops: ShopAdministration,
+  shopStats: (tenantId: string) => Promise<ShopOrderStats>,
+): Endpoint {
+  return defineEndpoint({
+    api: "platform",
+    method: "GET",
+    path: "/stats",
+    operationId: "getPlatformStats",
+    summary: "Kennzahlen aller Shops",
+    description:
+      "Zahl der Shops, Umsatz und bezahlte Bestellungen je Tag der letzten 7 Tage (deutsche Zeit) über alle " +
+      "Shops, offene Aufgaben (versenden, Zahlung offen) und dieselben Zahlen je Shop. Nur Summen, keine " +
+      `Kundendaten. Höchstens ${STATS_MAX_SHOPS} Shops.`,
+    tags: ["Plattform"],
+    access: { scopes: ["platform:read"] },
+    response: { status: 200, description: "Die Kennzahlen.", schema: statsSchema },
+    handler: async () => {
+      const rows = await shops.list({ limit: STATS_MAX_SHOPS });
+      const truncated = rows.length > STATS_MAX_SHOPS;
+      const included = rows.slice(0, STATS_MAX_SHOPS);
+      // Je Shop eine eigene Abfrage im Kontext dieses Shops (Mandantentrennung bleibt), nacheinander,
+      // damit wenige Verbindungen reichen.
+      const stats: ShopOrderStats[] = [];
+      for (const shop of included) stats.push(await shopStats(shop.id));
+      return combineStats(included, stats, truncated);
+    },
+  });
 }

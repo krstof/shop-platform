@@ -331,6 +331,26 @@ export interface PlatformShop {
   readonly createdAt: string;
 }
 
+/** Kennzahlen aller Shops (GET /platform/v1/stats). Beträge in Cent. */
+export interface PlatformStats {
+  readonly currency: "EUR";
+  readonly shops: number;
+  readonly activeShops: number;
+  readonly suspendedShops: number;
+  readonly days: readonly { readonly date: string; readonly orders: number; readonly revenue: number }[];
+  readonly toShip: number;
+  readonly awaitingPayment: number;
+  readonly perShop: readonly {
+    readonly id: string;
+    readonly ordersToday: number;
+    readonly revenueToday: number;
+    readonly orders7d: number;
+    readonly revenue7d: number;
+    readonly toShip: number;
+  }[];
+  readonly truncated: boolean;
+}
+
 export interface CreatedPlatformShop extends PlatformShop {
   readonly invitationSent: boolean;
   readonly invitationExpiresAt: string | null;
