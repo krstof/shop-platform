@@ -62,8 +62,22 @@ async function checkTelegram(state: IntegrationState): Promise<CheckResult> {
   };
 }
 
+async function checkUnsplash(state: IntegrationState): Promise<CheckResult> {
+  const key = state.secrets["accessKey"] ?? "";
+  if (key === "") return { ok: false, message: "Es ist kein Access Key hinterlegt." };
+  const found = await fetchExternal<{ results?: readonly unknown[] }>({
+    url: "https://api.unsplash.com/search/photos?query=tee&per_page=1",
+    headers: { authorization: `Client-ID ${key}` },
+    service: "Unsplash",
+  });
+  return found.results === undefined
+    ? { ok: false, message: "Unsplash hat unerwartet geantwortet." }
+    : { ok: true, message: "Verbunden. Die Bildersuche im Editor sucht ab jetzt auch bei Unsplash." };
+}
+
 const CHECKS: Readonly<Record<string, (state: IntegrationState) => Promise<CheckResult>>> = {
   telegram: checkTelegram,
+  unsplash: checkUnsplash,
 };
 
 /** Führt die Prüfung einer Anbindung aus und fängt Fehler des fremden Dienstes ab. */

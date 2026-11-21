@@ -69,6 +69,30 @@ export const INTEGRATIONS: readonly IntegrationDefinition[] = [
       },
     ],
   },
+  {
+    provider: "unsplash",
+    name: "Unsplash",
+    description:
+      "Gibt dir im Editor und bei den Produktbildern eine Bildersuche mit Millionen guter Fotos. " +
+      "Ohne Unsplash suchst du nur in gemeinfreien Bildern über Openverse, das immer dabei ist.",
+    where: "Bildersuche im Editor und bei Produkt- und Kategoriebildern",
+    setup:
+      "Lege auf unsplash.com/developers ein Konto an, erstelle eine Anwendung („New Application“) " +
+      "und kopiere den „Access Key“ hierher. Die Demo-Stufe erlaubt 50 Suchen in der Stunde und " +
+      "reicht zum Ausprobieren.",
+    helpUrl: "https://unsplash.com/developers",
+    testable: true,
+    fields: [
+      {
+        key: "accessKey",
+        label: "Access Key",
+        hint: "Die Zeichenkette aus deiner Unsplash-Anwendung, nicht der „Secret Key“.",
+        secret: true,
+        required: true,
+        maxLength: 200,
+      },
+    ],
+  },
 ];
 
 /** Findet eine Anbindung im Katalog. */

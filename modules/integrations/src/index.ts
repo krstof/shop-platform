@@ -12,6 +12,7 @@ export {
   type IntegrationField,
 } from "./catalog.js";
 export { integrationEndpoints, type IntegrationDependencies } from "./http/admin.js";
+export { stockPhotoEndpoints, type StockPhotoDependencies } from "./http/stock-photos.js";
 export { fetchExternal, ExternalServiceError } from "./internal/outbound.js";
 export {
   createIntegrations,

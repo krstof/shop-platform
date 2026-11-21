@@ -41,7 +41,7 @@ import {
 import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { couponEndpoints, createPricing } from "@shop/pricing";
-import { createIntegrations, integrationEndpoints } from "@shop/integrations";
+import { createIntegrations, integrationEndpoints, stockPhotoEndpoints } from "@shop/integrations";
 import { createShopSettings, generalSettingsEndpoints } from "@shop/shop-settings";
 import { createShipping, shippingEndpoints } from "@shop/shipping";
 import { storefrontEndpoints } from "@shop/storefront-design";
@@ -157,6 +157,8 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...storeShopEndpoints(shops),
     // Anbindungen an fremde Dienste: Telegram und was später dazukommt.
     ...integrationEndpoints({ database: deps.database, secretBox }),
+    // Bildersuche (Openverse immer, Unsplash wenn eingerichtet) für Editor und Produktbilder.
+    ...stockPhotoEndpoints({ database: deps.database, secretBox }),
     // Einstellungen „Allgemein“: Adresse, Geschäftsangaben, Shop geöffnet, Shop-Name (Name in platform).
     ...generalSettingsEndpoints({
       database: deps.database,

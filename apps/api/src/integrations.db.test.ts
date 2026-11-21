@@ -32,7 +32,9 @@ const resolver: ActorResolver = async ({ headers }) => {
   const auth: AuthenticatedActor = {
     actor: { type: "user", id: uuidv7() },
     tenantId: shop === "b" ? TENANT_B : TENANT_A,
-    scopes: new Set(shop === "a-lesen" ? ["settings:read"] : ["settings:read", "settings:write"]),
+    scopes: new Set(
+      shop === "a-lesen" ? ["settings:read"] : ["settings:read", "settings:write", "products:write"],
+    ),
   };
   return auth;
 };
@@ -204,6 +206,93 @@ describe.skipIf(adminUrl === undefined)("Anbindungen", () => {
     const telegram = body.data.find((i) => i.provider === "telegram");
     expect(telegram?.enabled).toBe(false);
     expect(telegram?.fields.every((f) => !f.filled)).toBe(true);
+  });
+
+  it("sucht ohne Unsplash-Schlüssel nur bei Openverse", async () => {
+    const urls: string[] = [];
+    const echt = globalThis.fetch;
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    try {
+      const r = await inject("GET", "/admin/v1/stock-photos?query=tee", undefined, asB);
+      expect(r.statusCode).toBe(200);
+      expect(r.json()).toMatchObject({ sources: ["openverse"] });
+      expect(urls.every((u) => u.startsWith("https://api.openverse.org/"))).toBe(true);
+    } finally {
+      globalThis.fetch = echt;
+    }
+  });
+
+  it("gibt die Treffer von Openverse verständlich zurück", async () => {
+    const echt = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              id: "abc",
+              title: "Teekanne",
+              thumbnail: "https://api.openverse.org/v1/images/abc/thumb/",
+              url: "https://bilder.test/abc.jpg",
+              width: 1024,
+              height: 768,
+              license: "cc0",
+              foreign_landing_url: "https://quelle.test/abc",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as typeof fetch;
+    try {
+      const r = await inject("GET", "/admin/v1/stock-photos?query=tee", undefined, asB);
+      const body = r.json() as { data: { source: string; license: string; title: string }[] };
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0]).toMatchObject({ source: "openverse", license: "CC0", title: "Teekanne" });
+    } finally {
+      globalThis.fetch = echt;
+    }
+  });
+
+  it("meldet einen Ausfall der Bildersuche als Fehler, nicht als „nichts gefunden“", async () => {
+    const echt = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new Error("kein Netz");
+    }) as typeof fetch;
+    try {
+      const r = await inject("GET", "/admin/v1/stock-photos?query=tee", undefined, asB);
+      expect(r.statusCode).toBeGreaterThanOrEqual(400);
+    } finally {
+      globalThis.fetch = echt;
+    }
+  });
+
+  it("holt kein Bild von einer Adresse im eigenen Netz", async () => {
+    const echt = globalThis.fetch;
+    const geholt: string[] = [];
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      geholt.push(String(input));
+      return new Response(JSON.stringify({ url: "http://garage:3900/geheim.jpg" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    try {
+      const r = await inject(
+        "POST",
+        "/admin/v1/stock-photos/download",
+        { source: "openverse", id: "abc" },
+        asB,
+      );
+      expect(r.statusCode).toBeGreaterThanOrEqual(400);
+      expect(geholt.some((u) => u.includes("garage"))).toBe(false);
+    } finally {
+      globalThis.fetch = echt;
+    }
   });
 
   it("lässt nur schreiben, wer das Recht dazu hat", async () => {

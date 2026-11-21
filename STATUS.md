@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 21.11.2026 (Fundament für Anbindungen steht, Telegram angebunden)
+Stand: 21.11.2026 (Fundament für Anbindungen steht; Telegram und die Bildersuche angebunden)
 
 ## Erledigt
 
@@ -93,7 +93,11 @@ Stand: 21.11.2026 (Fundament für Anbindungen steht, Telegram angebunden)
   - **Neue Seite „Einstellungen → Anbindungen"** im Backoffice mit Kachel je Dienst, Feldern, „Verbindung prüfen" und „Ausschalten". Geheime Felder zeigt sie nie an, nur „hinterlegt".
   - **Telegram** als erste Anbindung: Der Händler trägt den Schlüssel vom BotFather ein, die Verbindungsprüfung holt die Chat-Nummer aus der ersten Nachricht an den Bot und schickt eine Testnachricht. Danach kommt bei jeder bezahlten Bestellung und jeder Nachricht über das Kontaktformular eine Meldung aufs Handy. Die Meldung enthält absichtlich keine Kundendaten, nur Bestellnummer, Summe und Anzahl der Artikel.
   - **Entscheidung unterwegs:** Der Name des Dienstes steht im Rumpf der Anfrage, nicht im Pfad. Im Pfad wäre er eine Kennung, und der Isolationstest T-08 verlangt zu Recht, dass jede Kennung im Pfad einem Shop gehört und für fremde Shops 404 ergibt. Eine Ausnahmeliste in einem Sicherheitstest wäre der schlechtere Weg gewesen.
-  - Geprüft: 13 neue Tests im Modul, 11 neue Tests gegen die Datenbank (`apps/api/src/integrations.db.test.ts`), insgesamt 440 API-Tests grün, dazu `pnpm check` komplett.
+  - **Bildersuche im Editor** (`modules/integrations/src/http/stock-photos.ts`, `apps/backoffice/src/components/stock-photos.tsx`): Neben „Bild hochladen“ steht jetzt überall „Bild suchen“. **Openverse** ist immer dabei und braucht keinen Schlüssel; gesucht wird dort nur in gemeinfreien Bildern, damit niemand versehentlich eine Namensnennung schuldig bleibt. **Unsplash** kommt dazu, sobald in den Anbindungen ein Access Key hinterlegt ist. Das gewählte Bild holt der Server und reicht es als Datei an den gewohnten Weg weiter — gleiche Prüfungen, gleiche Größen, und der Shop hängt danach an keinem fremden Dienst.
+  - Sicherheit dabei: Der Browser schickt nie eine Bildadresse an den Server; die Adresse kommt immer aus der Antwort des Anbieters, muss https sein und auf einen Namen mit Punkt zeigen, Umleitungen sind verboten. So lässt sich der Server nicht auf Dienste im eigenen Docker-Netz lenken. Ein Test prüft genau das.
+  - In der Inhalts-Sicherheitsregel des Backoffice stehen dafür zwei neue Bildadressen (`api.openverse.org`, `images.unsplash.com`). Nur die kleinen Vorschaubilder kommen von dort.
+  - ⚠️ In der Cloud-Arbeitsumgebung hat der API-Container kein Internet, deshalb meldet die Bildersuche dort „antwortet gerade nicht“. Auf dem Testserver (eigener Server mit Internet) funktioniert sie. Dasselbe gilt für Telegram.
+  - Geprüft: 13 neue Tests im Modul, 15 neue Tests gegen die Datenbank (`apps/api/src/integrations.db.test.ts`), insgesamt 449 API-Tests grün, dazu `pnpm check` komplett. Im Browser durchgespielt: Seite „Anbindungen“, Editor mit geöffneter Bildersuche.
 
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
@@ -194,7 +198,7 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
     4. **Editor und Shop moderner machen.** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.
     6. **Rest der Welle A aus `docs/09`:** Photon (Adressvervollständigung in der Kasse), IndexNow, Produktfeed. Alle drei brauchen nichts von Kristof.
-    7. **Welle B aus `docs/09`:** Unsplash samt Openverse im Editor, rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.
+    7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.
     8. **Welle C aus `docs/09`:** Slopify als MCP-Server, eigene Bewertungen.
     9. **Welle D aus `docs/09`:** Plausible oder Umami auf einer neuen Seite „Statistiken", Google Search Console, DataForSEO.
     10. **Produktvarianten** (Größe und Farbe mit eigenem Preis und Bestand), **Shop-Detailseite** in der Plattform-Verwaltung, **Versandarten und Versandkosten**.

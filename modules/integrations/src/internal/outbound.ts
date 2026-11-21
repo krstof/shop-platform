@@ -78,6 +78,51 @@ export async function fetchExternal<T>(request: ExternalRequest): Promise<T> {
   }
 }
 
+/**
+ * Holt ein Bild von einem fremden Dienst.
+ *
+ * Die Adresse darf nur aus der Antwort eines Anbieters stammen, nie aus dem Browser: Sonst könnte
+ * jemand den Server dazu bringen, Adressen im eigenen Netz abzurufen. Zusätzlich muss sie https
+ * sein und auf einen Namen mit Punkt zeigen, damit Dienste im Docker-Netz („garage“, „api“) außen
+ * vor bleiben. Umleitungen sind aus demselben Grund verboten.
+ */
+export async function fetchExternalImage(
+  url: string,
+  service: string,
+): Promise<{ bytes: Buffer; contentType: string }> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new ExternalServiceError(`${service} hat eine unbrauchbare Bildadresse geschickt.`);
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    !parsed.hostname.includes(".") ||
+    parsed.hostname.endsWith(".localhost")
+  )
+    throw new ExternalServiceError(`${service} hat eine unbrauchbare Bildadresse geschickt.`);
+  let response: Response;
+  try {
+    response = await fetch(parsed.href, {
+      headers: { accept: "image/*" },
+      signal: AbortSignal.timeout(20000),
+      redirect: "error",
+    });
+  } catch {
+    throw new ExternalServiceError(`Das Bild bei ${service} ist nicht erreichbar.`);
+  }
+  if (!response.ok)
+    throw new ExternalServiceError(`Das Bild bei ${service} ist nicht erreichbar.`, response.status);
+  const contentType = (response.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
+  if (!contentType.startsWith("image/"))
+    throw new ExternalServiceError(`${service} hat kein Bild geschickt.`, response.status);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.byteLength > 8 * 1024 * 1024)
+    throw new ExternalServiceError(`Das Bild bei ${service} ist zu groß.`);
+  return { bytes, contentType };
+}
+
 /** Liest die Antwort, bricht aber ab, wenn sie unangemessen groß wird. */
 async function readLimited(response: Response, service: string): Promise<string> {
   const reader = response.body?.getReader();
