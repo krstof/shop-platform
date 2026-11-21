@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 21.11.2026 (Bildupload repariert, echte Fotos und Testbestellungen in den Testdaten)
+Stand: 21.11.2026 (Fundament für Anbindungen steht, Telegram angebunden)
 
 ## Erledigt
 
@@ -85,6 +85,15 @@ Stand: 21.11.2026 (Bildupload repariert, echte Fotos und Testbestellungen in den
   - **Bühne und Kategorie-Kacheln lesbar.** Die Bühne ist jetzt so hoch, wie es die Empfehlungen vorsehen (58 % der Bildschirmhöhe am Computer, höchstens 60 % am Handy), und hat einen Verlauf über die ganze Fläche statt nur hinter dem Text; vorher stand weiße Schrift je nach Foto auf einer hellen Stelle. Die Kategorie-Kacheln haben einen kräftigeren Verlauf und einen Textschatten.
   - **Design-Recherche** in `docs/08_Shop_Design_Best_Practices.md`: Bühne, Aufbau der Startseite, Produktraster und Produktkarte, die Gestaltungsdisziplin guter Shops und die Technik der Shopify-Theme-Familie Horizon, dazu neun daraus abgeleitete Aufgaben nach Wirkung sortiert.
   - Geprüft: `pnpm check` komplett, 423 API-Tests mit Datenbank, 62 Werkzeug-Tests, Caddy-Konfiguration lokal und für den Testserver validiert, Durchläufe im Browser auf 1280 und 375 Pixel für beide Testshops.
+
+- **Anbindungen: Fundament und Telegram (21.11.2026, Kristofs Auswahl aus `docs/09_Anbindungen.md`):**
+  - **Neues Modul `integrations`** (`modules/integrations`): Tabelle `integrations.connection` je Shop mit Schalter, offenen Einstellungen und verschlüsselten Zugangsdaten. Verschlüsselt wird mit der Umschlagverschlüsselung aus dem Kernel; der Hauptschlüssel steht nur in der Serverkonfiguration, und der Zweck bindet jeden Wert an Shop und Dienst. Ein Test prüft, dass der Schlüssel nicht im Klartext in der Datenbank steht.
+  - **Katalog statt Einzelbau** (`src/catalog.ts`): Jede Anbindung wird einmal beschrieben (Name, Erklärung, Felder, ob prüfbar). Die Seite im Backoffice baut sich daraus. Eine neue Anbindung braucht einen Eintrag im Katalog und höchstens eine Prüffunktion, keine neue Seite.
+  - **Gemeinsamer Weg nach außen** (`src/internal/outbound.ts`): Zeitlimit von 8 Sekunden, eine Wiederholung bei 429 und 5xx, Größenbegrenzung der Antwort, Fehlermeldungen in Alltagssprache statt technischer Meldungen.
+  - **Neue Seite „Einstellungen → Anbindungen"** im Backoffice mit Kachel je Dienst, Feldern, „Verbindung prüfen" und „Ausschalten". Geheime Felder zeigt sie nie an, nur „hinterlegt".
+  - **Telegram** als erste Anbindung: Der Händler trägt den Schlüssel vom BotFather ein, die Verbindungsprüfung holt die Chat-Nummer aus der ersten Nachricht an den Bot und schickt eine Testnachricht. Danach kommt bei jeder bezahlten Bestellung und jeder Nachricht über das Kontaktformular eine Meldung aufs Handy. Die Meldung enthält absichtlich keine Kundendaten, nur Bestellnummer, Summe und Anzahl der Artikel.
+  - **Entscheidung unterwegs:** Der Name des Dienstes steht im Rumpf der Anfrage, nicht im Pfad. Im Pfad wäre er eine Kennung, und der Isolationstest T-08 verlangt zu Recht, dass jede Kennung im Pfad einem Shop gehört und für fremde Shops 404 ergibt. Eine Ausnahmeliste in einem Sicherheitstest wäre der schlechtere Weg gewesen.
+  - Geprüft: 13 neue Tests im Modul, 11 neue Tests gegen die Datenbank (`apps/api/src/integrations.db.test.ts`), insgesamt 440 API-Tests grün, dazu `pnpm check` komplett.
 
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
@@ -179,8 +188,8 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
 34. ~~Plattform-Kennzahlen~~ (erledigt 15.11.2026, Mittagslauf): In der Plattform-Verwaltung oben „Alle Shops auf einen Blick“: Kacheln Shops (geöffnet/gesperrt), Umsatz heute, Umsatz 7 Tage (mit Zahl der Bestellungen), Zu versenden (mit „warten auf Zahlung“), darunter ein Balken je Tag über alle Shops. In der Shop-Tabelle neue Spalten „Heute“ und „7 Tage“ je Shop. Nur bezahlte Bestellungen, deutsche Zeit, wie im Dashboard des Shops. Technik: `GET /platform/v1/stats` (`platform:read`); apps/api fragt je Shop die Fassade `summary` des Moduls orders als shop_app im Kontext genau dieses Shops ab (RLS bleibt, die Rolle shop_platform sieht weiterhin keine Bestellungen), das Modul platform rechnet zusammen (`combineStats`), höchstens 200 Shops. Getestet: Datenbanktest (Summen, je Shop, 403 für Händler, 401 ohne Anmeldung), Einheitstest fürs Zusammenrechnen, alle Tests mit Datenbank, Lint, Modulgrenzen, Formatierung, API-Vertrag ohne Bruch.
 35. ~~Bildupload, echte Fotos, Testbestellungen, Design-Recherche~~ (erledigt 21.11.2026, siehe oben unter „Erledigt")
 36. **Kristofs Wunschliste vom 21.11.2026**, nach seinen Antworten vom selben Tag sortiert. Grundlage für alles, was Aussehen betrifft, ist `docs/08_Shop_Design_Best_Practices.md`, für alle Anbindungen `docs/09_Anbindungen.md`:
-    1. **Fundament für Anbindungen** (`docs/09_Anbindungen.md` Abschnitt 0): neues Modul `integrations` mit verschlüsselten Zugangsdaten je Shop, neue Seite „Einstellungen → Anbindungen", gemeinsamer Ausgangs-Klient mit Zeitlimit und Protokoll. Ohne das wird jede einzelne Anbindung ein Einzelstück, weil es heute keinen Ort für einen Zugangsschlüssel je Shop gibt.
-    2. **Telegram-Benachrichtigung bei neuer Bestellung.** Von Kristof ausdrücklich vorgezogen („3"). Ersetzt praktisch die pausierte Uhr-App, weil Telegram auch auf der Galaxy Watch ankommt.
+    1. ~~Fundament für Anbindungen~~ (erledigt 21.11.2026)
+    2. ~~Telegram-Benachrichtigung~~ (erledigt 21.11.2026; Kristof muss nur noch den Schlüssel vom BotFather in „Einstellungen → Anbindungen" eintragen)
     3. **Bühne beherrschen:** Zuschnitt-Punkt wählbar (am Computer und am Handy getrennt) und ein Knopf in der Bühne.
     4. **Editor und Shop moderner machen.** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.

@@ -69,8 +69,11 @@ SELECT pg_temp.ok(count(*) = 0, 'shop_auth hat außerhalb der 6 Anmeldetabellen 
 
 \echo '--- 3. Geheime Spalten'
 -- Jede Spalte, deren Name auf ein Anmeldegeheimnis hindeutet (Passwort, TOTP-Geheimnis, Ersatzcodes,
--- private Schlüssel), ist für die Anwendung unsichtbar. Ausnahme: payments.payment_method_config.secret_ciphertext
--- ist mit einem Hauptschlüssel verschlüsselt, der nicht in der Datenbank liegt (Envelope Encryption).
+-- private Schlüssel), ist für die Anwendung unsichtbar. Zwei Ausnahmen, beide mit demselben Grund:
+-- payments.payment_method_config.secret_ciphertext und integrations.connection.secrets sind mit einem
+-- Hauptschlüssel verschlüsselt, der nicht in der Datenbank liegt (Envelope Encryption, siehe
+-- packages/kernel/src/secret-box.ts). Wer nur die Datenbank hat, kann sie nicht lesen; die Anwendung
+-- braucht sie, um den fremden Dienst aufzurufen.
 -- Hash-Spalten zum Wiederfinden (Warenkorb-Token, API-Token, gekürzte IP) sind erlaubt: Aus einem
 -- SHA-256-Hash eines langen Zufallswerts lässt sich der Wert nicht zurückrechnen.
 SELECT pg_temp.ok(count(*) = 0, 'shop_app, shop_platform und shop_relay lesen keine Anmeldegeheimnisse (Verstöße: '
@@ -82,7 +85,8 @@ SELECT pg_temp.ok(count(*) = 0, 'shop_app, shop_platform und shop_relay lesen ke
            AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg\_%'
            AND a.attname ~ '(password|secret|encrypted|private_key|backup_code)') cols
  WHERE has_column_privilege(r, cols.attrelid, cols.attname, 'SELECT')
-   AND cols.col NOT IN ('payments.payment_method_config.secret_ciphertext');
+   AND cols.col NOT IN ('payments.payment_method_config.secret_ciphertext',
+                        'integrations.connection.secrets');
 SELECT pg_temp.ok(count(*) = 3, 'Die Prüfung oben erkennt die Anmeldegeheimnisse wirklich (' || count(*) || ' Spalten gefunden)')
   FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = 'identity' AND a.attnum > 0 AND a.attname ~ '(password|secret|encrypted|private_key|backup_code)';

@@ -27,6 +27,7 @@
     "@shop/checkout": "workspace:*",
     "@shop/http": "workspace:*",
     "@shop/identity": "workspace:*",
+    "@shop/integrations": "workspace:*",
     "@shop/customers": "workspace:*",
     "@shop/inventory": "workspace:*",
     "@shop/kernel": "workspace:*",
