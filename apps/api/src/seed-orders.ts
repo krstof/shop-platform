@@ -275,13 +275,17 @@ export async function seedOrders(options: {
   };
   try {
     const parts: string[] = [];
-    const existing = await call("GET", "/admin/v1/orders?limit=1");
-    if ((existing.data ?? []).length === 0 && orders.length > 0) {
+    // Weitermachen statt abbrechen: Bricht ein Lauf mittendrin ab, legt der nächste nur die
+    // fehlenden Bestellungen an. Ein Shop mit genug Bestellungen bleibt unverändert.
+    const existing = await call("GET", "/admin/v1/orders?limit=100");
+    const already = (existing.data ?? []).length;
+    const todo = orders.slice(already);
+    if (todo.length > 0) {
       const products = (await call("GET", "/admin/v1/products?limit=100")).data ?? [];
       const idByName = new Map(products.map((p) => [p.name ?? "", p.id]));
       let placed = 0;
       let shipped = 0;
-      for (const order of orders) {
+      for (const order of todo) {
         const lines = order.lines.flatMap((l) => {
           const productId = idByName.get(l.product);
           return productId === undefined ? [] : [{ productId, quantity: l.quantity }];
