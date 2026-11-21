@@ -390,6 +390,7 @@ function Editor({ initial }: { initial: DesignState }) {
                 template={form.template}
                 images={images}
                 uploadImage={uploadImage}
+                shopId={shop.id}
                 products={published}
                 categories={(categories.data ?? []).filter((c) => c.visible)}
                 pages={form.pages}

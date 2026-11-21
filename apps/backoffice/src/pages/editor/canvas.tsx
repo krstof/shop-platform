@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Settings2, Trash, Upload,
 import { siFacebook, siInstagram, siPinterest, siTiktok, siX, siYoutube } from "simple-icons";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Select } from "../../components/select.js";
+import { StockPhotoButton } from "../../components/stock-photos.js";
 import type { Category, DesignImage, Product } from "../../lib/api.js";
 import {
   BLOCK_INFO,
@@ -57,6 +58,8 @@ export interface CanvasShop {
 interface Ctx {
   images: ReadonlyMap<string, DesignImage>;
   uploadImage: (file: File) => Promise<DesignImage>;
+  /** Kennung des Shops, für die Bildersuche. */
+  shopId: string;
   products: readonly Product[];
   categories: readonly Category[];
   pages: readonly ContentPage[];
@@ -965,6 +968,22 @@ function UploadButton({
         {busy ? "Wird hochgeladen …" : label}
         {error && <span className="text-sm text-red-700">{error}</span>}
       </button>
+      {/* Bildersuche (21.11.2026): dasselbe Ergebnis wie ein Bild von der Festplatte. */}
+      <StockPhotoButton
+        shopId={ctx.shopId}
+        compact={compact}
+        onPicked={async (file) => {
+          setBusy(true);
+          setError(undefined);
+          try {
+            onUploaded(await ctx.uploadImage(file));
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Hochladen hat nicht geklappt.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
     </>
   );
 }

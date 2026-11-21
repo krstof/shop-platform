@@ -16,6 +16,7 @@ import { ProductsPage } from "./pages/products.js";
 import { CouponsPage } from "./pages/coupons.js";
 import { CustomersPage } from "./pages/customers.js";
 import { InboxPage } from "./pages/inbox.js";
+import { IntegrationsPage } from "./pages/integrations.js";
 import { ShippingPage } from "./pages/shipping.js";
 import { TeamPage } from "./pages/team.js";
 import { parseOrderFilter } from "./lib/order-filter.js";
@@ -139,6 +140,12 @@ const settingsGeneral = createRoute({
   path: "/einstellungen/allgemein",
   component: GeneralSettingsPage,
 });
+// Anbindungen an fremde Dienste (21.11.2026).
+const settingsIntegrations = createRoute({
+  getParentRoute: () => shop,
+  path: "/einstellungen/anbindungen",
+  component: IntegrationsPage,
+});
 
 const orders = createRoute({
   getParentRoute: () => shop,
@@ -183,6 +190,7 @@ const routeTree = root.addChildren([
     team,
     settings,
     settingsGeneral,
+    settingsIntegrations,
     shipping,
     coupons,
     customers,

@@ -153,6 +153,10 @@ BEGIN
   INSERT INTO storefront.template_version (tenant_id, template_id, version_number, document)
     VALUES (t, v_tpl, 1, '{"schemaVersion":1,"sections":[]}');
 
+  -- integrations: eine eingerichtete Anbindung mit verschlüsselten Zugangsdaten
+  INSERT INTO integrations.connection (tenant_id, provider, enabled, settings, secrets)
+    VALUES (t, 'telegram', true, '{"chatId":"4711"}'::jsonb, '\x0102030405'::bytea);
+
   -- ai: Verbrauch des Assistenten je Tag
   INSERT INTO ai.usage_day (tenant_id, day, requests, input_tokens, output_tokens) VALUES (t, current_date, 1, 100, 20);
 

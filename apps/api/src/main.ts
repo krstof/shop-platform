@@ -38,14 +38,15 @@ async function main(): Promise<void> {
       logger.warn({ err: error }, "Datenbankverbindung (Plattform) abgebrochen, wird neu aufgebaut"),
   });
   const mailer = createSmtpMailSender({ url: config.SHOP_SMTP_URL, from: config.SHOP_MAIL_FROM });
+  const secretBox = createSecretBox(
+    masterKeysFromEnv({
+      SHOP_MASTER_KEY_V1: config.SHOP_MASTER_KEY_V1,
+      SHOP_MASTER_KEY_V2: config.SHOP_MASTER_KEY_V2,
+    }),
+  );
   // Eigener kleiner Pool als shop_auth, nur im Modul identity (ADR-008).
   const identity = createIdentityService({
-    secretBox: createSecretBox(
-      masterKeysFromEnv({
-        SHOP_MASTER_KEY_V1: config.SHOP_MASTER_KEY_V1,
-        SHOP_MASTER_KEY_V2: config.SHOP_MASTER_KEY_V2,
-      }),
-    ),
+    secretBox,
     // Betreiberkonten: 1 Stunde ohne Aktivität, höchstens 12 Stunden (Sicherheit 5.2).
     sessionKindOf: async (userId) =>
       (await operators.findOperator(userId)) === undefined ? "standard" : "operator",
@@ -80,6 +81,7 @@ async function main(): Promise<void> {
       media: mediaFromConfig(config, database),
       mailer,
       storefrontBaseUrl: config.SHOP_STOREFRONT_BASE_URL,
+      secretBox,
       logger,
       assistantModel:
         config.SHOP_ASSISTANT_API_KEY === undefined
