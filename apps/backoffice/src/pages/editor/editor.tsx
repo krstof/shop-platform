@@ -7,7 +7,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { Alert, Badge, Button, Spinner } from "../../components/ui.js";
 import {
   ApiError,
-  fileToBase64,
+  imageUploadData,
   listAll,
   request,
   type DesignImage,
@@ -198,7 +198,7 @@ function Editor({ initial }: { initial: DesignState }) {
       return request<DesignState>("/admin/v1/design/logo", {
         method: "POST",
         shopId: shop.id,
-        body: { data: await fileToBase64(file), filename: file.name },
+        body: await imageUploadData(file),
       });
     },
     onSuccess: (s) => {
@@ -212,7 +212,7 @@ function Editor({ initial }: { initial: DesignState }) {
       const img = await request<DesignImage>("/admin/v1/design/images", {
         method: "POST",
         shopId: shop.id,
-        body: { data: await fileToBase64(file), filename: file.name },
+        body: await imageUploadData(file),
       });
       setImages((m) => new Map(m).set(img.id, img));
       return img;

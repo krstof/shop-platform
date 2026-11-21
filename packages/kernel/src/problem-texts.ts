@@ -48,7 +48,10 @@ export const PROBLEM_TITLES: Readonly<Record<string, Texts>> = {
     de: "Die Anfrage wird noch bearbeitet.",
     en: "The request is still being processed.",
   },
-  payload_too_large: { de: "Die Anfrage ist zu groß.", en: "The request is too large." },
+  payload_too_large: {
+    de: "Die Anfrage ist zu groß. Bei Bildern sind bis 8 MB erlaubt.",
+    en: "The request is too large. Images may be up to 8 MB.",
+  },
   unsupported_media_type: {
     de: "Dieses Datenformat wird nicht unterstützt. Bitte JSON senden.",
     en: "This content type is not supported. Please send JSON.",

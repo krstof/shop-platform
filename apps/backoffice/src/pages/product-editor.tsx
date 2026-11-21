@@ -8,7 +8,7 @@ import { MultiSelect } from "../components/select.js";
 import {
   ApiError,
   categoryIdsOf,
-  fileToBase64,
+  imageUploadData,
   request,
   type Product,
   type ProductInput,
@@ -539,10 +539,9 @@ function DeleteProductCard({ product }: { product: Product }) {
 }
 
 async function uploadImage(shopId: string, productId: string, file: File): Promise<Product> {
-  const data = await fileToBase64(file);
   return request<Product>(`/admin/v1/products/${productId}/images`, {
     method: "POST",
-    body: { data, filename: file.name },
+    body: await imageUploadData(file),
     shopId,
   });
 }

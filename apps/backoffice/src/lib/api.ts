@@ -262,6 +262,42 @@ export function fileToBase64(file: Blob): Promise<string> {
   });
 }
 
+/**
+ * Grenze fürs Hochladen: Die API nimmt Bilder bis 8 MB an, Caddy die ganze Anfrage bis 12 MB.
+ * Base64 macht aus 3 Bytes 4 Zeichen, deshalb bleibt bei 7,5 MB Datei genug Luft für den Rest.
+ */
+const UPLOAD_PASS_THROUGH_BYTES = 7_500_000;
+
+/** Lange Kante, auf die ein zu großes Bild verkleinert wird. Für Bühnenbilder reichlich. */
+const UPLOAD_MAX_EDGE = 2400;
+
+/**
+ * Bereitet ein Bild zum Hochladen vor (21.11.2026). Kleine Bilder gehen unverändert hinaus, große
+ * verkleinert der Browser vorher auf {@link UPLOAD_MAX_EDGE} und schreibt sie als WebP (behält
+ * Transparenz, etwa bei einem Logo). Vorher scheiterte jedes größere Foto an „Die Anfrage ist zu groß“.
+ */
+export async function imageUploadData(file: File | Blob): Promise<{ data: string; filename: string }> {
+  const name = file instanceof File && file.name !== "" ? file.name : "bild";
+  if (file.size <= UPLOAD_PASS_THROUGH_BYTES) return { data: await fileToBase64(file), filename: name };
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, UPLOAD_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) throw new Error("Bild konnte nicht verkleinert werden");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const base = name.replace(/\.[^.]+$/, "");
+  for (const quality of [0.9, 0.8, 0.7]) {
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+    if (blob === null) continue;
+    const data = await fileToBase64(blob);
+    if (data.length <= 10_000_000 || quality === 0.7) return { data, filename: `${base}.webp` };
+  }
+  throw new Error("Bild konnte nicht verkleinert werden");
+}
+
 export type OrderStatus = "pending_payment" | "open" | "in_progress" | "completed" | "cancelled";
 
 export interface OrderSummary {

@@ -145,8 +145,11 @@ export function assistantEndpoints(deps: AssistantDeps): Endpoint[] {
         { role: "user", content: [{ type: "text", text: "Welche Bestellungen muss ich versenden?" }] },
       ],
     },
+    // Fotos im Chat (bis 2 je Anfrage als Base64) sprengen die Standardgrenze von 1 MB. 4 MB reichen
+    // für zwei verkleinerte Fotos plus Verlauf; vorher scheiterte jedes Foto an 413 (21.11.2026).
+    bodyLimit: 4 * 1024 * 1024,
     response: { status: 200, description: "Antwort des Assistenten.", schema: replySchema },
-    problems: [429],
+    problems: [413, 429],
     handler: async ({ body }) => {
       const model = deps.model;
       if (model === undefined)
