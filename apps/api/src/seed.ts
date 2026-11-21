@@ -19,6 +19,7 @@ import { loadApiConfig } from "./config.js";
 import { allEndpoints } from "./endpoints.js";
 import { mediaFromConfig } from "./media.js";
 import { seedCatalog } from "./seed-catalog.js";
+import { seedOrders } from "./seed-orders.js";
 
 const SEED_SHOPS = [
   { handle: "teeladen", name: "Teeladen", ownerEmail: "inhaberin@teeladen.example", ownerName: "Ina Tee" },
@@ -136,6 +137,9 @@ async function main(): Promise<void> {
       if (seed === undefined) continue;
       const result = await seedCatalog({ database, endpoints, tenantId: shop.id, handle: shop.handle });
       console.log(`${seed.name}: ${result}.`);
+      // Bestellungen und Nachrichten (21.11.2026), damit Listen und Kennzahlen nicht leer sind.
+      const sales = await seedOrders({ database, endpoints, tenantId: shop.id, handle: shop.handle });
+      if (sales !== "") console.log(`${seed.name}: ${sales}.`);
     }
   } finally {
     await identity.close();

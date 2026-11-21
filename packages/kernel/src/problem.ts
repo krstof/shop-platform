@@ -150,7 +150,7 @@ export class PreconditionRequiredError extends AppError {
 export class PayloadTooLargeError extends AppError {
   readonly status = 413;
   readonly code = "payload_too_large";
-  readonly title = "Die Anfrage ist zu groß.";
+  readonly title = "Die Anfrage ist zu groß. Bei Bildern sind bis 8 MB erlaubt.";
 }
 
 export class UnsupportedMediaTypeError extends AppError {

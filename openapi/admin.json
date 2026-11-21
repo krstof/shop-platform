@@ -881,7 +881,7 @@
             }
           },
           "413": {
-            "description": "Die Anfrage ist größer als 1 MB.",
+            "description": "Die Anfrage ist größer als 4 MB.",
             "content": {
               "application/problem+json": {
                 "schema": {

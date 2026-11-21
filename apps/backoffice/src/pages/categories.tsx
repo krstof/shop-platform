@@ -6,7 +6,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Alert, Badge, Button, Card, Field, Input, Spinner, Textarea } from "../components/ui.js";
 import {
   ApiError,
-  fileToBase64,
+  imageUploadData,
   listAll,
   request,
   type Category,
@@ -420,7 +420,7 @@ function CategoryImageCard({
     mutationFn: async (file: File) =>
       request<Category>(`/admin/v1/categories/${category.id}/image`, {
         method: "PUT",
-        body: { data: await fileToBase64(file), filename: file.name },
+        body: await imageUploadData(file),
         shopId: shop.id,
       }),
     onSuccess: onChanged,

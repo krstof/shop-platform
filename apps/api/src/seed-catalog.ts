@@ -1,12 +1,14 @@
 // Testprodukte (MVP-Etappe M2) für die Testshops: dieselben Teesorten wie in der Vorschau der
 // Storefront (apps/storefront/src/vorschau/daten.ts), dazu ein paar Stücke für den Modeladen.
 // Angelegt über die echte Admin-API (dieselben Prüfungen wie für Händler), nicht an ihr vorbei.
-// Dazu je Produkt ein selbst gezeichnetes Bild (M2 Teil 2): Teedose wie in der Vorschau, für den
-// Modeladen einfache Umrisse. Ohne Schrift, damit im Container keine Schriftarten nötig sind.
+// Bilder (21.11.2026): echte Fotos aus `apps/api/seed-images` statt der früher gezeichneten
+// Platzhalter, je Produkt und je Kategorie eines. Herkunft und Lizenz stehen in
+// `apps/api/seed-images/BILDQUELLEN.md`; alle sind CC0 oder gemeinfrei.
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import type { Endpoint } from "@shop/http";
 import { createLogger, type Database } from "@shop/kernel";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
-import sharp from "sharp";
 import { createApi } from "./app.js";
 import { databaseIdempotencyStore } from "./idempotency-store.js";
 
@@ -14,6 +16,8 @@ interface SeedCategory {
   readonly slug: string;
   readonly name: string;
   readonly description: string;
+  /** Dateiname ohne Endung in `apps/api/seed-images`. */
+  readonly image: string;
 }
 
 interface SeedProduct {
@@ -24,15 +28,41 @@ interface SeedProduct {
   readonly price: number;
   readonly taxClass: "standard" | "reduced";
   readonly stock: number;
-  /** Testbild: Form und Farbe. */
-  readonly picture: { readonly shape: Shape; readonly color: string };
+  /** Dateiname ohne Endung in `apps/api/seed-images`. */
+  readonly image: string;
 }
 
-type Shape = "tin" | "shirt" | "beanie";
+interface SeedWebFont {
+  readonly id: string;
+  readonly name: string;
+  readonly category: "serif" | "sans-serif" | "display" | "handwriting" | "monospace";
+}
 
 interface SeedCatalog {
   readonly categories: readonly SeedCategory[];
   readonly products: readonly SeedProduct[];
+  /** Aussehen des Testshops: Logo, Bühne, Farben, Texte. */
+  readonly design: SeedDesign;
+}
+
+interface SeedDesign {
+  /** Dateiname des Logos ohne Endung (PNG mit Transparenz). */
+  readonly logo: string;
+  /** Dateiname des Bühnenbilds ohne Endung. */
+  readonly hero: string;
+  readonly accentColor: string;
+  /** Grundschrift des Shops, falls keine eigene gewählt wird. */
+  readonly font: "klassisch" | "modern" | "freundlich";
+  /** Schrift der Überschriften bzw. des Fließtexts (Google Fonts, wie im Editor). */
+  readonly headingFont: SeedWebFont;
+  readonly bodyFont: SeedWebFont;
+  readonly template: "klassisch" | "modern" | "galerie" | "editorial";
+  readonly heroTitle: string;
+  readonly heroText: string;
+  readonly tagline: string;
+  readonly footerText: string;
+  /** Namen der Produkte, die als Empfehlungen oben stehen. */
+  readonly featured: readonly string[];
 }
 
 export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
@@ -42,13 +72,20 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         slug: "gruentee",
         name: "Grüntee",
         description: "Frisch, grasig, manchmal leicht süß. Am besten mit 70 bis 80 °C heißem Wasser.",
+        image: "tee-kat-gruentee",
       },
       {
         slug: "schwarztee",
         name: "Schwarztee",
         description: "Kräftig und malzig, pur oder mit einem Schuss Milch.",
+        image: "tee-kat-schwarztee",
       },
-      { slug: "kraeutertee", name: "Kräutertee", description: "Ohne Koffein, für jede Tageszeit." },
+      {
+        slug: "kraeutertee",
+        name: "Kräutertee",
+        description: "Ohne Koffein, für jede Tageszeit.",
+        image: "tee-kat-kraeutertee",
+      },
     ],
     products: [
       {
@@ -59,7 +96,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 890,
         taxClass: "reduced",
         stock: 30,
-        picture: { shape: "tin", color: "#7a9a5b" },
+        image: "tee-sencha",
       },
       {
         name: "Jasmin-Perlen",
@@ -69,7 +106,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 1450,
         taxClass: "reduced",
         stock: 12,
-        picture: { shape: "tin", color: "#c9b46a" },
+        image: "tee-jasmin",
       },
       {
         name: "Assam Morgenstund",
@@ -79,7 +116,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 690,
         taxClass: "reduced",
         stock: 40,
-        picture: { shape: "tin", color: "#8a4b2f" },
+        image: "tee-assam",
       },
       {
         name: "Earl Grey Classic",
@@ -89,7 +126,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 1190,
         taxClass: "reduced",
         stock: 18,
-        picture: { shape: "tin", color: "#3f5872" },
+        image: "tee-earlgrey",
       },
       {
         name: "Pfefferminze pur",
@@ -99,7 +136,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 550,
         taxClass: "reduced",
         stock: 50,
-        picture: { shape: "tin", color: "#4f8a7a" },
+        image: "tee-pfefferminze",
       },
       {
         name: "Rooibos Vanille",
@@ -109,14 +146,40 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 790,
         taxClass: "reduced",
         stock: 0,
-        picture: { shape: "tin", color: "#b0603d" },
+        image: "tee-rooibos",
       },
     ],
+    design: {
+      logo: "tee-logo",
+      hero: "tee-buehne",
+      accentColor: "#43684a",
+      font: "klassisch",
+      headingFont: { id: "lora", name: "Lora", category: "serif" },
+      bodyFont: { id: "inter", name: "Inter", category: "sans-serif" },
+      template: "klassisch",
+      heroTitle: "Tee aus kleinen Gärten, frisch aufgelegt",
+      heroText:
+        "Wir kaufen in kleinen Mengen direkt bei den Gärten ein und füllen jede Sorte von Hand ab. " +
+        "So kommt der Tee frisch bei dir an.",
+      tagline: "Lose Tees seit 1998",
+      footerText: "Wir sind montags bis freitags von 9 bis 18 Uhr für dich da.",
+      featured: ["Sencha Frühlingshauch", "Earl Grey Classic", "Rooibos Vanille"],
+    },
   },
   modeladen: {
     categories: [
-      { slug: "oberteile", name: "Oberteile", description: "T-Shirts, Hemden und Pullover." },
-      { slug: "accessoires", name: "Accessoires", description: "Mützen, Schals und Taschen." },
+      {
+        slug: "oberteile",
+        name: "Oberteile",
+        description: "T-Shirts, Hemden und Pullover.",
+        image: "mode-kat-oberteile",
+      },
+      {
+        slug: "accessoires",
+        name: "Accessoires",
+        description: "Mützen, Schals und Taschen.",
+        image: "mode-kat-accessoires",
+      },
     ],
     products: [
       {
@@ -126,7 +189,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 1990,
         taxClass: "standard",
         stock: 60,
-        picture: { shape: "shirt", color: "#3f5872" },
+        image: "mode-tshirt",
       },
       {
         name: "Leinenhemd Sommer",
@@ -135,7 +198,7 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 4990,
         taxClass: "standard",
         stock: 15,
-        picture: { shape: "shirt", color: "#d8cfb8" },
+        image: "mode-leinenhemd",
       },
       {
         name: "Wollmütze Fjord",
@@ -144,44 +207,43 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         price: 2490,
         taxClass: "standard",
         stock: 25,
-        picture: { shape: "beanie", color: "#8a4b2f" },
+        image: "mode-muetze",
       },
     ],
+    design: {
+      logo: "mode-logo",
+      hero: "mode-buehne",
+      accentColor: "#2f3b57",
+      font: "modern",
+      headingFont: { id: "inter", name: "Inter", category: "sans-serif" },
+      bodyFont: { id: "inter", name: "Inter", category: "sans-serif" },
+      template: "modern",
+      heroTitle: "Kleidung, die lange hält",
+      heroText:
+        "Wenige Teile, gute Stoffe, ruhige Farben. Alles so geschnitten, dass es nach dem zehnten " +
+        "Waschen noch sitzt.",
+      tagline: "Schlichte Mode aus guten Stoffen",
+      footerText: "Versand innerhalb Deutschlands, Rückgabe innerhalb von 30 Tagen.",
+      featured: ["Leinenhemd Sommer", "Wollmütze Fjord"],
+    },
   },
 };
 
-/** Zeichnet ein Testbild (1200 × 1200, PNG). */
-export async function seedPicture(picture: SeedProduct["picture"]): Promise<Buffer> {
-  const c = picture.color;
-  const shapes: Record<Shape, string> = {
-    // Teedose wie apps/storefront/src/components/Teedose.astro, Etikett ohne Schrift.
-    tin: `<ellipse cx="100" cy="172" rx="52" ry="8" fill="#000" opacity="0.08"/>
-      <rect x="52" y="44" width="96" height="128" rx="10" fill="${c}"/>
-      <rect x="48" y="34" width="104" height="22" rx="6" fill="${c}"/>
-      <rect x="48" y="34" width="104" height="22" rx="6" fill="#000" opacity="0.18"/>
-      <rect x="58" y="84" width="84" height="52" rx="4" fill="#fffaf2" opacity="0.92"/>
-      <rect x="72" y="100" width="56" height="6" rx="3" fill="${c}" opacity="0.7"/>
-      <rect x="80" y="114" width="40" height="4" rx="2" fill="#2b2622" opacity="0.35"/>
-      <rect x="58" y="56" width="10" height="110" rx="5" fill="#fff" opacity="0.16"/>`,
-    shirt: `<ellipse cx="100" cy="176" rx="56" ry="7" fill="#000" opacity="0.08"/>
-      <path d="M70 34 L48 44 L22 76 L44 92 L58 76 L58 168 L142 168 L142 76 L156 92 L178 76 L152 44 L130 34
-        Q100 56 70 34 Z" fill="${c}"/>
-      <path d="M70 34 Q100 56 130 34 Q100 46 70 34 Z" fill="#000" opacity="0.15"/>
-      <rect x="62" y="80" width="8" height="84" rx="4" fill="#fff" opacity="0.15"/>`,
-    beanie: `<ellipse cx="100" cy="170" rx="60" ry="7" fill="#000" opacity="0.08"/>
-      <circle cx="100" cy="40" r="16" fill="${c}"/>
-      <path d="M44 132 Q44 52 100 52 Q156 52 156 132 Z" fill="${c}"/>
-      <rect x="40" y="126" width="120" height="36" rx="8" fill="${c}"/>
-      <rect x="40" y="126" width="120" height="36" rx="8" fill="#000" opacity="0.18"/>
-      <path d="M60 126 L60 162 M80 126 L80 162 M100 126 L100 162 M120 126 L120 162 M140 126 L140 162"
-        stroke="#fff" stroke-opacity="0.2" stroke-width="3"/>`,
-  };
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="1200" height="1200">
-    <rect width="200" height="200" fill="#f4efe6"/>${shapes[picture.shape]}</svg>`;
-  return sharp(Buffer.from(svg)).png().toBuffer();
+/** Ordner mit den Fotos der Testdaten, neben `dist` im Paket @shop/api. */
+const SEED_IMAGES = fileURLToPath(new URL("../seed-images/", import.meta.url));
+
+/** Liest ein Foto der Testdaten. `logo` ist PNG mit Transparenz, alles andere JPEG. */
+export async function seedImage(name: string): Promise<{ data: string; filename: string }> {
+  const extension = name.endsWith("-logo") ? "png" : "jpg";
+  const file = `${name}.${extension}`;
+  return { data: (await readFile(SEED_IMAGES + file)).toString("base64"), filename: file };
 }
 
-/** Legt Kategorien und Produkte eines Testshops an, wenn der Shop noch keine Produkte hat. */
+/**
+ * Legt Kategorien und Produkte eines Testshops an, wenn der Shop noch keine Produkte hat, und
+ * ergänzt alles, was später dazugekommen ist: Produktfotos, Kategoriebilder und das Aussehen
+ * (Logo, Bühnenbild, Farben, Schriften, Texte). Jeder Schritt darf mehrfach laufen.
+ */
 export async function seedCatalog(options: {
   readonly database: Database<unknown>;
   readonly endpoints: readonly Endpoint[];
@@ -192,28 +254,35 @@ export async function seedCatalog(options: {
   if (catalog === undefined) return "keine Testprodukte vorgesehen";
   const app: NestFastifyApplication = await createApi({
     endpoints: options.endpoints,
-    // Der Befehl handelt als System für genau diesen einen Shop, mit Katalogrechten.
+    // Der Befehl handelt als System für genau diesen einen Shop, mit Katalog- und Einstellungsrechten.
     resolveActor: async () => ({
       actor: { type: "system" },
       tenantId: options.tenantId,
-      scopes: new Set(["products:read", "products:write"]),
+      scopes: new Set(["products:read", "products:write", "settings:read", "settings:write"]),
     }),
     logger: createLogger({ level: "silent" }),
     idempotency: databaseIdempotencyStore(options.database),
   });
   const http = app.getHttpAdapter().getInstance();
-  const call = async (method: "GET" | "POST", url: string, payload?: object) => {
-    const r = await http.inject({ method, url, ...(payload === undefined ? {} : { payload }) });
+  const call = async (method: HttpMethod, url: string, payload?: object, headers?: HeaderMap) => {
+    const r = await http.inject({
+      method,
+      url,
+      ...(payload === undefined ? {} : { payload }),
+      ...(headers === undefined ? {} : { headers }),
+    });
     if (r.statusCode >= 300) throw new Error(`${method} ${url}: ${r.statusCode} ${r.body}`);
-    return r.json() as { id: string; data?: unknown[] };
+    return r.json() as SeedResponse;
   };
   try {
     const existing = await call("GET", "/admin/v1/products?limit=100");
-    let created = "";
+    const parts: string[] = [];
     if ((existing.data ?? []).length === 0) {
       const categoryIds = new Map<string, string>();
-      for (const c of catalog.categories)
-        categoryIds.set(c.slug, (await call("POST", "/admin/v1/categories", c)).id);
+      for (const c of catalog.categories) {
+        const body = { slug: c.slug, name: c.name, description: c.description };
+        categoryIds.set(c.slug, (await call("POST", "/admin/v1/categories", body)).id);
+      }
       for (const p of catalog.products) {
         await call("POST", "/admin/v1/products", {
           name: p.name,
@@ -225,32 +294,115 @@ export async function seedCatalog(options: {
           status: "published",
         });
       }
-      created = `${catalog.categories.length} Kategorien und ${catalog.products.length} Produkte angelegt`;
+      parts.push(`${catalog.categories.length} Kategorien und ${catalog.products.length} Produkte angelegt`);
+    } else {
+      parts.push("Produkte gibt es schon, bleiben unverändert");
     }
-    // Bilder (M2 Teil 2): auch für Testprodukte, die schon vor den Bildern angelegt wurden.
-    const products = (await call("GET", "/admin/v1/products?limit=100")).data as SeedListItem[];
+
+    // Produktfotos: fehlende nachtragen und die früher gezeichneten Platzhalter ersetzen. Die
+    // Platzhalter waren immer quadratisch (1200 × 1200), die Fotos sind es nie.
+    const products = (await call("GET", "/admin/v1/products?limit=100")).data as SeedProductRow[];
     let pictures = 0;
     for (const p of catalog.products) {
       const product = products.find((x) => x.name === p.name);
-      if (product === undefined || product.images.length > 0) continue;
-      const data = (await seedPicture(p.picture)).toString("base64");
-      await call("POST", `/admin/v1/products/${product.id}/images`, {
-        data,
-        filename: `${product.slug}.png`,
-      });
+      if (product === undefined) continue;
+      const placeholder =
+        product.images.length === 1 && product.images[0]?.width === product.images[0]?.height;
+      if (product.images.length > 0 && !placeholder) continue;
+      for (const image of product.images)
+        await call("DELETE", `/admin/v1/products/${product.id}/images/${image.id}`);
+      await call("POST", `/admin/v1/products/${product.id}/images`, await seedImage(p.image));
       pictures++;
     }
-    const parts = [created || "Produkte gibt es schon, bleiben unverändert"];
-    if (pictures > 0) parts.push(`${pictures} Bilder hochgeladen`);
+    if (pictures > 0) parts.push(`${pictures} Produktfotos hochgeladen`);
+
+    // Kategoriebilder: nur für Kategorien, die noch keines haben.
+    const categories = (await call("GET", "/admin/v1/categories?limit=100")).data as SeedCategoryRow[];
+    let categoryImages = 0;
+    for (const c of catalog.categories) {
+      const category = categories.find((x) => x.slug === c.slug);
+      if (category === undefined || (category.image !== null && category.image !== undefined)) continue;
+      await call("PUT", `/admin/v1/categories/${category.id}/image`, await seedImage(c.image));
+      categoryImages++;
+    }
+    if (categoryImages > 0) parts.push(`${categoryImages} Kategoriebilder hochgeladen`);
+
+    if (await seedDesign(call, catalog, products)) parts.push("Aussehen eingerichtet");
     return parts.join(", ");
   } finally {
     await app.close();
   }
 }
 
-interface SeedListItem {
+/**
+ * Richtet das Aussehen eines Testshops ein: Logo, Bühnenbild mit Überschrift, Hauptfarbe, Schriften,
+ * Slogan, Fußzeile und hervorgehobene Produkte. Läuft nur, solange der Shop noch kein Logo hat, damit
+ * eigene Änderungen im Editor nicht überschrieben werden.
+ */
+async function seedDesign(
+  call: (method: HttpMethod, url: string, payload?: object, headers?: HeaderMap) => Promise<SeedResponse>,
+  catalog: SeedCatalog,
+  products: readonly SeedProductRow[],
+): Promise<boolean> {
+  const before = (await call("GET", "/admin/v1/design")) as unknown as DesignState;
+  if (before.draft.logo !== null || before.published.logo !== null) return false;
+  const design = catalog.design;
+  await call("POST", "/admin/v1/design/logo", await seedImage(design.logo));
+  const hero = await call("POST", "/admin/v1/design/images", await seedImage(design.hero));
+  const current = (await call("GET", "/admin/v1/design")) as unknown as DesignState;
+  const featured = design.featured
+    .map((name) => products.find((p) => p.name === name)?.id)
+    .filter((id): id is string => id !== undefined);
+  await call(
+    "PUT",
+    "/admin/v1/design/draft",
+    {
+      accentColor: design.accentColor,
+      font: design.font,
+      logoImageId: current.draft.logo?.id ?? null,
+      headingFont: design.headingFont,
+      bodyFont: design.bodyFont,
+      template: design.template,
+      tagline: design.tagline,
+      home: {
+        heroImageId: hero.id,
+        heroTitle: design.heroTitle,
+        heroText: design.heroText,
+        featuredProductIds: featured,
+        showCategories: true,
+        showNew: true,
+      },
+      footer: { text: design.footerText, links: [] },
+    },
+    { "if-match": `"${current.version}"` },
+  );
+  await call("POST", "/admin/v1/design/publish");
+  return true;
+}
+
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type HeaderMap = Record<string, string>;
+
+interface SeedResponse {
+  readonly id: string;
+  readonly data?: readonly unknown[];
+}
+
+interface SeedProductRow {
   readonly id: string;
   readonly name: string;
   readonly slug: string;
-  readonly images: readonly unknown[];
+  readonly images: readonly { readonly id: string; readonly width: number; readonly height: number }[];
+}
+
+interface SeedCategoryRow {
+  readonly id: string;
+  readonly slug: string;
+  readonly image: unknown;
+}
+
+interface DesignState {
+  readonly draft: { readonly logo: { readonly id: string } | null };
+  readonly published: { readonly logo: { readonly id: string } | null };
+  readonly version: number;
 }
