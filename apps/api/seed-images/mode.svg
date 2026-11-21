@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="220" viewBox="0 0 880 220">
+  <g transform="translate(30,40)" fill="none" stroke="#1d2433" stroke-width="11" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M44 22 L12 44 L28 76 L44 66 L44 136 L112 136 L112 66 L128 76 L144 44 L112 22
+             C100 42 56 42 44 22 Z"/>
+  </g>
+  <text x="196" y="124" font-family="Inter" font-weight="600" font-size="80" fill="#1d2433" letter-spacing="-2">Modeladen</text>
+  <text x="200" y="168" font-family="Inter" font-size="26" fill="#6b7384" letter-spacing="9">SCHLICHT GUT</text>
+</svg>

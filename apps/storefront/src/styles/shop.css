@@ -180,7 +180,7 @@ main:focus-visible {
   margin-top: 2rem;
   border-radius: 12px;
   overflow: hidden;
-  min-height: 18rem;
+  min-height: min(60vh, 24rem);
   isolation: isolate;
 }
 .buehne-foto {
@@ -189,13 +189,28 @@ main:focus-visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  z-index: -2;
+}
+/* Ein Verlauf über die ganze Bühne, nicht nur hinter dem Text: Sonst steht weiße Schrift je nach
+   Foto auf einer hellen Stelle und ist nicht mehr lesbar (21.11.2026). */
+.buehne-bild::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   z-index: -1;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.45) 35%,
+    rgba(0, 0, 0, 0.12) 70%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
 }
 .buehne-bild .buehne-text {
   align-self: end;
   padding: 2.5rem 1.75rem 1.75rem;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 .buehne-bild .buehne-text h1,
 .buehne-bild .buehne-text h2 {
@@ -1198,7 +1213,7 @@ main h2 {
   font-size: 1.2rem;
 }
 .buehne-bild {
-  min-height: clamp(20rem, 42vw, 30rem);
+  min-height: clamp(26rem, 58vh, 40rem);
   border-radius: 16px;
 }
 /* Die Bühne mit Bild hat keinen Innenabstand (sonst bleibt unten ein Streifen Bild ohne Verlauf). */
@@ -1260,6 +1275,7 @@ main h2 {
 .kategorien a.mit-bild .klein {
   padding: 0;
   color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
 }
 .kategorien a.mit-bild .kachel-bild {
   position: absolute;
@@ -1276,7 +1292,7 @@ main h2 {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0) 60%);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.82) 0%, rgb(0 0 0 / 0.42) 45%, rgb(0 0 0 / 0.1) 100%);
 }
 .kategorien a.mit-bild:hover .kachel-bild {
   transform: scale(1.04);

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="220" viewBox="0 0 880 220">
+  <g transform="translate(26,34)">
+    <path d="M76 8 C34 20 10 56 12 100 C14 138 42 154 70 148 C104 141 124 104 122 66 C121 40 108 18 76 8 Z"
+          fill="#5f7d52"/>
+    <path d="M67 140 C66 104 76 68 100 38" fill="none" stroke="#ffffff" stroke-opacity="0.72"
+          stroke-width="7" stroke-linecap="round"/>
+    <path d="M67 118 C78 112 90 108 104 106 M66 92 C76 82 86 74 99 68" fill="none" stroke="#ffffff"
+          stroke-opacity="0.4" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <text x="178" y="130" font-family="Lora" font-size="92" fill="#23301f" letter-spacing="-1">Teeladen</text>
+  <text x="182" y="172" font-family="Inter" font-size="27" fill="#5f7d52" letter-spacing="7">MORGENTAU</text>
+</svg>

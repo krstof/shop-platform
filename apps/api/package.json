@@ -6,7 +6,8 @@
   "license": "UNLICENSED",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "seed-images"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
