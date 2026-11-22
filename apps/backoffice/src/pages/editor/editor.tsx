@@ -15,6 +15,7 @@ import {
   type Product,
 } from "../../lib/api.js";
 import {
+  allBlocks,
   canAdd,
   newBlock,
   newId,
@@ -126,7 +127,8 @@ function Editor({ initial }: { initial: DesignState }) {
   }
   function addBlock(type: BlockType) {
     if (!canAdd(blocks)) return;
-    const b = newBlock(type, blocks);
+    // IDs müssen über alle Ebenen eindeutig sein, also auch gegen die Bausteine in Gruppen prüfen.
+    const b = newBlock(type, allBlocks(blocks));
     setBlocks([...blocks, b]);
     setSelectedId(b.id);
   }

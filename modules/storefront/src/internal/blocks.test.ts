@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_BLOCKS,
+  MAX_GROUP_BLOCKS,
   sectionsSchema,
   storedBlockSchema,
   withSections,
@@ -189,5 +191,111 @@ describe("Bausteine", () => {
       },
     ]);
     expect(readPages(undefined)).toEqual([]);
+  });
+
+  it("nimmt eine Gruppe mit Bausteinen an", () => {
+    const gruppe = {
+      id: "g1",
+      type: "group",
+      columns: 2,
+      background: "flaeche",
+      padding: "m",
+      blocks: [
+        { id: "k1", type: "text", heading: "Hallo", text: "Kurz und gut" },
+        { id: "k2", type: "button", label: "Mehr", url: "/seite/ueber-uns", style: "primary" },
+      ],
+    };
+    expect(blocksSchema.safeParse([gruppe]).success).toBe(true);
+    // Eine leere Gruppe ist erlaubt; der Shop lässt sie dann einfach weg.
+    expect(blocksSchema.safeParse([{ ...gruppe, blocks: [] }]).success).toBe(true);
+    // Spalten nur 1 bis 3, Hintergrund und Polster nur aus der Liste.
+    expect(blocksSchema.safeParse([{ ...gruppe, columns: 4 }]).success).toBe(false);
+    expect(blocksSchema.safeParse([{ ...gruppe, columns: 0 }]).success).toBe(false);
+    expect(blocksSchema.safeParse([{ ...gruppe, background: "neon" }]).success).toBe(false);
+    expect(blocksSchema.safeParse([{ ...gruppe, padding: "xl" }]).success).toBe(false);
+  });
+
+  it("lässt in eine Gruppe keine Gruppe, keinen Shop-Bereich und höchstens acht Bausteine", () => {
+    const gruppe = (blocks: unknown[]) => ({
+      id: "g1",
+      type: "group",
+      columns: 2,
+      background: "keine",
+      padding: "s",
+      blocks,
+    });
+    const text = (id: string) => ({ id, type: "text", heading: "", text: "" });
+    expect(blocksSchema.safeParse([gruppe([text("k1")])]).success).toBe(true);
+    // Verschachtelung geht nur eine Ebene tief.
+    expect(blocksSchema.safeParse([gruppe([gruppe([])])]).success).toBe(false);
+    // Shop-Bereiche brauchen Produkte und Kategorien und gehören deshalb nicht hinein.
+    expect(blocksSchema.safeParse([gruppe([{ id: "k1", type: "hero" }])]).success).toBe(false);
+    expect(blocksSchema.safeParse([gruppe([{ id: "k1", type: "bestseller", heading: "" }])]).success).toBe(
+      false,
+    );
+    const zuViele = Array.from({ length: MAX_GROUP_BLOCKS + 1 }, (_, i) => text(`k${i}`));
+    expect(blocksSchema.safeParse([gruppe(zuViele)]).success).toBe(false);
+  });
+
+  it("zählt Bausteine in Gruppen mit und verlangt überall eigene IDs", () => {
+    const text = (id: string) => ({ id, type: "text", heading: "", text: "" });
+    const gruppe = (id: string, kinder: unknown[]) => ({
+      id,
+      type: "group",
+      columns: 1,
+      background: "keine",
+      padding: "s",
+      blocks: kinder,
+    });
+    // Dieselbe ID oben und in der Gruppe wäre im Editor nicht auseinanderzuhalten.
+    expect(blocksSchema.safeParse([text("a"), gruppe("g", [text("a")])]).success).toBe(false);
+    expect(blocksSchema.safeParse([text("a"), gruppe("g", [text("b")])]).success).toBe(true);
+    // 29 oben plus eine Gruppe mit zwei Bausteinen sind 32 und damit zu viele.
+    const viele = Array.from({ length: 29 }, (_, i) => text(`x${i}`));
+    expect(blocksSchema.safeParse([...viele, gruppe("g", [text("k1"), text("k2")])]).success).toBe(false);
+    expect(
+      blocksSchema.safeParse([...viele.slice(0, MAX_BLOCKS - 3), gruppe("g", [text("k1"), text("k2")])])
+        .success,
+    ).toBe(true);
+  });
+
+  it("liest eine gespeicherte Gruppe und wirft nur die kaputten Kinder weg", () => {
+    const gelesen = readBlocks([
+      {
+        id: "g1",
+        type: "group",
+        columns: 2,
+        background: "flaeche",
+        padding: "m",
+        blocks: [
+          { id: "k1", type: "text", heading: "Bleibt", text: "" },
+          { id: "k2", type: "video", url: 42 },
+          { id: "k1", type: "text", heading: "Doppelte ID", text: "" },
+          { id: "k3", type: "divider" },
+        ],
+      },
+      { id: "kaputt", type: "einhorn" },
+    ]);
+    expect(gelesen).toHaveLength(1);
+    const g = gelesen?.[0];
+    expect(g?.type).toBe("group");
+    expect(g?.type === "group" ? g.blocks.map((k) => k.id) : []).toEqual(["k1", "k3"]);
+  });
+
+  it("findet auch die Bilder in einer Gruppe", () => {
+    const bilder = blockImages([
+      {
+        id: "g1",
+        type: "group",
+        columns: 2,
+        background: "keine",
+        padding: "s",
+        blocks: [
+          { id: "k1", type: "image", imageId: IMG, caption: "" },
+          { id: "k2", type: "gallery", imageIds: [IMG], caption: "" },
+        ],
+      },
+    ]);
+    expect(bilder).toEqual([IMG, IMG]);
   });
 });

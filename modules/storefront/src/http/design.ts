@@ -26,6 +26,9 @@ import {
   pagesSchema,
   parseVideoUrl,
   TRUST_ICONS,
+  GROUP_BACKGROUNDS,
+  GROUP_PADDINGS,
+  MAX_GROUP_BLOCKS,
   type Block,
   type ContentPage,
 } from "../internal/blocks.js";
@@ -293,8 +296,11 @@ const homeInput = z
       .optional()
       .meta({
         description:
-          "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new (je höchstens einmal) sowie " +
-          "text, textImage, image, video (YouTube/Vimeo), map (Adresse) und spacer. Fehlt das Feld, bleiben sie.",
+          "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new sowie text, textImage, " +
+          "image, video (YouTube/Vimeo), map (Adresse), spacer, button, quote, divider, faq, gallery, " +
+          "bestseller, trust und group. Eine `group` enthält in `blocks` bis zu " +
+          "8 weitere Bausteine (keine Shop-Bereiche, keine Gruppe) und hat `columns` (1 bis 3), " +
+          "`background` und `padding`. Fehlt das Feld, bleiben die Bausteine wie sie sind.",
       }),
     sections: sectionsSchema.optional().meta({
       description:
@@ -471,7 +477,14 @@ const storeFirstBlocks = [
   z.object({ id: z.string(), type: z.literal("spacer"), size: z.enum(["s", "m", "l"]) }),
 ] as const;
 
-const storeLaterBlocks = [
+/** Bestseller: Shop-Bereich, nicht gruppenfähig (der Shop füllt ihn selbst). */
+const storeBestsellerBlock = z.object({
+  id: z.string(),
+  type: z.literal("bestseller"),
+  heading: z.string().meta({ description: "Produkte dazu liefert GET /shops/{shopHandle}/bestsellers." }),
+});
+
+const storeLaterInnerBlocks = [
   z.object({
     id: z.string(),
     type: z.literal("button"),
@@ -495,11 +508,6 @@ const storeLaterBlocks = [
   }),
   z.object({
     id: z.string(),
-    type: z.literal("bestseller"),
-    heading: z.string().meta({ description: "Produkte dazu liefert GET /shops/{shopHandle}/bestsellers." }),
-  }),
-  z.object({
-    id: z.string(),
     type: z.literal("trust"),
     items: z.array(
       z.object({
@@ -511,12 +519,33 @@ const storeLaterBlocks = [
   }),
 ] as const;
 
+const storeLaterBlocks = [...storeLaterInnerBlocks, storeBestsellerBlock] as const;
+
+/** Baustein in einer Gruppe, fertig zum Anzeigen (alles außer Shop-Bereichen und Gruppen). */
+const storeInnerBlockSchema = z.discriminatedUnion("type", [...storeFirstBlocks, ...storeLaterInnerBlocks]);
+
+/** Gruppe, fertig zum Anzeigen: ihre Bausteine stecken in `blocks`. */
+const storeGroupSchema = z.object({
+  id: z.string(),
+  type: z.literal("group"),
+  columns: z.number().int().meta({ description: "Spalten am Computer: 1, 2 oder 3. Am Handy immer eine." }),
+  background: z.string().meta({
+    "x-extensible-enum": [...GROUP_BACKGROUNDS],
+    description: "Hintergrund der Gruppe: `keine`, `flaeche`, `akzent` oder `dunkel`.",
+  }),
+  padding: z.enum(GROUP_PADDINGS).meta({ description: "Innenabstand der Gruppe." }),
+  blocks: z
+    .array(storeInnerBlockSchema)
+    .meta({ description: `Bausteine in der Gruppe, höchstens ${MAX_GROUP_BLOCKS}. Leere fehlen.` }),
+});
+
 /** Alle Arten (nur für die Typen im Code; in Antworten steht `content` offen für neue Arten). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- nur als Typ gebraucht
 const storeBlockSchema = z.discriminatedUnion("type", [
   storeSectionSchema,
   ...storeFirstBlocks,
   ...storeLaterBlocks,
+  storeGroupSchema,
 ]);
 
 /** Antwortfeld `blocks`: nur die Arten bis 13.11.2026 (Vertrag unverändert). */
@@ -674,6 +703,24 @@ function storeBlock(
       return b.address.trim() === "" ? [] : [{ id: b.id, type: b.type, address: b.address.trim() }];
     case "spacer":
       return [{ ...b }];
+    case "group": {
+      // Eine Gruppe ohne anzeigbaren Inhalt fällt ganz weg, wie ein leerer Textbaustein.
+      const kinder = b.blocks.flatMap(
+        (k) => storeBlock(k, image, home) as z.input<typeof storeInnerBlockSchema>[],
+      );
+      return kinder.length === 0
+        ? []
+        : [
+            {
+              id: b.id,
+              type: b.type,
+              columns: b.columns,
+              background: b.background,
+              padding: b.padding,
+              blocks: kinder,
+            },
+          ];
+    }
     case "trust": {
       // Punkte ohne Überschrift lässt der Shop weg; bleibt keiner übrig, fällt die Zeile ganz weg.
       const items = b.items.filter((i) => i.title.trim() !== "");

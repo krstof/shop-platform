@@ -19,6 +19,7 @@ import {
   Settings2,
   Trash,
   Truck,
+  Ungroup,
   Upload,
   X,
 } from "lucide-react";
@@ -31,7 +32,12 @@ import {
   BLOCK_INFO,
   blockProblem,
   blockSummary,
-  duplicateBlock,
+  duplicateById,
+  END_ZONE,
+  GROUP_BACKGROUNDS,
+  GROUP_COLUMNS,
+  GROUP_PADDINGS,
+  MAX_GROUP_BLOCKS,
   MAX_BLOCK_HEADING,
   MAX_BLOCK_TEXT,
   MAX_BUTTON_LABEL,
@@ -45,15 +51,20 @@ import {
   MAX_TRUST_ITEMS,
   MAX_TRUST_TEXT,
   MAX_TRUST_TITLE,
-  moveBlock,
+  groupZone,
+  locate,
+  moveTo,
   parseVideoUrl,
+  removeBlock,
   TRUST_ICONS,
+  updateBlock,
   type Block,
   type ContentPage,
+  type GroupBlock,
   type TrustIcon,
 } from "../../lib/blocks.js";
 import { formatEuro } from "../../lib/money.js";
-import { END_ZONE, useDragState } from "./dnd.js";
+import { useDragState } from "./dnd.js";
 import { InlineText } from "./inline.js";
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -125,10 +136,20 @@ export function Canvas({
   const mobile = ctx.mobile;
   const end = useDroppable({ id: END_ZONE });
   const [settingsFor, setSettingsFor] = useState<string | undefined>();
-  const update = (id: string, change: Partial<Block>) =>
-    onBlocks(blocks.map((b) => (b.id === id ? ({ ...b, ...change } as Block) : b)));
   const cats = ctx.categories.slice(0, 4);
   const all = ctx.products.slice(0, 4);
+  // Alles, was eine Liste von Bausteinen braucht. `blocks` ist immer die ganze Seite, auch beim
+  // Zeichnen einer Gruppe, damit Ändern, Verschieben und Löschen über alle Ebenen funktionieren.
+  const shared: Shared = {
+    blocks,
+    onBlocks,
+    selectedId,
+    onSelect,
+    settingsFor,
+    setSettingsFor,
+    ctx,
+    page,
+  };
 
   return (
     <div
@@ -175,44 +196,7 @@ export function Canvas({
 
       <main className="sp-breite sp-main">
         {page && <h1>{page.title.trim() || "Ohne Titel"}</h1>}
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          {blocks.map((b, i) => (
-            <CanvasBlock
-              key={b.id}
-              block={b}
-              selected={b.id === selectedId}
-              first={i === 0}
-              last={i === blocks.length - 1}
-              onSelect={() => onSelect(b.id)}
-              onMove={(d) => onBlocks(moveBlock(blocks, i, i + d))}
-              onDuplicate={() => onBlocks(duplicateBlock(blocks, i))}
-              onRemove={() => {
-                onBlocks(blocks.filter((x) => x.id !== b.id));
-                onSelect(undefined);
-              }}
-              settingsOpen={settingsFor === b.id}
-              onSettings={
-                hasSettings(b) ? () => setSettingsFor((s) => (s === b.id ? undefined : b.id)) : undefined
-              }
-              settings={<BlockSettings block={b} update={(c) => update(b.id, c)} ctx={ctx} />}
-            >
-              <BlockView
-                block={b}
-                update={(c) => update(b.id, c)}
-                ctx={ctx}
-                mainHeading={
-                  page === undefined &&
-                  b.type === "hero" &&
-                  blocks.find((x) => x.type === "hero")?.id === b.id
-                }
-                openSettings={() => {
-                  onSelect(b.id);
-                  setSettingsFor(b.id);
-                }}
-              />
-            </CanvasBlock>
-          ))}
-        </SortableContext>
+        <BlockList list={blocks} shared={shared} />
         <div
           ref={end.setNodeRef}
           className={
@@ -275,7 +259,99 @@ export function Canvas({
 }
 
 function hasSettings(b: Block): boolean {
-  return ["textImage", "video", "button", "spacer", "featured", "hero", "image"].includes(b.type);
+  return ["textImage", "video", "button", "spacer", "featured", "hero", "image", "group"].includes(b.type);
+}
+
+/** Was jede Baustein-Liste braucht. `blocks` ist immer die ganze Seite, nicht nur die eigene Ebene. */
+interface Shared {
+  blocks: readonly Block[];
+  onBlocks: (b: Block[]) => void;
+  selectedId: string | undefined;
+  onSelect: (id: string | undefined) => void;
+  settingsFor: string | undefined;
+  setSettingsFor: (id: string | undefined) => void;
+  ctx: Ctx;
+  page: ContentPage | undefined;
+}
+
+/** Eine Ebene Bausteine: die Seite selbst oder der Inhalt einer Gruppe (`groupId`). */
+function BlockList({ list, groupId, shared }: { list: readonly Block[]; groupId?: string; shared: Shared }) {
+  const { blocks, onBlocks, selectedId, onSelect, settingsFor, setSettingsFor, ctx, page } = shared;
+  const update = (id: string, change: Partial<Block>) => onBlocks(updateBlock(blocks, id, change));
+  return (
+    <SortableContext items={list.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+      {list.map((b, i) => (
+        <CanvasBlock
+          key={b.id}
+          block={b}
+          selected={b.id === selectedId}
+          first={i === 0}
+          last={i === list.length - 1}
+          onSelect={() => onSelect(b.id)}
+          onMove={(d) => onBlocks(moveTo(blocks, b.id, groupId, i + d))}
+          onDuplicate={() => onBlocks(duplicateById(blocks, b.id))}
+          onOut={
+            groupId === undefined
+              ? undefined
+              : () => onBlocks(moveTo(blocks, b.id, undefined, (locate(blocks, groupId)?.index ?? 0) + 1))
+          }
+          onRemove={() => {
+            onBlocks(removeBlock(blocks, b.id));
+            onSelect(undefined);
+          }}
+          settingsOpen={settingsFor === b.id}
+          onSettings={
+            hasSettings(b) ? () => setSettingsFor(settingsFor === b.id ? undefined : b.id) : undefined
+          }
+          settings={<BlockSettings block={b} update={(c) => update(b.id, c)} ctx={ctx} />}
+        >
+          {b.type === "group" ? (
+            <GroupArea group={b} shared={shared} />
+          ) : (
+            <BlockView
+              block={b}
+              update={(c) => update(b.id, c)}
+              ctx={ctx}
+              mainHeading={
+                page === undefined && b.type === "hero" && blocks.find((x) => x.type === "hero")?.id === b.id
+              }
+              openSettings={() => {
+                onSelect(b.id);
+                setSettingsFor(b.id);
+              }}
+            />
+          )}
+        </CanvasBlock>
+      ))}
+    </SortableContext>
+  );
+}
+
+/** Eine Gruppe in der Vorschau: Hintergrund, Polster und Spalten wie im Shop, innen eine eigene
+ *  Ablagefläche. Bausteine, die man hineinzieht, gehören danach zur Gruppe. */
+function GroupArea({ group, shared }: { group: GroupBlock; shared: Shared }) {
+  const zone = useDroppable({ id: groupZone(group.id) });
+  const leer = group.blocks.length === 0;
+  return (
+    <section
+      className={[
+        "sp-gruppe",
+        `gruppe-grund-${group.background}`,
+        `gruppe-polster-${group.padding}`,
+        `gruppe-spalten-${group.columns}`,
+      ].join(" ")}
+      aria-label={`Gruppe mit ${group.blocks.length} Bausteinen`}
+    >
+      <div ref={zone.setNodeRef} className={"sp-gruppe-raster" + (zone.isOver ? " ist-ziel" : "")}>
+        {!leer && <BlockList list={group.blocks} groupId={group.id} shared={shared} />}
+        {leer && (
+          <p className="sp-gruppe-leer">
+            Zieh Bausteine hierher. Sie stehen dann in dieser Gruppe nebeneinander.
+          </p>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function CanvasBlock({
@@ -286,6 +362,7 @@ function CanvasBlock({
   onSelect,
   onMove,
   onDuplicate,
+  onOut,
   onRemove,
   settingsOpen,
   onSettings,
@@ -299,6 +376,8 @@ function CanvasBlock({
   onSelect: () => void;
   onMove: (delta: number) => void;
   onDuplicate: () => void;
+  /** Nur in einer Gruppe: den Baustein aus der Gruppe heraus auf die Seite stellen. */
+  onOut: (() => void) | undefined;
   onRemove: () => void;
   settingsOpen: boolean;
   onSettings: (() => void) | undefined;
@@ -391,6 +470,17 @@ function CanvasBlock({
           >
             <Copy className="size-4" aria-hidden="true" />
           </button>
+          {onOut && (
+            <button
+              type="button"
+              aria-label={`${info.name} aus der Gruppe lösen`}
+              title="Aus der Gruppe lösen"
+              className={tool}
+              onClick={onOut}
+            >
+              <Ungroup className="size-4" aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             aria-label={`${info.name} entfernen`}
@@ -924,6 +1014,9 @@ function BlockView({
           )}
         </section>
       );
+    case "group":
+      // Gruppen zeichnet `GroupArea`, weil darin wieder eine ganze Liste von Bausteinen steckt.
+      return null;
   }
 }
 
@@ -1374,6 +1467,33 @@ function BlockSettings({
         </div>
       );
     }
+    case "group":
+      return (
+        <div className="space-y-3">
+          <Toggle
+            label="Spalten"
+            value={String(GROUP_COLUMNS.includes(b.columns as 1 | 2 | 3) ? b.columns : 2)}
+            options={GROUP_COLUMNS.map((c) => [String(c), String(c)] as const)}
+            onChange={(v) => update({ columns: Number(v) })}
+          />
+          <Toggle
+            label="Hintergrund"
+            value={b.background}
+            options={GROUP_BACKGROUNDS.map((g) => [g.id, g.name] as const)}
+            onChange={(background) => update({ background })}
+          />
+          <Toggle
+            label="Innenabstand"
+            value={b.padding}
+            options={GROUP_PADDINGS.map((g) => [g.id, g.name] as const)}
+            onChange={(padding) => update({ padding })}
+          />
+          <p className="text-xs text-gray-500">
+            In eine Gruppe passen bis zu {MAX_GROUP_BLOCKS} Bausteine. Am Handy stehen sie immer
+            untereinander. Shop-Bereiche wie Bühne oder Empfehlungen gehören nicht hinein.
+          </p>
+        </div>
+      );
     default:
       return null;
   }

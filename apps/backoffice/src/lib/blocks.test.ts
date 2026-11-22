@@ -1,8 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
+  allBlocks,
   blockImages,
   blockProblem,
+  blockSummary,
   canAdd,
+  canAddTo,
+  countBlocks,
+  dropTarget,
+  duplicateById,
+  END_ZONE,
+  groupZone,
+  fitsInGroup,
+  insertInto,
+  locate,
+  MAX_GROUP_BLOCKS,
+  moveTo,
+  removeBlock,
+  updateBlock,
   cleanBlocks,
   duplicateBlock,
   fillSections,
@@ -149,5 +164,125 @@ describe("Eigene Seiten", () => {
     expect(pageProblem({ ...p0, id: "b" }, pages)).toBe("Eine andere Seite hat schon diese Adresse.");
     expect(pageProblem({ ...p0, title: " " }, pages)).toBe("Bitte einen Titel eingeben.");
     expect(pageProblem(p0, pages)).toBeUndefined();
+  });
+
+  it("legt eine Gruppe mit sichtbaren Anfangswerten an", () => {
+    const g = newBlock("group", []);
+    expect(g).toMatchObject({ type: "group", columns: 2, background: "flaeche", padding: "m", blocks: [] });
+    expect(blockSummary(g)).toBe("Noch leer");
+    // Shop-Bereiche und Gruppen gehören nicht in eine Gruppe.
+    expect(fitsInGroup("text")).toBe(true);
+    expect(fitsInGroup("trust")).toBe(true);
+    expect(fitsInGroup("group")).toBe(false);
+    expect(fitsInGroup("hero")).toBe(false);
+    expect(fitsInGroup("bestseller")).toBe(false);
+  });
+
+  it("zieht Bausteine in eine Gruppe hinein und wieder heraus", () => {
+    const start: Block[] = [newBlock("group", []), t("a")];
+    const gid = start[0]?.id ?? "";
+    // Hinein: „a“ steckt danach in der Gruppe und nicht mehr oben auf der Seite.
+    const hinein = moveTo(start, "a", gid, 0);
+    expect(hinein.map((b) => b.id)).toEqual([gid]);
+    expect(locate(hinein, "a")).toEqual({ groupId: gid, index: 0 });
+    // Heraus: wieder oben, an erster Stelle.
+    const heraus = moveTo(hinein, "a", undefined, 0);
+    expect(heraus.map((b) => b.id)).toEqual(["a", gid]);
+    expect(locate(heraus, "a")).toEqual({ index: 0 });
+    // Eine Gruppe lässt sich nicht in eine Gruppe schieben.
+    const mitZwei = insertInto(hinein, gid, t("b"), 1);
+    expect(moveTo(mitZwei, gid, gid, 0)).toEqual(mitZwei);
+  });
+
+  it("sortiert innerhalb einer Gruppe und ändert Bausteine auf jeder Ebene", () => {
+    let blocks: Block[] = [newBlock("group", [])];
+    const gid = blocks[0]?.id ?? "";
+    blocks = insertInto(blocks, gid, t("k1"), 0);
+    blocks = insertInto(blocks, gid, t("k2"), 1);
+    const g = blocks[0];
+    expect(g?.type === "group" ? g.blocks.map((b) => b.id) : []).toEqual(["k1", "k2"]);
+    const sortiert = moveTo(blocks, "k2", gid, 0);
+    const g2 = sortiert[0];
+    expect(g2?.type === "group" ? g2.blocks.map((b) => b.id) : []).toEqual(["k2", "k1"]);
+    // Ändern und Entfernen finden den Baustein auch in der Gruppe.
+    const geaendert = updateBlock(sortiert, "k1", { heading: "Neu" });
+    const k1 = allBlocks(geaendert).find((b) => b.id === "k1");
+    expect(k1?.type === "text" ? k1.heading : "").toBe("Neu");
+    const ohne = removeBlock(geaendert, "k1");
+    const g3 = ohne[0];
+    expect(g3?.type === "group" ? g3.blocks.map((b) => b.id) : []).toEqual(["k2"]);
+  });
+
+  it("zählt Bausteine in Gruppen mit und respektiert beide Obergrenzen", () => {
+    let blocks: Block[] = [newBlock("group", [])];
+    const gid = blocks[0]?.id ?? "";
+    for (let i = 0; i < MAX_GROUP_BLOCKS; i++) blocks = insertInto(blocks, gid, t(`k${i}`), i);
+    expect(countBlocks(blocks)).toBe(MAX_GROUP_BLOCKS + 1);
+    // Die Gruppe ist voll, die Seite hat aber noch Platz.
+    expect(canAddTo(blocks, gid)).toBe(false);
+    expect(canAddTo(blocks, undefined)).toBe(true);
+    expect(insertInto(blocks, gid, t("zuviel"), 0)).toEqual(blocks);
+    // 30 insgesamt, Gruppeninhalte mitgezählt.
+    const voll = [...blocks, ...Array.from({ length: 21 }, (_, i) => t(`x${i}`))];
+    expect(countBlocks(voll)).toBe(30);
+    expect(canAdd(voll)).toBe(false);
+  });
+
+  it("verdoppelt eine Gruppe mit neuen IDs für jeden Baustein darin", () => {
+    let blocks: Block[] = [newBlock("group", [])];
+    const gid = blocks[0]?.id ?? "";
+    blocks = insertInto(blocks, gid, t("k1"), 0);
+    blocks = insertInto(blocks, gid, t("k2"), 1);
+    const kopiert = duplicateById(blocks, gid);
+    expect(kopiert).toHaveLength(2);
+    const ids = allBlocks(kopiert).map((b) => b.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const kopie = kopiert[1];
+    expect(kopie?.type === "group" ? kopie.blocks.length : 0).toBe(2);
+  });
+
+  it("putzt Texte und sammelt Bilder auch in einer Gruppe", () => {
+    const gruppe: Block = {
+      id: "g",
+      type: "group",
+      columns: 3,
+      background: "akzent",
+      padding: "l",
+      blocks: [
+        { id: "k1", type: "text", heading: "  Hallo  ", text: "  Welt  " },
+        { id: "k2", type: "image", imageId: IMG, caption: " Bild " },
+      ],
+    };
+    const sauber = cleanBlocks([gruppe])[0];
+    const kinder = sauber?.type === "group" ? sauber.blocks : [];
+    expect(kinder[0]).toMatchObject({ heading: "Hallo", text: "Welt" });
+    expect(kinder[1]).toMatchObject({ caption: "Bild" });
+    expect(blockImages([gruppe])).toEqual([IMG]);
+    expect(blockSummary(gruppe)).toBe("2 Bausteine in 3 Spalten");
+    // Ein kaputter Baustein in der Gruppe meldet sich nach oben.
+    const kaputt = updateBlock([gruppe], "k1", {}) as Block[];
+    expect(blockProblem(kaputt[0] as Block)).toBeUndefined();
+    const mitVideo = insertInto([gruppe], "g", { id: "k3", type: "video", url: "nein" }, 2);
+    expect(blockProblem(mitVideo[0] as Block)).toMatch(/YouTube/);
+  });
+
+  it("entscheidet beim Ziehen, auf welcher Ebene ein Baustein landet", () => {
+    let blocks: Block[] = [t("oben"), newBlock("group", [t("oben")])];
+    const gid = blocks[1]?.id ?? "";
+    blocks = insertInto(blocks, gid, t("k1"), 0);
+    // Über dem Ende der Seite: ganz unten auf der Seite.
+    expect(dropTarget(blocks, END_ZONE, "text")).toEqual({ index: 2 });
+    // Über der Fläche der Gruppe: hinten in die Gruppe.
+    expect(dropTarget(blocks, groupZone(gid), "text")).toEqual({ groupId: gid, index: 1 });
+    // Über einem Baustein in der Gruppe: davor oder dahinter, aber in der Gruppe.
+    expect(dropTarget(blocks, "k1", "text")).toEqual({ groupId: gid, index: 0 });
+    expect(dropTarget(blocks, "k1", "text", true)).toEqual({ groupId: gid, index: 1 });
+    // Über einem Baustein der Seite: auf der Seite.
+    expect(dropTarget(blocks, "oben", "text", true)).toEqual({ index: 1 });
+    // Eine Bühne und eine Gruppe passen in keine Gruppe: sie kommen direkt hinter die Gruppe.
+    expect(dropTarget(blocks, groupZone(gid), "hero")).toEqual({ index: 2 });
+    expect(dropTarget(blocks, "k1", "group")).toEqual({ index: 2 });
+    // Unbekanntes Ziel: ans Ende der Seite.
+    expect(dropTarget(blocks, "gibtsnicht", "text")).toEqual({ index: 2 });
   });
 });

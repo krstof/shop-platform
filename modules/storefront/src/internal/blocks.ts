@@ -24,6 +24,7 @@ export const BLOCK_TYPES = [
   "gallery",
   "bestseller",
   "trust",
+  "group",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -43,6 +44,14 @@ export const MAX_SECTION_PRODUCTS = 8;
 export const MAX_TRUST_ITEMS = 3;
 export const MAX_TRUST_TITLE = 40;
 export const MAX_TRUST_TEXT = 120;
+/** Gruppen-Baustein (22.11.2026): Bausteine in einem Baustein, nach dem Vorbild Shopify Horizon.
+ *  Eine Gruppe nimmt bis zu acht Bausteine auf und ordnet sie in einer, zwei oder drei Spalten an.
+ *  Nur eine Ebene: In einer Gruppe steckt keine weitere Gruppe und kein Shop-Bereich, damit der
+ *  Editor übersichtlich bleibt und die Mandantentrennung und Bildverwaltung einfach bleiben. */
+export const MAX_GROUP_BLOCKS = 8;
+export const GROUP_COLUMNS = [1, 2, 3] as const;
+export const GROUP_BACKGROUNDS = ["keine", "flaeche", "akzent", "dunkel"] as const;
+export const GROUP_PADDINGS = ["s", "m", "l"] as const;
 /** Symbole der Vertrauenszeile; der Shop zeichnet sie selbst, nichts kommt von außen. */
 export const TRUST_ICONS = [
   "versand",
@@ -186,8 +195,16 @@ const firstBlocks = [
   z.strictObject({ id, type: z.literal("spacer"), size: z.enum(["s", "m", "l"]) }),
 ] as const;
 
-/** Neuere Bausteine (14.11.2026). */
-const laterBlocks = [
+/** Meistverkaufte Produkte: ein Shop-Bereich, den der Shop selbst füllt. Steht getrennt, weil er
+ *  nicht in eine Gruppe darf. */
+const bestsellerBlock = z.strictObject({
+  id,
+  type: z.literal("bestseller"),
+  heading: line(MAX_BLOCK_HEADING),
+});
+
+/** Neuere Bausteine (14.11.2026), die auch in eine Gruppe dürfen. */
+const laterInnerBlocks = [
   z.strictObject({
     id,
     type: z.literal("button"),
@@ -217,8 +234,6 @@ const laterBlocks = [
     imageIds: z.array(z.uuid()).max(MAX_GALLERY),
     caption: line(MAX_CAPTION),
   }),
-  /** Meistverkaufte Produkte (füllt der Shop selbst aus den Bestellungen). */
-  z.strictObject({ id, type: z.literal("bestseller"), heading: line(MAX_BLOCK_HEADING) }),
   /** Vertrauenszeile: bis zu drei kurze Punkte mit Symbol (Versand, Rückgabe, Kontakt). */
   z.strictObject({
     id,
@@ -235,14 +250,36 @@ const laterBlocks = [
   }),
 ] as const;
 
+const laterBlocks = [...laterInnerBlocks, bestsellerBlock] as const;
+
+/** Baustein, der in eine Gruppe darf: alles außer Shop-Bereichen und Gruppen selbst. */
+export const innerBlockSchema = z.discriminatedUnion("type", [...firstBlocks, ...laterInnerBlocks]);
+export type InnerBlock = z.infer<typeof innerBlockSchema>;
+
+/** Gruppe: ein Baustein, der andere Bausteine enthält (Spalten, Hintergrund, Polster je Gruppe). */
+export const groupSchema = z.strictObject({
+  id,
+  type: z.literal("group"),
+  columns: z.int().min(1).max(3),
+  background: z.enum(GROUP_BACKGROUNDS),
+  padding: z.enum(GROUP_PADDINGS),
+  blocks: z.array(innerBlockSchema).max(MAX_GROUP_BLOCKS),
+});
+
 /** Ein Baustein, so wie er gespeichert und über die API geschrieben wird. */
-export const blockSchema = z.discriminatedUnion("type", [sectionRefSchema, ...firstBlocks, ...laterBlocks]);
+export const blockSchema = z.discriminatedUnion("type", [
+  sectionRefSchema,
+  ...firstBlocks,
+  ...laterBlocks,
+  groupSchema,
+]);
 
 /** Ein Baustein, wie er gespeichert ist (Shop-Bereiche mit Inhalt). */
 export const storedBlockSchema = z.discriminatedUnion("type", [
   sectionSchema,
   ...firstBlocks,
   ...laterBlocks,
+  groupSchema,
 ]);
 
 /** Nur die Arten, die es bis 13.11.2026 gab: für das alte Antwortfeld `blocks` (Vertrag bleibt gleich). */
@@ -260,10 +297,49 @@ export const FIRST_BLOCK_TYPES: ReadonlySet<string> = new Set([
   "spacer",
 ]);
 
+/** Alle Bausteine einer Liste, Gruppen aufgelöst (für IDs, Bilder und Zählen). */
+export function allBlocks<T extends { readonly type: string }>(
+  blocks: readonly T[],
+): readonly (T | InnerBlock)[] {
+  return blocks.flatMap((b) =>
+    b.type === "group" ? [b, ...((b as unknown as { blocks: InnerBlock[] }).blocks ?? [])] : [b],
+  );
+}
+
 export const blocksSchema = z
   .array(blockSchema)
   .max(MAX_BLOCKS)
-  .refine((bs) => new Set(bs.map((b) => b.id)).size === bs.length, "Jeder Baustein braucht eine eigene ID.");
+  .refine((bs) => {
+    const ids = allBlocks(bs).map((b) => (b as { id: string }).id);
+    return new Set(ids).size === ids.length;
+  }, "Jeder Baustein braucht eine eigene ID.")
+  .refine(
+    (bs) => allBlocks(bs).length <= MAX_BLOCKS,
+    `Höchstens ${MAX_BLOCKS} Bausteine, Gruppeninhalte mitgezählt.`,
+  );
+
+/** Einen gespeicherten Baustein robust lesen. Bei einer Gruppe fallen kaputte Kinder einzeln weg,
+ *  statt die ganze Gruppe zu verlieren. `seen` sammelt die IDs über alle Ebenen. */
+function readBlock(raw: unknown, seen: Set<string>): Block | undefined {
+  if (typeof raw === "object" && raw !== null && (raw as { type?: unknown }).type === "group") {
+    const { blocks, ...rest } = raw as Record<string, unknown>;
+    const head = groupSchema.omit({ blocks: true }).safeParse(rest);
+    if (!head.success || seen.has(head.data.id)) return undefined;
+    const kinder: InnerBlock[] = [];
+    for (const k of (Array.isArray(blocks) ? blocks : []).slice(0, MAX_GROUP_BLOCKS)) {
+      const r = innerBlockSchema.safeParse(k);
+      if (!r.success || seen.has(r.data.id) || kinder.length >= MAX_GROUP_BLOCKS) continue;
+      seen.add(r.data.id);
+      kinder.push(r.data);
+    }
+    seen.add(head.data.id);
+    return { ...head.data, blocks: kinder };
+  }
+  const r = storedBlockSchema.safeParse(raw);
+  if (!r.success || seen.has(r.data.id)) return undefined;
+  seen.add(r.data.id);
+  return r.data as Block;
+}
 
 /** Gespeichertes JSON robust lesen: kaputte Bausteine fallen einzeln weg, ohne Liste: `null`. */
 export function readBlocks(json: unknown): Block[] | null {
@@ -271,10 +347,8 @@ export function readBlocks(json: unknown): Block[] | null {
   const seen = new Set<string>();
   const out: Block[] = [];
   for (const raw of json.slice(0, MAX_BLOCKS)) {
-    const r = storedBlockSchema.safeParse(raw);
-    if (!r.success || seen.has(r.data.id)) continue;
-    seen.add(r.data.id);
-    out.push(r.data as Block);
+    const b = readBlock(raw, seen);
+    if (b !== undefined) out.push(b);
   }
   return out;
 }
@@ -291,7 +365,7 @@ export function legacyBlocks(home: { showCategories: boolean; showNew: boolean }
 
 /** Bilder, die Bausteine benutzen (für das Aufräumen nicht mehr benutzter Bilder). */
 export function blockImages(blocks: readonly Block[] | null): string[] {
-  return (blocks ?? []).flatMap((b) => {
+  return allBlocks(blocks ?? []).flatMap((b) => {
     if ((b.type === "textImage" || b.type === "image" || b.type === "hero") && typeof b.imageId === "string")
       return [b.imageId];
     if (b.type === "gallery") return [...b.imageIds];

@@ -1319,6 +1319,84 @@ form.gutschein:has(.knopf-leise) {
   margin-top: 0.5rem;
   text-align: center;
 }
+/* Gruppen-Baustein (22.11.2026): ein Baustein, der andere Bausteine enthält. Spalten gibt es erst ab
+   Tablet-Breite; am Handy steht alles untereinander, damit nichts gequetscht wird. */
+.baustein-gruppe {
+  border-radius: 12px;
+}
+.gruppe-raster {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (min-width: 48rem) {
+  .gruppe-spalten-2 .gruppe-raster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2.5rem;
+  }
+  .gruppe-spalten-3 .gruppe-raster {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+  }
+}
+/* In einer Gruppe sitzen die Bausteine dicht beieinander: ihr eigener Außenabstand fällt weg. */
+.gruppe-raster > * {
+  margin-block: 0;
+}
+.gruppe-polster-s {
+  padding: 1rem;
+}
+.gruppe-polster-m {
+  padding: 2rem;
+}
+.gruppe-polster-l {
+  padding: 3.5rem 2rem;
+}
+.gruppe-grund-flaeche {
+  background: var(--flaeche);
+}
+.gruppe-grund-akzent {
+  background: var(--akzent);
+  color: #fff;
+}
+.gruppe-grund-dunkel {
+  background: #26221e;
+  color: #f4efe6;
+}
+/* Auf farbigem Grund erbt alles die Schriftfarbe, damit nichts unlesbar wird. */
+.gruppe-grund-akzent a,
+.gruppe-grund-dunkel a,
+.gruppe-grund-akzent .klein,
+.gruppe-grund-dunkel .klein,
+.gruppe-grund-akzent figcaption,
+.gruppe-grund-dunkel figcaption {
+  color: inherit;
+}
+.gruppe-grund-akzent .knopf,
+.gruppe-grund-dunkel .knopf {
+  background: #fff;
+  color: #26221e;
+}
+.gruppe-grund-akzent .knopf:hover,
+.gruppe-grund-dunkel .knopf:hover {
+  background: var(--flaeche);
+}
+.gruppe-grund-akzent .knopf.knopf-zweit,
+.gruppe-grund-dunkel .knopf.knopf-zweit {
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.gruppe-grund-akzent .baustein-linie,
+.gruppe-grund-dunkel .baustein-linie {
+  border-top-color: currentColor;
+  opacity: 0.4;
+}
+.gruppe-grund-akzent .baustein-zitat blockquote::before,
+.gruppe-grund-dunkel .baustein-zitat blockquote::before {
+  color: inherit;
+}
+
 /* Soziale Netzwerke in der Fußzeile */
 .fuss-sozial {
   display: flex;

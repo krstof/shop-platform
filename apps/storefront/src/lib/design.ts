@@ -106,7 +106,40 @@ export type StoreBlock =
         readonly title: string;
         readonly text: string;
       }[];
+    }
+  | {
+      readonly id: string;
+      readonly type: "group";
+      /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
+      readonly columns: number;
+      readonly background: string;
+      readonly padding: string;
+      /** Die Bausteine in der Gruppe. Shop-Bereiche und weitere Gruppen kommen hier nie vor. */
+      readonly blocks: readonly StoreBlock[];
     };
+
+/** Hintergründe einer Gruppe (gleiche Liste wie die API). */
+export const GRUPPEN_HINTERGRUENDE = ["keine", "flaeche", "akzent", "dunkel"] as const;
+export type GruppenHintergrund = (typeof GRUPPEN_HINTERGRUENDE)[number];
+
+/** CSS-Klassen einer Gruppe. Alle Werte kommen aus der API, werden hier aber noch einmal geprüft,
+ *  damit nie etwas Fremdes als Klassenname in die Seite gerät. */
+export function gruppenKlassen(b: Extract<StoreBlock, { type: "group" }>): string[] {
+  const hintergrund: GruppenHintergrund = (GRUPPEN_HINTERGRUENDE as readonly string[]).includes(b.background)
+    ? (b.background as GruppenHintergrund)
+    : "keine";
+  const polster = b.padding === "s" || b.padding === "l" ? b.padding : "m";
+  const spalten = b.columns === 1 || b.columns === 3 ? b.columns : 2;
+  return [`gruppe-grund-${hintergrund}`, `gruppe-polster-${polster}`, `gruppe-spalten-${spalten}`];
+}
+
+/** Baustein ohne Shop-Bereiche: nur solche darf eine Gruppe enthalten. */
+export type StoreInnerBlock = Exclude<StoreBlock, StoreSection>;
+
+/** Die Bausteine einer Gruppe, ohne Shop-Bereiche (die gehören nicht hinein). */
+export function gruppenInhalt(b: Extract<StoreBlock, { type: "group" }>): StoreInnerBlock[] {
+  return b.blocks.filter((k): k is StoreInnerBlock => !isSection(k));
+}
 
 /** Shop-Bereiche (Bühne, Empfehlungen, Neu im Shop, Kategorien, Bestseller): brauchen Produkte oder Kategorien. */
 export type StoreSection = Extract<

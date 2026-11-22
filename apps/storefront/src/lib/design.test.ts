@@ -4,6 +4,8 @@ import {
   DEFAULT_HOME,
   designCss,
   designVersion,
+  gruppenInhalt,
+  gruppenKlassen,
   isExternal,
   mapUrls,
   safeLink,
@@ -99,5 +101,39 @@ describe("Editor 2: Hintergrund, Schriften, Knöpfe", () => {
     expect(buttonHref("https://example.org", "teeladen")).toBe("https://example.org");
     expect(buttonHref("javascript:alert(1)", "teeladen")).toBeUndefined();
     expect(buttonHref("//evil.example", "teeladen")).toBeUndefined();
+  });
+
+  it("prüft die Angaben einer Gruppe, bevor sie als CSS-Klasse in die Seite kommen", () => {
+    const gruppe = {
+      id: "g",
+      type: "group" as const,
+      columns: 3,
+      background: "akzent",
+      padding: "l",
+      blocks: [],
+    };
+    expect(gruppenKlassen(gruppe)).toEqual(["gruppe-grund-akzent", "gruppe-polster-l", "gruppe-spalten-3"]);
+    // Alles Unbekannte wird zum harmlosen Standard, nichts Fremdes landet im Klassennamen.
+    expect(gruppenKlassen({ ...gruppe, columns: 9, background: "onclick=1", padding: "xl" })).toEqual([
+      "gruppe-grund-keine",
+      "gruppe-polster-m",
+      "gruppe-spalten-2",
+    ]);
+  });
+
+  it("zeigt in einer Gruppe keine Shop-Bereiche", () => {
+    const gruppe = {
+      id: "g",
+      type: "group" as const,
+      columns: 2,
+      background: "keine",
+      padding: "s",
+      blocks: [
+        { id: "k1", type: "text" as const, heading: "Bleibt", text: "" },
+        { id: "k2", type: "hero" as const },
+        { id: "k3", type: "divider" as const },
+      ],
+    };
+    expect(gruppenInhalt(gruppe).map((b) => b.id)).toEqual(["k1", "k3"]);
   });
 });

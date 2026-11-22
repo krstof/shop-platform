@@ -21,6 +21,7 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import {
   Columns2,
+  Group as GroupIcon,
   Heart,
   CircleQuestionMark,
   Image as ImageIcon,
@@ -47,17 +48,22 @@ import {
   type TouchEventHandler,
 } from "react";
 import {
+  allBlocks,
   BLOCK_INFO,
-  canAdd,
-  insertAt,
-  moveBlock,
+  blockById,
+  canAddTo,
+  dropTarget,
+  END_ZONE,
+  GROUP_ZONE_PREFIX,
+  insertInto,
+  locate,
+  moveTo,
   newBlock,
   type Block,
   type BlockType,
 } from "../../lib/blocks.js";
 
 export const PALETTE_PREFIX = "neu:";
-export const END_ZONE = "ende";
 
 /** Symbole der Bausteine (lucide, ISC-Lizenz). */
 export const BLOCK_ICONS: Record<BlockType, typeof Type> = {
@@ -78,6 +84,7 @@ export const BLOCK_ICONS: Record<BlockType, typeof Type> = {
   bestseller: Trophy,
   categories: LayoutGrid,
   trust: ShieldCheck,
+  group: GroupIcon,
 };
 
 export function BlockIcon({ type, className = "size-4" }: { type: BlockType; className?: string }) {
@@ -92,17 +99,27 @@ export const useDragState = () => useContext(DragState);
 function nameOf(id: string | number, blocks: readonly Block[]): string {
   const s = String(id);
   if (s.startsWith(PALETTE_PREFIX)) return BLOCK_INFO[s.slice(PALETTE_PREFIX.length) as BlockType].name;
-  const b = blocks.find((x) => x.id === s);
+  if (s.startsWith(GROUP_ZONE_PREFIX)) return "der Gruppe";
+  const b = blockById(blocks, s);
   return b === undefined ? "Baustein" : BLOCK_INFO[b.type].name;
 }
 
 // Neue Bausteine landen dort, wo der Zeiger ist (zurück auf die Leiste: nichts passiert). Beim
-// Umsortieren und mit der Tastatur zählt der nächste Baustein.
-const collision: CollisionDetection = (args) => {
-  const hits = pointerWithin(args);
-  if (hits.length > 0 || String(args.active.id).startsWith(PALETTE_PREFIX)) return hits;
-  return closestCenter(args);
-};
+// Umsortieren und mit der Tastatur zählt der nächste Baustein. Innerhalb einer Gruppe liegen mehrere
+// Flächen übereinander; deshalb zählt zuerst ein Baustein in der Gruppe, dann die Fläche der Gruppe
+// selbst und erst danach die Seite.
+function collisionFor(blocks: readonly Block[]): CollisionDetection {
+  return (args) => {
+    const hits = pointerWithin(args);
+    if (hits.length === 0 && !String(args.active.id).startsWith(PALETTE_PREFIX)) return closestCenter(args);
+    const rang = (id: string) => {
+      if (locate(blocks, id)?.groupId !== undefined) return 0;
+      if (id.startsWith(GROUP_ZONE_PREFIX)) return 1;
+      return 2;
+    };
+    return [...hits].sort((a, b) => rang(String(a.id)) - rang(String(b.id)));
+  };
+}
 
 /** Gemeinsamer Zieh-Bereich für Leiste und Vorschau. */
 export function BuilderDnd({
@@ -150,18 +167,19 @@ export function BuilderDnd({
     if (e.over === null) return;
     const overId = String(e.over.id);
     if (id.startsWith(PALETTE_PREFIX)) {
-      if (!canAdd(blocks)) return;
-      const block = newBlock(id.slice(PALETTE_PREFIX.length) as BlockType, blocks);
-      const p = position(e);
-      const at =
-        overId === END_ZONE || p === undefined ? blocks.length : blocks.findIndex((b) => b.id === p.id);
-      onChange(insertAt(blocks, block, at < 0 ? blocks.length : p?.after ? at + 1 : at));
+      const type = id.slice(PALETTE_PREFIX.length) as BlockType;
+      const t = dropTarget(blocks, overId, type, position(e)?.after === true);
+      if (!canAddTo(blocks, t.groupId)) return;
+      const block = newBlock(type, allBlocks(blocks));
+      onChange(insertInto(blocks, t.groupId, block, t.index));
       onSelect(block.id);
       return;
     }
-    const from = blocks.findIndex((b) => b.id === id);
-    const to = blocks.findIndex((b) => b.id === overId);
-    if (from >= 0 && to >= 0 && from !== to) onChange(moveBlock(blocks, from, to));
+    const gezogen = blockById(blocks, id);
+    if (gezogen === undefined || overId === id) return;
+    const t = dropTarget(blocks, overId, gezogen.type);
+    if (t.groupId === id) return;
+    onChange(moveTo(blocks, id, t.groupId, t.index));
   }
 
   const announcements: Announcements = {
@@ -184,12 +202,12 @@ export function BuilderDnd({
       ? undefined
       : active.startsWith(PALETTE_PREFIX)
         ? (active.slice(PALETTE_PREFIX.length) as BlockType)
-        : blocks.find((b) => b.id === active)?.type;
+        : blockById(blocks, active)?.type;
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={collision}
+      collisionDetection={collisionFor(blocks)}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}

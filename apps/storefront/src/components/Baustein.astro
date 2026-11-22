@@ -5,7 +5,15 @@
 // (Cookie „externe-inhalte“). Bis dahin steht dort ein Hinweis mit Knopf, ganz ohne JavaScript.
 import { absaetze } from "../lib/format.js";
 import Vertrauenssymbol from "./Vertrauenssymbol.astro";
-import { buttonHref, isExternal, mapUrls, videoEmbedUrl, type StoreBlock } from "../lib/design.js";
+import {
+  buttonHref,
+  gruppenInhalt,
+  gruppenKlassen,
+  isExternal,
+  mapUrls,
+  videoEmbedUrl,
+  type StoreBlock,
+} from "../lib/design.js";
 
 interface Props {
   block: Exclude<StoreBlock, { type: "hero" | "featured" | "categories" | "new" }>;
@@ -14,11 +22,24 @@ interface Props {
   extern: boolean;
 }
 const { block: b, shop, extern } = Astro.props;
+// Gruppe (22.11.2026): ein Baustein, der andere Bausteine enthält. Sie zeichnet sich selbst noch einmal
+// über `Astro.self`; tiefer als eine Ebene geht es nicht, weil in einer Gruppe keine Gruppe stecken darf.
+const gruppe = b.type === "group" ? gruppenInhalt(b) : [];
 const video = b.type === "video" ? videoEmbedUrl(b.provider, b.videoId) : undefined;
 const karte = b.type === "map" ? mapUrls(b.address) : undefined;
 const anbieter = b.type === "video" ? (b.provider === "youtube" ? "YouTube" : "Vimeo") : "Google Maps";
 const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
 ---
+
+{b.type === "group" && gruppe.length > 0 && (
+  <section class:list={["baustein", "baustein-gruppe", ...gruppenKlassen(b)]}>
+    <div class="gruppe-raster">
+      {gruppe.map((k) => (
+        <Astro.self block={k} shop={shop} extern={extern} />
+      ))}
+    </div>
+  </section>
+)}
 
 {b.type === "text" && (
   <section class="baustein baustein-text">

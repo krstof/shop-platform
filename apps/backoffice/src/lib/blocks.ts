@@ -17,8 +17,13 @@ export type FreeType =
   | "faq"
   | "gallery"
   | "bestseller"
-  | "trust";
+  | "trust"
+  | "group";
 export type BlockType = FixedType | FreeType;
+
+/** Baustein, der in eine Gruppe darf: alles außer Shop-Bereichen und Gruppen selbst. „bestseller“
+ *  gehört auch nicht hinein, weil der Shop ihn als eigenen Bereich mit Produkten zeichnet. */
+export type InnerType = Exclude<FreeType, "group" | "bestseller">;
 
 /** Inhalt eines Shop-Bereichs. Fehlende Felder: Inhalt der Startseite bzw. Standard. */
 export interface SectionContent {
@@ -82,7 +87,20 @@ export type Block =
         readonly title: string;
         readonly text: string;
       }[];
+    }
+  | {
+      readonly id: string;
+      readonly type: "group";
+      /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
+      readonly columns: number;
+      readonly background: GroupBackground;
+      readonly padding: GroupPadding;
+      readonly blocks: readonly InnerBlock[];
     };
+
+/** Baustein in einer Gruppe (nie ein Shop-Bereich, nie selbst eine Gruppe). */
+export type InnerBlock = Extract<Block, { type: InnerType }>;
+export type GroupBlock = Extract<Block, { type: "group" }>;
 
 /** Symbole der Vertrauenszeile (gleiche Liste wie in der API). */
 export const TRUST_ICONS = [
@@ -97,6 +115,24 @@ export type TrustIcon = (typeof TRUST_ICONS)[number]["id"];
 export const MAX_TRUST_ITEMS = 3;
 export const MAX_TRUST_TITLE = 40;
 export const MAX_TRUST_TEXT = 120;
+
+/** Gruppen-Baustein (22.11.2026, Vorbild Shopify Horizon): Bausteine in einem Baustein. Nur eine Ebene,
+ *  in einer Gruppe steckt also keine weitere Gruppe und kein Shop-Bereich. */
+export const MAX_GROUP_BLOCKS = 8;
+export const GROUP_COLUMNS = [1, 2, 3] as const;
+export const GROUP_BACKGROUNDS = [
+  { id: "keine", name: "Keiner" },
+  { id: "flaeche", name: "Hell" },
+  { id: "akzent", name: "Hauptfarbe" },
+  { id: "dunkel", name: "Dunkel" },
+] as const;
+export type GroupBackground = (typeof GROUP_BACKGROUNDS)[number]["id"];
+export const GROUP_PADDINGS = [
+  { id: "s", name: "Klein" },
+  { id: "m", name: "Mittel" },
+  { id: "l", name: "Groß" },
+] as const;
+export type GroupPadding = (typeof GROUP_PADDINGS)[number]["id"];
 
 export const MAX_BLOCKS = 30;
 export const MAX_BLOCK_HEADING = 120;
@@ -134,12 +170,13 @@ export const BLOCK_INFO: Record<BlockType, { readonly name: string; readonly hin
   bestseller: { name: "Bestseller", hint: "Meistverkaufte Produkte" },
   categories: { name: "Kategorien", hint: "Kacheln" },
   trust: { name: "Vertrauen", hint: "Versand, Rückgabe, Kontakt" },
+  group: { name: "Gruppe", hint: "Bausteine in Spalten" },
 };
 
 /** Gruppen in der Leiste „Bausteine“. */
 export const PALETTE: readonly { readonly title: string; readonly types: readonly BlockType[] }[] = [
   { title: "Inhalte", types: ["text", "textImage", "image", "gallery", "video", "map"] },
-  { title: "Gestaltung", types: ["button", "quote", "faq", "trust", "divider", "spacer"] },
+  { title: "Gestaltung", types: ["group", "button", "quote", "faq", "trust", "divider", "spacer"] },
   { title: "Shop-Bereiche", types: ["hero", "featured", "new", "bestseller", "categories"] },
 ];
 
@@ -200,6 +237,9 @@ export function newBlock(type: BlockType, existing: readonly Block[], random?: (
           { icon: "kontakt", title: "Wir sind da", text: "Montags bis freitags von 9 bis 18 Uhr" },
         ],
       };
+    case "group":
+      // Mit Hintergrund und zwei Spalten sieht man sofort, was eine Gruppe ist.
+      return { id, type, columns: 2, background: "flaeche", padding: "m", blocks: [] };
     case "hero":
       return { id, type, title: "", text: "", imageId: null };
     case "featured":
@@ -209,9 +249,183 @@ export function newBlock(type: BlockType, existing: readonly Block[], random?: (
   }
 }
 
-/** Ob noch ein Baustein passt. */
+/** Alle Bausteine, Gruppen aufgelöst (zum Zählen, für IDs und Bilder). */
+export function allBlocks(blocks: readonly Block[]): Block[] {
+  return blocks.flatMap((b): Block[] => (b.type === "group" ? [b, ...b.blocks] : [b]));
+}
+
+/** Wie viele Bausteine stehen auf der Seite, Gruppeninhalte mitgezählt? */
+export function countBlocks(blocks: readonly Block[]): number {
+  return allBlocks(blocks).length;
+}
+
+/** Ob noch ein Baustein passt (Gruppeninhalte zählen mit). */
 export function canAdd(blocks: readonly Block[]): boolean {
-  return blocks.length < MAX_BLOCKS;
+  return countBlocks(blocks) < MAX_BLOCKS;
+}
+
+/** Ob in diese Gruppe (oder oben auf der Seite, wenn `groupId` fehlt) noch ein Baustein passt. */
+export function canAddTo(blocks: readonly Block[], groupId?: string): boolean {
+  if (!canAdd(blocks)) return false;
+  if (groupId === undefined) return true;
+  const g = blockById(blocks, groupId);
+  return g?.type === "group" && g.blocks.length < MAX_GROUP_BLOCKS;
+}
+
+/** Darf diese Art in eine Gruppe? Shop-Bereiche und Gruppen selbst dürfen nicht. */
+export function fitsInGroup(type: BlockType): type is InnerType {
+  return (
+    type !== "group" &&
+    type !== "hero" &&
+    type !== "featured" &&
+    type !== "new" &&
+    type !== "bestseller" &&
+    type !== "categories"
+  );
+}
+
+/** Einen Baustein über alle Ebenen finden. */
+export function blockById(blocks: readonly Block[], id: string): Block | undefined {
+  return allBlocks(blocks).find((b) => b.id === id);
+}
+
+/** Wo steckt ein Baustein? `groupId` fehlt, wenn er oben auf der Seite liegt. */
+export function locate(
+  blocks: readonly Block[],
+  id: string,
+): { readonly groupId?: string; readonly index: number } | undefined {
+  const oben = blocks.findIndex((b) => b.id === id);
+  if (oben >= 0) return { index: oben };
+  for (const b of blocks) {
+    if (b.type !== "group") continue;
+    const i = b.blocks.findIndex((k) => k.id === id);
+    if (i >= 0) return { groupId: b.id, index: i };
+  }
+  return undefined;
+}
+
+/** Bausteine einer Ebene: die Gruppe mit `groupId` oder die Seite selbst. */
+export function blocksOf(blocks: readonly Block[], groupId?: string): readonly Block[] {
+  if (groupId === undefined) return blocks;
+  const g = blockById(blocks, groupId);
+  return g?.type === "group" ? g.blocks : [];
+}
+
+/** Einen Baustein ändern, auf welcher Ebene er auch steckt. */
+export function updateBlock(blocks: readonly Block[], id: string, change: Partial<Block>): Block[] {
+  return blocks.map((b): Block => {
+    if (b.id === id) return { ...b, ...change } as Block;
+    if (b.type !== "group") return b;
+    if (!b.blocks.some((k) => k.id === id)) return b;
+    return { ...b, blocks: b.blocks.map((k) => (k.id === id ? ({ ...k, ...change } as InnerBlock) : k)) };
+  });
+}
+
+/** Einen Baustein entfernen, auf welcher Ebene er auch steckt (eine Gruppe nimmt ihren Inhalt mit). */
+export function removeBlock(blocks: readonly Block[], id: string): Block[] {
+  return blocks
+    .filter((b) => b.id !== id)
+    .map((b): Block => (b.type === "group" ? { ...b, blocks: b.blocks.filter((k) => k.id !== id) } : b));
+}
+
+/** Einen Baustein einfügen: oben auf der Seite oder in eine Gruppe. */
+export function insertInto(
+  blocks: readonly Block[],
+  groupId: string | undefined,
+  block: Block,
+  index: number,
+): Block[] {
+  if (groupId === undefined) return insertAt(blocks, block, index);
+  if (!fitsInGroup(block.type)) return [...blocks];
+  const inner = block as InnerBlock;
+  return blocks.map((b): Block => {
+    if (b.type !== "group" || b.id !== groupId) return b;
+    if (b.blocks.length >= MAX_GROUP_BLOCKS) return b;
+    const i = Math.max(0, Math.min(index, b.blocks.length));
+    return { ...b, blocks: [...b.blocks.slice(0, i), inner, ...b.blocks.slice(i)] };
+  });
+}
+
+/** Einen Baustein verschieben: innerhalb seiner Ebene oder in eine andere Ebene. */
+export function moveTo(
+  blocks: readonly Block[],
+  id: string,
+  groupId: string | undefined,
+  index: number,
+): Block[] {
+  const from = locate(blocks, id);
+  const block = blockById(blocks, id);
+  if (from === undefined || block === undefined) return [...blocks];
+  if (groupId !== undefined && !fitsInGroup(block.type)) return [...blocks];
+  if (from.groupId === groupId) {
+    if (groupId === undefined)
+      return moveBlock(blocks, from.index, Math.max(0, Math.min(index, blocks.length - 1)));
+    return blocks.map((b): Block => {
+      if (b.type !== "group" || b.id !== groupId) return b;
+      const ziel = Math.max(0, Math.min(index, b.blocks.length - 1));
+      if (ziel === from.index) return b;
+      const next = [...b.blocks];
+      const [x] = next.splice(from.index, 1);
+      if (x !== undefined) next.splice(ziel, 0, x);
+      return { ...b, blocks: next };
+    });
+  }
+  if (groupId !== undefined && !canAddTo(blocks, groupId)) return [...blocks];
+  return insertInto(removeBlock(blocks, id), groupId, block, index);
+}
+
+/** Ablageflächen beim Ziehen: das Ende der Seite und das Innere jeder Gruppe. */
+export const END_ZONE = "ende";
+export const GROUP_ZONE_PREFIX = "gruppe:";
+export const groupZone = (id: string): string => `${GROUP_ZONE_PREFIX}${id}`;
+
+/** Wohin kommt ein Baustein, den man über `overId` loslässt? Ergebnis ist die Ebene (Seite oder
+ *  Gruppe) und der Platz darin. Was nicht in eine Gruppe darf (Shop-Bereiche, Gruppen selbst),
+ *  landet stattdessen direkt hinter der Gruppe auf der Seite. */
+export function dropTarget(
+  blocks: readonly Block[],
+  overId: string,
+  type: BlockType,
+  after = false,
+): { readonly groupId?: string; readonly index: number } {
+  const ziel = ((): { groupId?: string; index: number } => {
+    if (overId === END_ZONE) return { index: blocks.length };
+    if (overId.startsWith(GROUP_ZONE_PREFIX)) {
+      const gid = overId.slice(GROUP_ZONE_PREFIX.length);
+      const g = blockById(blocks, gid);
+      if (g?.type !== "group") return { index: blocks.length };
+      return { groupId: gid, index: g.blocks.length };
+    }
+    const l = locate(blocks, overId);
+    if (l === undefined) return { index: blocks.length };
+    const i = after ? l.index + 1 : l.index;
+    return l.groupId === undefined ? { index: i } : { groupId: l.groupId, index: i };
+  })();
+  if (ziel.groupId === undefined || fitsInGroup(type)) return ziel;
+  const g = locate(blocks, ziel.groupId);
+  return { index: (g?.index ?? blocks.length - 1) + 1 };
+}
+
+/** Einen Baustein verdoppeln, auf welcher Ebene er auch steckt. Eine Gruppe nimmt ihren Inhalt mit,
+ *  jeder Baustein der Kopie bekommt dabei eine eigene neue ID. */
+export function duplicateById(blocks: readonly Block[], id: string): Block[] {
+  const stelle = locate(blocks, id);
+  const block = blockById(blocks, id);
+  if (stelle === undefined || block === undefined) return [...blocks];
+  if (!canAddTo(blocks, stelle.groupId)) return [...blocks];
+  const dazu = block.type === "group" ? 1 + block.blocks.length : 1;
+  if (countBlocks(blocks) + dazu > MAX_BLOCKS) return [...blocks];
+  const belegt: { id: string }[] = allBlocks(blocks).map((b) => ({ id: b.id }));
+  const frisch = (): string => {
+    const neu = newId(belegt);
+    belegt.push({ id: neu });
+    return neu;
+  };
+  const kopie: Block =
+    block.type === "group"
+      ? { ...block, id: frisch(), blocks: block.blocks.map((k) => ({ ...k, id: frisch() })) }
+      : { ...block, id: frisch() };
+  return insertInto(blocks, stelle.groupId, kopie, stelle.index + 1);
 }
 
 /** Baustein an Stelle `index` einfügen (am Ende, wenn außerhalb). */
@@ -320,7 +534,13 @@ export function blockProblem(b: Block): string | undefined {
     return "Bitte eine Webadresse (https://…), E-Mail (mailto:…) oder eine eigene Seite wählen.";
   if (b.type === "hero" && (b.buttonUrl ?? "").trim() !== "" && !isSafeButtonUrl((b.buttonUrl ?? "").trim()))
     return "Bitte eine Webadresse (https://…), E-Mail (mailto:…) oder eine eigene Seite wählen.";
+  if (b.type === "group") return b.blocks.map(blockProblem).find((x) => x !== undefined);
   return undefined;
+}
+
+/** Baustein, der in eine Gruppe darf (Prüfung auf dem Wert, nicht nur auf der Art). */
+export function isInnerBlock(b: Block): b is InnerBlock {
+  return fitsInGroup(b.type);
 }
 
 /** Kurzbeschreibung für Screenreader und Listen. */
@@ -351,6 +571,12 @@ export function blockSummary(b: Block): string {
       return b.items.length === 0
         ? "Noch keine Punkte"
         : b.items.map((i) => i.title.trim() || "…").join(", ");
+    case "group":
+      return b.blocks.length === 0
+        ? "Noch leer"
+        : `${b.blocks.length} ${b.blocks.length === 1 ? "Baustein" : "Bausteine"} in ${b.columns} ${
+            b.columns === 1 ? "Spalte" : "Spalten"
+          }`;
     case "hero":
       return b.title?.trim() || "Begrüßung";
     default:
@@ -380,6 +606,8 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
         return { ...b, text: b.text.trim(), author: b.author.trim() };
       case "bestseller":
         return { ...b, heading: b.heading.trim() };
+      case "group":
+        return { ...b, blocks: cleanBlocks(b.blocks).filter(isInnerBlock) };
       case "trust":
         return {
           ...b,
@@ -433,9 +661,9 @@ export function splitSections(blocks: readonly Block[]): {
   return { blocks: out, sections };
 }
 
-/** Bilder, die Bausteine benutzen. */
+/** Bilder, die Bausteine benutzen (auch die in Gruppen). */
 export function blockImages(blocks: readonly Block[]): string[] {
-  return blocks.flatMap((b) => {
+  return allBlocks(blocks).flatMap((b) => {
     if ((b.type === "textImage" || b.type === "image" || b.type === "hero") && typeof b.imageId === "string")
       return [b.imageId];
     if (b.type === "gallery") return [...b.imageIds];
