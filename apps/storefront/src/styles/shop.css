@@ -537,6 +537,33 @@ main:focus-visible {
   margin-bottom: 3rem;
 }
 
+/* Formatierung in Textfeldern (P13): Absätze, Listen und Links innerhalb eines Textes. */
+.text > p {
+  margin: 0 0 1em;
+}
+.text > p:last-child,
+.text > ul:last-child,
+.text > ol:last-child {
+  margin-bottom: 0;
+}
+.text > ul,
+.text > ol {
+  margin: 0 0 1em;
+  padding-left: 1.25rem;
+}
+.text li {
+  margin: 0.25em 0;
+}
+.text a {
+  color: var(--akzent-dunkel);
+}
+blockquote > p {
+  margin: 0 0 0.5em;
+}
+blockquote > p:last-child {
+  margin-bottom: 0;
+}
+
 /* Fuß */
 .fuss {
   border-top: 1px solid var(--linie);

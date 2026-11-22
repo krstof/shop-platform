@@ -60,7 +60,42 @@ export interface Form {
   pages: ContentPage[];
 }
 
-export function formOf(state: DesignState): Form {
+/**
+ * Standardtexte, die der Shop einsetzt, wenn ein Feld leer ist. Im Editor sollen sie wirklich
+ * dastehen und änderbar sein (Kristof 22.11.2026): Ein Platzhalter, der beim ersten Tippen
+ * verschwindet, hilft niemandem. Gespeichert werden sie erst, wenn Kristof speichert.
+ */
+export function standardText(type: string, shopName: string, feld: "title" | "text" | "heading"): string {
+  if (type === "hero")
+    return feld === "title"
+      ? `Willkommen bei ${shopName}`
+      : feld === "text"
+        ? "Schön, dass du da bist. Stöbere durch unser Sortiment."
+        : "";
+  if (feld !== "heading") return "";
+  if (type === "featured") return "Empfohlen";
+  if (type === "new") return "Neu im Shop";
+  if (type === "bestseller") return "Bestseller";
+  if (type === "categories") return "Kategorien";
+  return "";
+}
+
+/** Leere Felder der Shop-Bereiche mit dem Text füllen, den der Shop sonst selbst einsetzt. */
+function mitStandardtexten(blocks: readonly Block[], shopName: string): Block[] {
+  return blocks.map((b) => {
+    if (b.type === "group") return { ...b, blocks: mitStandardtexten(b.blocks, shopName) as typeof b.blocks };
+    const voll: Record<string, unknown> = { ...b };
+    for (const feld of ["title", "text", "heading"] as const) {
+      const standard = standardText(b.type, shopName, feld);
+      if (standard === "") continue;
+      const wert = (b as unknown as Record<string, unknown>)[feld];
+      if (wert === undefined || wert === "") voll[feld] = standard;
+    }
+    return voll as unknown as Block;
+  });
+}
+
+export function formOf(state: DesignState, shopName = ""): Form {
   const d = state.draft;
   const h = d.home;
   const legacyHome = { ...h, heroImage: h.heroImage };
@@ -86,13 +121,13 @@ export function formOf(state: DesignState): Form {
     heroTitle: h.heroTitle,
     heroText: h.heroText,
     featuredProductIds: [...h.featuredProductIds],
-    blocks: home ? fillSections(home, legacyHome) : legacyBlocks(legacyHome),
+    blocks: mitStandardtexten(home ? fillSections(home, legacyHome) : legacyBlocks(legacyHome), shopName),
     pages: (d.pages ?? []).map((p) => ({
       id: p.id,
       title: p.title,
       slug: p.slug,
       inFooter: p.inFooter,
-      blocks: fillSections(p.content ?? p.blocks, legacyHome),
+      blocks: mitStandardtexten(fillSections(p.content ?? p.blocks, legacyHome), shopName),
     })),
   };
 }

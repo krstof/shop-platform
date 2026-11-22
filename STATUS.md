@@ -321,9 +321,39 @@ Durchlauf im Browser: Zahnrad an Text und Empfehlungen, Darstellung bei 1280 und
 (randlos erreicht beide Ränder, drei Spalten am Computer, eine am Handy, kein seitliches Scrollen).
 `pnpm check` komplett grün, oasdiff meldet keine Brüche.
 
+**P14 Beispieltexte stehen wirklich im Editor (22.11.2026):** Der Editor füllt leere Felder der
+Shop-Bereiche beim Laden mit dem Text, den der Shop sonst selbst einsetzt („Willkommen bei
+<Shopname>", „Empfohlen", „Neu im Shop", „Bestseller", „Kategorien"). Kristof kann sie damit
+ändern wie jeden anderen Text, statt gegen einen Platzhalter zu schreiben, der beim ersten Tippen
+verschwindet. Gespeichert wird erst beim Speichern (`standardText` und `mitStandardtexten` in
+`apps/backoffice/src/pages/editor/form.ts`); der Shop behält seine eigenen Standardtexte für Shops,
+die nie etwas eintragen.
+
+**P13 Formatierung in Textfeldern (22.11.2026):** Neues Paket `@shop/text`
+(`packages/text/src/index.ts`) mit einer kleinen, geprüften Auszeichnung: `**fett**`, `*kursiv*`,
+`- ` und `1. ` für Listen, `[Text](Adresse)` für Links, Leerzeile für einen neuen Absatz. Gespeichert
+wird nur dieser Text, nie HTML; Shop und Backoffice bauen daraus dasselbe sichere HTML (jedes
+Zeichen wird zuerst maskiert, Linkadressen werden geprüft, fremde Seiten bekommen
+`rel="noopener noreferrer"`). Der Shop zeigt es im Textbaustein, in „Text mit Bild", im Zitat, in den
+Antworten des Fragen-Bausteins und in der Produktbeschreibung. Im Editor erscheint über einem
+mehrzeiligen Feld eine Leiste (fett, kursiv, Aufzählung, nummerierte Liste, Link); beim Schreiben
+steht die Auszeichnung da, beim Verlassen des Feldes zeigt der Editor das Ergebnis. Die
+Produktbeschreibung hat dieselbe Leiste (`FormatTextarea`). Keine Schriftart, Schriftgröße oder
+Textfarbe je Textstelle und kein Unterstreichen: Das erste gehört in die Design-Einstellungen, das
+zweite sieht im Web wie ein Link aus.
+
+**Getestet:** 8 neue Prüfungen in `packages/text/src/index.test.ts` (Absätze, Listen, Links, kein
+fremdes HTML, Auszeichnung setzen und wieder wegnehmen), zwei in `form.test.ts` für die
+Beispieltexte; Durchlauf im Browser (Leiste erscheint, Auswahl bleibt nach dem Klick auf „Fett"
+stehen, Feld zeigt beim Verlassen das Ergebnis) und die Darstellung im Shop bei 1000 Pixeln.
+`pnpm check` komplett grün.
+
 ## Nächster Schritt
 
-Paket P2 aus `docs/10_Wunschliste.md` (Produktvarianten). P1 und P12 sind fertig, siehe oben. Die Reihenfolge der Pakete steht in derselben
+Die Reihenfolge hat Kristof am Abend des 22.11.2026 neu gesetzt; sie steht in
+`docs/10_Wunschliste.md` unter „Reihenfolge" und gilt vor allem Früheren. Als Nächstes P3
+(Statistiken und SEO), danach P5, P6 und P10. Produktvarianten (P2) kommen ausdrücklich zuletzt.
+Fertig sind P1, P12, P13 und P14. Die Reihenfolge der Pakete steht in derselben
 Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
 
 ## Offene Entscheidungen

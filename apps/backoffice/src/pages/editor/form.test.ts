@@ -34,6 +34,50 @@ const symbol = {
   height: 64,
 };
 
+describe("Beispieltexte stehen wirklich im Editor", () => {
+  it("füllt leere Felder der Shop-Bereiche mit dem Text, den der Shop sonst einsetzt", () => {
+    const form = formOf(
+      zustand({
+        home: {
+          ...leeresDesign.home,
+          content: [
+            { id: "h1", type: "hero" },
+            { id: "f1", type: "featured", heading: "" },
+            { id: "n1", type: "new", heading: "" },
+            { id: "k1", type: "categories", heading: "" },
+            { id: "b1", type: "bestseller", heading: "" },
+          ],
+        },
+      }),
+      "Teeladen",
+    );
+    expect(form.blocks[0]).toMatchObject({
+      title: "Willkommen bei Teeladen",
+      text: "Schön, dass du da bist. Stöbere durch unser Sortiment.",
+    });
+    expect(form.blocks.map((b) => (b as { heading?: string }).heading)).toEqual([
+      undefined,
+      "Empfohlen",
+      "Neu im Shop",
+      "Kategorien",
+      "Bestseller",
+    ]);
+  });
+
+  it("lässt eigene Texte in Ruhe", () => {
+    const form = formOf(
+      zustand({
+        home: {
+          ...leeresDesign.home,
+          content: [{ id: "h1", type: "hero", title: "Moin!", text: "Eigener Text" }],
+        },
+      }),
+      "Teeladen",
+    );
+    expect(form.blocks[0]).toMatchObject({ title: "Moin!", text: "Eigener Text" });
+  });
+});
+
 describe("Editor-Formular: Einstellungen je Baustein", () => {
   it("trennt die Einstellungen von den Bausteinen und lässt die Spalten der Gruppe stehen", () => {
     const form = formOf(zustand({}));

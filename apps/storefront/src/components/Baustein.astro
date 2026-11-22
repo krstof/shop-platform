@@ -3,7 +3,9 @@
 // Trennlinie, Fragen und Antworten (aufklappbar ohne JavaScript) und Bildergalerie.
 // Video und Karte kommen von fremden Servern; sie laden erst, wenn die Besucherin zustimmt
 // (Cookie „externe-inhalte“). Bis dahin steht dort ein Hinweis mit Button, ganz ohne JavaScript.
-import { absaetze } from "../lib/format.js";
+// Formatierung in Textfeldern (P13): Der Shop baut das HTML selbst aus der geprüften Auszeichnung;
+// fremdes HTML kommt nie hinein (jedes Zeichen wird vorher maskiert, siehe @shop/text).
+import { formatText } from "@shop/text";
 import Vertrauenssymbol from "./Vertrauenssymbol.astro";
 import {
   buttonHref,
@@ -44,9 +46,7 @@ const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
 {b.type === "text" && (
   <section class="baustein baustein-text">
     {b.heading !== "" && <h2>{b.heading}</h2>}
-    {absaetze(b.text).map((a) => (
-      <p class="text">{a}</p>
-    ))}
+    <div class="text" set:html={formatText(b.text)} />
   </section>
 )}
 
@@ -54,9 +54,7 @@ const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
   <section class:list={["baustein", "baustein-textbild", { "bild-links": b.imageSide === "left" }]}>
     <div class="textbild-text">
       {b.heading !== "" && <h2>{b.heading}</h2>}
-      {absaetze(b.text).map((a) => (
-        <p class="text">{a}</p>
-      ))}
+      <div class="text" set:html={formatText(b.text)} />
     </div>
     {b.image !== null && (
       <img
@@ -147,11 +145,7 @@ const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
 
 {b.type === "quote" && (
   <figure class="baustein baustein-zitat">
-    <blockquote>
-      {absaetze(b.text).map((a) => (
-        <p>{a}</p>
-      ))}
-    </blockquote>
+    <blockquote set:html={formatText(b.text)} />
     {b.author !== "" && <figcaption>{b.author}</figcaption>}
   </figure>
 )}
@@ -208,9 +202,7 @@ const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
     {b.items.map((i) => (
       <details>
         <summary>{i.question}</summary>
-        {absaetze(i.answer).map((a) => (
-          <p class="text">{a}</p>
-        ))}
+        <div class="text" set:html={formatText(i.answer)} />
       </details>
     ))}
   </section>

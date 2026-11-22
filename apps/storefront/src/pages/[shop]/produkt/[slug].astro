@@ -2,6 +2,7 @@
 // Produktseite (M4): Bilder, Preis mit Pflichtangaben, Beschreibung.
 import Shop from "../../../layouts/Shop.astro";
 import { absaetze, euro, lieferzeit, steuerHinweis } from "../../../lib/format.js";
+import { formatText, plainText } from "@shop/text";
 import { readMerkzettel } from "../../../lib/merkzettel.js";
 import { loadShop, safeSlug, storeApi, StoreApiError, type StoreProduct } from "../../../lib/store-api.js";
 import { warenkorbAnzahl } from "../../../lib/cart.js";
@@ -41,7 +42,7 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
   shop={shop}
   categories={categories}
   titel={p.name}
-  beschreibung={absaetze(p.description)[0] ?? p.name}
+  beschreibung={absaetze(plainText(p.description))[0] ?? p.name}
   korb={korb}
 >
   <nav class="pfadleiste" aria-label="Brotkrümelnavigation">
@@ -145,12 +146,10 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
           </button>
         </form>
       </div>
-      {absaetze(p.description).length > 0 && (
+      {p.description.trim() !== "" && (
         <>
           <h2>Beschreibung</h2>
-          {absaetze(p.description).map((a) => (
-            <p class="text">{a}</p>
-          ))}
+          <div class="text" set:html={formatText(p.description)} />
         </>
       )}
     </div>

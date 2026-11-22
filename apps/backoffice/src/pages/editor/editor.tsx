@@ -90,7 +90,7 @@ function Editor({ initial }: { initial: DesignState }) {
   const shop = useShop();
   const queryClient = useQueryClient();
   const [server, setServer] = useState(initial);
-  const [form, setForm] = useState<Form>(() => formOf(initial));
+  const [form, setForm] = useState<Form>(() => formOf(initial, shop.name));
   const [images, setImages] = useState<ReadonlyMap<string, DesignImage>>(() => imageMap(new Map(), initial));
   const [pageId, setPageId] = useState("home");
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -113,7 +113,7 @@ function Editor({ initial }: { initial: DesignState }) {
 
   const page = form.pages.find((p) => p.id === pageId);
   const blocks: readonly Block[] = page?.blocks ?? form.blocks;
-  const dirty = !sameForm(form, formOf(server));
+  const dirty = !sameForm(form, formOf(server, shop.name));
   const issues = problems(form);
   const unpublished = dirty || server.hasUnpublishedChanges;
 
@@ -153,7 +153,7 @@ function Editor({ initial }: { initial: DesignState }) {
     setServer(state);
     setImages((m) => imageMap(m, state));
     queryClient.setQueryData(designKey(shop.id), state);
-    if (!keepLocal) setForm(formOf(state));
+    if (!keepLocal) setForm(formOf(state, shop.name));
   }
 
   const saveDraft = () =>

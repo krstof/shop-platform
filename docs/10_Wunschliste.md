@@ -15,23 +15,24 @@ Alles, was Kristof sich für Slopify wünscht, sortiert nach Paketen. Die Liste 
 
 ## Reihenfolge
 
-Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er nicht** (früher Punkt 36.5, gestrichen). Vorrang haben MCP-Server, Plausible, Google Search Console, DataForSEO, Produktvarianten und die Shop-Detailseite in der Plattform-Verwaltung.
+Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er nicht** (früher Punkt 36.5, gestrichen).
 
-| Paket | Inhalt | Warum an dieser Stelle |
+Am Abend des 22.11.2026 hat er die Reihenfolge neu gesetzt. Sie gilt vor allen früheren Angaben:
+
+| Rang | Paket | Inhalt |
 |---|---|---|
-| P1 ✅ | Sofort sichtbare Kleinigkeiten und ein Fehler | Eine Stunde Arbeit, jeden Tag sichtbar |
-| P2 | Produktvarianten | Größter fehlender Brocken im Katalog, von Kristof genannt |
-| P3 | Statistiken und SEO-Anbindungen | Von Kristof genannt: Plausible, Google Search Console, DataForSEO, Sitemap |
-| P4 | Slopify als MCP-Server | Von Kristof genannt |
-| P5 | Produktpflege: Editor, Video, Zoom, Schlüsselwörter, Mindestbestand | Was ein Händler täglich anfasst |
-| P6 | Assistent: eigene Seite, Benachrichtigungen, Report, Einrichtung | Großes eigenes Thema, Konzept steht unten |
-| P7 | Shop-Detailseite in der Plattform-Verwaltung | Von Kristof genannt, kleiner als die anderen |
-| P8 | Kaufen: Mindestbestellwert, Warenkorb-Rabatte, Suchvorschläge, Suchfilter | Verkaufslogik, hängt teils an Varianten |
-| P9 | Versandarten, Versandkosten, Zahlungs- und Versandlogos, Mollie | Hängt zusammen, größerer Brocken |
-| P10 | Sprachen und automatische Übersetzung, Steuersätze | Größter Brocken, betrifft jedes Modul |
-| P11 | Aussehen: Textfarbe, Kopfzeilen-Varianten | Kleinigkeiten, jederzeit einschiebbar |
-| P12 ✅ | Einstellungen je Baustein im Editor | Von Kristof am 22.11.2026 gewünscht, Vorbild Shopify |
-| P13 | Formatierung in Textfeldern (fett, kursiv, Link) | Hängt mit P5 zusammen |
+| ✅ fertig | P13 | Formatierung in Textfeldern (fett, kursiv, Listen, Link), dazu P14 (Beispieltexte im Editor) |
+| als Nächstes | P3 | Statistiken und SEO (Analytics-Seite, SEO-Seite, Plausible, Search Console, DataForSEO) |
+| wichtig | P5 | Produktpflege: Editor, Video, Zoom, Schlüsselwörter, Mindestbestand |
+| wichtig | P6 | Assistent: eigene Seite, Benachrichtigungen, Report, Einstellungen |
+| wichtig | P10 | Sprachen und automatische Übersetzung, Steuersätze |
+| mittel | P11 | Aussehen: Produktkarte zentral, Textfarbe, Kopfzeilen-Varianten |
+| hinten | P2 | Produktvarianten (zuletzt, ausdrücklich) |
+| hinten | P4 | Slopify als MCP-Server |
+| hinten | P7 | Shop-Detailseite in der Plattform-Verwaltung, mit Anmelde-Link in den Shop |
+| hinten | P8 | Kaufen: Mindestbestellwert, Warenkorb-Rabatte, Suchvorschläge, Suchfilter |
+| hinten | P9 | Versandarten, Versandkosten, Zahlungs- und Versandlogos, Mollie |
+| ✅ fertig | P1, P12 | Kleinigkeiten (22.11.2026) und Einstellungen je Baustein (22.11.2026) |
 
 ## P1 Sofort sichtbare Kleinigkeiten ✅ fertig am 22.11.2026
 
@@ -95,7 +96,9 @@ Siehe das Konzept weiter unten. Kurz:
 
 ## P7 Shop-Detailseite in der Plattform-Verwaltung
 
-Eine Seite je Shop mit Zahlen, Inhaberin, Tarif, Zustand und den Knöpfen zum Sperren und Entsperren.
+Eine Seite je Shop mit Zahlen, Inhaberin, Tarif, Zustand und den Buttons zum Sperren und Entsperren.
+
+- **Anmelde-Link in den Shop** (Kristof 22.11.2026): Aus der Plattform-Verwaltung heraus mit einem Klick im Backoffice des Shops landen, ohne das Passwort der Inhaberin zu kennen. Technisch ein kurzlebiger Einmal-Link, den nur ein Betreiberkonto erzeugen darf; der Shop merkt sich im Protokoll, dass der Betrieb und nicht die Inhaberin gearbeitet hat.
 
 ## P8 Kaufen und Suchen
 
@@ -160,7 +163,16 @@ Punkt 7 (Produkte von Hand auswählen auch bei „Neu im Shop" und „Bestseller
 (Bildformat und Inhalt der Produktkarte, zentral einstellbar). Beides sind eigene Schritte und
 stehen jetzt in P11.
 
-## P13 Formatierung in Textfeldern
+## P14 Beispieltexte im Editor stehen wirklich da ✅ fertig am 22.11.2026
+
+Kristof am 22.11.2026: Im Editor steht in der Bühne „Willkommen bei Teeladen“, aber das ist nur ein
+Platzhalter. Sobald er hineinklickt und tippt, ist der Satz weg und er schreibt auf einem leeren
+Feld. Er möchte den Text wirklich dort stehen haben und ihn ändern können wie jeden anderen.
+
+Gilt für alle Stellen, an denen der Shop heute einen Standardtext einsetzt: Überschrift und Text der
+Bühne sowie die Überschriften von Empfehlungen, Neu im Shop, Bestseller und Kategorien.
+
+## P13 Formatierung in Textfeldern ✅ fertig am 22.11.2026
 
 Kristof möchte in allen Textfeldern formatieren können. Vorschlag mit Maß:
 
@@ -169,6 +181,8 @@ Kristof möchte in allen Textfeldern formatieren können. Vorschlag mit Maß:
 - **Keine Schriftart, Schriftgröße und Textfarbe je Textstelle.** Die gehören in die Design-Einstellungen, damit der Shop zusammenbleibt. Wer sie je Absatz setzen kann, baut sich unbemerkt ein Durcheinander.
 
 Gespeichert wird kein HTML, sondern eine kleine, geprüfte Auszeichnung; der Shop setzt daraus sein eigenes HTML. Sonst wäre es dasselbe Loch wie bei einem HTML-Baustein.
+
+**Gebaut am 22.11.2026** als Paket `@shop/text`: `**fett**`, `*kursiv*`, `- ` und `1. ` für Listen, `[Text](Adresse)` für Links. Im Editor gibt es dafür eine Leiste über dem Feld; unterstrichen fehlt mit Absicht, weil unterstrichener Text im Web wie ein Link aussieht.
 
 ## Bewusst nicht gebaut
 

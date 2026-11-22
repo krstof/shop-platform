@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Alert, Button, Card, Field, Input, Select, Spinner, Textarea } from "../components/ui.js";
+import { Alert, Button, Card, Field, Input, Select, Spinner } from "../components/ui.js";
 import { MultiSelect } from "../components/select.js";
 import {
   ApiError,
@@ -15,6 +15,7 @@ import {
 } from "../lib/api.js";
 import { centsToInput, parseEuro } from "../lib/money.js";
 import { AiDescriptionButton } from "./ai-description.js";
+import { FormatTextarea } from "./editor/format-bar.js";
 import { useShop } from "./layout.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
 import { useConfirm } from "../components/dialog.js";
@@ -283,16 +284,16 @@ function ProductEditor({ product }: { product: Product | undefined }) {
               </div>
               <Field
                 label="Beschreibung"
-                hint="Absätze mit einer Leerzeile trennen."
+                hint="Absätze mit einer Leerzeile trennen. Markiere Text und formatiere ihn über die Leiste."
                 error={errors.description}
               >
                 {(p) => (
-                  <Textarea
+                  <FormatTextarea
                     {...p}
                     rows={7}
                     maxLength={5000}
                     value={form.description}
-                    onChange={(e) => set("description")(e.target.value)}
+                    onChange={(text) => set("description")(text)}
                   />
                 )}
               </Field>

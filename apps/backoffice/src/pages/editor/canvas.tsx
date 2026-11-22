@@ -574,8 +574,9 @@ function BlockView({
             maxLength={MAX_BLOCK_HEADING}
           />
           <InlineText
-            as="p"
+            as="div"
             multiline
+            format
             value={b.text}
             onChange={(text) => update({ text })}
             placeholder="Hier deinen Text schreiben …"
@@ -597,8 +598,9 @@ function BlockView({
               maxLength={MAX_BLOCK_HEADING}
             />
             <InlineText
-              as="p"
+              as="div"
               multiline
+              format
               value={b.text}
               onChange={(text) => update({ text })}
               placeholder="Erzähl etwas dazu …"
@@ -778,6 +780,7 @@ function BlockView({
           <InlineText
             className="sp-zitat-text"
             multiline
+            format
             value={b.text}
             onChange={(text) => update({ text })}
             placeholder="Was sagen deine Kundinnen?"
@@ -957,6 +960,7 @@ function BlockView({
               <InlineText
                 className="sp-faq-antwort"
                 multiline
+                format
                 value={it.answer}
                 onChange={(answer) =>
                   update({ items: b.items.map((x, j) => (j === i ? { ...x, answer } : x)) })
