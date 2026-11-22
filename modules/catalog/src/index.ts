@@ -49,6 +49,11 @@ export interface CatalogDependencies {
   readonly stock: ProductStock;
   /** Bilder (Modul media, zusammengesteckt in apps/api). */
   readonly images: ProductImages;
+  /**
+   * Wird nach dem Anlegen oder Ändern eines sichtbaren Produkts aufgerufen (22.11.2026), damit
+   * Suchmaschinen über IndexNow sofort Bescheid wissen. Zusammengesteckt in apps/api.
+   */
+  readonly onProductPublished?: ((product: { readonly slug: string }) => Promise<void>) | undefined;
 }
 
 /** Alle HTTP-Endpunkte des Moduls. Das Programm api registriert sie; die Datenbank bleibt eingeschlossen. */
@@ -58,7 +63,13 @@ export function catalogEndpoints(deps: CatalogDependencies): Endpoint[] {
   return [
     ...manufacturerEndpoints(db),
     ...categoryEndpoints(db, deps.images),
-    ...productEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
+    ...productEndpoints({
+      db,
+      prices: deps.prices,
+      stock: deps.stock,
+      images: deps.images,
+      onPublished: deps.onProductPublished,
+    }),
     ...productImageEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
     // Storefront-API (M4): nur Sichtbares, öffentlich je Shop.
     ...storeCatalogEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),

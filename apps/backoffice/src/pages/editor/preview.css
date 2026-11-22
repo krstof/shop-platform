@@ -157,6 +157,49 @@
 .sp-buehne.mit-bild .sp-buehne-text p {
   color: rgba(255, 255, 255, 0.92);
 }
+.sp-buehne-knopf {
+  margin: 1rem 0 0;
+}
+/* Vertrauenszeile in der Vorschau (22.11.2026). */
+.sp-vertrauen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+}
+.sp-vertrauen li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.sp-vertrauen svg {
+  flex: none;
+  color: var(--akzent);
+}
+.sp-vertrauen b {
+  display: block;
+  font-weight: 600;
+}
+.sp-vertrauen span > span {
+  display: block;
+  color: var(--text-leise);
+  font-size: 0.9em;
+}
+
+/* Suche als Lupe in der Vorschau (22.11.2026). */
+.sp-suche-lupe {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: var(--text-leise);
+  background: rgb(0 0 0 / 0.05);
+}
 
 /* Produkte und Kategorien */
 .sp-raster {

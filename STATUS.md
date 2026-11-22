@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 21.11.2026 (Fundament für Anbindungen steht; Telegram und die Bildersuche angebunden)
+Stand: 22.11.2026 (Welle A der Anbindungen; Bühne, Kopfzeile, Vertrauenszeile, Produktkarte)
 
 ## Erledigt
 
@@ -99,6 +99,29 @@ Stand: 21.11.2026 (Fundament für Anbindungen steht; Telegram und die Bildersuch
   - ⚠️ In der Cloud-Arbeitsumgebung hat der API-Container kein Internet, deshalb meldet die Bildersuche dort „antwortet gerade nicht“. Auf dem Testserver (eigener Server mit Internet) funktioniert sie. Dasselbe gilt für Telegram.
   - Geprüft: 13 neue Tests im Modul, 15 neue Tests gegen die Datenbank (`apps/api/src/integrations.db.test.ts`), insgesamt 449 API-Tests grün, dazu `pnpm check` komplett. Im Browser durchgespielt: Seite „Anbindungen“, Editor mit geöffneter Bildersuche.
 
+- **Anbindungen Welle A: Adressvorschläge, Produktfeed, IndexNow (22.11.2026):**
+  - **Adressvorschläge in der Kasse** über Photon von Komoot (`modules/integrations/src/http/store-public.ts`, `apps/storefront/src/pages/[shop]/adressvorschlaege.ts`, `kasse.astro`): Tippt der Kunde drei Zeichen in das Feld „Straße und Hausnummer", schlägt die Kasse nach kurzer Pause passende Adressen vor; ein Klick füllt Straße, Postleitzahl und Ort. Der Dienst braucht keinen Schlüssel und ist deshalb von Anfang an eingeschaltet. Gesucht wird nur in Deutschland, Dubletten fallen raus, es kommen höchstens fünf Vorschläge. Fällt der Dienst aus, kommt eine leere Liste zurück und der Kunde tippt wie bisher weiter — der Kauf hängt nie an einem fremden Dienst.
+  - **Produktfeed** (`apps/storefront/src/lib/produktfeed.ts`, `apps/storefront/src/pages/[shop]/produkte.xml.ts`): Jeder Shop hat jetzt unter `/produkte.xml` eine Datei im Google-Merchant-Format, die auch Meta und Preisvergleiche lesen. Sie enthält Nummer, Name, Beschreibung, Adresse, Verfügbarkeit, Preis (bei Aktionspreisen auch den Streichpreis) und bis zu zehn Bilder je Produkt. Die fertige Adresse steht zum Kopieren in „Einstellungen → Anbindungen".
+  - **Öffentliche Adresse erkennen** (`apps/storefront/src/lib/basis.ts`): Der Feed braucht vollständige Adressen, der Node-Server hinter Caddy kennt aber nur seinen internen Namen. Die Basis kommt jetzt aus den Kopfzeilen, die Caddy weitergibt, mit Prüfung des Hostnamens, damit sich niemand eine fremde Adresse in den Feed schreiben kann.
+  - **IndexNow** (`modules/integrations/src/internal/store.ts`, `apps/storefront/src/pages/[shop]/[schluessel].txt.ts`): Veröffentlicht der Händler ein Produkt, meldet der Shop das sofort an Bing und Yandex, statt tagelang auf den nächsten Besuch einer Suchmaschine zu warten. Der nötige Schlüssel entsteht beim ersten Mal von selbst und liegt als Textdatei im Shop; ist die Anbindung aus, gibt es die Datei nicht.
+  - **Gefunden und behoben:** Die Storefront-API kennt bei den Produkten keinen Parameter `limit` und wies den Feed mit 422 ab. Der Feed holt jetzt die Liste ohne Parameter (die API liefert bis zu 200 Produkte).
+  - ⚠️ In der Cloud-Arbeitsumgebung haben die Container kein Internet, deshalb bleiben die Adressvorschläge dort leer und IndexNow meldet nichts. Produktfeed und Schlüsseldatei laufen auch dort, beide wurden im Browser geprüft.
+  - Geprüft: 9 Tests für den Feed, 6 für die Adresserkennung, 5 neue Tests gegen die Datenbank, 454 API-Tests grün, `pnpm check` komplett. Im Browser durchgespielt: Feed mit richtigen Adressen, Schlüsseldatei erreichbar (falscher Schlüssel ergibt 404), Seite „Anbindungen" mit allen fünf Kacheln.
+
+- **Bühne beherrschen: Zuschnitt-Punkt und Knopf (22.11.2026, Punkt 3 von Kristofs Wunschliste):**
+  - **Zuschnitt-Punkt**: Im Editor stehen unter ⚙ der Bühne zwei kleine Bilder, „Computer" (breit) und „Handy" (hoch). Ein Klick setzt den Punkt, der stehen bleibt, wenn der Shop das Foto beschneidet; die Pfeiltasten verschieben ihn. Beide Geräte haben einen eigenen Punkt, weil ein breites Foto am Handy viel enger beschnitten wird. Ohne Angabe bleibt es bei der Mitte.
+  - **Knopf in der Bühne**: Beschriftung und Ziel wie beim Knopf-Baustein (eigene Seiten zur Auswahl oder eine eigene Adresse). Ohne Beschriftung oder ohne Ziel zeigt der Shop keinen Knopf.
+  - **Umgesetzt als Klassen, nicht als Stil in der Seite** (`apps/storefront/src/styles/shop.css`): Die Sicherheitsregeln des Shops erlauben keine Stile in der Seite (CSP, `style-src 'self'`). Der Punkt wird deshalb auf Viertelschritte gerundet und als Klasse gesetzt (`fokus-x-75`, `fokus-handy-y-100`). Fünf Stufen je Richtung reichen in der Praxis und kosten nichts.
+  - **Gefunden und behoben:** Die Storefront-API gab neue Bühnenfelder nicht heraus; der Shop hätte sie nie gesehen. Jetzt stehen sie im Vertrag (`modules/storefront/src/http/design.ts`).
+  - Die Testshops bekommen das beim Einrichten mit: Teeladen zeigt „Tees ansehen" und schneidet aufs Teefeld, Modeladen „Zur Kollektion" (`apps/api/src/seed-catalog.ts`).
+  - Geprüft: neue Tests für Schema und Editor-Daten, `pnpm check` komplett; im Browser gesetzt, veröffentlicht und im Shop auf 1280 und 390 Pixel angesehen.
+
+- **Kopfzeile einstellbar (22.11.2026, aus Punkt 4 der Wunschliste):** Im Editor gibt es den neuen Bereich „Kopfzeile". Die Suche steht wahlweise als **offenes Feld**, als **Lupe**, die das Feld beim Klick aufklappt, oder gar nicht im Kopf. Dazu der Schalter, ob die Kopfzeile beim Scrollen oben stehen bleibt. Die Lupe klappt ohne JavaScript auf (`<details>`), passend dazu, dass der Shop ohne Skripte auskommt. Geprüft: neue Tests für das Lesen der Einstellung, `pnpm check` komplett, im Browser umgestellt, veröffentlicht und im Shop ausprobiert (Lupe auf, Suche abgeschickt).
+
+- **Vertrauenszeile als Baustein (22.11.2026, Punkt 9 aus `docs/08`):** Neuer Baustein „Vertrauen" mit höchstens drei Punkten: Symbol, kurze Überschrift, ein Satz. Zur Auswahl stehen sechs Symbole (Versand, Rückgabe, Kontakt, Zahlung, Qualität, Nachhaltig); der Shop zeichnet sie selbst, es wird nichts von außen geladen. Die Texte schreibt der Händler direkt in der Vorschau. Mehr als drei Punkte lässt der Baustein nicht zu, weil eine Wand aus Siegeln weniger überzeugt als drei klare Zusagen. Geprüft: neue Tests im Schema, `pnpm check` komplett, im Browser eingefügt, veröffentlicht und im Shop angesehen.
+
+- **Zweites Produktbild beim Überfahren (22.11.2026, Punkt 5 aus `docs/08`):** Hat ein Produkt mehr als ein Bild, blendet die Karte beim Überfahren das zweite ein — Rückseite, Detail oder das Produkt in Benutzung, ohne dass jemand klicken muss. Nur dort, wo es eine Maus gibt; wer mit dem Finger bedient, sieht immer das erste Bild, und wer schnelle Bewegungen abgeschaltet hat, bekommt den Wechsel ohne Überblendung. Ohne zweites Bild ändert sich nichts.
+
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
 Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobieren merkt (CLAUDE.md 1a). Der alte Plan mit 26 Etappen in `docs/06_Welle1_Anforderungen.md` gilt nur noch als Nachschlagewerk. Fundament (E1 bis E6) ist fertig. Ab jetzt je Lauf eine sichtbare Etappe, API und Oberfläche zusammen, jeweils die einfachste Version:
@@ -194,10 +217,10 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
 36. **Kristofs Wunschliste vom 21.11.2026**, nach seinen Antworten vom selben Tag sortiert. Grundlage für alles, was Aussehen betrifft, ist `docs/08_Shop_Design_Best_Practices.md`, für alle Anbindungen `docs/09_Anbindungen.md`:
     1. ~~Fundament für Anbindungen~~ (erledigt 21.11.2026)
     2. ~~Telegram-Benachrichtigung~~ (erledigt 21.11.2026; Kristof muss nur noch den Schlüssel vom BotFather in „Einstellungen → Anbindungen" eintragen)
-    3. **Bühne beherrschen:** Zuschnitt-Punkt wählbar (am Computer und am Handy getrennt) und ein Knopf in der Bühne.
-    4. **Editor und Shop moderner machen.** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
+    3. ~~Bühne beherrschen: Zuschnitt-Punkt und Knopf~~ (erledigt 22.11.2026)
+    4. **Editor und Shop moderner machen (hier geht es weiter).** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: ~~Suche im Kopf wählbar~~, ~~Punkt 4 (Bühnen-Zuschnitt)~~, ~~Punkt 5 (zweites Produktbild beim Überfahren)~~ und ~~Punkt 9 (Vertrauenszeile)~~ aus `docs/08` (alle erledigt 22.11.2026). **Offen und als Nächstes dran:** Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon, Spalten und Hintergrund je Gruppe), weitere Bausteine, und das Aussehen des Editors selbst.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.
-    6. **Rest der Welle A aus `docs/09`:** Photon (Adressvervollständigung in der Kasse), IndexNow, Produktfeed. Alle drei brauchen nichts von Kristof.
+    6. ~~Rest der Welle A aus `docs/09`: Photon, IndexNow, Produktfeed~~ (erledigt 22.11.2026)
     7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.
     8. **Welle C aus `docs/09`:** Slopify als MCP-Server, eigene Bewertungen.
     9. **Welle D aus `docs/09`:** Plausible oder Umami auf einer neuen Seite „Statistiken", Google Search Console, DataForSEO.

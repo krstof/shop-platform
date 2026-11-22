@@ -66,6 +66,12 @@ export interface ProductEndpointDependencies {
   readonly prices: ProductPrices;
   readonly stock: ProductStock;
   readonly images: ProductImages;
+  /**
+   * Wird nach dem Anlegen oder Ändern eines sichtbaren Produkts aufgerufen (22.11.2026). Gedacht
+   * für IndexNow: Suchmaschinen erfahren sofort, dass es die Seite gibt. Fehler ändern nichts am
+   * Produkt, deshalb wird hier nicht gewartet, ob es geklappt hat.
+   */
+  readonly onPublished?: ((product: { readonly slug: string }) => Promise<void>) | undefined;
 }
 
 /** Liest Produkte vollständig: Zeilen plus Preis, Bestand und Bilder (vier Abfragen je Seite). */
@@ -94,6 +100,11 @@ export function productReader({ prices, stock, images }: Omit<ProductEndpointDep
 export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] {
   const { db, prices, stock } = deps;
   const withDetails = productReader(deps);
+
+  /** Meldet eine sichtbar gewordene Produktseite nach außen, ohne den Aufrufer warten zu lassen. */
+  async function announce(slug: string): Promise<void> {
+    await deps.onPublished?.({ slug }).catch(() => undefined);
+  }
 
   async function requireCategory(
     trx: Transaction<DB>,
@@ -219,7 +230,10 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           await publishEvent(trx, productCreated, { id: row.id, name: row.name });
           return (await withDetails(trx, [row]))[0] as Product;
         }),
-      );
+      ).then(async (product) => {
+        if (product.status === "published") await announce(product.slug);
+        return product;
+      });
     },
   });
 
@@ -271,6 +285,7 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
       );
       if (result.kind === "not_found") throw new NotFoundError();
       if (result.kind === "version_mismatch") throw new PreconditionFailedError();
+      if (result.product.status === "published") await announce(result.product.slug);
       return result.product;
     },
   });

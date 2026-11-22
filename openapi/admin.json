@@ -5133,6 +5133,59 @@
                                   "heading"
                                 ],
                                 "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "trust"
+                                  },
+                                  "items": {
+                                    "maxItems": 3,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "icon": {
+                                          "type": "string",
+                                          "enum": [
+                                            "versand",
+                                            "ruecksendung",
+                                            "kontakt",
+                                            "zahlung",
+                                            "qualitaet",
+                                            "nachhaltig"
+                                          ]
+                                        },
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 40
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 120
+                                        }
+                                      },
+                                      "required": [
+                                        "icon",
+                                        "title",
+                                        "text"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "items"
+                                ],
+                                "additionalProperties": false
                               }
                             ]
                           }
@@ -5178,6 +5231,34 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "focusX": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "focusY": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "focusMobileX": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "focusMobileY": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "buttonLabel": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "buttonUrl": {
+                                "type": "string",
+                                "maxLength": 300
                               }
                             },
                             "additionalProperties": false
@@ -5193,6 +5274,30 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "header": {
+                    "description": "Kopfzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist.",
+                    "type": "object",
+                    "properties": {
+                      "search": {
+                        "type": "string",
+                        "enum": [
+                          "offen",
+                          "lupe",
+                          "aus"
+                        ],
+                        "description": "Suche im Kopf: `offen` (Feld steht da), `lupe` (Feld klappt beim Klick auf die Lupe auf) oder `aus`."
+                      },
+                      "sticky": {
+                        "type": "boolean",
+                        "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+                      }
+                    },
+                    "required": [
+                      "search",
+                      "sticky"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -13507,6 +13612,9 @@
               "editorial"
             ],
             "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
+          },
+          "header": {
+            "$ref": "#/components/schemas/DesignHeader"
           }
         },
         "required": [
@@ -13520,7 +13628,8 @@
           "backgroundColor",
           "headingFont",
           "bodyFont",
-          "template"
+          "template",
+          "header"
         ],
         "additionalProperties": false,
         "description": "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite."
@@ -13549,7 +13658,8 @@
               "divider",
               "faq",
               "gallery",
-              "bestseller"
+              "bestseller",
+              "trust"
             ]
           }
         },
@@ -13676,6 +13786,30 @@
         ],
         "additionalProperties": false,
         "description": "Link im Fuß des Shops."
+      },
+      "DesignHeader": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "x-extensible-enum": [
+              "offen",
+              "lupe",
+              "aus"
+            ],
+            "description": "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`."
+          },
+          "sticky": {
+            "type": "boolean",
+            "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+          }
+        },
+        "required": [
+          "search",
+          "sticky"
+        ],
+        "additionalProperties": false,
+        "description": "Kopfzeile des Shops: Suche und Verhalten beim Scrollen."
       },
       "DesignHome": {
         "type": "object",
@@ -14438,6 +14572,59 @@
                         "heading"
                       ],
                       "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "trust"
+                        },
+                        "items": {
+                          "maxItems": 3,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "icon": {
+                                "type": "string",
+                                "enum": [
+                                  "versand",
+                                  "ruecksendung",
+                                  "kontakt",
+                                  "zahlung",
+                                  "qualitaet",
+                                  "nachhaltig"
+                                ]
+                              },
+                              "title": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 120
+                              }
+                            },
+                            "required": [
+                              "icon",
+                              "title",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "items"
+                      ],
+                      "additionalProperties": false
                     }
                   ]
                 }
@@ -14489,6 +14676,34 @@
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
+                },
+                "focusX": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "focusY": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "focusMobileX": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "focusMobileY": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "buttonLabel": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "buttonUrl": {
+                  "type": "string",
+                  "maxLength": 300
                 }
               },
               "additionalProperties": false
@@ -14960,6 +15175,10 @@
           "testable": {
             "type": "boolean"
           },
+          "shopUrlPath": {
+            "type": "string",
+            "description": "Pfad im Shop, aus dem das Backoffice eine Adresse zum Kopieren baut; leer, wenn keiner."
+          },
           "enabled": {
             "type": "boolean"
           },
@@ -14997,6 +15216,7 @@
           "setup",
           "helpUrl",
           "testable",
+          "shopUrlPath",
           "enabled",
           "fields",
           "checkedAt",

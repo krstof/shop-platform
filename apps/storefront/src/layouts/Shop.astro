@@ -9,6 +9,7 @@ import {
   safeLink,
   safePageSlug,
   SOCIAL_NETWORKS,
+  sucheImKopf,
   vorlage,
   webFontCssUrl,
 } from "../lib/design.js";
@@ -33,6 +34,11 @@ const design = shop.design ?? DEFAULT_DESIGN;
 const merkzettel = readMerkzettel(Astro.cookies).length;
 // Kopf- und Fußzeile (Shop-Editor Teil 3). Ältere Antworten ohne diese Felder: Standard.
 const slogan = design.tagline ?? "";
+// Kopfzeile (22.11.2026): Suche offen, als Lupe zum Aufklappen oder gar nicht; Kopf mitscrollend
+// oder oben bleibend. Die Lupe klappt ohne JavaScript auf (<details>), damit der Shop ohne Skripte
+// auskommt.
+const suchart = sucheImKopf(design);
+const klebt = design.header?.sticky === true;
 const fussText = design.footer?.text ?? "";
 // Symbole der sozialen Netzwerke (simple-icons, CC0), nur https-Profile.
 const SYMBOLE = {
@@ -80,7 +86,7 @@ const fussLinks = [
     <a class="sprung" href="#inhalt">
       Zum Inhalt springen
     </a>
-    <header class="kopf">
+    <header class:list={["kopf", { "kopf-klebt": klebt }]}>
       <p class="vorschau-band" role="note">
         Testshop: Hier ist nichts echt, auch die Zahlung nicht.
       </p>
@@ -116,13 +122,46 @@ const fussLinks = [
           </ul>
         </nav>
         <div class="kopf-aktionen">
-          <form class="suchfeld" role="search" action={`${basis}/suche`} method="get">
-            <label class="unsichtbar" for="suche-q">
-              Im Shop suchen
-            </label>
-            <input id="suche-q" type="search" name="q" value={suche} maxlength="100" placeholder="Suchen …" />
-            <button type="submit">Suchen</button>
-          </form>
+          {suchart === "offen" && (
+            <form class="suchfeld" role="search" action={`${basis}/suche`} method="get">
+              <label class="unsichtbar" for="suche-q">
+                Im Shop suchen
+              </label>
+              <input
+                id="suche-q"
+                type="search"
+                name="q"
+                value={suche}
+                maxlength="100"
+                placeholder="Suchen …"
+              />
+              <button type="submit">Suchen</button>
+            </form>
+          )}
+          {suchart === "lupe" && (
+            <details class="suche-lupe" open={suche !== ""}>
+              <summary aria-label="Suche öffnen">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                </svg>
+              </summary>
+              <form class="suchfeld" role="search" action={`${basis}/suche`} method="get">
+                <label class="unsichtbar" for="suche-q">
+                  Im Shop suchen
+                </label>
+                <input
+                  id="suche-q"
+                  type="search"
+                  name="q"
+                  value={suche}
+                  maxlength="100"
+                  placeholder="Suchen …"
+                />
+                <button type="submit">Suchen</button>
+              </form>
+            </details>
+          )}
           <div class="kopf-links">
             <a
               class="merk-link"

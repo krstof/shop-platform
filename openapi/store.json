@@ -91,6 +91,92 @@
         "x-public-reason": "Jeder Besucher sieht den Namen des Shops, den er aufruft."
       }
     },
+    "/store/v1/shops/{shopHandle}/address-suggestions": {
+      "get": {
+        "operationId": "suggestAddresses",
+        "summary": "Adressvorschläge",
+        "description": "Schlägt zu einer angefangenen Straße passende Adressen in Deutschland vor, mit Postleitzahl und Ort. Ist die Anbindung im Shop ausgeschaltet, kommt eine leere Liste zurück.",
+        "tags": [
+          "Kasse"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passende Adressen, höchstens fünf.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressSuggestions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Die Kasse fragt beim Tippen der Straße; der Kunde ist dabei nicht angemeldet."
+      }
+    },
     "/store/v1/shops/{shopHandle}/bestsellers": {
       "get": {
         "operationId": "getStoreBestsellers",
@@ -1432,6 +1518,81 @@
         "x-public-reason": "Jeder Besucher sieht das Aussehen des Shops, den er aufruft."
       }
     },
+    "/store/v1/shops/{shopHandle}/indexnow-key": {
+      "get": {
+        "operationId": "getIndexNowKey",
+        "summary": "Schlüssel für IndexNow",
+        "description": "Der Schlüssel, mit dem der Shop Bing und Yandex meldet, dass sich etwas geändert hat. Er ist nicht geheim: Die Suchmaschine prüft damit, dass die Meldung wirklich von diesem Shop kommt, und holt ihn selbst unter der Adresse des Shops ab.",
+        "tags": [
+          "Shop"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Der Schlüssel, oder null, wenn die Anbindung aus ist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexNowKey"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Der Schlüssel muss öffentlich abrufbar sein, sonst kann die Suchmaschine ihn nicht prüfen."
+      }
+    },
     "/store/v1/shops/{shopHandle}/pages/{pageSlug}": {
       "get": {
         "operationId": "getStorePage",
@@ -2200,6 +2361,49 @@
   },
   "components": {
     "schemas": {
+      "AddressSuggestion": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string",
+            "description": "Straße mit Hausnummer, soweit bekannt."
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Fertige Zeile zum Anzeigen in der Vorschlagsliste."
+          }
+        },
+        "required": [
+          "street",
+          "postalCode",
+          "city",
+          "label"
+        ],
+        "additionalProperties": false,
+        "description": "Ein Adressvorschlag."
+      },
+      "AddressSuggestions": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressSuggestion"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false,
+        "description": "Vorschläge für die Kasse."
+      },
       "ContactMessageReceived": {
         "type": "object",
         "properties": {
@@ -2255,6 +2459,30 @@
         "additionalProperties": false,
         "description": "Link im Fuß des Shops."
       },
+      "DesignHeader": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "x-extensible-enum": [
+              "offen",
+              "lupe",
+              "aus"
+            ],
+            "description": "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`."
+          },
+          "sticky": {
+            "type": "boolean",
+            "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+          }
+        },
+        "required": [
+          "search",
+          "sticky"
+        ],
+        "additionalProperties": false,
+        "description": "Kopfzeile des Shops: Suche und Verhalten beim Scrollen."
+      },
       "DesignSocial": {
         "type": "object",
         "properties": {
@@ -2279,6 +2507,22 @@
         },
         "additionalProperties": false,
         "description": "Profile in sozialen Netzwerken (https-Adressen); fehlende zeigt der Shop nicht."
+      },
+      "IndexNowKey": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false,
+        "description": "Schlüssel für IndexNow."
       },
       "Problem": {
         "type": "object",
@@ -2490,6 +2734,38 @@
                     "type": "null"
                   }
                 ]
+              },
+              "focusX": {
+                "description": "Bühne: Zuschnitt-Punkt des Bildes von links in Prozent; fehlt = Mitte.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "focusY": {
+                "description": "Bühne: Zuschnitt-Punkt des Bildes von oben in Prozent; fehlt = Mitte.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "focusMobileX": {
+                "description": "Bühne: Zuschnitt-Punkt am Handy von links; fehlt = wie am Computer.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "focusMobileY": {
+                "description": "Bühne: Zuschnitt-Punkt am Handy von oben; fehlt = wie am Computer.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "buttonLabel": {
+                "description": "Bühne: Beschriftung des Knopfs; leer = kein Knopf.",
+                "type": "string"
+              },
+              "buttonUrl": {
+                "description": "Bühne: Ziel des Knopfs; leer = kein Knopf.",
+                "type": "string"
               },
               "heading": {
                 "description": "Empfehlungen, Neu, Kategorien: Überschrift; leer = Standard.",
@@ -2930,7 +3206,8 @@
               "divider",
               "faq",
               "gallery",
-              "bestseller"
+              "bestseller",
+              "trust"
             ]
           }
         },
@@ -3038,6 +3315,9 @@
             ],
             "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
           },
+          "header": {
+            "$ref": "#/components/schemas/DesignHeader"
+          },
           "pages": {
             "type": "array",
             "items": {
@@ -3075,6 +3355,7 @@
           "headingFont",
           "bodyFont",
           "template",
+          "header",
           "pages"
         ],
         "additionalProperties": false,

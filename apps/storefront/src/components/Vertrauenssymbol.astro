@@ -1,0 +1,50 @@
+---
+// Symbole der Vertrauenszeile (22.11.2026). Der Shop zeichnet sie selbst, damit nichts von außen
+// geladen wird und sie die Farbe des Textes annehmen.
+interface Props {
+  name: string;
+}
+const { name } = Astro.props;
+---
+
+<svg class="vertrauen-symbol" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  {name === "versand" && (
+    <>
+      <path d="M2 7h11v9H2z" />
+      <path d="M13 10h4l3 3v3h-7z" />
+      <circle cx="6.5" cy="17.5" r="1.8" />
+      <circle cx="16.5" cy="17.5" r="1.8" />
+    </>
+  )}
+  {name === "ruecksendung" && (
+    <>
+      <path d="M4 10h11a5 5 0 0 1 0 10H8" />
+      <path d="M8 6 4 10l4 4" />
+    </>
+  )}
+  {name === "kontakt" && (
+    <>
+      <path d="M4 5h16v11H9l-5 4z" />
+      <path d="M8 9h8M8 12h5" />
+    </>
+  )}
+  {name === "zahlung" && (
+    <>
+      <path d="M3 6h18v12H3z" />
+      <path d="M3 10h18" />
+      <path d="M7 14h4" />
+    </>
+  )}
+  {name === "qualitaet" && (
+    <>
+      <circle cx="12" cy="9" r="5.5" />
+      <path d="m8.5 13.5-1.5 7 5-2.5 5 2.5-1.5-7" />
+    </>
+  )}
+  {name === "nachhaltig" && (
+    <>
+      <path d="M20 4c0 9-5 13-11 13-2 0-4-1-4-1s1-9 8-11c3-1 7-1 7-1z" />
+      <path d="M5 20c2-5 5-8 9-10" />
+    </>
+  )}
+</svg>

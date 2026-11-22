@@ -43,6 +43,7 @@ import {
   ColorsPanel,
   FontsPanel,
   FooterPanel,
+  HeaderPanel,
   LogoPanel,
   PagesPanel,
   PalettePanel,
@@ -82,7 +83,7 @@ export function DesignPage() {
   return <Editor initial={design.data} />;
 }
 
-type Panel = "seiten" | "bausteine" | "farben" | "schriften" | "logo" | "fuss" | "vorlage";
+type Panel = "seiten" | "bausteine" | "farben" | "schriften" | "logo" | "fuss" | "kopf" | "vorlage";
 
 function Editor({ initial }: { initial: DesignState }) {
   const shop = useShop();
@@ -284,6 +285,9 @@ function Editor({ initial }: { initial: DesignState }) {
           <Section title="Fußzeile" open={openPanel === "fuss"} onToggle={() => toggle("fuss")}>
             <FooterPanel form={form} set={set} />
           </Section>
+          <Section title="Kopfzeile" open={openPanel === "kopf"} onToggle={() => toggle("kopf")}>
+            <HeaderPanel suche={form.suche} kopfKlebt={form.kopfKlebt} onChange={set} />
+          </Section>
           <Section title="Vorlage" open={openPanel === "vorlage"} onToggle={() => toggle("vorlage")}>
             <TemplatePanel value={form.template} onChange={(template) => set({ template })} />
           </Section>
@@ -404,6 +408,7 @@ function Editor({ initial }: { initial: DesignState }) {
                   social: Object.entries(form.social)
                     .filter(([, v]) => v.trim() !== "")
                     .map(([k]) => k),
+                  suche: form.suche,
                 }}
               />
             </div>

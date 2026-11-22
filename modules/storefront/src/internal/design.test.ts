@@ -3,6 +3,7 @@ import {
   contrast,
   darker,
   DEFAULT_DESIGN,
+  DEFAULT_HEADER,
   DEFAULT_HOME,
   imagesOf,
   isSafeLinkUrl,
@@ -13,6 +14,16 @@ import {
 } from "./design.js";
 
 describe("Aussehen: Rechenregeln", () => {
+  it("liest die Kopfzeile und macht aus Unsinn den Standard", () => {
+    // Alte Shops haben das Feld nicht: offenes Suchfeld, Kopf scrollt mit.
+    expect(readSettings({}).header).toEqual(DEFAULT_HEADER);
+    expect(readSettings({ header: { search: "lupe", sticky: true } }).header).toEqual({
+      search: "lupe",
+      sticky: true,
+    });
+    expect(readSettings({ header: { search: "blinkend", sticky: "ja" } }).header).toEqual(DEFAULT_HEADER);
+  });
+
   it("rechnet Kontraste wie WCAG", () => {
     expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 5);
     expect(contrast("#ffffff", "#ffffff")).toBeCloseTo(1, 5);
@@ -64,6 +75,7 @@ describe("Aussehen: Rechenregeln", () => {
       headingFont: { id: "lora", name: "Lora", category: "serif" },
       bodyFont: null,
       template: "boutique",
+      header: { search: "lupe", sticky: true },
       pages: [
         {
           id: "p1",

@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Alert, Button, Field, Input, Spinner } from "../components/ui.js";
 import { ApiError, request } from "../lib/api.js";
+import { storefrontUrl } from "../lib/design.js";
 import { useShop } from "./layout.js";
 import { SettingsTabs } from "./settings.js";
 
@@ -30,6 +31,7 @@ interface Integration {
   readonly setup: string;
   readonly helpUrl: string;
   readonly testable: boolean;
+  readonly shopUrlPath: string;
   readonly enabled: boolean;
   readonly fields: readonly IntegrationField[];
   readonly checkedAt: string | null;
@@ -147,6 +149,14 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
           <p className="mt-1 text-[0.95rem] text-gray-600">{integration.description}</p>
           <p className="mt-1 text-sm text-gray-500">{integration.where}</p>
+          {integration.shopUrlPath !== "" && (
+            <p className="mt-2 text-sm text-gray-700">
+              Adresse:{" "}
+              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.85em] break-all">
+                {storefrontUrl(shop.handle, window.location) + integration.shopUrlPath}
+              </code>
+            </p>
+          )}
           {integration.checkMessage !== null && (
             <p
               className={

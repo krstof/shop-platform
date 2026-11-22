@@ -23,6 +23,7 @@ export const BLOCK_TYPES = [
   "faq",
   "gallery",
   "bestseller",
+  "trust",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -38,6 +39,19 @@ export const MAX_GALLERY = 8;
 export const MAX_SECTION_TITLE = 80;
 export const MAX_SECTION_TEXT = 300;
 export const MAX_SECTION_PRODUCTS = 8;
+/** Vertrauenszeile (22.11.2026): höchstens drei Punkte, sonst glaubt sie keiner mehr. */
+export const MAX_TRUST_ITEMS = 3;
+export const MAX_TRUST_TITLE = 40;
+export const MAX_TRUST_TEXT = 120;
+/** Symbole der Vertrauenszeile; der Shop zeichnet sie selbst, nichts kommt von außen. */
+export const TRUST_ICONS = [
+  "versand",
+  "ruecksendung",
+  "kontakt",
+  "zahlung",
+  "qualitaet",
+  "nachhaltig",
+] as const;
 
 /** Ziel eines Knopfs: Webseite, E-Mail, Telefon oder ein Pfad im eigenen Shop („/seite/ueber-uns“). */
 export function isSafeButtonUrl(url: string): boolean {
@@ -103,14 +117,33 @@ const id = z.string().regex(BLOCK_ID);
 
 const SECTION_TYPES = ["hero", "featured", "categories", "new"] as const;
 
-/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild; Empfehlungen: Überschrift, Produkte; Neu und
- *  Kategorien: Überschrift). Fehlt ein Feld, gilt der Inhalt der Startseite bzw. der Standard. */
+/** Zuschnitt-Punkt eines Bühnenbildes in Prozent: 0 ist links bzw. oben, 100 rechts bzw. unten.
+ *  Fehlt er, bleibt die Mitte stehen. Am Computer und am Handy getrennt, weil ein breites Foto am
+ *  Handy viel enger beschnitten wird und sonst das Falsche in der Mitte landet. */
+const focus = z.int().min(0).max(100).optional();
+
+/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild, Zuschnitt, Knopf; Empfehlungen: Überschrift,
+ *  Produkte; Neu und Kategorien: Überschrift). Fehlt ein Feld, gilt der Inhalt der Startseite bzw.
+ *  der Standard. */
 export const sectionContentSchema = z.strictObject({
   title: line(MAX_SECTION_TITLE).optional(),
   text: text(MAX_SECTION_TEXT).optional(),
   imageId: z.uuid().nullable().optional(),
   heading: line(MAX_SECTION_TITLE).optional(),
   productIds: z.array(z.uuid()).max(MAX_SECTION_PRODUCTS).optional(),
+  focusX: focus,
+  focusY: focus,
+  focusMobileX: focus,
+  focusMobileY: focus,
+  buttonLabel: line(MAX_BUTTON_LABEL).optional(),
+  buttonUrl: z
+    .string()
+    .max(300)
+    .refine(
+      (u) => u === "" || isSafeButtonUrl(u),
+      "Bitte eine Webadresse, E-Mail, Telefonnummer oder /seite/… angeben.",
+    )
+    .optional(),
 });
 export type SectionContent = z.infer<typeof sectionContentSchema>;
 
@@ -186,6 +219,20 @@ const laterBlocks = [
   }),
   /** Meistverkaufte Produkte (füllt der Shop selbst aus den Bestellungen). */
   z.strictObject({ id, type: z.literal("bestseller"), heading: line(MAX_BLOCK_HEADING) }),
+  /** Vertrauenszeile: bis zu drei kurze Punkte mit Symbol (Versand, Rückgabe, Kontakt). */
+  z.strictObject({
+    id,
+    type: z.literal("trust"),
+    items: z
+      .array(
+        z.strictObject({
+          icon: z.enum(TRUST_ICONS),
+          title: line(MAX_TRUST_TITLE),
+          text: line(MAX_TRUST_TEXT),
+        }),
+      )
+      .max(MAX_TRUST_ITEMS),
+  }),
 ] as const;
 
 /** Ein Baustein, so wie er gespeichert und über die API geschrieben wird. */

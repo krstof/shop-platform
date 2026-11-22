@@ -13,6 +13,7 @@ export {
 } from "./catalog.js";
 export { integrationEndpoints, type IntegrationDependencies } from "./http/admin.js";
 export { stockPhotoEndpoints, type StockPhotoDependencies } from "./http/stock-photos.js";
+export { storePublicEndpoints, type StorePublicDependencies } from "./http/store-public.js";
 export { fetchExternal, ExternalServiceError } from "./internal/outbound.js";
 export {
   createIntegrations,

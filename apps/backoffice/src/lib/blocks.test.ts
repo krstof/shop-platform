@@ -97,6 +97,44 @@ describe("Baukasten im Backoffice", () => {
       ]),
     ).toEqual([{ id: "f", type: "faq", heading: "F", items: [{ question: "a", answer: "b" }] }]);
   });
+
+  it("behält Zuschnitt und Knopf der Bühne beim Speichern", () => {
+    expect(
+      cleanBlocks([
+        {
+          id: "buehne",
+          type: "hero",
+          title: " Hallo ",
+          focusX: 25,
+          focusY: 0,
+          focusMobileX: 75,
+          focusMobileY: 100,
+          buttonLabel: " Jetzt stöbern ",
+          buttonUrl: " /seite/tee ",
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "buehne",
+        type: "hero",
+        title: "Hallo",
+        focusX: 25,
+        focusY: 0,
+        focusMobileX: 75,
+        focusMobileY: 100,
+        buttonLabel: "Jetzt stöbern",
+        buttonUrl: "/seite/tee",
+      },
+    ]);
+    // Eine Bühne ohne diese Felder bleibt, wie sie ist.
+    expect(cleanBlocks([{ id: "b", type: "hero" }])).toEqual([{ id: "b", type: "hero" }]);
+  });
+
+  it("meldet ein gefährliches Ziel beim Knopf der Bühne", () => {
+    expect(blockProblem({ id: "b", type: "hero", buttonUrl: "javascript:1" })).toBeDefined();
+    expect(blockProblem({ id: "b", type: "hero", buttonUrl: "/seite/a" })).toBeUndefined();
+    expect(blockProblem({ id: "b", type: "hero" })).toBeUndefined();
+  });
 });
 
 describe("Eigene Seiten", () => {

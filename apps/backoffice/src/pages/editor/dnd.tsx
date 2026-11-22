@@ -32,6 +32,7 @@ import {
   MoveVertical,
   Play,
   Quote,
+  ShieldCheck,
   Sparkles,
   Trophy,
   Star,
@@ -76,6 +77,7 @@ export const BLOCK_ICONS: Record<BlockType, typeof Type> = {
   new: Sparkles,
   bestseller: Trophy,
   categories: LayoutGrid,
+  trust: ShieldCheck,
 };
 
 export function BlockIcon({ type, className = "size-4" }: { type: BlockType; className?: string }) {

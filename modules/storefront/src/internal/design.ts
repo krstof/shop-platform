@@ -101,6 +101,19 @@ export type Template = (typeof TEMPLATES)[number];
 export const DEFAULT_BACKGROUND = "#fbf8f3";
 export const TEXT_COLOR = "#26221e";
 
+/** Kopfzeile des Shops (22.11.2026): Suche und Verhalten beim Scrollen. */
+export const SEARCH_MODES = ["offen", "lupe", "aus"] as const;
+export type SearchMode = (typeof SEARCH_MODES)[number];
+
+export interface HeaderSettings {
+  /** „offen“ = Suchfeld steht da, „lupe“ = Lupe, die das Feld aufklappt, „aus“ = keine Suche. */
+  readonly search: SearchMode;
+  /** Bleibt die Kopfzeile beim Scrollen oben stehen? */
+  readonly sticky: boolean;
+}
+
+export const DEFAULT_HEADER: HeaderSettings = { search: "offen", sticky: false };
+
 export interface DesignSettings {
   readonly accentColor: string;
   readonly font: Font;
@@ -118,6 +131,8 @@ export interface DesignSettings {
   readonly bodyFont: WebFont | null;
   /** Design-Vorlage (Anordnung). */
   readonly template: Template;
+  /** Kopfzeile: Suche und Verhalten beim Scrollen. */
+  readonly header: HeaderSettings;
 }
 
 export const DEFAULT_HOME: HomeSettings = {
@@ -144,6 +159,7 @@ export const DEFAULT_DESIGN: DesignSettings = {
   headingFont: null,
   bodyFont: null,
   template: "klassisch",
+  header: DEFAULT_HEADER,
 };
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -187,6 +203,13 @@ const stored = z.object({
   headingFont: webFontSchema.nullable().catch(null),
   bodyFont: webFontSchema.nullable().catch(null),
   template: z.enum(TEMPLATES).catch("klassisch"),
+  header: z
+    .object({
+      search: z.enum(SEARCH_MODES).catch("offen"),
+      sticky: z.boolean().catch(false),
+    })
+    .catch(() => ({ ...DEFAULT_HEADER }))
+    .default(() => ({ ...DEFAULT_HEADER })),
 });
 
 /** Gespeicherte Profile lesen: nur bekannte Netzwerke mit https-Adresse. */

@@ -41,6 +41,9 @@ const integrationSchema = z
       .meta({ description: "Was der Händler selbst besorgen muss; leer, wenn nichts nötig ist." }),
     helpUrl: z.string(),
     testable: z.boolean(),
+    shopUrlPath: z.string().meta({
+      description: "Pfad im Shop, aus dem das Backoffice eine Adresse zum Kopieren baut; leer, wenn keiner.",
+    }),
     enabled: z.boolean(),
     fields: z.array(fieldSchema),
     checkedAt: z.string().nullable().meta({ description: "Zeitpunkt der letzten Verbindungsprüfung." }),
@@ -76,7 +79,8 @@ function view(definitionProvider: string, state: IntegrationState | undefined) {
     setup: definition.setup ?? "",
     helpUrl: definition.helpUrl ?? "",
     testable: definition.testable,
-    enabled: state?.enabled ?? false,
+    shopUrlPath: definition.shopUrlPath ?? "",
+    enabled: state?.enabled ?? definition.defaultEnabled === true,
     fields: definition.fields.map((f) => {
       const stored = f.secret ? (state?.secrets[f.key] ?? "") : (state?.settings[f.key] ?? "");
       return {

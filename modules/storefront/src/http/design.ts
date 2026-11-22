@@ -25,6 +25,7 @@ import {
   MAX_PAGES,
   pagesSchema,
   parseVideoUrl,
+  TRUST_ICONS,
   type Block,
   type ContentPage,
 } from "../internal/blocks.js";
@@ -49,6 +50,7 @@ import {
   readableBackground,
   readableWithWhite,
   sameSettings,
+  SEARCH_MODES,
   SOCIAL_NETWORKS,
   TEMPLATES,
   webFontSchema,
@@ -224,6 +226,16 @@ const footerViewSchema = z
   })
   .meta({ id: "DesignFooter", description: "Fußzeile: Text und Links." });
 
+const headerViewSchema = z
+  .object({
+    search: z.string().meta({
+      "x-extensible-enum": [...SEARCH_MODES],
+      description: "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`.",
+    }),
+    sticky: z.boolean().meta({ description: "Kopfzeile bleibt beim Scrollen oben stehen." }),
+  })
+  .meta({ id: "DesignHeader", description: "Kopfzeile des Shops: Suche und Verhalten beim Scrollen." });
+
 const designViewSchema = z
   .object({
     accentColor: z.string(),
@@ -241,6 +253,7 @@ const designViewSchema = z
       .nullable()
       .meta({ description: "Schrift des Fließtexts; null = Auswahl unter `font`." }),
     template: templateView,
+    header: headerViewSchema,
   })
   .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
@@ -373,6 +386,16 @@ const draftInput = z.strictObject({
   pages: pagesSchema.optional().meta({
     description: `Eigene Inhaltsseiten (bis zu ${MAX_PAGES}), nur freie Bausteine. Fehlt das Feld, bleiben sie.`,
   }),
+  header: z
+    .strictObject({
+      search: z.enum(SEARCH_MODES).meta({
+        description:
+          "Suche im Kopf: `offen` (Feld steht da), `lupe` (Feld klappt beim Klick auf die Lupe auf) oder `aus`.",
+      }),
+      sticky: z.boolean().meta({ description: "Kopfzeile bleibt beim Scrollen oben stehen." }),
+    })
+    .optional()
+    .meta({ description: "Kopfzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist." }),
 });
 
 const logoInput = z.strictObject({
@@ -392,6 +415,31 @@ const storeSectionSchema = z.object({
   title: z.string().optional().meta({ description: "Bühne: Überschrift; leer = Standard." }),
   text: z.string().optional().meta({ description: "Bühne: Text; leer = Standard." }),
   image: storeImageSchema.nullable().optional().meta({ description: "Bühne: großes Bild." }),
+  focusX: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt des Bildes von links in Prozent; fehlt = Mitte." }),
+  focusY: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt des Bildes von oben in Prozent; fehlt = Mitte." }),
+  focusMobileX: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt am Handy von links; fehlt = wie am Computer." }),
+  focusMobileY: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt am Handy von oben; fehlt = wie am Computer." }),
+  buttonLabel: z
+    .string()
+    .optional()
+    .meta({ description: "Bühne: Beschriftung des Knopfs; leer = kein Knopf." }),
+  buttonUrl: z.string().optional().meta({ description: "Bühne: Ziel des Knopfs; leer = kein Knopf." }),
   heading: z
     .string()
     .optional()
@@ -449,6 +497,17 @@ const storeLaterBlocks = [
     id: z.string(),
     type: z.literal("bestseller"),
     heading: z.string().meta({ description: "Produkte dazu liefert GET /shops/{shopHandle}/bestsellers." }),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("trust"),
+    items: z.array(
+      z.object({
+        icon: z.string().meta({ "x-extensible-enum": [...TRUST_ICONS], description: "Symbol des Punkts." }),
+        title: z.string(),
+        text: z.string(),
+      }),
+    ),
   }),
 ] as const;
 
@@ -511,6 +570,7 @@ const storeDesignSchema = z
     headingFont: webFontView.nullable(),
     bodyFont: webFontView.nullable(),
     template: templateView,
+    header: headerViewSchema,
     pages: z
       .array(z.object({ title: z.string(), slug: z.string(), inFooter: z.boolean() }))
       .meta({ description: "Eigene Inhaltsseiten (nur Titel und Adresse; Inhalt über /pages/{pageSlug})." }),
@@ -549,6 +609,14 @@ function storeBlock(
           title: b.title ?? home.heroTitle,
           text: b.text ?? home.heroText,
           image: image(b.imageId === undefined ? home.heroImageId : b.imageId),
+          // Zuschnitt und Knopf gibt es erst seit dem 22.11.2026; fehlen sie, bleibt es bei Mitte
+          // und ohne Knopf.
+          ...(b.focusX === undefined ? {} : { focusX: b.focusX }),
+          ...(b.focusY === undefined ? {} : { focusY: b.focusY }),
+          ...(b.focusMobileX === undefined ? {} : { focusMobileX: b.focusMobileX }),
+          ...(b.focusMobileY === undefined ? {} : { focusMobileY: b.focusMobileY }),
+          ...(b.buttonLabel === undefined ? {} : { buttonLabel: b.buttonLabel }),
+          ...(b.buttonUrl === undefined ? {} : { buttonUrl: b.buttonUrl }),
         },
       ];
     case "featured":
@@ -606,6 +674,11 @@ function storeBlock(
       return b.address.trim() === "" ? [] : [{ id: b.id, type: b.type, address: b.address.trim() }];
     case "spacer":
       return [{ ...b }];
+    case "trust": {
+      // Punkte ohne Überschrift lässt der Shop weg; bleibt keiner übrig, fällt die Zeile ganz weg.
+      const items = b.items.filter((i) => i.title.trim() !== "");
+      return items.length === 0 ? [] : [{ id: b.id, type: b.type, items }];
+    }
   }
 }
 
@@ -668,6 +741,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       headingFont: s.headingFont,
       bodyFont: s.bodyFont,
       template: s.template,
+      header: s.header,
       pages: s.pages.map((p) => ({
         ...p,
         blocks: firstBlocksOf(p.blocks),
@@ -866,6 +940,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             headingFont: body.headingFont === undefined ? current.draft.headingFont : body.headingFont,
             bodyFont: body.bodyFont === undefined ? current.draft.bodyFont : body.bodyFont,
             template: body.template ?? current.draft.template,
+            header: body.header ?? current.draft.header,
           },
         };
       });
@@ -1011,6 +1086,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         headingFont: published.headingFont,
         bodyFont: published.bodyFont,
         template: published.template,
+        header: published.header,
       };
     },
   });

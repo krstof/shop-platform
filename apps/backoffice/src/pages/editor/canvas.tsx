@@ -4,7 +4,24 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Settings2, Trash, Upload, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BadgeCheck,
+  Copy,
+  CreditCard,
+  Leaf,
+  MessageSquare,
+  GripVertical,
+  Plus,
+  Search,
+  RotateCcw,
+  Settings2,
+  Trash,
+  Truck,
+  Upload,
+  X,
+} from "lucide-react";
 import { siFacebook, siInstagram, siPinterest, siTiktok, siX, siYoutube } from "simple-icons";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Select } from "../../components/select.js";
@@ -25,10 +42,15 @@ import {
   MAX_SECTION_PRODUCTS,
   MAX_SECTION_TEXT,
   MAX_SECTION_TITLE,
+  MAX_TRUST_ITEMS,
+  MAX_TRUST_TEXT,
+  MAX_TRUST_TITLE,
   moveBlock,
   parseVideoUrl,
+  TRUST_ICONS,
   type Block,
   type ContentPage,
+  type TrustIcon,
 } from "../../lib/blocks.js";
 import { formatEuro } from "../../lib/money.js";
 import { END_ZONE, useDragState } from "./dnd.js";
@@ -44,6 +66,16 @@ const SOCIAL_ICONS: Record<string, { path: string; title: string }> = {
   x: siX,
 };
 
+/** Symbole der Vertrauenszeile in der Vorschau (lucide, gleiche Bedeutung wie im Shop). */
+const TRUST_ICON_COMPONENTS: Record<TrustIcon, typeof Truck> = {
+  versand: Truck,
+  ruecksendung: RotateCcw,
+  kontakt: MessageSquare,
+  zahlung: CreditCard,
+  qualitaet: BadgeCheck,
+  nachhaltig: Leaf,
+};
+
 export interface CanvasShop {
   readonly name: string;
   readonly logo: DesignImage | null;
@@ -53,6 +85,8 @@ export interface CanvasShop {
   readonly footerLinks: readonly string[];
   /** Netzwerke mit Profil. */
   readonly social: readonly string[];
+  /** Kopfzeile: Suche offen, als Lupe oder gar nicht. */
+  readonly suche: "offen" | "lupe" | "aus";
 }
 
 interface Ctx {
@@ -64,6 +98,8 @@ interface Ctx {
   categories: readonly Category[];
   pages: readonly ContentPage[];
   shopName: string;
+  /** Zeigt die Vorschau gerade das Handy? Die Bühne schneidet ihr Bild dann anders zu. */
+  mobile: boolean;
 }
 
 export function Canvas({
@@ -73,7 +109,6 @@ export function Canvas({
   selectedId,
   onSelect,
   shop,
-  mobile,
   template,
   ...ctx
 }: Ctx & {
@@ -83,11 +118,11 @@ export function Canvas({
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
   shop: CanvasShop;
-  mobile: boolean;
   /** Design-Vorlage (Anordnung). */
   template: string;
 }) {
   const { adding } = useDragState();
+  const mobile = ctx.mobile;
   const end = useDroppable({ id: END_ZONE });
   const [settingsFor, setSettingsFor] = useState<string | undefined>();
   const update = (id: string, change: Partial<Block>) =>
@@ -122,10 +157,17 @@ export function Canvas({
             ))}
           </nav>
           <div className="sp-korb">
-            <span className="sp-suche" aria-hidden="true">
-              <span>Suchen …</span>
-              <b>Suchen</b>
-            </span>
+            {shop.suche === "offen" && (
+              <span className="sp-suche" aria-hidden="true">
+                <span>Suchen …</span>
+                <b>Suchen</b>
+              </span>
+            )}
+            {shop.suche === "lupe" && (
+              <span className="sp-suche-lupe" aria-hidden="true">
+                <Search className="size-4" />
+              </span>
+            )}
             <span className="sp-korb-link">Warenkorb (0)</span>
           </div>
         </div>
@@ -639,6 +681,41 @@ function BlockView({
       );
     case "divider":
       return <hr className="sp-linie" />;
+    case "trust":
+      return (
+        <ul className="sp-vertrauen">
+          {b.items.map((i, n) => {
+            const I = TRUST_ICON_COMPONENTS[i.icon];
+            return (
+              <li key={n}>
+                <I className="size-6" aria-hidden="true" />
+                <span>
+                  <InlineText
+                    as="b"
+                    value={i.title}
+                    onChange={(title) =>
+                      update({ items: b.items.map((x, k) => (k === n ? { ...x, title } : x)) })
+                    }
+                    placeholder="Kurz und knapp"
+                    label="Überschrift des Punkts"
+                    maxLength={MAX_TRUST_TITLE}
+                  />
+                  <InlineText
+                    as="span"
+                    value={i.text}
+                    onChange={(text) =>
+                      update({ items: b.items.map((x, k) => (k === n ? { ...x, text } : x)) })
+                    }
+                    placeholder="Ein Satz dazu"
+                    label="Text des Punkts"
+                    maxLength={MAX_TRUST_TEXT}
+                  />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      );
     case "faq":
       return (
         <section className="sp-abschnitt">
@@ -698,9 +775,17 @@ function BlockView({
     case "hero": {
       const img = typeof b.imageId === "string" ? ctx.images.get(b.imageId) : undefined;
       const Tag = mainHeading ? "h1" : "h2";
+      const knopf = (b.buttonLabel ?? "").trim();
       return (
         <section className={"sp-buehne " + (img ? "mit-bild" : "")}>
-          {img && <img className="sp-buehne-foto" src={img.url} alt="" />}
+          {img && (
+            <img
+              className="sp-buehne-foto"
+              src={img.url}
+              alt=""
+              style={{ objectPosition: fokusPosition(b, ctx.mobile) }}
+            />
+          )}
           <div className="sp-buehne-text">
             <InlineText
               as={Tag}
@@ -719,6 +804,11 @@ function BlockView({
               label="Text der Bühne"
               maxLength={MAX_SECTION_TEXT}
             />
+            {knopf !== "" && (
+              <p className="sp-buehne-knopf">
+                <span className="sp-knopf">{knopf}</span>
+              </p>
+            )}
           </div>
           {!img && (
             <div>
@@ -988,6 +1078,18 @@ function UploadButton({
   );
 }
 
+/** Zuschnitt-Punkt einer Bühne als CSS-Wert. Am Handy gilt der eigene Punkt, sonst der vom Computer. */
+function fokusPosition(b: Block, mobile: boolean): string {
+  if (b.type !== "hero") return "50% 50%";
+  const stufe = (w: number | undefined, ersatz: number) =>
+    typeof w === "number" && Number.isFinite(w)
+      ? Math.min(100, Math.max(0, Math.round(w / 25) * 25))
+      : ersatz;
+  const x = stufe(b.focusX, 50);
+  const y = stufe(b.focusY, 50);
+  return mobile ? `${stufe(b.focusMobileX, x)}% ${stufe(b.focusMobileY, y)}%` : `${x}% ${y}%`;
+}
+
 /** Einstellungen unter ⚙: alles, was man nicht direkt schreiben kann. */
 function BlockSettings({
   block: b,
@@ -1018,15 +1120,97 @@ function BlockSettings({
       );
     case "image":
       return <ImageField imageId={b.imageId} ctx={ctx} onChange={(imageId) => update({ imageId })} />;
-    case "hero":
+    case "hero": {
+      const bildId = typeof b.imageId === "string" ? b.imageId : null;
+      const buehnenBild = bildId === null ? undefined : ctx.images.get(bildId);
+      const ziele = [
+        { url: "/", name: "Startseite" },
+        ...ctx.pages.map((p) => ({ url: `/seite/${p.slug}`, name: p.title || p.slug })),
+      ];
+      const knopfZiel = b.buttonUrl ?? "";
       return (
-        <ImageField
-          imageId={typeof b.imageId === "string" ? b.imageId : null}
-          ctx={ctx}
-          onChange={(imageId) => update({ imageId })}
-          hint="Am besten ein breites Foto im Querformat."
-        />
+        <div className="space-y-4">
+          <ImageField
+            imageId={bildId}
+            ctx={ctx}
+            onChange={(imageId) => update({ imageId })}
+            hint="Am besten ein breites Foto im Querformat."
+          />
+          {buehnenBild && (
+            <div>
+              <p className="text-sm font-medium">Zuschnitt</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Klick in das Bild, welche Stelle stehen bleiben soll. Der Shop schneidet oben und unten bzw.
+                links und rechts weg, je nach Bildschirm.
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <FokusWahl
+                  label="Computer"
+                  url={buehnenBild.thumbnailUrl}
+                  breit
+                  x={b.focusX ?? 50}
+                  y={b.focusY ?? 50}
+                  onChange={(focusX, focusY) => update({ focusX, focusY })}
+                />
+                <FokusWahl
+                  label="Handy"
+                  url={buehnenBild.thumbnailUrl}
+                  x={b.focusMobileX ?? b.focusX ?? 50}
+                  y={b.focusMobileY ?? b.focusY ?? 50}
+                  onChange={(focusMobileX, focusMobileY) => update({ focusMobileX, focusMobileY })}
+                />
+              </div>
+            </div>
+          )}
+          <label className="block text-sm font-medium">
+            Knopf (Beschriftung)
+            <input
+              className={field}
+              value={b.buttonLabel ?? ""}
+              maxLength={MAX_BUTTON_LABEL}
+              placeholder="Zum Beispiel: Jetzt stöbern"
+              onChange={(e) => update({ buttonLabel: e.target.value })}
+            />
+            <span className="mt-1 block text-xs font-normal text-gray-500">
+              Leer lassen heißt: kein Knopf in der Bühne.
+            </span>
+          </label>
+          {(b.buttonLabel ?? "").trim() !== "" && (
+            <>
+              <label className="block text-sm font-medium">
+                Ziel
+                <Select
+                  className="mt-1 font-normal"
+                  value={ziele.some((t) => t.url === knopfZiel) ? knopfZiel : "eigen"}
+                  onChange={(e) =>
+                    update({ buttonUrl: e.target.value === "eigen" ? "https://" : e.target.value })
+                  }
+                >
+                  {ziele.map((t) => (
+                    <option key={t.url} value={t.url}>
+                      Seite: {t.name}
+                    </option>
+                  ))}
+                  <option value="eigen">Andere Adresse …</option>
+                </Select>
+              </label>
+              {!ziele.some((t) => t.url === knopfZiel) && (
+                <label className="block text-sm font-medium">
+                  Adresse
+                  <input
+                    className={field}
+                    value={knopfZiel}
+                    maxLength={300}
+                    placeholder="https://… oder mailto:…"
+                    onChange={(e) => update({ buttonUrl: e.target.value })}
+                  />
+                </label>
+              )}
+            </>
+          )}
+        </div>
       );
+    }
     case "video":
       return (
         <label className="block text-sm font-medium">
@@ -1103,6 +1287,55 @@ function BlockSettings({
         </div>
       );
     }
+    case "trust":
+      return (
+        <div className="space-y-3">
+          <p className="text-sm font-medium">Punkte (höchstens {MAX_TRUST_ITEMS})</p>
+          {b.items.map((i, n) => (
+            <div key={n} className="space-y-2 rounded-lg p-2 ring-1 ring-gray-200">
+              <label className="block text-sm font-medium">
+                Symbol
+                <Select
+                  className="mt-1 font-normal"
+                  value={i.icon}
+                  onChange={(e) =>
+                    update({
+                      items: b.items.map((x, k) =>
+                        k === n ? { ...x, icon: e.target.value as TrustIcon } : x,
+                      ),
+                    })
+                  }
+                >
+                  {TRUST_ICONS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <button
+                type="button"
+                className="rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => update({ items: b.items.filter((_, k) => k !== n) })}
+              >
+                Punkt entfernen
+              </button>
+            </div>
+          ))}
+          {b.items.length < MAX_TRUST_ITEMS && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-brand-700 hover:bg-brand-50"
+              onClick={() => update({ items: [...b.items, { icon: "versand", title: "", text: "" }] })}
+            >
+              <Plus className="size-4" aria-hidden="true" /> Punkt hinzufügen
+            </button>
+          )}
+          <p className="text-xs text-gray-500">
+            Die Texte schreibst du direkt in der Vorschau. Mehr als drei Punkte glaubt niemand mehr.
+          </p>
+        </div>
+      );
     case "featured": {
       const chosen = b.productIds ?? [];
       return (
@@ -1144,6 +1377,69 @@ function BlockSettings({
     default:
       return null;
   }
+}
+
+/**
+ * Zuschnitt-Punkt wählen: ein kleines Bild im Seitenverhältnis des Geräts. Ein Klick setzt den Punkt,
+ * die Pfeiltasten verschieben ihn in Viertelschritten. Gespeichert wird in Prozent (0 bis 100).
+ */
+function FokusWahl({
+  label,
+  url,
+  breit,
+  x,
+  y,
+  onChange,
+}: {
+  label: string;
+  url: string;
+  /** Breites Format (Computer) statt Hochformat (Handy). */
+  breit?: boolean;
+  x: number;
+  y: number;
+  onChange: (x: number, y: number) => void;
+}) {
+  const stufe = (w: number) => Math.min(100, Math.max(0, Math.round(w / 25) * 25));
+  const setzen = (nx: number, ny: number) => onChange(stufe(nx), stufe(ny));
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-600">{label}</p>
+      <button
+        type="button"
+        className="relative mt-1 block w-full overflow-hidden rounded-md ring-1 ring-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+        style={{ aspectRatio: breit === true ? "16 / 7" : "3 / 4" }}
+        aria-label={`Zuschnitt für ${label} wählen`}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setzen(((e.clientX - r.left) / r.width) * 100, ((e.clientY - r.top) / r.height) * 100);
+        }}
+        onKeyDown={(e) => {
+          const schritte: Record<string, [number, number]> = {
+            ArrowLeft: [-25, 0],
+            ArrowRight: [25, 0],
+            ArrowUp: [0, -25],
+            ArrowDown: [0, 25],
+          };
+          const s = schritte[e.key];
+          if (s === undefined) return;
+          e.preventDefault();
+          setzen(stufe(x) + s[0], stufe(y) + s[1]);
+        }}
+      >
+        <img
+          src={url}
+          alt=""
+          className="size-full object-cover"
+          style={{ objectPosition: `${stufe(x)}% ${stufe(y)}%` }}
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand-600/80 shadow"
+          style={{ left: `${stufe(x)}%`, top: `${stufe(y)}%` }}
+        />
+      </button>
+    </div>
+  );
 }
 
 function ImageField({
