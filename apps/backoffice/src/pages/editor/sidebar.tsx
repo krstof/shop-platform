@@ -46,6 +46,8 @@ import {
   readableWithWhite,
   searchFonts,
   SOCIAL,
+  SEARCH_MODES,
+  type SearchMode,
   SUGGESTED_FONTS,
   TEMPLATES,
   type Template,
@@ -836,6 +838,75 @@ export function FooterPanel({ form, set }: { form: Form; set: Set }) {
 }
 
 /** Design-Vorlagen mit kleiner Skizze; Farben und Schriften bleiben, nur die Anordnung ändert sich. */
+
+/** Kopfzeile: Suche offen oder als Lupe, und ob der Kopf beim Scrollen oben bleibt (22.11.2026). */
+export function HeaderPanel({
+  suche,
+  kopfKlebt,
+  onChange,
+}: {
+  suche: SearchMode;
+  kopfKlebt: boolean;
+  onChange: (c: { suche?: SearchMode; kopfKlebt?: boolean }) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-sm font-medium text-gray-900">Suche</p>
+        <div role="radiogroup" aria-label="Suche im Kopf" className="space-y-2">
+          {SEARCH_MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={suche === m.id}
+              onClick={() => onChange({ suche: m.id })}
+              className={
+                "flex w-full items-center gap-3 rounded-lg bg-white p-2 text-left ring-1 transition " +
+                (suche === m.id ? "ring-2 ring-brand-500" : "ring-gray-200 hover:ring-gray-300")
+              }
+            >
+              <SucheSkizze id={m.id} />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-gray-900">{m.name}</span>
+                <span className="block text-xs leading-snug text-gray-500">{m.hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="flex items-start gap-2 text-sm text-gray-800">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={kopfKlebt}
+          onChange={(e) => onChange({ kopfKlebt: e.target.checked })}
+        />
+        <span>
+          Kopfzeile bleibt beim Scrollen oben
+          <span className="block text-xs text-gray-500">
+            Praktisch in langen Shops, nimmt am Handy aber Platz weg.
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
+/** Kleine Skizze neben der Auswahl: Feld, Lupe oder nichts. */
+function SucheSkizze({ id }: { id: SearchMode }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-10 w-14 shrink-0 items-center justify-end gap-1 rounded-md bg-gray-100 px-1.5"
+    >
+      {id === "offen" && <span className="h-3 w-9 rounded-sm bg-gray-300" />}
+      {id === "lupe" && <Search className="size-4 text-gray-400" />}
+      {id === "aus" && <span className="h-3 w-3 rounded-sm bg-gray-200" />}
+    </span>
+  );
+}
+
 export function TemplatePanel({ value, onChange }: { value: Template; onChange: (t: Template) => void }) {
   return (
     <div>

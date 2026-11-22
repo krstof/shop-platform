@@ -5221,6 +5221,30 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "header": {
+                    "description": "Kopfzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist.",
+                    "type": "object",
+                    "properties": {
+                      "search": {
+                        "type": "string",
+                        "enum": [
+                          "offen",
+                          "lupe",
+                          "aus"
+                        ],
+                        "description": "Suche im Kopf: `offen` (Feld steht da), `lupe` (Feld klappt beim Klick auf die Lupe auf) oder `aus`."
+                      },
+                      "sticky": {
+                        "type": "boolean",
+                        "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+                      }
+                    },
+                    "required": [
+                      "search",
+                      "sticky"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -13535,6 +13559,9 @@
               "editorial"
             ],
             "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
+          },
+          "header": {
+            "$ref": "#/components/schemas/DesignHeader"
           }
         },
         "required": [
@@ -13548,7 +13575,8 @@
           "backgroundColor",
           "headingFont",
           "bodyFont",
-          "template"
+          "template",
+          "header"
         ],
         "additionalProperties": false,
         "description": "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite."
@@ -13704,6 +13732,30 @@
         ],
         "additionalProperties": false,
         "description": "Link im Fuß des Shops."
+      },
+      "DesignHeader": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "x-extensible-enum": [
+              "offen",
+              "lupe",
+              "aus"
+            ],
+            "description": "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`."
+          },
+          "sticky": {
+            "type": "boolean",
+            "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+          }
+        },
+        "required": [
+          "search",
+          "sticky"
+        ],
+        "additionalProperties": false,
+        "description": "Kopfzeile des Shops: Suche und Verhalten beim Scrollen."
       },
       "DesignHome": {
         "type": "object",

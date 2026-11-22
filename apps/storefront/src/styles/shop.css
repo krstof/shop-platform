@@ -766,6 +766,54 @@ main:focus-visible {
   display: flex;
   min-width: 0;
 }
+/* Kopfzeile bleibt beim Scrollen oben stehen (Einstellung „Kopfzeile“, 22.11.2026). */
+.kopf-klebt {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--hintergrund);
+}
+/* Suche als Lupe, die das Feld aufklappt. Ohne JavaScript über <details>. */
+.suche-lupe {
+  position: relative;
+}
+.suche-lupe > summary {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text);
+}
+.suche-lupe > summary::-webkit-details-marker {
+  display: none;
+}
+.suche-lupe > summary:hover {
+  background: rgb(0 0 0 / 0.06);
+}
+.suche-lupe > summary svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.suche-lupe[open] > summary {
+  background: rgb(0 0 0 / 0.06);
+}
+.suche-lupe .suchfeld {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 21;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--flaeche);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.14);
+}
 .suchfeld input {
   font: inherit;
   font-size: 0.95rem;

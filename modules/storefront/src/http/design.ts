@@ -49,6 +49,7 @@ import {
   readableBackground,
   readableWithWhite,
   sameSettings,
+  SEARCH_MODES,
   SOCIAL_NETWORKS,
   TEMPLATES,
   webFontSchema,
@@ -224,6 +225,16 @@ const footerViewSchema = z
   })
   .meta({ id: "DesignFooter", description: "Fußzeile: Text und Links." });
 
+const headerViewSchema = z
+  .object({
+    search: z.string().meta({
+      "x-extensible-enum": [...SEARCH_MODES],
+      description: "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`.",
+    }),
+    sticky: z.boolean().meta({ description: "Kopfzeile bleibt beim Scrollen oben stehen." }),
+  })
+  .meta({ id: "DesignHeader", description: "Kopfzeile des Shops: Suche und Verhalten beim Scrollen." });
+
 const designViewSchema = z
   .object({
     accentColor: z.string(),
@@ -241,6 +252,7 @@ const designViewSchema = z
       .nullable()
       .meta({ description: "Schrift des Fließtexts; null = Auswahl unter `font`." }),
     template: templateView,
+    header: headerViewSchema,
   })
   .meta({ id: "Design", description: "Ein Stand des Aussehens: Hauptfarbe, Schrift, Logo, Startseite." });
 
@@ -373,6 +385,16 @@ const draftInput = z.strictObject({
   pages: pagesSchema.optional().meta({
     description: `Eigene Inhaltsseiten (bis zu ${MAX_PAGES}), nur freie Bausteine. Fehlt das Feld, bleiben sie.`,
   }),
+  header: z
+    .strictObject({
+      search: z.enum(SEARCH_MODES).meta({
+        description:
+          "Suche im Kopf: `offen` (Feld steht da), `lupe` (Feld klappt beim Klick auf die Lupe auf) oder `aus`.",
+      }),
+      sticky: z.boolean().meta({ description: "Kopfzeile bleibt beim Scrollen oben stehen." }),
+    })
+    .optional()
+    .meta({ description: "Kopfzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist." }),
 });
 
 const logoInput = z.strictObject({
@@ -536,6 +558,7 @@ const storeDesignSchema = z
     headingFont: webFontView.nullable(),
     bodyFont: webFontView.nullable(),
     template: templateView,
+    header: headerViewSchema,
     pages: z
       .array(z.object({ title: z.string(), slug: z.string(), inFooter: z.boolean() }))
       .meta({ description: "Eigene Inhaltsseiten (nur Titel und Adresse; Inhalt über /pages/{pageSlug})." }),
@@ -701,6 +724,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       headingFont: s.headingFont,
       bodyFont: s.bodyFont,
       template: s.template,
+      header: s.header,
       pages: s.pages.map((p) => ({
         ...p,
         blocks: firstBlocksOf(p.blocks),
@@ -899,6 +923,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             headingFont: body.headingFont === undefined ? current.draft.headingFont : body.headingFont,
             bodyFont: body.bodyFont === undefined ? current.draft.bodyFont : body.bodyFont,
             template: body.template ?? current.draft.template,
+            header: body.header ?? current.draft.header,
           },
         };
       });
@@ -1044,6 +1069,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         headingFont: published.headingFont,
         bodyFont: published.bodyFont,
         template: published.template,
+        header: published.header,
       };
     },
   });

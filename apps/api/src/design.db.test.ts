@@ -167,6 +167,8 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       headingFont: null,
       bodyFont: null,
       template: "klassisch",
+      // Kopfzeile seit dem 22.11.2026: offenes Suchfeld, Kopf scrollt mit.
+      header: { search: "offen", sticky: false },
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });

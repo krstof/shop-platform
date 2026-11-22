@@ -141,6 +141,17 @@ export function templateOf(v: string | undefined): Template {
   return OLD_TEMPLATES[v ?? ""] ?? "klassisch";
 }
 
+/** Suche in der Kopfzeile (22.11.2026): offenes Feld, Lupe zum Aufklappen oder gar keine. */
+export const SEARCH_MODES = [
+  { id: "offen", name: "Feld", hint: "Das Suchfeld steht immer offen im Kopf" },
+  { id: "lupe", name: "Lupe", hint: "Nur eine Lupe; ein Klick klappt das Feld auf" },
+  { id: "aus", name: "Keine", hint: "Keine Suche im Kopf" },
+] as const;
+export type SearchMode = (typeof SEARCH_MODES)[number]["id"];
+export function searchModeOf(v: string | undefined): SearchMode {
+  return SEARCH_MODES.some((m) => m.id === v) ? (v as SearchMode) : "offen";
+}
+
 // --- Editor (14.11.2026): Hintergrund, Google-Schriften, soziale Netzwerke ---
 
 /** Dunkle Schrift des Shops; der Hintergrund muss dazu mindestens 4,5 : 1 Kontrast haben. */

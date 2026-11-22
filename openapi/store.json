@@ -2459,6 +2459,30 @@
         "additionalProperties": false,
         "description": "Link im Fuß des Shops."
       },
+      "DesignHeader": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "x-extensible-enum": [
+              "offen",
+              "lupe",
+              "aus"
+            ],
+            "description": "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`."
+          },
+          "sticky": {
+            "type": "boolean",
+            "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+          }
+        },
+        "required": [
+          "search",
+          "sticky"
+        ],
+        "additionalProperties": false,
+        "description": "Kopfzeile des Shops: Suche und Verhalten beim Scrollen."
+      },
       "DesignSocial": {
         "type": "object",
         "properties": {
@@ -3290,6 +3314,9 @@
             ],
             "description": "Design-Vorlage: ändert die Anordnung (Kopf, Menü, Bühne, Kacheln), nicht Farben oder Schriften."
           },
+          "header": {
+            "$ref": "#/components/schemas/DesignHeader"
+          },
           "pages": {
             "type": "array",
             "items": {
@@ -3327,6 +3354,7 @@
           "headingFont",
           "bodyFont",
           "template",
+          "header",
           "pages"
         ],
         "additionalProperties": false,

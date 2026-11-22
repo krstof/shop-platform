@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 22.11.2026 (Welle A der Anbindungen fertig; Bühne mit Zuschnitt-Punkt und Knopf)
+Stand: 22.11.2026 (Welle A der Anbindungen; Bühne mit Zuschnitt und Knopf; Kopfzeile einstellbar)
 
 ## Erledigt
 
@@ -116,6 +116,8 @@ Stand: 22.11.2026 (Welle A der Anbindungen fertig; Bühne mit Zuschnitt-Punkt un
   - Die Testshops bekommen das beim Einrichten mit: Teeladen zeigt „Tees ansehen" und schneidet aufs Teefeld, Modeladen „Zur Kollektion" (`apps/api/src/seed-catalog.ts`).
   - Geprüft: neue Tests für Schema und Editor-Daten, `pnpm check` komplett; im Browser gesetzt, veröffentlicht und im Shop auf 1280 und 390 Pixel angesehen.
 
+- **Kopfzeile einstellbar (22.11.2026, aus Punkt 4 der Wunschliste):** Im Editor gibt es den neuen Bereich „Kopfzeile". Die Suche steht wahlweise als **offenes Feld**, als **Lupe**, die das Feld beim Klick aufklappt, oder gar nicht im Kopf. Dazu der Schalter, ob die Kopfzeile beim Scrollen oben stehen bleibt. Die Lupe klappt ohne JavaScript auf (`<details>`), passend dazu, dass der Shop ohne Skripte auskommt. Geprüft: neue Tests für das Lesen der Einstellung, `pnpm check` komplett, im Browser umgestellt, veröffentlicht und im Shop ausprobiert (Lupe auf, Suche abgeschickt).
+
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
 Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobieren merkt (CLAUDE.md 1a). Der alte Plan mit 26 Etappen in `docs/06_Welle1_Anforderungen.md` gilt nur noch als Nachschlagewerk. Fundament (E1 bis E6) ist fertig. Ab jetzt je Lauf eine sichtbare Etappe, API und Oberfläche zusammen, jeweils die einfachste Version:
@@ -212,7 +214,7 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
     1. ~~Fundament für Anbindungen~~ (erledigt 21.11.2026)
     2. ~~Telegram-Benachrichtigung~~ (erledigt 21.11.2026; Kristof muss nur noch den Schlüssel vom BotFather in „Einstellungen → Anbindungen" eintragen)
     3. ~~Bühne beherrschen: Zuschnitt-Punkt und Knopf~~ (erledigt 22.11.2026)
-    4. **Editor und Shop moderner machen (hier geht es weiter).** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
+    4. **Editor und Shop moderner machen (hier geht es weiter).** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: ~~Suche im Kopf wählbar~~ (erledigt 22.11.2026), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.
     6. ~~Rest der Welle A aus `docs/09`: Photon, IndexNow, Produktfeed~~ (erledigt 22.11.2026)
     7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.

@@ -185,6 +185,15 @@ export interface StoreDesign {
   readonly bodyFont?: WebFont | null;
   /** Design-Vorlage (Anordnung); ältere API-Stände ohne. */
   readonly template?: string;
+  /** Kopfzeile (22.11.2026); ältere API-Stände ohne: offenes Suchfeld, Kopf scrollt mit. */
+  readonly header?: { readonly search?: string; readonly sticky?: boolean };
+}
+
+/** Suche im Kopf: offenes Feld, Lupe zum Aufklappen oder gar keine. Unbekanntes wird „offen“. */
+export type SucheImKopf = "offen" | "lupe" | "aus";
+export function sucheImKopf(design: StoreDesign): SucheImKopf {
+  const s = design.header?.search;
+  return s === "lupe" || s === "aus" ? s : "offen";
 }
 
 export const TEMPLATES = ["klassisch", "modern", "galerie", "editorial"] as const;

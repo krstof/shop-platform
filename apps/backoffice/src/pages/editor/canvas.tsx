@@ -4,7 +4,18 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Settings2, Trash, Upload, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  GripVertical,
+  Plus,
+  Search,
+  Settings2,
+  Trash,
+  Upload,
+  X,
+} from "lucide-react";
 import { siFacebook, siInstagram, siPinterest, siTiktok, siX, siYoutube } from "simple-icons";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Select } from "../../components/select.js";
@@ -53,6 +64,8 @@ export interface CanvasShop {
   readonly footerLinks: readonly string[];
   /** Netzwerke mit Profil. */
   readonly social: readonly string[];
+  /** Kopfzeile: Suche offen, als Lupe oder gar nicht. */
+  readonly suche: "offen" | "lupe" | "aus";
 }
 
 interface Ctx {
@@ -123,10 +136,17 @@ export function Canvas({
             ))}
           </nav>
           <div className="sp-korb">
-            <span className="sp-suche" aria-hidden="true">
-              <span>Suchen …</span>
-              <b>Suchen</b>
-            </span>
+            {shop.suche === "offen" && (
+              <span className="sp-suche" aria-hidden="true">
+                <span>Suchen …</span>
+                <b>Suchen</b>
+              </span>
+            )}
+            {shop.suche === "lupe" && (
+              <span className="sp-suche-lupe" aria-hidden="true">
+                <Search className="size-4" />
+              </span>
+            )}
             <span className="sp-korb-link">Warenkorb (0)</span>
           </div>
         </div>

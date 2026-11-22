@@ -160,6 +160,16 @@
 .sp-buehne-knopf {
   margin: 1rem 0 0;
 }
+/* Suche als Lupe in der Vorschau (22.11.2026). */
+.sp-suche-lupe {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: var(--text-leise);
+  background: rgb(0 0 0 / 0.05);
+}
 
 /* Produkte und Kategorien */
 .sp-raster {

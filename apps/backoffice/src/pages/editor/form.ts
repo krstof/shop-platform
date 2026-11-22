@@ -18,6 +18,8 @@ import {
   readableBackground,
   readableWithWhite,
   SOCIAL,
+  searchModeOf,
+  type SearchMode,
   templateOf,
   type Template,
   type Font,
@@ -36,6 +38,9 @@ export interface Form {
   bodyFont: WebFont | null;
   backgroundColor: string;
   template: Template;
+  /** Kopfzeile: Suche und Verhalten beim Scrollen. */
+  suche: SearchMode;
+  kopfKlebt: boolean;
   logo: DesignImage | null;
   tagline: string;
   footerText: string;
@@ -62,6 +67,8 @@ export function formOf(state: DesignState): Form {
     bodyFont: d.bodyFont ?? null,
     backgroundColor: d.backgroundColor ?? DEFAULT_BACKGROUND,
     template: templateOf(d.template),
+    suche: searchModeOf(d.header?.search),
+    kopfKlebt: d.header?.sticky === true,
     logo: d.logo,
     tagline: d.tagline,
     footerText: d.footer.text,
@@ -118,6 +125,7 @@ export function bodyOf(f: Form) {
     bodyFont: f.bodyFont,
     backgroundColor: f.backgroundColor,
     template: f.template,
+    header: { search: f.suche, sticky: f.kopfKlebt },
     logoImageId: f.logo?.id ?? null,
     home: {
       heroImageId: f.heroImage?.id ?? null,

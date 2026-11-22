@@ -164,6 +164,8 @@ export interface Design {
   readonly bodyFont?: import("./design.js").WebFont | null;
   /** Design-Vorlage (Anordnung); ältere API-Stände ohne. */
   readonly template?: string;
+  /** Kopfzeile (22.11.2026); ältere API-Stände ohne. */
+  readonly header?: { readonly search?: string; readonly sticky?: boolean };
 }
 
 /** Eigene Inhaltsseite (Baukasten Teil 3). */
