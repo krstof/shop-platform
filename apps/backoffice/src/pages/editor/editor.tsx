@@ -290,7 +290,13 @@ function Editor({ initial }: { initial: DesignState }) {
             <FooterPanel form={form} set={set} />
           </Section>
           <Section title="Kopfzeile" open={openPanel === "kopf"} onToggle={() => toggle("kopf")}>
-            <HeaderPanel suche={form.suche} kopfKlebt={form.kopfKlebt} onChange={set} />
+            <HeaderPanel
+              suche={form.suche}
+              kopfKlebt={form.kopfKlebt}
+              leisteAn={form.leisteAn}
+              zusagen={form.zusagen}
+              onChange={set}
+            />
           </Section>
           <Section title="Vorlage" open={openPanel === "vorlage"} onToggle={() => toggle("vorlage")}>
             <TemplatePanel value={form.template} onChange={(template) => set({ template })} />

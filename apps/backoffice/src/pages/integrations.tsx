@@ -45,24 +45,28 @@ export function IntegrationsPage() {
     queryKey: ["integrations", shop.id],
     queryFn: () => request<{ data: Integration[] }>("/admin/v1/integrations", { shopId: shop.id }),
   });
+  // Breite wie auf den anderen Einstellungsseiten, damit die Überschrift beim Wechsel nicht springt
+  // (Kristof 22.11.2026). Der Inhalt bleibt schmal, die Reiter stehen überall an derselben Stelle.
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <SettingsTabs current="anbindungen" />
-      <p className="mb-6 text-[0.95rem] text-gray-600">
-        Hier verbindest du deinen Shop mit Diensten, die es schon gibt. Jede Anbindung ist einzeln an- und
-        abschaltbar, und deine Zugangsdaten liegen verschlüsselt. Angezeigt bekommst du sie nie wieder.
-      </p>
-      {list.isPending ? (
-        <Spinner />
-      ) : list.isError ? (
-        <Alert tone="error">Die Anbindungen ließen sich nicht laden.</Alert>
-      ) : (
-        <div className="space-y-4">
-          {list.data.data.map((integration) => (
-            <IntegrationCard key={integration.provider} integration={integration} />
-          ))}
-        </div>
-      )}
+      <div className="max-w-3xl">
+        <p className="mb-6 text-[0.95rem] text-gray-600">
+          Hier verbindest du deinen Shop mit Diensten, die es schon gibt. Jede Anbindung ist einzeln an- und
+          abschaltbar, und deine Zugangsdaten liegen verschlüsselt. Angezeigt bekommst du sie nie wieder.
+        </p>
+        {list.isPending ? (
+          <Spinner />
+        ) : list.isError ? (
+          <Alert tone="error">Die Anbindungen ließen sich nicht laden.</Alert>
+        ) : (
+          <div className="space-y-4">
+            {list.data.data.map((integration) => (
+              <IntegrationCard key={integration.provider} integration={integration} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

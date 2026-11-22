@@ -231,6 +231,8 @@ export interface StoreDesign {
   readonly accentDarkColor: string;
   readonly font: Font;
   readonly logo: StoreImageRef | null;
+  /** Symbol des Shops für den Browser-Reiter (ältere API-Stände ohne). */
+  readonly favicon?: StoreImageRef | null;
   readonly home: StoreHome;
   readonly tagline: string;
   readonly footer: StoreFooter;
@@ -243,7 +245,29 @@ export interface StoreDesign {
   /** Design-Vorlage (Anordnung); ältere API-Stände ohne. */
   readonly template?: string;
   /** Kopfzeile (22.11.2026); ältere API-Stände ohne: offenes Suchfeld, Kopf scrollt mit. */
-  readonly header?: { readonly search?: string; readonly sticky?: boolean };
+  readonly header?: {
+    readonly search?: string;
+    readonly sticky?: boolean;
+    /** Leiste ganz oben an oder aus (ältere API-Stände ohne: an). */
+    readonly uspOn?: boolean;
+    /** Bis zu drei kurze Zusagen; leer heißt: Testhinweis. */
+    readonly usp?: readonly string[];
+  };
+}
+
+/**
+ * Leiste ganz oben (Kristof 22.11.2026): bis zu drei kurze Zusagen des Händlers. Trägt er keine ein,
+ * steht dort weiter der Testhinweis; ausgeschaltet bleibt die Leiste ganz weg.
+ */
+export const TESTHINWEIS = "Testshop: Hier ist nichts echt, auch die Zahlung nicht.";
+export function uspLeiste(design: StoreDesign): readonly string[] {
+  if (design.header?.uspOn === false) return [];
+  const eigene = (design.header?.usp ?? [])
+    .filter((t): t is string => typeof t === "string")
+    .map((t) => t.trim())
+    .filter((t) => t !== "")
+    .slice(0, 3);
+  return eigene.length > 0 ? eigene : [TESTHINWEIS];
 }
 
 /** Suche im Kopf: offenes Feld, Lupe zum Aufklappen oder gar keine. Unbekanntes wird „offen“. */

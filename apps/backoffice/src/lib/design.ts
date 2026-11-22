@@ -14,6 +14,9 @@ export const MAX_TAGLINE = 80;
 export const MAX_FOOTER_TEXT = 300;
 export const MAX_FOOTER_LINKS = 5;
 export const MAX_LINK_LABEL = 40;
+/** Leiste ganz oben im Shop (22.11.2026): bis zu drei Zusagen, je 40 Zeichen. */
+export const MAX_USP = 3;
+export const MAX_USP_TEXT = 40;
 
 /** Erlaubte Linkziele wie in der API: https/http, mailto, tel. */
 export function isSafeLinkUrl(url: string): boolean {

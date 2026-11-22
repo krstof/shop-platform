@@ -54,6 +54,8 @@ import {
   readableWithWhite,
   sameSettings,
   SEARCH_MODES,
+  MAX_USP,
+  MAX_USP_TEXT,
   SOCIAL_NETWORKS,
   TEMPLATES,
   webFontSchema,
@@ -97,10 +99,10 @@ const MAX_LOGO_BYTES = 8 * 1024 * 1024;
 const MAX_BASE64_CHARS = Math.ceil(MAX_LOGO_BYTES / 3) * 4;
 const LOGO_BODY_LIMIT = 12 * 1024 * 1024;
 
-function rejectionText(reason: ImageRejection, what: "Das Logo" | "Das Bild"): string {
+function rejectionText(reason: ImageRejection, what: "Das Logo" | "Das Bild" | "Das Symbol"): string {
   switch (reason) {
     case "unsupported_format":
-      return `Bitte ${what === "Das Logo" ? "das Logo" : "das Bild"} als PNG, JPEG oder WebP hochladen.`;
+      return `Bitte ${what === "Das Logo" ? "das Logo" : what === "Das Symbol" ? "das Symbol" : "das Bild"} als PNG, JPEG oder WebP hochladen.`;
     case "too_large":
       return `${what} ist zu groß (höchstens 8 MB).`;
     case "too_small":
@@ -236,14 +238,22 @@ const headerViewSchema = z
       description: "Suche im Kopf: `offen`, `lupe` (klappt auf) oder `aus`.",
     }),
     sticky: z.boolean().meta({ description: "Kopfzeile bleibt beim Scrollen oben stehen." }),
+    uspOn: z.boolean().meta({ description: "Leiste ganz oben an oder aus." }),
+    usp: z.array(z.string()).meta({
+      description: `Bis zu ${MAX_USP} kurze Zusagen in der Leiste; leer heißt: dort steht der Testhinweis.`,
+    }),
   })
-  .meta({ id: "DesignHeader", description: "Kopfzeile des Shops: Suche und Verhalten beim Scrollen." });
+  .meta({
+    id: "DesignHeader",
+    description: "Kopfzeile des Shops: Suche, Leiste oben und Verhalten beim Scrollen.",
+  });
 
 const designViewSchema = z
   .object({
     accentColor: z.string(),
     font: fontSchema,
     logo: imageSchema.nullable(),
+    favicon: imageSchema.nullable().meta({ description: "Symbol des Shops; null = Standardsymbol." }),
     home: homeViewSchema,
     tagline: z.string().meta({ description: "Kurzer Text unter dem Logo; leer heißt keiner." }),
     footer: footerViewSchema,
@@ -357,6 +367,9 @@ const draftInput = z.strictObject({
     .uuid()
     .nullable()
     .meta({ description: "Bild-ID des Logos (aus dem Hochladen) oder `null` für „kein Logo“." }),
+  faviconImageId: z.uuid().nullable().optional().meta({
+    description: "Bild-ID des Symbols oder `null` für „Standardsymbol“. Fehlt das Feld, bleibt es.",
+  }),
   home: homeInput
     .optional()
     .meta({ description: "Startseite. Fehlt das Feld, bleibt die Startseite im Entwurf, wie sie ist." }),
@@ -399,6 +412,14 @@ const draftInput = z.strictObject({
           "Suche im Kopf: `offen` (Feld steht da), `lupe` (Feld klappt beim Klick auf die Lupe auf) oder `aus`.",
       }),
       sticky: z.boolean().meta({ description: "Kopfzeile bleibt beim Scrollen oben stehen." }),
+      uspOn: z.boolean().optional().meta({ description: "Leiste ganz oben an oder aus." }),
+      usp: z
+        .array(singleLineText(MAX_USP_TEXT))
+        .max(MAX_USP)
+        .optional()
+        .meta({
+          description: `Bis zu ${MAX_USP} kurze Zusagen, je ${MAX_USP_TEXT} Zeichen. Leer heißt: Testhinweis.`,
+        }),
     })
     .optional()
     .meta({ description: "Kopfzeile. Fehlt das Feld, bleibt sie im Entwurf, wie sie ist." }),
@@ -589,6 +610,7 @@ const storeDesignSchema = z
     accentDarkColor: z.string().meta({ description: "Dunklere Fassung für Links und „Maus darüber“." }),
     font: fontSchema,
     logo: storeImageSchema.nullable(),
+    favicon: storeImageSchema.nullable().meta({ description: "Symbol des Shops; null = Standardsymbol." }),
     home: z
       .object({
         heroImage: storeImageSchema.nullable(),
@@ -803,6 +825,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       accentColor: s.accentColor,
       font: s.font,
       logo: image(s.logoImageId),
+      favicon: image(s.faviconImageId),
       home: {
         ...s.home,
         featuredProductIds: [...s.home.featuredProductIds],
@@ -820,7 +843,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       headingFont: s.headingFont,
       bodyFont: s.bodyFont,
       template: s.template,
-      header: s.header,
+      header: { ...s.header, usp: [...s.header.usp] },
       pages: s.pages.map((p) => ({
         ...p,
         blocks: firstBlocksOf(p.blocks),
@@ -898,6 +921,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       accentColor: "#1f5f8b",
       font: "modern",
       logoImageId: null,
+      faviconImageId: null,
       home: {
         heroImageId: null,
         heroTitle: "Frischer Tee, direkt vom Garten",
@@ -925,6 +949,8 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       return change(async (current) => {
         if (current.version !== ifMatch) throw new PreconditionFailedError();
         const logo = body.logoImageId;
+        const favicon =
+          body.faviconImageId === undefined ? current.draft.faviconImageId : body.faviconImageId;
         const home: HomeSettings =
           body.home === undefined
             ? current.draft.home
@@ -945,6 +971,11 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         // Nur Bilder, die es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
         const wanted = [
           { id: logo, path: "/logoImageId", detail: "Dieses Logo gibt es nicht. Bitte neu hochladen." },
+          {
+            id: favicon,
+            path: "/faviconImageId",
+            detail: "Dieses Symbol gibt es nicht. Bitte neu hochladen.",
+          },
           {
             id: home.heroImageId,
             path: "/home/heroImageId",
@@ -1011,6 +1042,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             accentColor: accent,
             font: body.font,
             logoImageId: logo,
+            faviconImageId: favicon,
             home,
             tagline,
             footer,
@@ -1019,7 +1051,15 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             headingFont: body.headingFont === undefined ? current.draft.headingFont : body.headingFont,
             bodyFont: body.bodyFont === undefined ? current.draft.bodyFont : body.bodyFont,
             template: body.template ?? current.draft.template,
-            header: body.header ?? current.draft.header,
+            header:
+              body.header === undefined
+                ? current.draft.header
+                : {
+                    search: body.header.search,
+                    sticky: body.header.sticky,
+                    uspOn: body.header.uspOn ?? current.draft.header.uspOn,
+                    usp: body.header.usp ?? current.draft.header.usp,
+                  },
           },
         };
       });
@@ -1029,7 +1069,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
   /** Bild hochladen (vor der Transaktion rechnen, das kann eine Sekunde dauern) und in den Entwurf setzen. */
   async function uploadInto(
     body: z.infer<typeof logoInput>,
-    what: "Das Logo" | "Das Bild",
+    what: "Das Logo" | "Das Bild" | "Das Symbol",
     put: (draft: DesignSettings, imageId: string) => DesignSettings,
   ) {
     const prepared = await images.prepare(Buffer.from(body.data, "base64"), body.filename);
@@ -1066,6 +1106,68 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     },
     problems: [413],
     handler: async ({ body }) => uploadInto(body, "Das Logo", (d, id) => ({ ...d, logoImageId: id })),
+  });
+
+  const uploadFavicon = defineEndpoint({
+    api: "admin",
+    method: "POST",
+    path: "/design/favicon",
+    operationId: "uploadDesignFavicon",
+    summary: "Symbol des Shops hochladen",
+    description:
+      "Lädt das Symbol des Shops hoch (PNG, JPEG oder WebP als Base64, höchstens 8 MB). Es gilt " +
+      "sofort, im Entwurf und im veröffentlichten Shop, weil es zum Shop gehört und nicht zum " +
+      "Aussehen, das man erst ansehen will. Es steht im Browser-Reiter und in der Kopfzeile des " +
+      "Backoffice. Quadratische Bilder sehen am besten aus.",
+    tags: ["Aussehen"],
+    access: access.write,
+    body: logoInput,
+    bodyExample: { data: EXAMPLE_PNG, filename: "symbol.png" },
+    bodyLimit: LOGO_BODY_LIMIT,
+    response: {
+      status: 201,
+      description: "Das Aussehen mit neuem Symbol.",
+      schema: designStateSchema,
+    },
+    problems: [413],
+    handler: async ({ body }) => {
+      const prepared = await images.prepare(Buffer.from(body.data, "base64"), body.filename);
+      if (!prepared.ok) {
+        const text = rejectionText(prepared.reason, "Das Symbol");
+        throw new ValidationError({
+          detail: text,
+          errors: [{ path: "/data", code: prepared.reason, message: text }],
+        });
+      }
+      const image = await prepared.save();
+      return change(async (current) => ({
+        draft: { ...current.draft, faviconImageId: image.id },
+        published: { ...current.published, faviconImageId: image.id },
+      }));
+    },
+  });
+
+  const removeFavicon = defineEndpoint({
+    api: "admin",
+    method: "DELETE",
+    path: "/design/favicon",
+    operationId: "removeDesignFavicon",
+    summary: "Symbol des Shops entfernen",
+    description:
+      "Nimmt das Symbol wieder weg, im Entwurf und im veröffentlichten Shop. Danach zeigen Shop und " +
+      "Backoffice wieder das Standardsymbol.",
+    tags: ["Aussehen"],
+    access: access.write,
+    response: { status: 200, description: "Das Aussehen ohne Symbol.", schema: designStateSchema },
+    handler: async () =>
+      change(async (current) =>
+        current.draft.faviconImageId === null && current.published.faviconImageId === null
+          ? undefined
+          : {
+              draft: { ...current.draft, faviconImageId: null },
+              published: { ...current.published, faviconImageId: null },
+            },
+      ),
   });
 
   const uploadHero = defineEndpoint({
@@ -1149,6 +1251,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         accentDarkColor: darker(published.accentColor),
         font: published.font,
         logo: image(published.logoImageId),
+        favicon: image(published.faviconImageId),
         home: {
           heroImage: image(home.heroImageId),
           heroTitle: home.heroTitle,
@@ -1165,7 +1268,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         headingFont: published.headingFont,
         bodyFont: published.bodyFont,
         template: published.template,
-        header: published.header,
+        header: { ...published.header, usp: [...published.header.usp] },
       };
     },
   });
@@ -1236,5 +1339,17 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
     },
   });
 
-  return [get, saveDraft, uploadLogo, uploadHero, uploadBlockImage, publish, discard, store, storePage];
+  return [
+    get,
+    saveDraft,
+    uploadLogo,
+    uploadFavicon,
+    removeFavicon,
+    uploadHero,
+    uploadBlockImage,
+    publish,
+    discard,
+    store,
+    storePage,
+  ];
 }

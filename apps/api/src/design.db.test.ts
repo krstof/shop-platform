@@ -105,7 +105,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
   });
 
   function call(
-    method: "GET" | "POST" | "PUT",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     url: string,
     shop?: "a" | "b",
     payload?: object,
@@ -140,6 +140,7 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       accentDarkColor: "#2f5038",
       font: "klassisch",
       logo: null,
+      favicon: null,
       home: {
         heroImage: null,
         heroTitle: "",
@@ -167,8 +168,8 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       headingFont: null,
       bodyFont: null,
       template: "klassisch",
-      // Kopfzeile seit dem 22.11.2026: offenes Suchfeld, Kopf scrollt mit.
-      header: { search: "offen", sticky: false },
+      // Kopfzeile seit dem 22.11.2026: offenes Suchfeld, Kopf scrollt mit, Leiste oben an und leer.
+      header: { search: "offen", sticky: false, uspOn: true, usp: [] },
     });
     expect((await call("GET", "/store/v1/shops/gibt-es-nicht/design")).statusCode).toBe(404);
   });
@@ -223,6 +224,32 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
     expect((await call("GET", "/admin/v1/design", "b")).json().draft.logo).toBeNull();
     expect((await call("GET", "/store/v1/shops/design-b/design")).json().accentColor).toBe("#3f6b4a");
     expect((await call("POST", "/admin/v1/design/publish", "b")).statusCode).toBe(403);
+  });
+
+  it("setzt das Symbol des Shops sofort und nimmt es wieder weg", async () => {
+    // Kristof 22.11.2026: Das Symbol gehört zum Shop, nicht zum Aussehen. Es gilt deshalb gleich im
+    // Entwurf und im veröffentlichten Shop, ohne „Veröffentlichen“.
+    const up = await call("POST", "/admin/v1/design/favicon", "a", {
+      data: await logo(),
+      filename: "symbol.png",
+    });
+    expect(up.statusCode).toBe(201);
+    const mit = up.json();
+    expect(mit.draft.favicon).toMatchObject({ width: 400, height: 120 });
+    expect(mit.published.favicon.id).toBe(mit.draft.favicon.id);
+    // Im Shop steht es sofort.
+    expect((await call("GET", "/store/v1/shops/design-a/design")).json().favicon.url).toMatch(
+      /^https:\/\/media\.localhost\/tenants\//,
+    );
+    // Shop B hat davon nichts.
+    expect((await call("GET", "/admin/v1/design", "b")).json().published.favicon).toBeNull();
+    expect((await call("DELETE", "/admin/v1/design/favicon", "b")).statusCode).toBe(403);
+
+    const weg = await call("DELETE", "/admin/v1/design/favicon", "a");
+    expect(weg.statusCode).toBe(200);
+    expect(weg.json().draft.favicon).toBeNull();
+    expect(weg.json().published.favicon).toBeNull();
+    expect((await call("GET", "/store/v1/shops/design-a/design")).json().favicon).toBeNull();
   });
 
   it("räumt ersetzte Logos weg, verwirft Entwürfe, nimmt keine fremden Bilder", async () => {

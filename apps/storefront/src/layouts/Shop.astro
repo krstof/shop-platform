@@ -10,6 +10,7 @@ import {
   safePageSlug,
   SOCIAL_NETWORKS,
   sucheImKopf,
+  uspLeiste,
   vorlage,
   webFontCssUrl,
 } from "../lib/design.js";
@@ -39,6 +40,8 @@ const slogan = design.tagline ?? "";
 // auskommt.
 const suchart = sucheImKopf(design);
 const klebt = design.header?.sticky === true;
+// Leiste ganz oben: eigene Zusagen des Händlers, sonst der Testhinweis (Kristof 22.11.2026).
+const zusagen = uspLeiste(design);
 const fussText = design.footer?.text ?? "";
 // Symbole der sozialen Netzwerke (simple-icons, CC0), nur https-Profile.
 const SYMBOLE = {
@@ -78,7 +81,11 @@ const fussLinks = [
     <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content={beschreibung} />
     <title>{titel === shop.name ? titel : `${titel} – ${shop.name}`}</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {design.favicon ? (
+      <link rel="icon" href={design.favicon.url} />
+    ) : (
+      <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    )}
     {schriften !== undefined && <link rel="stylesheet" href={schriften} />}
     <link rel="stylesheet" href={`${basis}/design.css?v=${designVersion(design)}`} />
   </head>
@@ -87,9 +94,20 @@ const fussLinks = [
       Zum Inhalt springen
     </a>
     <header class:list={["kopf", { "kopf-klebt": klebt }]}>
-      <p class="vorschau-band" role="note">
-        Testshop: Hier ist nichts echt, auch die Zahlung nicht.
-      </p>
+      {zusagen.length > 0 && (
+        <p class="vorschau-band" role="note">
+          {zusagen.map((t, i) => (
+            <>
+              {i > 0 && (
+                <span class="band-trenner" aria-hidden="true">
+                  ·
+                </span>
+              )}
+              <span>{t}</span>
+            </>
+          ))}
+        </p>
+      )}
       <div class="breite kopf-innen">
         <div class="marke">
           <a href={basis} class="logo">

@@ -4594,6 +4594,19 @@
                     ],
                     "description": "Bild-ID des Logos (aus dem Hochladen) oder `null` für „kein Logo“."
                   },
+                  "faviconImageId": {
+                    "description": "Bild-ID des Symbols oder `null` für „Standardsymbol“. Fehlt das Feld, bleibt es.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "home": {
                     "description": "Startseite. Fehlt das Feld, bleibt die Startseite im Entwurf, wie sie ist.",
                     "$ref": "#/components/schemas/DesignHomeInput"
@@ -5822,6 +5835,20 @@
                       "sticky": {
                         "type": "boolean",
                         "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+                      },
+                      "uspOn": {
+                        "description": "Leiste ganz oben an oder aus.",
+                        "type": "boolean"
+                      },
+                      "usp": {
+                        "description": "Bis zu 3 kurze Zusagen, je 40 Zeichen. Leer heißt: Testhinweis.",
+                        "maxItems": 3,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        }
                       }
                     },
                     "required": [
@@ -5842,6 +5869,7 @@
                 "accentColor": "#1f5f8b",
                 "font": "modern",
                 "logoImageId": null,
+                "faviconImageId": null,
                 "home": {
                   "heroImageId": null,
                   "heroTitle": "Frischer Tee, direkt vom Garten",
@@ -5955,6 +5983,310 @@
           },
           "428": {
             "description": "If-Match fehlt.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "settings:write"
+        ]
+      }
+    },
+    "/admin/v1/design/favicon": {
+      "delete": {
+        "operationId": "removeDesignFavicon",
+        "summary": "Symbol des Shops entfernen",
+        "description": "Nimmt das Symbol wieder weg, im Entwurf und im veröffentlichten Shop. Danach zeigen Shop und Backoffice wieder das Standardsymbol.",
+        "tags": [
+          "Aussehen"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Das Aussehen ohne Symbol.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "settings:write"
+        ]
+      },
+      "post": {
+        "operationId": "uploadDesignFavicon",
+        "summary": "Symbol des Shops hochladen",
+        "description": "Lädt das Symbol des Shops hoch (PNG, JPEG oder WebP als Base64, höchstens 8 MB). Es gilt sofort, im Entwurf und im veröffentlichten Shop, weil es zum Shop gehört und nicht zum Aussehen, das man erst ansehen will. Es steht im Browser-Reiter und in der Kopfzeile des Backoffice. Quadratische Bilder sehen am besten aus.",
+        "tags": [
+          "Aussehen"
+        ],
+        "parameters": [
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "maxLength": 11184812,
+                    "format": "base64",
+                    "contentEncoding": "base64",
+                    "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
+                    "description": "Logo als Base64 (PNG, JPEG oder WebP, höchstens 8 MB, kein SVG)."
+                  },
+                  "filename": {
+                    "description": "Ursprünglicher Dateiname, nur zur Info.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "data"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "data": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAA1BMVEV6mluJCzqwAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQ4y2NgGAWjYBSMAuwAAAQgAAFWu83mAAAAAElFTkSuQmCC",
+                "filename": "symbol.png"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Das Aussehen mit neuem Symbol.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 12 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -14109,6 +14441,17 @@
               }
             ]
           },
+          "favicon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesignImage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Symbol des Shops; null = Standardsymbol."
+          },
           "home": {
             "$ref": "#/components/schemas/DesignHome"
           },
@@ -14172,6 +14515,7 @@
           "accentColor",
           "font",
           "logo",
+          "favicon",
           "home",
           "tagline",
           "footer",
@@ -14356,14 +14700,27 @@
           "sticky": {
             "type": "boolean",
             "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+          },
+          "uspOn": {
+            "type": "boolean",
+            "description": "Leiste ganz oben an oder aus."
+          },
+          "usp": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Bis zu 3 kurze Zusagen in der Leiste; leer heißt: dort steht der Testhinweis."
           }
         },
         "required": [
           "search",
-          "sticky"
+          "sticky",
+          "uspOn",
+          "usp"
         ],
         "additionalProperties": false,
-        "description": "Kopfzeile des Shops: Suche und Verhalten beim Scrollen."
+        "description": "Kopfzeile des Shops: Suche, Leiste oben und Verhalten beim Scrollen."
       },
       "DesignHome": {
         "type": "object",

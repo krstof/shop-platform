@@ -2,10 +2,13 @@
 // „Versand“ und „Team“. Allgemein speichert über PUT /admin/v1/settings/general (mit Version).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Alert, Button, Field, Input, Select, Spinner } from "../components/ui.js";
-import { ApiError, request } from "../lib/api.js";
+import { ApiError, imageUploadData, request, type DesignState } from "../lib/api.js";
+import { designFaviconKey } from "../lib/shop-icon.js";
 import { useShop } from "./layout.js";
+
+const SYMBOL_TYPEN = ["image/png", "image/jpeg", "image/webp"];
 
 export interface GeneralSettings {
   readonly shopName: string;
@@ -99,7 +102,106 @@ export function GeneralSettingsPage() {
       )}
       {settings.isError && <Alert>{settings.error.message}</Alert>}
       {settings.data && <GeneralForm initial={settings.data} />}
+      {settings.data && <FaviconCard />}
     </div>
+  );
+}
+
+/**
+ * Symbol des Shops (Kristof 22.11.2026): das kleine Bild im Browser-Reiter, das auch in der
+ * Kopfzeile des Backoffice neben dem Shopnamen steht. Es wirkt sofort, ohne Veröffentlichen im
+ * Editor, weil es zum Shop gehört und nicht zum Aussehen, das man erst ansehen möchte.
+ */
+function FaviconCard() {
+  const shop = useShop();
+  const queryClient = useQueryClient();
+  const datei = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | undefined>();
+  const design = useQuery({
+    queryKey: ["design", shop.id] as const,
+    queryFn: () => request<DesignState>("/admin/v1/design", { shopId: shop.id }),
+  });
+  const symbol = design.data?.published.favicon ?? null;
+  const frisch = (s: DesignState) => {
+    queryClient.setQueryData(["design", shop.id], s);
+    void queryClient.invalidateQueries({ queryKey: designFaviconKey(shop.id) });
+  };
+  const upload = useMutation({
+    mutationFn: async (file: File) => {
+      if (!SYMBOL_TYPEN.includes(file.type))
+        throw new Error("Bitte das Symbol als PNG, JPEG oder WebP hochladen.");
+      return request<DesignState>("/admin/v1/design/favicon", {
+        method: "POST",
+        shopId: shop.id,
+        body: await imageUploadData(file),
+      });
+    },
+    onSuccess: (s) => {
+      frisch(s);
+      setMessage({ tone: "success", text: "Symbol gespeichert. Es gilt sofort." });
+    },
+    onError: (e) =>
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Hat nicht geklappt." }),
+  });
+  const remove = useMutation({
+    mutationFn: () => request<DesignState>("/admin/v1/design/favicon", { method: "DELETE", shopId: shop.id }),
+    onSuccess: (s) => {
+      frisch(s);
+      setMessage({ tone: "success", text: "Symbol entfernt." });
+    },
+    onError: (e) =>
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Hat nicht geklappt." }),
+  });
+
+  return (
+    <section className="mt-6 max-w-3xl rounded-lg bg-white p-5 ring-1 ring-gray-200">
+      <h2 className="mb-4 border-b border-gray-200 pb-2 text-[1.05rem] font-semibold text-gray-900">
+        Symbol des Shops
+      </h2>
+      <p className="text-[0.95rem] text-gray-600">
+        Das kleine Bild im Browser-Reiter, in Lesezeichen und hier oben neben dem Shopnamen. Am besten
+        quadratisch, PNG mit durchsichtigem Hintergrund. Es gilt sofort.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <span className="flex size-14 items-center justify-center rounded-lg bg-gray-50 ring-1 ring-gray-200">
+          {symbol ? (
+            <img src={symbol.thumbnailUrl} alt="" className="size-10 object-contain" />
+          ) : (
+            <span className="text-xs text-gray-400">keins</span>
+          )}
+        </span>
+        <input
+          ref={datei}
+          type="file"
+          accept={SYMBOL_TYPEN.join(",")}
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) upload.mutate(file);
+          }}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          busy={upload.isPending}
+          onClick={() => datei.current?.click()}
+        >
+          {symbol ? "Anderes Bild wählen" : "Bild auswählen"}
+        </Button>
+        {symbol && (
+          <Button type="button" variant="ghost" busy={remove.isPending} onClick={() => remove.mutate()}>
+            Entfernen
+          </Button>
+        )}
+      </div>
+      {message && (
+        <div className="mt-4">
+          <Alert tone={message.tone}>{message.text}</Alert>
+        </div>
+      )}
+    </section>
   );
 }
 

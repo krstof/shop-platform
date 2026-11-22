@@ -51,8 +51,8 @@ import profile.caddy
 	# Hochladen (Bilder und Fotos im Chat mit dem Assistenten): bis 12 MB, alles andere 1 MB.
 	# Die API prüft dieselben Grenzen noch einmal je Endpunkt (bodyLimit); dass beide Listen
 	# zusammenpassen, prüft tools/test/upload-limits.test.mjs gegen openapi/admin.json.
-	@upload path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|hero-image|images)|assistant/chat)$
-	@not_upload not path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|hero-image|images)|assistant/chat)$
+	@upload path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$
+	@not_upload not path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$
 	request_body @upload {
 		max_size 12MB
 	}
@@ -61,7 +61,7 @@ import profile.caddy
 	}
 	# Zu große Anfragen schon hier ablehnen, sobald die Länge angekündigt ist. Sonst schneiden API und
 	# Caddy gleichzeitig ab, und der Besucher sieht manchmal 502 statt 413 (Rauchtest 04.11.2026).
-	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > ({http.request.uri.path}.matches("^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|hero-image|images)|assistant/chat)$") ? 12582912 : 1048576)`
+	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > ({http.request.uri.path}.matches("^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$") ? 12582912 : 1048576)`
 	handle @too_large {
 		header Content-Type "application/problem+json; charset=utf-8"
 		header Cache-Control "no-store"

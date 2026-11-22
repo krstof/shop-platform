@@ -282,9 +282,28 @@ Alles unter „Nachzutragen“ gilt ab 09.11.2026 als „Später“ und wird in 
 - Schemathesis meldet für `POST /admin/v1/api-tokens` viele abgelehnte Zufallseingaben (erwartet: nur gültige Berechtigungen, Obergrenze 25 Token) und für Widerrufen/Ändern meist 404 (Zufalls-IDs). Bei Gelegenheit Beispiele mit echten IDs einspeisen.
 - Mitarbeiter (E6 Teil 7): Seite `/einladung` und Mitarbeiterliste im Backoffice mit E18; dafür ein kleiner Endpunkt „Einladung ansehen“ (Shopname, braucht das Konto ein Passwort?), damit die Seite vorab das richtige Formular zeigt. Rolle eines Mitglieds ändern und Shop an jemand anderen übergeben: mit eigenen Rollen (Welle 5) bzw. als eigener Ablauf. Nie angenommene, leere Konten (ohne Passwort, ohne Mitgliedschaft) aufräumen, spätestens mit E13. Einladungs-E-Mail mit E16 in einen Auftrag im Worker verlegen. Zählung der Einladungs-E-Mails liegt im Arbeitsspeicher, ab mehreren Instanzen Valkey. Schemathesis für `POST /auth/v1/invitations/accept` mit der Auth-API nachziehen.
 
+**P1 Sofort sichtbare Kleinigkeiten (22.11.2026):** Sechs Dinge aus Kristofs Wunschliste.
+(1) „Knopf" heißt überall „Button". (2) Die Kopfzeile des Backoffice zeigt neben dem Shopnamen das
+Symbol des Shops statt der Rolle „Inhaber:in". (3) Das Symbol lässt sich unter „Einstellungen →
+Allgemein" hochladen und wieder entfernen (`POST`/`DELETE /admin/v1/design/favicon`); es gilt sofort
+in Entwurf und veröffentlichtem Stand, weil es zum Shop gehört und nicht zum Aussehen, das man erst
+ansehen will. Der Shop setzt es in den Browser-Reiter. (4) Der Posteingang steht zusätzlich oben
+rechts als Briefumschlag mit der Zahl der ungelesenen Nachrichten. (5) Antwortet die API mit 401,
+gilt die Sitzung sofort als beendet; dadurch steht nicht mehr „Abmelden" im Menü, während die Seite
+zum Anmelden schickt (`setSignedOutHandler` in `apps/backoffice/src/lib/api.ts`). (6) Das feste
+Testband im Shop ist eine einstellbare Leiste mit bis zu drei kurzen Zusagen geworden
+(`header.uspOn`, `header.usp`, im Editor unter „Kopfzeile"); ohne Eintrag steht dort weiter der
+Testhinweis. Die Reiter unter „Einstellungen" sind gleich breit, die Überschrift springt nicht mehr.
+**Getestet:** neue Prüfungen in `design.test.ts` (Shop und Modul), `form.test.ts` im Backoffice und
+ein Datenbanktest für das Symbol (sofort gültig, Mandantentrennung, Entfernen); Durchlauf im Browser
+mit nachgebildeter API (Kopfzeile, Briefumschlag, Symbol-Karte, Editor-Panel, Leiste bei 1280 und
+390 Pixeln). `pnpm check` komplett grün, Caddy-Grenze für das neue Hochladen ergänzt.
+
 ## Nächster Schritt
 
-Paket P1 aus `docs/10_Wunschliste.md`: die sofort sichtbaren Kleinigkeiten und der Fehler im Benutzermenü. Danach P2 (Produktvarianten). Die Reihenfolge der Pakete steht in derselben Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
+Paket P2 aus `docs/10_Wunschliste.md` (Produktvarianten) oder P12 (Einstellungen je Baustein im
+Editor, Vorbild Shopify). P1 ist fertig, siehe unten. Die Reihenfolge der Pakete steht in derselben
+Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
 
 ## Offene Entscheidungen
 

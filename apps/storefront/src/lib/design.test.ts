@@ -6,6 +6,8 @@ import {
   designVersion,
   gruppenInhalt,
   gruppenKlassen,
+  TESTHINWEIS,
+  uspLeiste,
   isExternal,
   mapUrls,
   safeLink,
@@ -135,5 +137,28 @@ describe("Editor 2: Hintergrund, Schriften, Buttons", () => {
       ],
     };
     expect(gruppenInhalt(gruppe).map((b) => b.id)).toEqual(["k1", "k3"]);
+  });
+});
+
+describe("Leiste über der Kopfzeile", () => {
+  const mit = (header: Record<string, unknown>) => uspLeiste({ ...DEFAULT_DESIGN, header });
+
+  it("zeigt ohne eigene Zusagen den Testhinweis", () => {
+    expect(uspLeiste(DEFAULT_DESIGN)).toEqual([TESTHINWEIS]);
+    expect(mit({ usp: [] })).toEqual([TESTHINWEIS]);
+    expect(mit({ usp: ["   "] })).toEqual([TESTHINWEIS]);
+  });
+
+  it("zeigt die eigenen Zusagen, höchstens drei, ohne Leerzeilen", () => {
+    expect(mit({ usp: ["Versand frei", "  ", "30 Tage Rückgabe"] })).toEqual([
+      "Versand frei",
+      "30 Tage Rückgabe",
+    ]);
+    expect(mit({ usp: ["a", "b", "c", "d"] })).toEqual(["a", "b", "c"]);
+  });
+
+  it("bleibt leer, wenn der Händler die Leiste ausschaltet", () => {
+    expect(mit({ uspOn: false, usp: ["Versand frei"] })).toEqual([]);
+    expect(mit({ uspOn: false })).toEqual([]);
   });
 });

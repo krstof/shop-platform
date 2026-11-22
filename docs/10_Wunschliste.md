@@ -19,7 +19,7 @@ Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er n
 
 | Paket | Inhalt | Warum an dieser Stelle |
 |---|---|---|
-| P1 | Sofort sichtbare Kleinigkeiten und ein Fehler | Eine Stunde Arbeit, jeden Tag sichtbar |
+| P1 ✅ | Sofort sichtbare Kleinigkeiten und ein Fehler | Eine Stunde Arbeit, jeden Tag sichtbar |
 | P2 | Produktvarianten | Größter fehlender Brocken im Katalog, von Kristof genannt |
 | P3 | Statistiken und SEO-Anbindungen | Von Kristof genannt: Plausible, Google Search Console, DataForSEO, Sitemap |
 | P4 | Slopify als MCP-Server | Von Kristof genannt |
@@ -33,15 +33,15 @@ Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er n
 | P12 | Einstellungen je Baustein im Editor | Von Kristof am 22.11.2026 gewünscht, Vorbild Shopify |
 | P13 | Formatierung in Textfeldern (fett, kursiv, Link) | Hängt mit P5 zusammen |
 
-## P1 Sofort sichtbare Kleinigkeiten
+## P1 Sofort sichtbare Kleinigkeiten ✅ fertig am 22.11.2026
 
-- **Fehler: abmelden, obwohl man nicht angemeldet ist.** Im Backoffice erscheint „Bitte anmelden“, im Benutzermenü oben rechts steht trotzdem „Abmelden“. Das Menü muss den Zustand der Sitzung kennen.
-- **Kopfzeile im Backoffice:** Statt „Inhaber:in“ unter dem Shopnamen soll dort nur der Shopname stehen, daneben das Favicon des Shops.
-- **Favicon hochladen** unter „Einstellungen → Allgemein“; der Shop nimmt heute ein festes Symbol.
-- **Posteingang nach oben.** Der Posteingang steht im Menü links; er soll zusätzlich oben neben dem Benutzersymbol als Briefumschlag mit der Zahl der ungelesenen Nachrichten erscheinen.
-- **Einstellungen springen nicht mehr.** Beim Wechsel zwischen Allgemein, Versand, Anbindungen und Team wandert die Überschrift, weil jeder Reiter eine andere Breite hat. Eine feste Breite für alle Reiter.
+- ✅ **Fehler: abmelden, obwohl man nicht angemeldet ist.** Im Backoffice erscheint „Bitte anmelden“, im Benutzermenü oben rechts steht trotzdem „Abmelden“. Das Menü muss den Zustand der Sitzung kennen.
+- ✅ **Kopfzeile im Backoffice:** Statt „Inhaber:in“ unter dem Shopnamen soll dort nur der Shopname stehen, daneben das Favicon des Shops.
+- ✅ **Favicon hochladen** unter „Einstellungen → Allgemein“; der Shop nimmt heute ein festes Symbol.
+- ✅ **Posteingang nach oben.** Der Posteingang steht im Menü links; er soll zusätzlich oben neben dem Benutzersymbol als Briefumschlag mit der Zahl der ungelesenen Nachrichten erscheinen.
+- ✅ **Einstellungen springen nicht mehr.** Beim Wechsel zwischen Allgemein, Versand, Anbindungen und Team wandert die Überschrift, weil jeder Reiter eine andere Breite hat. Eine feste Breite für alle Reiter.
 - ✅ **„Knopf“ heißt jetzt „Button“** (erledigt 22.11.2026).
-- **„Testshop“-Band raus, USP-Leiste rein.** Ganz oben im Shop steht heute fest „Testshop: Hier ist nichts echt, auch die Zahlung nicht.“ Das wird eine einstellbare Leiste mit bis zu drei kurzen Zusagen (Versand, Rückgabe, Beratung), ein- und ausschaltbar in der Kopfzeile. Der Testhinweis bleibt dort voreingestellt, solange nichts eingetragen ist.
+- ✅ **„Testshop“-Band raus, USP-Leiste rein.** Ganz oben im Shop steht heute fest „Testshop: Hier ist nichts echt, auch die Zahlung nicht.“ Das wird eine einstellbare Leiste mit bis zu drei kurzen Zusagen (Versand, Rückgabe, Beratung), ein- und ausschaltbar in der Kopfzeile. Der Testhinweis bleibt dort voreingestellt, solange nichts eingetragen ist.
 
 ## P2 Produktvarianten
 

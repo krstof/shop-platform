@@ -96,6 +96,22 @@ main:focus-visible {
   font-size: 0.875rem;
 }
 
+/* Mehrere Zusagen in der Leiste: mit Punkt getrennt, am Handy untereinander. */
+.band-trenner {
+  margin: 0 0.6rem;
+  opacity: 0.5;
+}
+
+@media (max-width: 480px) {
+  .vorschau-band span:not(.band-trenner) {
+    display: block;
+  }
+
+  .band-trenner {
+    display: none;
+  }
+}
+
 /* Kopf */
 .kopf {
   border-bottom: 1px solid var(--linie);

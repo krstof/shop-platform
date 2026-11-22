@@ -40,6 +40,8 @@ import {
   MAX_FOOTER_TEXT,
   MAX_LINK_LABEL,
   MAX_TAGLINE,
+  MAX_USP,
+  MAX_USP_TEXT,
   normalizeHex,
   PRESETS,
   readableBackground,
@@ -839,16 +841,31 @@ export function FooterPanel({ form, set }: { form: Form; set: Set }) {
 
 /** Design-Vorlagen mit kleiner Skizze; Farben und Schriften bleiben, nur die Anordnung ändert sich. */
 
-/** Kopfzeile: Suche offen oder als Lupe, und ob der Kopf beim Scrollen oben bleibt (22.11.2026). */
+/**
+ * Kopfzeile: Suche offen oder als Lupe, Kopf beim Scrollen oben (22.11.2026) und die Leiste ganz oben
+ * mit bis zu drei kurzen Zusagen (Kristof 22.11.2026).
+ */
 export function HeaderPanel({
   suche,
   kopfKlebt,
+  leisteAn,
+  zusagen,
   onChange,
 }: {
   suche: SearchMode;
   kopfKlebt: boolean;
-  onChange: (c: { suche?: SearchMode; kopfKlebt?: boolean }) => void;
+  leisteAn: boolean;
+  zusagen: readonly string[];
+  onChange: (c: { suche?: SearchMode; kopfKlebt?: boolean; leisteAn?: boolean; zusagen?: string[] }) => void;
 }) {
+  const zeilen = [...zusagen, "", "", ""].slice(0, MAX_USP);
+  const setZeile = (i: number, text: string) => {
+    const next = [...zeilen];
+    next[i] = text;
+    // Leere Zeilen am Ende nicht mitspeichern, Lücken dazwischen bleiben erhalten.
+    while (next.length > 0 && next[next.length - 1]?.trim() === "") next.pop();
+    onChange({ zusagen: next });
+  };
   return (
     <div className="space-y-4">
       <div>
@@ -889,6 +906,39 @@ export function HeaderPanel({
           </span>
         </span>
       </label>
+      <div className="border-t border-gray-200 pt-4">
+        <label className="flex items-start gap-2 text-sm text-gray-800">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={leisteAn}
+            onChange={(e) => onChange({ leisteAn: e.target.checked })}
+          />
+          <span>
+            Leiste über der Kopfzeile
+            <span className="block text-xs text-gray-500">
+              Platz für kurze Zusagen wie „Versand ab 29 €“. Ohne Eintrag steht dort der Testhinweis.
+            </span>
+          </span>
+        </label>
+        {leisteAn && (
+          <div className="mt-3 space-y-2">
+            {zeilen.map((text, i) => (
+              <input
+                key={i}
+                className={field + " mt-0"}
+                value={text}
+                maxLength={MAX_USP_TEXT}
+                aria-label={`Zusage ${i + 1}`}
+                placeholder={
+                  i === 0 ? "Kostenloser Versand ab 29 €" : i === 1 ? "30 Tage Rückgabe" : "Beratung per Mail"
+                }
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setZeile(i, e.target.value)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

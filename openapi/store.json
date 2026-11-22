@@ -2474,14 +2474,27 @@
           "sticky": {
             "type": "boolean",
             "description": "Kopfzeile bleibt beim Scrollen oben stehen."
+          },
+          "uspOn": {
+            "type": "boolean",
+            "description": "Leiste ganz oben an oder aus."
+          },
+          "usp": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Bis zu 3 kurze Zusagen in der Leiste; leer heißt: dort steht der Testhinweis."
           }
         },
         "required": [
           "search",
-          "sticky"
+          "sticky",
+          "uspOn",
+          "usp"
         ],
         "additionalProperties": false,
-        "description": "Kopfzeile des Shops: Suche und Verhalten beim Scrollen."
+        "description": "Kopfzeile des Shops: Suche, Leiste oben und Verhalten beim Scrollen."
       },
       "DesignSocial": {
         "type": "object",
@@ -3272,6 +3285,39 @@
               }
             ]
           },
+          "favicon": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "url",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Symbol des Shops; null = Standardsymbol."
+          },
           "home": {
             "$ref": "#/components/schemas/StoreDesignHome"
           },
@@ -3351,6 +3397,7 @@
           "accentDarkColor",
           "font",
           "logo",
+          "favicon",
           "home",
           "tagline",
           "footer",

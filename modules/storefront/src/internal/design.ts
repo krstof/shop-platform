@@ -41,6 +41,9 @@ export const MAX_FOOTER_TEXT = 300;
 export const MAX_FOOTER_LINKS = 5;
 export const MAX_LINK_LABEL = 40;
 export const MAX_LINK_URL = 300;
+/** USP-Leiste über der Kopfzeile (Kristof 22.11.2026): bis zu drei kurze Zusagen. */
+export const MAX_USP = 3;
+export const MAX_USP_TEXT = 40;
 
 /** Erlaubte Linkziele: Webseiten (https/http), E-Mail, Telefon. Nie javascript: oder data:. */
 const LINK_URL = /^(https?:\/\/[^\s<>"]+|mailto:[^\s<>"]+|tel:\+?[0-9 ()/-]+)$/i;
@@ -110,14 +113,20 @@ export interface HeaderSettings {
   readonly search: SearchMode;
   /** Bleibt die Kopfzeile beim Scrollen oben stehen? */
   readonly sticky: boolean;
+  /** Leiste ganz oben an oder aus. */
+  readonly uspOn: boolean;
+  /** Bis zu drei kurze Zusagen; leer heißt: der Testhinweis steht dort. */
+  readonly usp: readonly string[];
 }
 
-export const DEFAULT_HEADER: HeaderSettings = { search: "offen", sticky: false };
+export const DEFAULT_HEADER: HeaderSettings = { search: "offen", sticky: false, uspOn: true, usp: [] };
 
 export interface DesignSettings {
   readonly accentColor: string;
   readonly font: Font;
   readonly logoImageId: string | null;
+  /** Symbol im Browser-Reiter und in der Kopfzeile des Backoffice; `null` = Standardsymbol. */
+  readonly faviconImageId: string | null;
   readonly home: HomeSettings;
   /** Kurzer Text unter dem Logo (Slogan); leer heißt keiner. */
   readonly tagline: string;
@@ -151,6 +160,7 @@ export const DEFAULT_DESIGN: DesignSettings = {
   accentColor: DEFAULT_ACCENT,
   font: DEFAULT_FONT,
   logoImageId: null,
+  faviconImageId: null,
   home: DEFAULT_HOME,
   tagline: "",
   footer: DEFAULT_FOOTER,
@@ -168,6 +178,7 @@ const stored = z.object({
   accentColor: z.string().regex(HEX).catch(DEFAULT_ACCENT),
   font: z.enum(FONTS).catch(DEFAULT_FONT),
   logoImageId: z.uuid().nullable().catch(null),
+  faviconImageId: z.uuid().nullable().catch(null).default(null),
   home: z
     .object({
       heroImageId: z.uuid().nullable().catch(null),
@@ -207,9 +218,15 @@ const stored = z.object({
     .object({
       search: z.enum(SEARCH_MODES).catch("offen"),
       sticky: z.boolean().catch(false),
+      uspOn: z.boolean().catch(true).default(true),
+      usp: z
+        .array(z.string().max(MAX_USP_TEXT))
+        .max(MAX_USP)
+        .catch([])
+        .default(() => []),
     })
-    .catch(() => ({ ...DEFAULT_HEADER }))
-    .default(() => ({ ...DEFAULT_HEADER })),
+    .catch(() => ({ ...DEFAULT_HEADER, usp: [...DEFAULT_HEADER.usp] }))
+    .default(() => ({ ...DEFAULT_HEADER, usp: [...DEFAULT_HEADER.usp] })),
 });
 
 /** Gespeicherte Profile lesen: nur bekannte Netzwerke mit https-Adresse. */
@@ -255,11 +272,15 @@ function canonical(v: unknown): string {
   return JSON.stringify(v);
 }
 
-/** Alle Bilder (Logo, Startseitenbild), die ein Stand benutzt. */
+/** Alle Bilder (Logo, Favicon, Startseitenbild), die ein Stand benutzt. */
 export function imagesOf(s: DesignSettings): string[] {
-  return [s.logoImageId, s.home.heroImageId, ...blockImages(s.home.blocks), ...pageImages(s.pages)].filter(
-    (x): x is string => x !== null,
-  );
+  return [
+    s.logoImageId,
+    s.faviconImageId,
+    s.home.heroImageId,
+    ...blockImages(s.home.blocks),
+    ...pageImages(s.pages),
+  ].filter((x): x is string => x !== null);
 }
 
 /** `#AbC123` → `#abc123`; `undefined`, wenn es keine Farbe in dieser Form ist. */

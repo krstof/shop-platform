@@ -12,6 +12,7 @@ import {
   Inbox,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   MessageCircle,
   Package,
@@ -28,6 +29,7 @@ import { ShopContext, useShop } from "../lib/shop.js";
 import { Button, Select, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
 import { inboxKey, type ContactMessage } from "../lib/inbox.js";
+import { useShopIcon } from "../lib/shop-icon.js";
 import { useSession } from "../lib/session.js";
 import { SlopifyMark } from "../components/logo.js";
 import { AssistantChat, AssistantProvider, useAssistant } from "./assistant.js";
@@ -272,6 +274,7 @@ function ShopFrame({
               <span className="hidden sm:inline">Shop ansehen</span>
               <span className="sr-only sm:hidden">Shop ansehen</span>
             </a>
+            <InboxButton />
             <UserMenu email={email} operator={operator} />
           </div>
         </header>
@@ -401,17 +404,11 @@ function Sidebar({
             buttonClassName="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-gray-150 focus-visible:outline-2 focus-visible:outline-brand-600"
             trigger={
               <>
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
-                >
-                  {shop.name.slice(0, 1).toUpperCase()}
-                </span>
+                <ShopIcon name={shop.name} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[0.95rem] leading-tight font-semibold text-gray-900">
                     {shop.name}
                   </span>
-                  <span className="block truncate text-xs text-gray-500">{roleName(shop.role)}</span>
                 </span>
                 <ChevronsUpDown className="size-4 shrink-0 text-gray-400" aria-hidden="true" />
               </>
@@ -425,17 +422,11 @@ function Sidebar({
           </Select>
         ) : (
           <div className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5">
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
-            >
-              {shop.name.slice(0, 1).toUpperCase()}
-            </span>
+            <ShopIcon name={shop.name} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[0.95rem] leading-tight font-semibold text-gray-900">
                 {shop.name}
               </span>
-              <span className="block truncate text-xs text-gray-500">{roleName(shop.role)}</span>
             </span>
           </div>
         )}
@@ -477,8 +468,8 @@ function Sidebar({
   );
 }
 
-/** Zahl der ungelesenen Nachrichten hinter „Posteingang“ (alle 60 Sekunden neu). */
-function UnreadCount() {
+/** Ungelesene Nachrichten, alle 60 Sekunden neu. Zahl für die Leiste und den Briefumschlag oben. */
+function useUnread(): number {
   const shop = useShop();
   const q = useQuery({
     queryKey: inboxKey(shop.id),
@@ -487,7 +478,40 @@ function UnreadCount() {
     refetchInterval: 60_000,
     retry: false,
   });
-  const n = q.data?.unread ?? 0;
+  return q.data?.unread ?? 0;
+}
+
+/**
+ * Posteingang oben rechts (Kristof 22.11.2026): Briefumschlag neben dem Benutzersymbol, mit der Zahl
+ * der ungelesenen Nachrichten. Im Menü links steht der Posteingang weiter.
+ */
+function InboxButton() {
+  const shop = useShop();
+  const n = useUnread();
+  return (
+    <Link
+      to={INBOX}
+      params={{ shop: shop.handle }}
+      aria-label={n === 0 ? "Posteingang" : `Posteingang, ${n} ungelesen`}
+      title="Posteingang"
+      className="relative inline-flex size-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+    >
+      <Mail className="size-5" aria-hidden="true" />
+      {n > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-brand-600 px-1 text-[0.65rem] leading-4 font-semibold text-white tabular-nums"
+        >
+          {n > 9 ? "9+" : n}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+/** Zahl der ungelesenen Nachrichten hinter „Posteingang“ in der Leiste links. */
+function UnreadCount() {
+  const n = useUnread();
   if (n === 0) return null;
   return (
     <span className="ml-auto rounded-full bg-brand-600 px-1.5 py-px text-[0.7rem] font-semibold text-white tabular-nums">
@@ -497,8 +521,28 @@ function UnreadCount() {
   );
 }
 
-function roleName(role: string): string {
-  return role === "owner" ? "Inhaber:in" : role === "staff" ? "Mitarbeiter:in" : "Eigene Rolle";
+/**
+ * Symbol des Shops neben dem Namen (Kristof 22.11.2026): das hochgeladene Favicon, solange es eines
+ * gibt, sonst der erste Buchstabe im farbigen Feld.
+ */
+function ShopIcon({ name }: { name: string }) {
+  const icon = useShopIcon();
+  if (icon !== undefined)
+    return (
+      <img
+        src={icon}
+        alt=""
+        className="size-8 shrink-0 rounded-lg bg-white object-contain ring-1 ring-gray-200"
+      />
+    );
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-brand-600 text-sm font-bold text-white"
+    >
+      {name.slice(0, 1).toUpperCase()}
+    </span>
+  );
 }
 
 /** Symbol im farbigen Feld (wie die Farbmarken in airfocus). */

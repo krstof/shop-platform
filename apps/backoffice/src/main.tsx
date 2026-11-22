@@ -4,8 +4,9 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ConfirmProvider } from "./components/dialog.js";
-import { ApiError } from "./lib/api.js";
+import { ApiError, setSignedOutHandler } from "./lib/api.js";
 import { router } from "./router.js";
+import { sessionKey } from "./lib/session.js";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -17,6 +18,11 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
+});
+
+// Sitzung abgelaufen: Sitzung auf „nicht angemeldet“ setzen; die Seiten leiten dann zum Anmelden.
+setSignedOutHandler(() => {
+  queryClient.setQueryData(sessionKey, null);
 });
 
 const element = document.getElementById("root");

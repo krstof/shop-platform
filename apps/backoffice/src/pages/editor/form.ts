@@ -41,7 +41,11 @@ export interface Form {
   /** Kopfzeile: Suche und Verhalten beim Scrollen. */
   suche: SearchMode;
   kopfKlebt: boolean;
+  /** Leiste ganz oben: an oder aus, dazu bis zu drei kurze Zusagen. */
+  leisteAn: boolean;
+  zusagen: string[];
   logo: DesignImage | null;
+  favicon: DesignImage | null;
   tagline: string;
   footerText: string;
   footerLinks: FooterLinkForm[];
@@ -69,7 +73,10 @@ export function formOf(state: DesignState): Form {
     template: templateOf(d.template),
     suche: searchModeOf(d.header?.search),
     kopfKlebt: d.header?.sticky === true,
+    leisteAn: d.header?.uspOn !== false,
+    zusagen: [...(d.header?.usp ?? [])],
     logo: d.logo,
+    favicon: d.favicon ?? null,
     tagline: d.tagline,
     footerText: d.footer.text,
     footerLinks: d.footer.links.map((l) => ({ label: l.label, url: l.url })),
@@ -125,8 +132,14 @@ export function bodyOf(f: Form) {
     bodyFont: f.bodyFont,
     backgroundColor: f.backgroundColor,
     template: f.template,
-    header: { search: f.suche, sticky: f.kopfKlebt },
+    header: {
+      search: f.suche,
+      sticky: f.kopfKlebt,
+      uspOn: f.leisteAn,
+      usp: f.zusagen.map((t) => t.trim()).filter((t) => t !== ""),
+    },
     logoImageId: f.logo?.id ?? null,
+    faviconImageId: f.favicon?.id ?? null,
     home: {
       heroImageId: f.heroImage?.id ?? null,
       heroTitle: f.heroTitle,

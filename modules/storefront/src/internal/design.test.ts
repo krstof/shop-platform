@@ -17,10 +17,18 @@ describe("Aussehen: Rechenregeln", () => {
   it("liest die Kopfzeile und macht aus Unsinn den Standard", () => {
     // Alte Shops haben das Feld nicht: offenes Suchfeld, Kopf scrollt mit.
     expect(readSettings({}).header).toEqual(DEFAULT_HEADER);
+    // Leiste oben (22.11.2026): ältere Stände ohne die Felder bekommen „an, ohne eigene Zusagen“.
     expect(readSettings({ header: { search: "lupe", sticky: true } }).header).toEqual({
       search: "lupe",
       sticky: true,
+      uspOn: true,
+      usp: [],
     });
+    expect(
+      readSettings({ header: { search: "aus", sticky: false, uspOn: false, usp: ["Versand frei"] } }).header,
+    ).toEqual({ search: "aus", sticky: false, uspOn: false, usp: ["Versand frei"] });
+    // Zu viele oder falsche Zusagen: die Liste fällt auf leer zurück.
+    expect(readSettings({ header: { search: "offen", sticky: false, usp: [1, 2] } }).header.usp).toEqual([]);
     expect(readSettings({ header: { search: "blinkend", sticky: "ja" } }).header).toEqual(DEFAULT_HEADER);
   });
 
@@ -75,7 +83,8 @@ describe("Aussehen: Rechenregeln", () => {
       headingFont: { id: "lora", name: "Lora", category: "serif" },
       bodyFont: null,
       template: "boutique",
-      header: { search: "lupe", sticky: true },
+      faviconImageId: "0190a3c4-0000-7000-8000-000000000004",
+      header: { search: "lupe", sticky: true, uspOn: true, usp: ["Versand ab 29 €"] },
       pages: [
         {
           id: "p1",

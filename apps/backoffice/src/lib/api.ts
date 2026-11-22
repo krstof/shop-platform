@@ -34,6 +34,18 @@ export interface RequestOptions {
   readonly version?: number;
 }
 
+/**
+ * Sitzung abgelaufen (Kristof 22.11.2026): Antwortet die API mit 401, ist die Anmeldung weg. Dann
+ * muss die ganze Oberfläche das erfahren, sonst steht oben rechts weiter „Abmelden“, obwohl niemand
+ * mehr angemeldet ist. Das Anmelden selbst zählt nicht dazu: Dort heißt 401 „Passwort falsch“.
+ */
+let onSignedOut: (() => void) | undefined;
+export function setSignedOutHandler(fn: () => void): void {
+  onSignedOut = fn;
+}
+
+const ANMELDE_PFADE = ["/auth/v1/sign-in", "/auth/v1/two-factor/verify", "/auth/v1/session"];
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { accept: "application/json", "accept-language": "de" };
   if (options.body !== undefined) headers["content-type"] = "application/json";
@@ -51,6 +63,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError(0, "network", "Keine Verbindung zum Server. Bitte gleich noch einmal versuchen.");
   }
   if (response.ok) return (await response.json()) as T;
+  if (response.status === 401 && !ANMELDE_PFADE.some((p) => path.startsWith(p))) onSignedOut?.();
   throw await toApiError(response);
 }
 
@@ -152,6 +165,8 @@ export interface Design {
   readonly accentColor: string;
   readonly font: "klassisch" | "modern" | "freundlich";
   readonly logo: DesignImage | null;
+  /** Symbol des Shops (22.11.2026); ältere API-Stände ohne. */
+  readonly favicon?: DesignImage | null;
   readonly home: DesignHome;
   /** Text unter dem Logo (Teil 3). */
   readonly tagline: string;
@@ -165,7 +180,14 @@ export interface Design {
   /** Design-Vorlage (Anordnung); ältere API-Stände ohne. */
   readonly template?: string;
   /** Kopfzeile (22.11.2026); ältere API-Stände ohne. */
-  readonly header?: { readonly search?: string; readonly sticky?: boolean };
+  readonly header?: {
+    readonly search?: string;
+    readonly sticky?: boolean;
+    /** Leiste ganz oben an oder aus. */
+    readonly uspOn?: boolean;
+    /** Bis zu drei kurze Zusagen in der Leiste. */
+    readonly usp?: readonly string[];
+  };
 }
 
 /** Eigene Inhaltsseite (Baukasten Teil 3). */
