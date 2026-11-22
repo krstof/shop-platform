@@ -20,7 +20,15 @@ import {
   type ShopOfUser,
 } from "@shop/identity";
 import { createInventory } from "@shop/inventory";
-import { getContext, runWithContext, type Database, type Logger } from "@shop/kernel";
+import { randomBytes } from "node:crypto";
+import {
+  createSecretBox,
+  getContext,
+  runWithContext,
+  type Database,
+  type Logger,
+  type SecretBox,
+} from "@shop/kernel";
 import { createMedia, memoryStorage, type Media } from "@shop/media";
 import {
   createShopAdministration,
@@ -33,6 +41,7 @@ import {
 import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { couponEndpoints, createPricing } from "@shop/pricing";
+import { createIntegrations, integrationEndpoints, stockPhotoEndpoints } from "@shop/integrations";
 import { createShopSettings, generalSettingsEndpoints } from "@shop/shop-settings";
 import { createShipping, shippingEndpoints } from "@shop/shipping";
 import { storefrontEndpoints } from "@shop/storefront-design";
@@ -62,6 +71,11 @@ export interface EndpointDependencies {
   readonly assistantModel?: AssistantModel | undefined;
   /** Antworten des Assistenten je Shop und Tag. */
   readonly assistantDailyLimit?: number | undefined;
+  /**
+   * Verschlüsselung der Zugangsdaten für Anbindungen (21.11.2026). Ohne Angabe ein Zufallsschlüssel
+   * nur im Arbeitsspeicher: gut für Tests, im Betrieb reicht apps/api/src/main.ts den echten herein.
+   */
+  readonly secretBox?: SecretBox | undefined;
 }
 
 export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
@@ -79,6 +93,9 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       storage: memoryStorage(),
       publicBaseUrl: "https://media.localhost",
     });
+  // Anbindungen (21.11.2026): Zugangsdaten je Shop, verschlüsselt mit dem Hauptschlüssel.
+  const secretBox = deps.secretBox ?? createSecretBox(new Map([[1, randomBytes(32)]]));
+  const integrations = createIntegrations({ database: deps.database, secretBox });
   const prices = createPricing({ database: deps.database });
   const stock = createInventory({ database: deps.database });
   const images: ProductImages = {
@@ -104,7 +121,13 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     // Kaufen in der Storefront (M6): Warenkorb, Kasse, Testzahlung, Bestellbestätigung.
     ...customerEndpoints({ database: deps.database }),
     // Kontaktformular im Shop und Posteingang im Backoffice.
-    ...contactEndpoints({ database: deps.database }),
+    ...contactEndpoints({
+      database: deps.database,
+      onMessage: async (m) => {
+        const subject = m.subject === "" ? "ohne Betreff" : m.subject;
+        await integrations.notifyMerchant(`Neue Nachricht von ${m.name}: ${subject}`);
+      },
+    }),
     ...checkoutEndpoints({
       database: deps.database,
       carts: createCarts({ database: deps.database }),
@@ -125,8 +148,17 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       shopName: async () => (await shops.getShops([getContext()?.tenantId ?? ""]))[0]?.name,
       onMailError: (error) =>
         deps.logger?.error({ err: error }, "Bestellbestätigung konnte nicht verschickt werden"),
+      onOrderPaid: async (order) => {
+        const euro = (order.total / 100).toFixed(2).replace(".", ",");
+        const artikel = order.lines === 1 ? "1 Artikel" : `${order.lines} Artikel`;
+        await integrations.notifyMerchant(`Neue Bestellung ${order.orderNumber}: ${euro} € (${artikel})`);
+      },
     }),
     ...storeShopEndpoints(shops),
+    // Anbindungen an fremde Dienste: Telegram und was später dazukommt.
+    ...integrationEndpoints({ database: deps.database, secretBox }),
+    // Bildersuche (Openverse immer, Unsplash wenn eingerichtet) für Editor und Produktbilder.
+    ...stockPhotoEndpoints({ database: deps.database, secretBox }),
     // Einstellungen „Allgemein“: Adresse, Geschäftsangaben, Shop geöffnet, Shop-Name (Name in platform).
     ...generalSettingsEndpoints({
       database: deps.database,

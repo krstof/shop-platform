@@ -55,6 +55,17 @@ export interface CheckoutDependencies {
   /** Name des Shops für die E-Mail. */
   readonly shopName?: (() => Promise<string | undefined>) | undefined;
   readonly onMailError?: ((error: unknown) => void) | undefined;
+  /**
+   * Wird nach einer bezahlten Bestellung aufgerufen, damit der Händler eine Nachricht bekommt
+   * (21.11.2026, Anbindung Telegram). Fehler ändern nichts an der Bestellung.
+   */
+  readonly onOrderPaid?:
+    | ((order: {
+        readonly orderNumber: string;
+        readonly total: number;
+        readonly lines: number;
+      }) => Promise<void>)
+    | undefined;
 }
 
 const PUBLIC = {
@@ -498,6 +509,16 @@ export function checkoutEndpoints(deps: CheckoutDependencies): Endpoint[] {
         const shopName = (await deps.shopName?.()) ?? "Testshop";
         await deps.mailer
           .send(confirmationMail(order, shopName, deps.orderLink?.(params.shopHandle, params.paymentToken)))
+          .catch((e: unknown) => deps.onMailError?.(e));
+      }
+      if (confirmed && deps.onOrderPaid !== undefined) {
+        // Nach dem Commit und ohne Einfluss auf die Antwort an den Kunden.
+        await deps
+          .onOrderPaid({
+            orderNumber: order.orderNumber,
+            total: order.total,
+            lines: order.lines.length,
+          })
           .catch((e: unknown) => deps.onMailError?.(e));
       }
       return {

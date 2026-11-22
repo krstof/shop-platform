@@ -1,0 +1,9 @@
+{
+  "$schema": "../../tools/module.schema.json",
+  "name": "integrations",
+  "kind": "module",
+  "schema": "integrations",
+  "wave": "2",
+  "description": "Anbindungen an fremde Dienste je Shop: an oder aus, Einstellungen, verschlüsselte Zugangsdaten, Verbindungsprüfung.",
+  "dependsOn": []
+}

@@ -43,6 +43,12 @@ const MAX_LIST = 500;
 
 export interface ContactDependencies {
   readonly database: Database<unknown>;
+  /**
+   * Wird nach einer neuen Nachricht aufgerufen, damit der Händler Bescheid bekommt (21.11.2026,
+   * Anbindung Telegram). Fehler ändern nichts daran, dass die Nachricht gespeichert ist.
+   */
+  readonly onMessage?:
+    ((message: { readonly name: string; readonly subject: string }) => Promise<void>) | undefined;
 }
 
 export function contactEndpoints(deps: ContactDependencies): Endpoint[] {
@@ -112,6 +118,9 @@ export function contactEndpoints(deps: ContactDependencies): Endpoint[] {
           })
           .execute(),
       );
+      // Nach dem Commit: Der Händler bekommt Bescheid, wenn ein Weg eingerichtet ist.
+      if (deps.onMessage !== undefined)
+        await deps.onMessage({ name: body.name, subject: body.subject ?? "" }).catch(() => undefined);
       return { received: true as const };
     },
   });

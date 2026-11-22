@@ -47,11 +47,12 @@ export const COUNTRY_NAMES: readonly (readonly [string, string])[] = [
 ];
 
 /** Reiter oben auf allen Einstellungsseiten. */
-export function SettingsTabs({ current }: { current: "allgemein" | "versand" | "team" }) {
+export function SettingsTabs({ current }: { current: "allgemein" | "versand" | "anbindungen" | "team" }) {
   const shop = useShop();
   const tabs = [
     { id: "allgemein", to: "/$shop/einstellungen/allgemein", label: "Allgemein" },
     { id: "versand", to: "/$shop/versand", label: "Versand" },
+    { id: "anbindungen", to: "/$shop/einstellungen/anbindungen", label: "Anbindungen" },
     ...(shop.role === "owner" ? [{ id: "team", to: "/$shop/team", label: "Team" }] : []),
   ] as const;
   return (
