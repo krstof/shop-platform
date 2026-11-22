@@ -261,14 +261,24 @@ describe.skipIf(adminUrl === undefined)("Anbindungen", () => {
     }
   });
 
-  it("meldet einen Ausfall der Bildersuche als Fehler, nicht als „nichts gefunden“", async () => {
+  it("meldet einen Ausfall der Bildersuche als 503, nicht als „nichts gefunden“ und nicht als 500", async () => {
     const echt = globalThis.fetch;
     globalThis.fetch = (async () => {
       throw new Error("kein Netz");
     }) as typeof fetch;
     try {
       const r = await inject("GET", "/admin/v1/stock-photos?query=tee", undefined, asB);
-      expect(r.statusCode).toBeGreaterThanOrEqual(400);
+      // 503 heißt „der fremde Dienst klemmt“; 500 würde einen Fehler bei uns behaupten.
+      expect(r.statusCode).toBe(503);
+      expect(r.json()).toMatchObject({ code: "service_unavailable", status: 503 });
+      // Das Herunterladen eines Bildes meldet denselben Ausfall genauso.
+      const d = await inject(
+        "POST",
+        "/admin/v1/stock-photos/download",
+        { source: "openverse", id: "abc" },
+        asB,
+      );
+      expect(d.statusCode).toBe(503);
     } finally {
       globalThis.fetch = echt;
     }

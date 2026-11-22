@@ -100,7 +100,7 @@ export type RateLimitCategory = (typeof RATE_LIMIT_CATEGORIES)[number];
  * Zusätzliche Fehler-Statuscodes, die ein Endpunkt in OpenAPI dokumentiert. Was aus Zugang,
  * Eingaben und Methode folgt (401, 403, 422, 429, 500 ...), ergänzt die Erzeugung von selbst.
  */
-export type DocumentedProblem = 400 | 401 | 404 | 409 | 412 | 413 | 415 | 428 | 429;
+export type DocumentedProblem = 400 | 401 | 404 | 409 | 412 | 413 | 415 | 428 | 429 | 503;
 
 type AnyObject = z.ZodObject;
 

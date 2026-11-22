@@ -3,6 +3,10 @@
 // Antworten passen zu ihren Schemas, ungültige Eingaben werden abgelehnt.
 //
 // Aufruf: pnpm test:fuzz (startet Wegwerf-Datenbank, baut nichts selbst; vorher pnpm build).
+// Node läuft dabei mit --max-http-header-size=131072: Ohne das antwortet schon der HTTP-Parser von
+// Node mit 414 auf sehr lange Adressen, bevor die API überhaupt gefragt wird. Im Betrieb lehnt
+// Caddy solche Anfragen vorher ab; hier gibt es kein Caddy, und die Zufallstests sollen bis in die
+// API kommen (dort ergibt eine zu lange ID ein dokumentiertes 404).
 // Läuft mit echter Datenbank als shop_app; angemeldet ist ein Test-Akteur über die Kopfzeile
 // x-test-shop, die es nur in diesem Skript gibt, nie im echten Programm.
 import { spawn } from "node:child_process";
@@ -28,6 +32,16 @@ if (adminUrl === undefined) {
   console.error("SHOP_TEST_DATABASE_URL fehlt (Aufruf über pnpm test:fuzz).");
   process.exit(1);
 }
+// Kein Netz in den Zufallstests. Die Bildersuche (Openverse, Unsplash) ist der einzige Endpunkt,
+// der einen fremden Dienst fragt; in der CI gibt es keinen Weg nach draußen, und jede Anfrage
+// käme als Ausfall zurück. Wie beim KI-Modell wird der Dienst deshalb nachgebildet, statt ihn
+// wirklich zu fragen. Dass ein echter Ausfall 503 ergibt und nicht 500, prüfen die eigenen Tests.
+globalThis.fetch = async () =>
+  new Response(JSON.stringify({ results: [] }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+
 const schemathesis = process.env["SHOP_SCHEMATHESIS"] ?? "schemathesis";
 const examples = process.env["SHOP_FUZZ_EXAMPLES"] ?? "30";
 
@@ -124,6 +138,8 @@ try {
   const child = spawn(
     schemathesis,
     [
+      "--config-file",
+      join(repoRoot, "tools/fuzz/schemathesis.toml"),
       "run",
       join(repoRoot, "openapi/admin.json"),
       "--url",

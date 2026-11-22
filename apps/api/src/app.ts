@@ -3,7 +3,14 @@
 // ausschließlich aus den Endpunkt-Verträgen der Module und laufen durch router.ts.
 import "reflect-metadata";
 import type { Endpoint } from "@shop/http";
-import { NotFoundError, pickLocale, RateLimitedError, uuidv7, type Logger } from "@shop/kernel";
+import {
+  BadRequestError,
+  NotFoundError,
+  pickLocale,
+  RateLimitedError,
+  uuidv7,
+  type Logger,
+} from "@shop/kernel";
 import type { ArgumentsHost, DynamicModule, ExceptionFilter } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -94,6 +101,25 @@ export async function createApi(options: ApiOptions): Promise<NestFastifyApplica
     onProtoPoisoning: "error",
     onConstructorPoisoning: "error",
     return503OnClosing: true,
+    // Fehler aus dem Router (zu lange Kennung in der Adresse, kaputte Adresse) entstehen, bevor
+    // irgendein Filter greift. Ohne diese Stelle antwortet Fastify mit seiner eigenen Meldung samt
+    // internem Fehlercode, also weder als Problem Details noch mit requestId. Eine Kennung, die
+    // länger ist als erlaubt, gibt es nicht: 404, wie jede andere unbekannte Kennung auch.
+    frameworkErrors: (error: unknown, request: FastifyRequest, reply: FastifyReply) => {
+      const code = (error as { code?: unknown }).code;
+      // Der onSend-Hook läuft hier nicht mit, also Kennung und Sicherheits-Header selbst setzen.
+      reply.header("x-request-id", request.id);
+      for (const [name, value] of Object.entries(API_SECURITY_HEADERS)) reply.header(name, value);
+      void sendProblem(
+        reply,
+        code === "FST_ERR_MAX_PARAM_LENGTH"
+          ? new NotFoundError({ cause: error })
+          : new BadRequestError({ cause: error }),
+        request.id,
+        pickLocale(request.headers["accept-language"]),
+        options.logger,
+      );
+    },
   });
   const app = await NestFactory.create<NestFastifyApplication>(rootModule(), adapter, {
     logger: false,

@@ -347,6 +347,23 @@ describe("Fehlerformat (Q-05) und Sprache", () => {
     expect(r.json().requestId).toBe(r.headers["x-request-id"]);
   });
 
+  it("eine übermäßig lange Kennung in der Adresse ergibt 404 als Problem Details", async () => {
+    // Fastify meldet das aus dem Router heraus, bevor irgendein Filter greift. Ohne eigene
+    // Behandlung käme ein 414 mit Fastifys interner Meldung zurück, nicht als Problem Details.
+    const r = await fastify().inject({
+      method: "GET",
+      url: `/admin/v1/things/${"a".repeat(500)}`,
+      headers: { "x-test-scopes": "products:read" },
+    });
+    expect(r.statusCode).toBe(404);
+    expect(r.headers["content-type"]).toBe("application/problem+json; charset=utf-8");
+    expect(r.json()).toMatchObject({ code: "not_found", status: 404 });
+    expect(r.json().requestId).toBe(r.headers["x-request-id"]);
+    // Nichts Internes von Fastify darf nach außen, und die Sicherheits-Header fehlen auch hier nicht.
+    expect(r.body).not.toContain("FST_ERR");
+    expect(r.headers["x-content-type-options"]).toBe("nosniff");
+  });
+
   it("jede Antwort hat eine eigene requestId (UUIDv7), mitgeschickte werden nicht übernommen", async () => {
     const a = await fastify().inject({ method: "GET", url: "/x", headers: { "x-request-id": "boese" } });
     const b = await fastify().inject({ method: "GET", url: "/x" });

@@ -1,0 +1,22 @@
+# Einstellungen für die Zufallstests (T-12). Aufgerufen über apps/api/scripts/fuzz.mjs.
+
+# Eine zu große Anfrage lehnt die API mit 413 ab (Problem Details, RFC 9457). Schemathesis zählt
+# 413 nicht von sich aus als Ablehnung und meldet sonst „ungültige Daten angenommen“, obwohl die
+# Anfrage sehr wohl abgelehnt wurde. Das passiert bei den Endpunkten, die Bilder als Base64
+# annehmen: Dort darf die Anfrage bis 8 MB groß sein, und die Zufallsdaten überschreiten das.
+[checks.negative_data_rejection]
+expected-statuses = [
+  "400",
+  "401",
+  "403",
+  "404",
+  "405",
+  "406",
+  "409",
+  "413",
+  "415",
+  "422",
+  "428",
+  "429",
+  "5xx",
+]

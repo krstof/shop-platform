@@ -46,6 +46,7 @@ const PROBLEM_DESCRIPTIONS: Readonly<Record<number, string>> = {
   422: "Die Eingabe ist ungültig. Die Felder stehen in errors.",
   429: "Zu viele Anfragen.",
   500: "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+  503: "Ein fremder Dienst, den dieser Endpunkt braucht, ist gerade nicht erreichbar.",
 };
 
 /** Sammelt benannte Schemas (`.meta({ id })`) als components/schemas und verweist darauf. */

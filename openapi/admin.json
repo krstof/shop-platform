@@ -12850,6 +12850,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Ein fremder Dienst, den dieser Endpunkt braucht, ist gerade nicht erreichbar.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -13039,6 +13049,16 @@
           },
           "500": {
             "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ein fremder Dienst, den dieser Endpunkt braucht, ist gerade nicht erreichbar.",
             "content": {
               "application/problem+json": {
                 "schema": {

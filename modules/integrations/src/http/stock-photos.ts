@@ -14,7 +14,12 @@ import { defineEndpoint, singleLineText, type Endpoint } from "@shop/http";
 import { ValidationError, type Database, type SecretBox } from "@shop/kernel";
 import { z } from "zod";
 import { createIntegrations } from "../internal/store.js";
-import { ExternalServiceError, fetchExternal, fetchExternalImage } from "../internal/outbound.js";
+import {
+  ExternalServiceError,
+  fetchExternal,
+  fetchExternalImage,
+  rethrowAsUnavailable,
+} from "../internal/outbound.js";
 
 const SOURCES = ["openverse", "unsplash"] as const;
 type Source = (typeof SOURCES)[number];
@@ -160,15 +165,16 @@ export function stockPhotoEndpoints(deps: StockPhotoDependencies): Endpoint[] {
       limit: z.coerce.number().int().min(1).max(40).default(24),
     }),
     response: { status: 200, description: "Gefundene Bilder.", schema: resultSchema },
-    problems: [429],
+    problems: [429, 503],
     handler: async ({ query }) => {
       const text = query.query.trim();
       if (text === "") return { data: [], sources: ["openverse" as const] };
-      const key = await unsplashKey();
+      const key = await unsplashKey().catch(rethrowAsUnavailable);
       const sources: Source[] = key === undefined ? ["openverse"] : ["openverse", "unsplash"];
       // Eine Quelle, die gerade klemmt, darf die andere nicht mitreißen. Klemmen aber alle, die
       // gefragt wurden, ist das ein Fehler und kein „nichts gefunden“ — sonst sucht der Händler
-      // nach anderen Wörtern, während in Wahrheit der Dienst nicht erreichbar ist.
+      // nach anderen Wörtern, während in Wahrheit der Dienst nicht erreichbar ist. Der Händler
+      // bekommt dann 503 („Dienst nicht erreichbar“), nicht 500 („Fehler bei uns“).
       const found = await Promise.allSettled(
         sources.map((source) =>
           source === "openverse"
@@ -179,9 +185,11 @@ export function stockPhotoEndpoints(deps: StockPhotoDependencies): Endpoint[] {
       const failed = found.filter((r) => r.status === "rejected");
       if (failed.length === found.length) {
         const reason = failed[0]?.reason as unknown;
-        throw reason instanceof ExternalServiceError
-          ? reason
-          : new ExternalServiceError("Die Bildersuche klemmt.");
+        rethrowAsUnavailable(
+          reason instanceof ExternalServiceError
+            ? reason
+            : new ExternalServiceError("Die Bildersuche klemmt."),
+        );
       }
       const data = found.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
       return { data, sources };
@@ -212,16 +220,20 @@ export function stockPhotoEndpoints(deps: StockPhotoDependencies): Endpoint[] {
         })
         .meta({ id: "StockPhotoData", description: "Ein geholtes Bild zum Hochladen." }),
     },
-    problems: [404],
+    problems: [404, 503],
     handler: async ({ body }) => {
-      const { url, attribution, service } = await resolve(body.source, body.id, await unsplashKey());
-      const image = await fetchExternalImage(url, service);
-      const extension = image.contentType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
-      return {
-        data: image.bytes.toString("base64"),
-        filename: `${body.source}-${body.id.slice(0, 12)}.${extension}`,
-        attribution,
-      };
+      try {
+        const { url, attribution, service } = await resolve(body.source, body.id, await unsplashKey());
+        const image = await fetchExternalImage(url, service);
+        const extension = image.contentType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
+        return {
+          data: image.bytes.toString("base64"),
+          filename: `${body.source}-${body.id.slice(0, 12)}.${extension}`,
+          attribution,
+        };
+      } catch (error) {
+        return rethrowAsUnavailable(error);
+      }
     },
   });
 

@@ -8,6 +8,17 @@
 // - Eine Wiederholung bei Netzproblemen und bei 429 oder 5xx, nicht bei 4xx (da hilft Warten nicht).
 // - Größenbegrenzung der Antwort, damit kein fremder Dienst den Arbeitsspeicher füllt.
 // - Ein Fehler, der dem Händler etwas sagt, statt einer technischen Meldung.
+import { ServiceUnavailableError } from "@shop/kernel";
+
+/**
+ * Macht aus dem Fehler eines fremden Dienstes eine Antwort, die der Händler versteht: 503 mit der
+ * Meldung als `detail`. Ohne das wäre jeder Ausfall von Openverse oder Unsplash ein 500er, also
+ * ein Fehler bei uns, und das stimmt nicht.
+ */
+export function rethrowAsUnavailable(error: unknown): never {
+  if (error instanceof ExternalServiceError) throw new ServiceUnavailableError({ detail: error.message });
+  throw error;
+}
 
 export class ExternalServiceError extends Error {
   /** HTTP-Status des fremden Dienstes, falls es einen gab. */
