@@ -66,7 +66,7 @@ const fokusKlassen =
       ]
     : [];
 
-// Knopf in der Bühne: nur mit Beschriftung und erlaubtem Ziel.
+// Button in der Bühne: nur mit Beschriftung und erlaubtem Ziel.
 const knopfZiel = b.type === "hero" && b.buttonUrl !== undefined ? buttonHref(b.buttonUrl, shop) : undefined;
 const knopfText = b.type === "hero" ? (b.buttonLabel ?? "").trim() : "";
 const knopfExtern = knopfZiel !== undefined && isExternal(knopfZiel);

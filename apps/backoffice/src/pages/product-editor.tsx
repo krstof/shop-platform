@@ -553,7 +553,7 @@ interface ImagesCardProps {
   onChanged: (p: Product) => void;
 }
 
-/** Bilder: hochladen (Knopf oder hineinziehen), Reihenfolge ändern, entfernen. Erstes = Hauptbild. */
+/** Bilder: hochladen (Button oder hineinziehen), Reihenfolge ändern, entfernen. Erstes = Hauptbild. */
 function ImagesCard({ product, pending, setPending, onChanged }: ImagesCardProps) {
   const shop = useShop();
   const input = useRef<HTMLInputElement>(null);

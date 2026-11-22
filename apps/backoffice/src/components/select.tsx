@@ -1,6 +1,6 @@
 // Eigene Auswahlliste statt der Browser-Auswahl (15.11.2026, Kristof: „nirgendwo Standard-Dropdowns“).
 // Gleiche Schreibweise wie <select>: Kinder sind <option value="…">Text</option>, onChange bekommt
-// { target: { value } }. Bedienung wie ein Combobox-Knopf nach WAI-ARIA: Enter/Leertaste/Pfeil öffnen,
+// { target: { value } }. Bedienung wie ein Combobox-Button nach WAI-ARIA: Enter/Leertaste/Pfeil öffnen,
 // Pfeile wählen, Enter übernimmt, Escape schließt, Buchstaben springen zum passenden Eintrag.
 import { Check, ChevronDown, X } from "lucide-react";
 import {
@@ -65,11 +65,11 @@ export interface SelectProps {
   readonly "aria-label"?: string;
   readonly "aria-describedby"?: string;
   readonly "aria-invalid"?: boolean | "true" | "false";
-  /** Eigener Inhalt des Knopfs (sonst der gewählte Eintrag). */
+  /** Eigener Inhalt des Buttons (sonst der gewählte Eintrag). */
   readonly trigger?: ReactNode;
-  /** Klassen für den Knopf; ersetzen das Aussehen eines Eingabefelds. */
+  /** Klassen für den Button; ersetzen das Aussehen eines Eingabefelds. */
   readonly buttonClassName?: string;
-  /** Liste rechtsbündig unter dem Knopf (Standard: linksbündig, mindestens so breit wie der Knopf). */
+  /** Liste rechtsbündig unter dem Button (Standard: linksbündig, mindestens so breit wie der Button). */
   readonly align?: "left" | "right";
 }
 
@@ -228,7 +228,7 @@ export function Select({
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
-                // In einem <label> würde der Klick sonst den Knopf erneut auslösen.
+                // In einem <label> würde der Klick sonst den Button erneut auslösen.
                 e.preventDefault();
                 choose(i);
               }}

@@ -1,6 +1,6 @@
 // Vorschau im Editor: sieht aus wie der Shop und ist zugleich die Arbeitsfläche. Bausteine hierher ziehen,
 // am Griff ⠿ umsortieren, Texte direkt anklicken und schreiben, Bilder anklicken und hochladen. Was sich
-// nicht schreiben lässt (Link eines Knopfs, Video-Adresse, Produkte …), steht unter ⚙ an der Werkzeugleiste.
+// nicht schreiben lässt (Link eines Buttons, Video-Adresse, Produkte …), steht unter ⚙ an der Werkzeugleiste.
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -746,7 +746,7 @@ function BlockView({
               value={b.label}
               onChange={(label) => update({ label })}
               placeholder="Beschriftung"
-              label="Beschriftung des Knopfs"
+              label="Beschriftung des Buttons"
               maxLength={MAX_BUTTON_LABEL}
             />
           </span>
@@ -762,7 +762,7 @@ function BlockView({
               }}
               onClick={openSettings}
             >
-              Wohin führt der Knopf? Ziel wählen
+              Wohin führt der Button? Ziel wählen
             </button>
           )}
         </p>
@@ -1204,7 +1204,7 @@ function ImageSlot({
   );
 }
 
-/** Knopf oder Fläche zum Hochladen eines Bildes. */
+/** Button oder Fläche zum Hochladen eines Bildes. */
 function UploadButton({
   ctx,
   onUploaded,
@@ -1376,7 +1376,7 @@ function BlockSettings({
             </div>
           )}
           <label className="block text-sm font-medium">
-            Knopf (Beschriftung)
+            Button (Beschriftung)
             <input
               className={field}
               value={b.buttonLabel ?? ""}
@@ -1385,7 +1385,7 @@ function BlockSettings({
               onChange={(e) => update({ buttonLabel: e.target.value })}
             />
             <span className="mt-1 block text-xs font-normal text-gray-500">
-              Leer lassen heißt: kein Knopf in der Bühne.
+              Leer lassen heißt: kein Button in der Bühne.
             </span>
           </label>
           {(b.buttonLabel ?? "").trim() !== "" && (

@@ -19,7 +19,7 @@ import {
 const IMG = "0190a3c4-0000-7000-8000-000000000001";
 
 describe("Bausteine", () => {
-  it("nimmt Zuschnitt-Punkt und Knopf der Bühne an und weist Unsinn ab", () => {
+  it("nimmt Zuschnitt-Punkt und Button der Bühne an und weist Unsinn ab", () => {
     const gut = sectionsSchema.safeParse({
       buehne: {
         focusX: 0,
@@ -31,12 +31,12 @@ describe("Bausteine", () => {
       },
     });
     expect(gut.success).toBe(true);
-    // Ohne Angabe bleibt alles offen: Die Bühne nimmt dann die Mitte und zeigt keinen Knopf.
+    // Ohne Angabe bleibt alles offen: Die Bühne nimmt dann die Mitte und zeigt keinen Button.
     expect(sectionsSchema.safeParse({ buehne: {} }).success).toBe(true);
     expect(sectionsSchema.safeParse({ buehne: { focusX: 101 } }).success).toBe(false);
     expect(sectionsSchema.safeParse({ buehne: { focusX: -1 } }).success).toBe(false);
     expect(sectionsSchema.safeParse({ buehne: { focusY: 12.5 } }).success).toBe(false);
-    // Gefährliche Ziele lässt der Knopf nicht durch.
+    // Gefährliche Ziele lässt der Button nicht durch.
     expect(sectionsSchema.safeParse({ buehne: { buttonUrl: "javascript:alert(1)" } }).success).toBe(false);
     expect(sectionsSchema.safeParse({ buehne: { buttonUrl: "https://example.com" } }).success).toBe(true);
     expect(sectionsSchema.safeParse({ buehne: { buttonLabel: "x".repeat(200) } }).success).toBe(false);

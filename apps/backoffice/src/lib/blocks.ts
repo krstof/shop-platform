@@ -41,7 +41,7 @@ export interface SectionContent {
   readonly focusY?: number;
   readonly focusMobileX?: number;
   readonly focusMobileY?: number;
-  /** Bühne: Knopf unter dem Text. Ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
+  /** Bühne: Button unter dem Text. Ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
   readonly buttonLabel?: string;
   readonly buttonUrl?: string;
 }
@@ -180,7 +180,7 @@ export const BLOCK_INFO: Record<BlockType, { readonly name: string; readonly hin
   gallery: { name: "Galerie", hint: "Bis zu 8 Bilder" },
   video: { name: "Video", hint: "YouTube oder Vimeo" },
   map: { name: "Karte", hint: "Google Maps" },
-  button: { name: "Knopf", hint: "Link zu einer Seite" },
+  button: { name: "Button", hint: "Link zu einer Seite" },
   quote: { name: "Zitat", hint: "Stimme einer Kundin" },
   faq: { name: "Fragen", hint: "Aufklappbare Antworten" },
   divider: { name: "Linie", hint: "Trennt Abschnitte" },
@@ -558,7 +558,7 @@ export function parseVideoUrl(url: string): { provider: "youtube" | "vimeo"; id:
   return undefined;
 }
 
-/** Ziel eines Knopfs: Webseite, E-Mail, Telefon oder Pfad im Shop („/seite/ueber-uns“). */
+/** Ziel eines Buttons: Webseite, E-Mail, Telefon oder Pfad im Shop („/seite/ueber-uns“). */
 export function isSafeButtonUrl(url: string): boolean {
   return (
     url.length <= 300 &&

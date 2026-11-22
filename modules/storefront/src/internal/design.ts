@@ -13,7 +13,7 @@ export type Font = (typeof FONTS)[number];
 export const DEFAULT_ACCENT = "#3f6b4a";
 export const DEFAULT_FONT: Font = "klassisch";
 
-/** Weiße Schrift auf der Hauptfarbe (Knöpfe) braucht mindestens dieses Kontrastverhältnis (WCAG AA). */
+/** Weiße Schrift auf der Hauptfarbe (Buttons) braucht mindestens dieses Kontrastverhältnis (WCAG AA). */
 export const MIN_CONTRAST = 4.5;
 
 /** Höchstlängen der Texte auf der Startseite und Anzahl hervorgehobener Produkte. */

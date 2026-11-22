@@ -79,7 +79,7 @@ describe("Links im Fuß (Shop-Editor Teil 3)", () => {
   });
 });
 
-describe("Editor 2: Hintergrund, Schriften, Knöpfe", () => {
+describe("Editor 2: Hintergrund, Schriften, Buttons", () => {
   it("setzt Hintergrund und Google-Schriften sicher ins CSS", async () => {
     const { designCss, webFontCssUrl, buttonHref, DEFAULT_DESIGN } = await import("./design.js");
     const d = {

@@ -504,7 +504,7 @@ export function OrderPage() {
   );
 }
 
-/** Interne Notiz zur Bestellung (sieht die Kundin nie). Speichert auf Knopfdruck. */
+/** Interne Notiz zur Bestellung (sieht die Kundin nie). Speichert auf Buttondruck. */
 function NoteCard({ order, onSaved }: { order: Order; onSaved: (o: Order) => void }) {
   const shop = useShop();
   const [text, setText] = useState(order.merchantNote ?? "");

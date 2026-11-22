@@ -70,7 +70,7 @@ export const TRUST_ICONS = [
   "nachhaltig",
 ] as const;
 
-/** Ziel eines Knopfs: Webseite, E-Mail, Telefon oder ein Pfad im eigenen Shop („/seite/ueber-uns“). */
+/** Ziel eines Buttons: Webseite, E-Mail, Telefon oder ein Pfad im eigenen Shop („/seite/ueber-uns“). */
 export function isSafeButtonUrl(url: string): boolean {
   return (
     url.length <= 300 &&
@@ -139,7 +139,7 @@ const SECTION_TYPES = ["hero", "featured", "categories", "new"] as const;
  *  Handy viel enger beschnitten wird und sonst das Falsche in der Mitte landet. */
 const focus = z.int().min(0).max(100).optional();
 
-/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild, Zuschnitt, Knopf; Empfehlungen: Überschrift,
+/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild, Zuschnitt, Button; Empfehlungen: Überschrift,
  *  Produkte; Neu und Kategorien: Überschrift). Fehlt ein Feld, gilt der Inhalt der Startseite bzw.
  *  der Standard. */
 export const sectionContentSchema = z.strictObject({

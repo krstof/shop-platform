@@ -89,7 +89,7 @@ describe("Baukasten im Backoffice", () => {
     expect(blockImages(legacy)).toEqual([IMG]);
   });
 
-  it("prüft Videos und Knöpfe wie die API und räumt Texte auf", () => {
+  it("prüft Videos und Buttons wie die API und räumt Texte auf", () => {
     expect(parseVideoUrl("https://youtu.be/dQw4w9WgXcQ")?.provider).toBe("youtube");
     expect(parseVideoUrl("https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ")).toBeUndefined();
     expect(blockProblem({ id: "v", type: "video", url: "https://example.com" })).toBeDefined();
@@ -114,7 +114,7 @@ describe("Baukasten im Backoffice", () => {
     ).toEqual([{ id: "f", type: "faq", heading: "F", items: [{ question: "a", answer: "b" }] }]);
   });
 
-  it("behält Zuschnitt und Knopf der Bühne beim Speichern", () => {
+  it("behält Zuschnitt und Button der Bühne beim Speichern", () => {
     expect(
       cleanBlocks([
         {
@@ -146,7 +146,7 @@ describe("Baukasten im Backoffice", () => {
     expect(cleanBlocks([{ id: "b", type: "hero" }])).toEqual([{ id: "b", type: "hero" }]);
   });
 
-  it("meldet ein gefährliches Ziel beim Knopf der Bühne", () => {
+  it("meldet ein gefährliches Ziel beim Button der Bühne", () => {
     expect(blockProblem({ id: "b", type: "hero", buttonUrl: "javascript:1" })).toBeDefined();
     expect(blockProblem({ id: "b", type: "hero", buttonUrl: "/seite/a" })).toBeUndefined();
     expect(blockProblem({ id: "b", type: "hero" })).toBeUndefined();

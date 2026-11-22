@@ -2760,11 +2760,11 @@
                 "maximum": 9007199254740991
               },
               "buttonLabel": {
-                "description": "Bühne: Beschriftung des Knopfs; leer = kein Knopf.",
+                "description": "Bühne: Beschriftung des Buttons; leer = kein Button.",
                 "type": "string"
               },
               "buttonUrl": {
-                "description": "Bühne: Ziel des Knopfs; leer = kein Knopf.",
+                "description": "Bühne: Ziel des Buttons; leer = kein Button.",
                 "type": "string"
               },
               "heading": {

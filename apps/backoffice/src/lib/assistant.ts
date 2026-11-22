@@ -477,7 +477,7 @@ export async function shrinkPhoto(file: Blob, maxEdge = 1024): Promise<{ data: s
 
 /**
  * Antwortknöpfe (15.11.2026): Endet eine Antwort des Assistenten mit „Antworten: Ja | Nein“, zeigt der
- * Chat diese Zeile als Knöpfe statt als Text (2 bis 4 kurze Antworten).
+ * Chat diese Zeile als Buttons statt als Text (2 bis 4 kurze Antworten).
  */
 export function splitChoices(text: string): { text: string; choices: string[] } {
   const m = /\n?[ \t]*Antworten:[ \t]*([^\n]+?)[ \t]*$/.exec(text.trimEnd());

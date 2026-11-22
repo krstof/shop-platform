@@ -1,4 +1,4 @@
-// Bildersuche (21.11.2026): ein Knopf, der ein Fenster mit Suchfeld und Treffern öffnet.
+// Bildersuche (21.11.2026): ein Button, der ein Fenster mit Suchfeld und Treffern öffnet.
 //
 // Gesucht wird über die eigene API, nicht im Browser beim Anbieter: So bleibt der Zugangsschlüssel
 // auf dem Server. Ausgewählt wird ein Bild als ganz normale Datei, damit alles danach so läuft wie
@@ -51,8 +51,8 @@ export function StockPhotoButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        // Der Knopf steht auch in der Vorschau des Editors, wo die Schrift des Shops gilt. Er ist
-        // aber ein Knopf des Backoffice und behält deshalb dessen Schrift.
+        // Der Button steht auch in der Vorschau des Editors, wo die Schrift des Shops gilt. Er ist
+        // aber ein Button des Backoffice und behält deshalb dessen Schrift.
         style={{ fontFamily: "var(--font-sans)" }}
         className={
           compact

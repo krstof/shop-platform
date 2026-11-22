@@ -46,7 +46,7 @@ export type StoreBlock =
       readonly focusY?: number;
       readonly focusMobileX?: number;
       readonly focusMobileY?: number;
-      /** Knopf in der Bühne; ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
+      /** Button in der Bühne; ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
       readonly buttonLabel?: string;
       readonly buttonUrl?: string;
     }
@@ -170,7 +170,7 @@ export function isSection(b: StoreBlock): b is StoreSection {
   );
 }
 
-/** Ziel eines Knopfs: Pfade im Shop („/seite/x“) bekommen das Shop-Kürzel davor; sonst nur sichere Ziele. */
+/** Ziel eines Buttons: Pfade im Shop („/seite/x“) bekommen das Shop-Kürzel davor; sonst nur sichere Ziele. */
 export function buttonHref(url: string, shop: string): string | undefined {
   if (/^\/[a-z0-9/_-]*$/i.test(url) && !url.startsWith("//")) return `/${shop}${url === "/" ? "" : url}`;
   return safeLink(url);

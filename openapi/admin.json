@@ -4570,7 +4570,7 @@
                   "accentColor": {
                     "type": "string",
                     "pattern": "^#[0-9a-fA-F]{6}$",
-                    "description": "Hauptfarbe als Hex, etwa `#3f6b4a`. Für Knöpfe, Links und Markierungen."
+                    "description": "Hauptfarbe als Hex, etwa `#3f6b4a`. Für Buttons, Links und Markierungen."
                   },
                   "font": {
                     "type": "string",

@@ -1,4 +1,4 @@
-// Bestellung per Hand anlegen (15.11.2026, Kristof: Plus-Knopf in „Bestellungen“), etwa für eine
+// Bestellung per Hand anlegen (15.11.2026, Kristof: Plus-Button in „Bestellungen“), etwa für eine
 // telefonische Bestellung. Kunde wählen (angelegte Karten und frühere Besteller) oder eintippen,
 // Artikel und Menge, „schon bezahlt“ und Versandkosten. Speichert über POST /admin/v1/orders; Preise,
 // Steuern und Versand rechnet die API wie beim Kauf im Shop.

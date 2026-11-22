@@ -1,5 +1,5 @@
 // Kundinnen und Kunden: alle, die bestellt haben, je E-Mail zusammengefasst (API /admin/v1/customers),
-// dazu per Hand angelegte Kundenkarten (API /admin/v1/customer-profiles, 15.11.2026: Plus-Knopf).
+// dazu per Hand angelegte Kundenkarten (API /admin/v1/customer-profiles, 15.11.2026: Plus-Button).
 // Klick zeigt ihre Bestellungen (Bestellliste mit Suche nach der E-Mail).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";

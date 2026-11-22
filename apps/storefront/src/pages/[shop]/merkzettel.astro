@@ -39,7 +39,7 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
   <h1>Merkzettel</h1>
   {produkte.length === 0 ? (
     <p class="leer-hinweis">
-      Noch nichts gemerkt. Auf jeder Produktseite gibt es den Knopf „Merken“. <a href={basis}>Zum Shop</a>
+      Noch nichts gemerkt. Auf jeder Produktseite gibt es den Button „Merken“. <a href={basis}>Zum Shop</a>
     </p>
   ) : (
     <ul class="raster">

@@ -49,7 +49,7 @@ Das System ist nur ein Test für Kristof und ein paar Kollegen. Es wird nie echt
 - Kein eigener Anforderungskatalog mehr je Feature. Claude baut die einfachste Version, die beim Ausprobieren funktioniert (Abschnitt 1a). Nur bei großen, sichtbaren Weichen (etwa wie der Checkout aussieht) kurz fragen.
 - Für einfache Arbeiten (Recherche, Zusammenfassungen) günstigere Modelle nutzen, für Architektur und schwierigen Code das stärkste Modell.
 - Kristof tippt nie Befehle und startet keine Skripte. Alles Technische erledigt Claude.
-- Kurze, klare deutsche Sprache, keine Fachbegriffe ohne Erklärung.
+- Kurze, klare deutsche Sprache, keine Fachbegriffe ohne Erklärung. Das anklickbare Bedienelement heißt überall **Button**, nicht „Knopf“ (Kristof, 22.11.2026).
 
 ## 5. Ablauf eines täglichen Laufs
 

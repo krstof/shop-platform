@@ -161,7 +161,7 @@ describe("Fotos im Chat", () => {
 });
 
 describe("Antwortknöpfe", () => {
-  it("liest die letzte Zeile als Knöpfe und entfernt sie aus dem Text", () => {
+  it("liest die letzte Zeile als Buttons und entfernt sie aus dem Text", () => {
     expect(splitChoices("Soll ich es gleich in den Shop stellen?\nAntworten: Ja | Nein")).toEqual({
       text: "Soll ich es gleich in den Shop stellen?",
       choices: ["Ja", "Nein"],

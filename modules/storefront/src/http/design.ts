@@ -113,7 +113,7 @@ function rejectionText(reason: ImageRejection, what: "Das Logo" | "Das Bild"): s
 const TOO_DARK =
   "Diese Hintergrundfarbe ist zu dunkel: Der Text wäre schlecht lesbar. Bitte eine hellere Farbe wählen.";
 const TOO_LIGHT =
-  "Diese Farbe ist zu hell: Weiße Schrift auf Knöpfen wäre schlecht lesbar. Bitte eine dunklere Farbe wählen.";
+  "Diese Farbe ist zu hell: Weiße Schrift auf Buttons wäre schlecht lesbar. Bitte eine dunklere Farbe wählen.";
 
 const imageSchema = z
   .object({
@@ -134,7 +134,7 @@ const fontSchema = z.enum(FONTS).meta({
 const accentSchema = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/)
-  .meta({ description: "Hauptfarbe als Hex, etwa `#3f6b4a`. Für Knöpfe, Links und Markierungen." });
+  .meta({ description: "Hauptfarbe als Hex, etwa `#3f6b4a`. Für Buttons, Links und Markierungen." });
 
 /** Baustein in Antworten, offen für neue Arten: Clients überspringen unbekannte `type`. Die Felder je Art
  *  stehen im Schema der Eingabe (`blocks` beim Speichern). */
@@ -444,8 +444,8 @@ const storeSectionSchema = z.object({
   buttonLabel: z
     .string()
     .optional()
-    .meta({ description: "Bühne: Beschriftung des Knopfs; leer = kein Knopf." }),
-  buttonUrl: z.string().optional().meta({ description: "Bühne: Ziel des Knopfs; leer = kein Knopf." }),
+    .meta({ description: "Bühne: Beschriftung des Buttons; leer = kein Button." }),
+  buttonUrl: z.string().optional().meta({ description: "Bühne: Ziel des Buttons; leer = kein Button." }),
   heading: z
     .string()
     .optional()
@@ -658,8 +658,8 @@ function storeBlock(
           title: b.title ?? home.heroTitle,
           text: b.text ?? home.heroText,
           image: image(b.imageId === undefined ? home.heroImageId : b.imageId),
-          // Zuschnitt und Knopf gibt es erst seit dem 22.11.2026; fehlen sie, bleibt es bei Mitte
-          // und ohne Knopf.
+          // Zuschnitt und Button gibt es erst seit dem 22.11.2026; fehlen sie, bleibt es bei Mitte
+          // und ohne Button.
           ...(b.focusX === undefined ? {} : { focusX: b.focusX }),
           ...(b.focusY === undefined ? {} : { focusY: b.focusY }),
           ...(b.focusMobileX === undefined ? {} : { focusMobileX: b.focusMobileX }),

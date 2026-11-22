@@ -365,7 +365,7 @@ export function ColorsPanel({ form, set }: { form: Form; set: Set }) {
     <div className="space-y-4">
       <div>
         <p className="text-sm font-medium text-gray-800">Hauptfarbe</p>
-        <p className="text-xs text-gray-500">Knöpfe, Links, Markierungen.</p>
+        <p className="text-xs text-gray-500">Buttons, Links, Markierungen.</p>
         <Swatches
           colors={PRESETS}
           value={form.accentColor}

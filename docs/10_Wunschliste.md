@@ -4,6 +4,15 @@ Alles, was Kristof sich für Slopify wünscht, sortiert nach Paketen. Die Liste 
 
 **Lesehilfe:** „Gibt es schon“ heißt, der Wunsch ist bereits gebaut und Kristof hat ihn vielleicht nur noch nicht gefunden. Jedes Paket ist ein Lauf oder zwei, nicht mehr.
 
+## Entschieden am 22.11.2026 (abends)
+
+- **Eigenes CSS und eigenes HTML:** raus, bleibt draußen.
+- **JavaScript im Shop:** erlaubt, aber nur ein kleines eigenes Skript für Zoom, Video und Suchvorschläge. Nichts von fremden Servern, und jede Seite funktioniert ohne das Skript weiter.
+- **Übersetzung:** über das eingebundene KI-Modell, nicht über DeepL. Es kennt den Zusammenhang des Shops und ist schon da.
+- **Logo erzeugen:** Das eingebundene Modell kann kein Foto erzeugen, aber es kann ein Logo als SVG zeichnen (Schrift, Form, Farbe als Code). Für ein Wort-Bild-Zeichen reicht das; für ein gemaltes Motiv nicht. Vorerst: hochladen plus erzeugtes SVG.
+- **Einrichtungs-Assistent:** kommt später, als Chat mit möglichst vielen anklickbaren Antworten. Beim ersten Schritt sucht er Bilder bei Unsplash und schreibt passende Texte („ich verkaufe Stoff und Garn“ → Bühnenbild mit Stoffen, „Willkommen in unserem Stoffladen“). Das erste Produkt legt er noch nicht an.
+- **Wort:** Das Bedienelement heißt **Button**, nicht „Knopf“. ✅ Am 22.11.2026 überall umbenannt.
+
 ## Reihenfolge
 
 Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er nicht** (früher Punkt 36.5, gestrichen). Vorrang haben MCP-Server, Plausible, Google Search Console, DataForSEO, Produktvarianten und die Shop-Detailseite in der Plattform-Verwaltung.
@@ -20,7 +29,9 @@ Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er n
 | P8 | Kaufen: Mindestbestellwert, Warenkorb-Rabatte, Suchvorschläge, Suchfilter | Verkaufslogik, hängt teils an Varianten |
 | P9 | Versandarten, Versandkosten, Zahlungs- und Versandlogos, Mollie | Hängt zusammen, größerer Brocken |
 | P10 | Sprachen und automatische Übersetzung, Steuersätze | Größter Brocken, betrifft jedes Modul |
-| P11 | Aussehen: Textfarbe, Kopfzeilen-Varianten, eigenes CSS | Offene Entscheidung, siehe unten |
+| P11 | Aussehen: Textfarbe, Kopfzeilen-Varianten | Kleinigkeiten, jederzeit einschiebbar |
+| P12 | Einstellungen je Baustein im Editor | Von Kristof am 22.11.2026 gewünscht, Vorbild Shopify |
+| P13 | Formatierung in Textfeldern (fett, kursiv, Link) | Hängt mit P5 zusammen |
 
 ## P1 Sofort sichtbare Kleinigkeiten
 
@@ -29,6 +40,7 @@ Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er n
 - **Favicon hochladen** unter „Einstellungen → Allgemein“; der Shop nimmt heute ein festes Symbol.
 - **Posteingang nach oben.** Der Posteingang steht im Menü links; er soll zusätzlich oben neben dem Benutzersymbol als Briefumschlag mit der Zahl der ungelesenen Nachrichten erscheinen.
 - **Einstellungen springen nicht mehr.** Beim Wechsel zwischen Allgemein, Versand, Anbindungen und Team wandert die Überschrift, weil jeder Reiter eine andere Breite hat. Eine feste Breite für alle Reiter.
+- ✅ **„Knopf“ heißt jetzt „Button“** (erledigt 22.11.2026).
 - **„Testshop“-Band raus, USP-Leiste rein.** Ganz oben im Shop steht heute fest „Testshop: Hier ist nichts echt, auch die Zahlung nicht.“ Das wird eine einstellbare Leiste mit bis zu drei kurzen Zusagen (Versand, Rückgabe, Beratung), ein- und ausschaltbar in der Kopfzeile. Der Testhinweis bleibt dort voreingestellt, solange nichts eingetragen ist.
 
 ## P2 Produktvarianten
@@ -37,11 +49,23 @@ Größe und Farbe mit eigenem Preis, eigenem Bestand und eigener Artikelnummer. 
 
 ## P3 Statistiken und SEO
 
-- **Plausible oder Umami** auf einer neuen Seite „Statistiken“ im Backoffice (Besucher, Seiten, Herkunft), selbst gehostet, ohne Cookies.
-- **Google Search Console** anbinden: Property bestätigen, Suchanfragen und Klicks auf derselben Seite zeigen.
-- **DataForSEO** für Keyword-Daten.
+Zwei neue Menüpunkte unter „Onlineshop“, nicht im Dashboard und nicht unter Einstellungen (Kristof, 22.11.2026).
+
+**Seite „Analytics“**
+
+- Umsatz, Bestellungen, Warenkorbwert über einen wählbaren Zeitraum, umschaltbar zwischen Balken und Linie.
+- Besucher, Besuche, Verweildauer, Absprünge, Herkunft und meistbesuchte Seiten aus **Plausible** (selbst gehostet, ohne Cookies).
+- Meistverkaufte Produkte, Umsatz je Kategorie. Ausführlicher als das Dashboard, das die Kurzfassung bleibt.
+
+**Seite „SEO“**
+
+- **Probleme finden:** Der Shop wird durchgegangen und meldet fehlende Seitentitel, zu lange oder zu kurze Beschreibungen, Produkte ohne Beschreibung, Bilder ohne Alternativtext, doppelte Titel, fehlende Überschriften.
+- **Suchbegriffe verfolgen:** Begriffe eintragen und ihre Entwicklung verfolgen, Daten von **DataForSEO**.
+- **Eigene Platzierungen:** Wo steht der Shop zu diesen Begriffen, und wie verändert sich das?
+- **Google Search Console** anbinden: Suchanfragen, Klicks, Darstellungen auf derselben Seite.
 - **XML-Sitemap** je Shop, die sich automatisch aktualisiert, plus Eintrag in der robots.txt. Gibt es heute nicht.
-- **SEO-Reiter** unter „Einstellungen“: Titel und Beschreibung je Seite, Vorschau des Google-Eintrags, Weiterleitungen.
+- **Titel und Beschreibung je Seite** samt Vorschau des Google-Eintrags.
+- Steigt eine Platzierung deutlich, meldet das der Assistent (siehe P6).
 
 ## P4 Slopify als MCP-Server
 
@@ -62,9 +86,10 @@ Der Shop wird für fremde KI-Programme ansprechbar, so wie der ePages-Shop-Condu
 Siehe das Konzept weiter unten. Kurz:
 
 - Eigene Seite „Assistent“ unter „Einstellungen“ mit demselben Chat in voller Breite, gleiche Unterhaltung wie in der Blase.
-- Ausklapp-Symbol oben links neben „Schließen“ in der Blase, das auf diese Seite führt.
+- Ausklapp-Symbol oben neben „Schließen“ in der Blase, das auf diese Seite führt, und daneben ein Zahnrad, das direkt zu den Assistenten-Einstellungen führt.
 - Blase ein- und ausschaltbar, voreingestellt an.
-- Benachrichtigungen: neue Bestellung, neue Nachricht im Posteingang, Mindestlagerbestand unterschritten.
+- Benachrichtigungen, je einzeln an- und abschaltbar: neue Bestellung, neue Nachricht im Posteingang, Mindestlagerbestand unterschritten, Analytics (auffällige Ausschläge), SEO (Platzierung deutlich gestiegen oder gefallen).
+- Weitere Fähigkeiten (Kristof am 22.11.2026 zugestimmt): Gegenfragen stellen statt raten, „mach die letzte Änderung rückgängig“, mehrere Produkte auf einmal ändern, von sich aus Vorschläge machen (höchstens einmal am Tag, nur an Zahlen hängend), Fragen zum Shop beantworten.
 - Report in wählbarem Abstand (Tage, Wochen, Monate): meistverkaufte Produkte, Umsatz, Besucher.
 - Einrichtungs-Assistent für einen neuen Shop.
 
@@ -95,16 +120,48 @@ Eine Seite je Shop mit Zahlen, Inhaberin, Tarif, Zustand und den Knöpfen zum Sp
 - **Automatische Übersetzung** aller Texte (Produkte, Kategorien, Seiten, Bausteine) beim Speichern. DeepL hat eine kostenlose Stufe mit 500.000 Zeichen im Monat; das eingebundene KI-Modell kann dasselbe und ist schon da. ❓ Entscheidung offen.
 - **Steuersätze einstellbar** statt der zwei festen Klassen „Standard“ und „ermäßigt“.
 
-## P11 Aussehen, offene Entscheidung
+## P11 Aussehen
 
 - **Schriftfarbe wählbar** (heute: Hauptfarbe, Hintergrundfarbe, zwei Schriften). Klein und sinnvoll.
 - **Mehrere Kopfzeilen-Designs** zur Auswahl, so wie es heute vier Design-Vorlagen gibt.
-- **Eigenes CSS** ⚠️ Empfehlung: nicht bauen. Begründung in `STATUS.md` und im Chat vom 22.11.2026. Kurz: Eigenes CSS bricht bei jeder Änderung am Shop, die Hilfeseite dazu wäre ein eigenes Projekt, und jeder Wunsch, der dadurch erfüllt würde, ist als Einstellung besser aufgehoben.
-- **Eigenes HTML** als Baustein ⚠️ Empfehlung: nicht bauen. Fremdes HTML im Shop hebelt die Sicherheitsregeln aus (keine Skripte, keine fremden Quellen), die den Shop heute schützen.
 - **Google Maps:** Gibt es schon als Baustein „Karte“.
 - **Fragen und Antworten zum Ausklappen:** Gibt es schon; der Baustein „Fragen“ klappt im Shop auf und zu, ganz ohne JavaScript.
 - **Soziale Netzwerke in der Fußzeile:** Gibt es schon.
 - **Kopfzeile einstellbar:** Gibt es schon (Suche offen, als Lupe oder aus; Kopf bleibt beim Scrollen stehen).
+
+## P12 Einstellungen je Baustein (Vorbild Shopify)
+
+Kristofs Wunsch vom 22.11.2026: „es sollte natürlich nicht 10.000 Einstellungen geben", aber mehr als heute. Shopifys Horizon-Themes lösen das mit wenigen Einstellungen, die bei **jedem** Baustein gleich heißen, plus einer Handvoll eigener je Art. Genau so hier:
+
+**Bei jedem Baustein (Zahnrad):**
+
+1. **Abstand oben und unten** (klein, mittel, groß). Erspart die Abstands-Bausteine dazwischen.
+2. **Breite** (Seitenbreite oder randlos über die ganze Fläche).
+3. **Ausrichtung** (links oder mittig), nur bei Bausteinen mit Text.
+
+**Bei Produktlisten (Empfehlungen, Neu im Shop, Bestseller, Kategorien):**
+
+4. **Wie viele** zeigen (2 bis 12).
+5. **Spalten am Computer** (2, 3 oder 4). Am Handy bleiben es zwei.
+6. **Button „Alle ansehen"** an oder aus, mit Ziel. Dazu gehört eine neue Seite `/<shop>/produkte`, auf der alle Produkte stehen; die gibt es heute nicht.
+7. **Produkte selbst auswählen** auch bei „Neu im Shop" und „Bestseller", nicht nur bei „Empfehlungen" (dort gibt es das schon).
+
+**Einmal zentral für die Produktkarte, nicht je Baustein:**
+
+8. Bildformat (quadratisch, hochkant, Originalverhältnis).
+9. Preis, Hersteller und „In den Warenkorb" auf der Karte an oder aus.
+
+Nicht übernommen von Shopify: Farbschemata je Abschnitt (zu viel für diesen Shop), Karussell auf dem Handy (bräuchte JavaScript ohne Nutzen), Höhe je Abschnitt (macht Layouts kaputt).
+
+## P13 Formatierung in Textfeldern
+
+Kristof möchte in allen Textfeldern formatieren können. Vorschlag mit Maß:
+
+- **In mehrzeiligen Feldern** (Textbaustein, Text mit Bild, Antwort im Fragen-Baustein, Produktbeschreibung): fett, kursiv, unterstrichen, Aufzählung, nummerierte Liste, Link.
+- **In einzeiligen Feldern** (Überschriften, Beschriftungen, Schritte): keine Formatierung. Eine Überschrift mit drei Schriftgrößen darin sieht in jedem Shop schlecht aus.
+- **Keine Schriftart, Schriftgröße und Textfarbe je Textstelle.** Die gehören in die Design-Einstellungen, damit der Shop zusammenbleibt. Wer sie je Absatz setzen kann, baut sich unbemerkt ein Durcheinander.
+
+Gespeichert wird kein HTML, sondern eine kleine, geprüfte Auszeichnung; der Shop setzt daraus sein eigenes HTML. Sonst wäre es dasselbe Loch wie bei einem HTML-Baustein.
 
 ## Bewusst nicht gebaut
 
@@ -127,13 +184,13 @@ Eine Seite je Shop mit Zahlen, Inhaberin, Tarif, Zustand und den Knöpfen zum Sp
 2. **Name und Adresse des Shops.** Vorschläge, falls noch kein Name feststeht; die Adresse (`/kuerzel`) schlägt er aus dem Namen vor.
 3. **Logo.** Hochladen, oder vom Assistenten erzeugen lassen. Drei Entwürfe zur Auswahl, dann verfeinern („schlichter“, „anderes Symbol“, „andere Farbe“). Daraus zieht der Assistent gleich das Favicon.
 4. **Farben und Schrift.** Aus dem Logo schlägt er eine Hauptfarbe vor und zeigt drei fertige Paare aus Schrift und Farbe. Ein Klick übernimmt eines.
-5. **Startseite.** Er setzt Bühne, Vertrauenszeile, Empfehlungen und „So geht's“ mit Beispieltexten zusammen, die zum ersten Satz passen, und fragt nach einem Bild für die Bühne (hochladen oder aus der Bildersuche).
-6. **Erstes Produkt.** Name, Preis, Bild; Beschreibung schreibt der Assistent und lässt sie bestätigen. Danach: „Dein Shop steht. Willst du ihn ansehen oder gleich veröffentlichen?“
+5. **Startseite mit Inhalt.** Er setzt Bühne, Vertrauenszeile, Empfehlungen und „So geht's“ zusammen und füllt sie: Bilder sucht er bei Unsplash zum ersten Satz („Stoff und Garn“ → Stoffe, Garnrollen, Nähtisch), Texte schreibt er dazu („Willkommen in unserem Stoffladen“). Kristof ändert oder bestätigt.
+6. **Fertig.** „Dein Shop steht. Willst du ihn ansehen oder gleich veröffentlichen?“ Das erste Produkt legt der Assistent nicht an (Kristof, 22.11.2026); das kommt später.
 
 **Was er nicht tut.** Er fragt nichts ab, was er selbst herausfinden kann, und er erledigt nichts ohne Bestätigung. Jeder Schritt lässt sich überspringen.
 
-**Technisch.** Der Assistent ruft dieselben Endpunkte der Admin-API auf wie die Oberfläche, nichts Eigenes. Der Stand steht im Shop (`setup_step`), damit er nach dem Schließen weitermacht. Das Erzeugen des Logos braucht ein Bildmodell; die eingebundene KI kann heute nur Text. ❓ Entscheidung offen.
+**Technisch.** Der Assistent ruft dieselben Endpunkte der Admin-API auf wie die Oberfläche, nichts Eigenes. Der Stand steht im Shop (`setup_step`), damit er nach dem Schließen weitermacht. Das Logo zeichnet das eingebundene Modell als SVG (Schrift, Form, Farbe als Code); ein gemaltes Motiv kann es nicht, dafür bleibt das Hochladen.
 
 ## Offene Fragen an Kristof
 
-Stehen im Chat vom 22.11.2026 und in `FRAGEN.md`, sobald beantwortet.
+Offen ist nur noch: Mit welchem Paket geht es los? Alles andere ist entschieden (siehe oben).

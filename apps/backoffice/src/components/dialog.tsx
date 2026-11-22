@@ -76,7 +76,7 @@ export interface ConfirmOptions {
   readonly title: string;
   readonly message: ReactNode;
   readonly confirmLabel: string;
-  /** „danger“ färbt den Knopf rot (Löschen, Stornieren, Sperren). */
+  /** „danger“ färbt den Button rot (Löschen, Stornieren, Sperren). */
   readonly tone?: "danger" | "default";
 }
 

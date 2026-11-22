@@ -165,7 +165,7 @@ export function sameForm(a: Form, b: Form): boolean {
 export function problems(f: Form): string[] {
   const out: string[] = [];
   if (!readableWithWhite(f.accentColor))
-    out.push("Die Hauptfarbe ist zu hell für weiße Schrift auf Knöpfen.");
+    out.push("Die Hauptfarbe ist zu hell für weiße Schrift auf Buttons.");
   if (!readableBackground(f.backgroundColor)) out.push("Die Hintergrundfarbe ist zu dunkel für den Text.");
   if (f.footerLinks.some((l) => linkProblem(l) !== undefined))
     out.push("Ein Link in der Fußzeile passt nicht.");

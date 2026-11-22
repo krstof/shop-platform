@@ -1,5 +1,5 @@
 // KI-generierte Produktbeschreibung (15.11.2026, Kristof): oben Stichworte oder die bisherige
-// Beschreibung, darunter auf Knopfdruck ein schön geschriebener Vorschlag. Die KI darf nichts
+// Beschreibung, darunter auf Buttondruck ein schön geschriebener Vorschlag. Die KI darf nichts
 // hinzudichten (Anweisung im Modul ai). Übernommen wird erst mit „Übernehmen“, gespeichert wie immer.
 import { useMutation } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
