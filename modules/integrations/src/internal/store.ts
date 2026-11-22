@@ -2,8 +2,10 @@
 //
 // Liegt unter internal/, damit die Endpunkte (http/admin.ts) und die Prüfungen (internal/checks.ts)
 // ihn benutzen können, ohne über die Fassade src/index.ts zu gehen — das wäre ein Kreis.
+import { randomBytes } from "node:crypto";
 import { getContext, withTenantTransaction, type Database, type SecretBox } from "@shop/kernel";
 import type { DB } from "../db.generated.js";
+import { findIntegration } from "../catalog.js";
 import { fetchExternal } from "./outbound.js";
 
 /** Eine eingerichtete Anbindung, wie andere Module sie brauchen. */
@@ -48,6 +50,14 @@ export interface Integrations {
   }): Promise<IntegrationState>;
   /** Hält das Ergebnis einer Verbindungsprüfung fest. */
   recordCheck(provider: string, ok: boolean, message: string): Promise<void>;
+  /**
+   * Meldet geänderte Adressen an IndexNow, damit Bing und Yandex sie sofort holen. `shopBaseUrl` ist
+   * die öffentliche Adresse des Shops, etwa `https://shop.example/teeladen`; dort liegt auch die
+   * Schlüsseldatei. Wirft nie: Eine Veröffentlichung darf daran nicht scheitern.
+   */
+  notifySearchEngines(shopBaseUrl: string, urls: readonly string[]): Promise<void>;
+  /** Der IndexNow-Schlüssel des Shops, oder undefined, wenn die Anbindung aus ist. */
+  searchEngineKey(): Promise<string | undefined>;
   /**
    * Schickt dem Händler eine kurze Nachricht über jeden eingeschalteten Nachrichtenweg (heute
    * Telegram). Gibt zurück, über wie viele Wege sie hinausging; 0 heißt „nichts eingerichtet“.
@@ -115,7 +125,12 @@ export function createIntegrations(deps: IntegrationsDependencies): Integrations
     },
     async credentials(provider) {
       const state = await this.get(provider);
-      if (state === undefined || !state.enabled) return undefined;
+      // Nie eingerichtet: Anbindungen ohne Zugangsdaten dürfen trotzdem an sein (defaultEnabled).
+      if (state === undefined)
+        return findIntegration(provider)?.defaultEnabled === true
+          ? { enabled: true, settings: {}, secrets: {} }
+          : undefined;
+      if (!state.enabled) return undefined;
       return { enabled: true, settings: state.settings, secrets: state.secrets };
     },
     async save(input) {
@@ -171,6 +186,39 @@ export function createIntegrations(deps: IntegrationsDependencies): Integrations
         return 1;
       } catch {
         return 0;
+      }
+    },
+    async searchEngineKey() {
+      const connection = await this.credentials("indexnow");
+      if (connection === undefined) return undefined;
+      const known = connection.settings["key"] ?? "";
+      if (known !== "") return known;
+      // Beim ersten Mal einen Schlüssel erzeugen und merken. Er ist nicht geheim: Er steht
+      // öffentlich im Shop, damit die Suchmaschine prüfen kann, dass die Meldung von dort kommt.
+      const key = randomBytes(16).toString("hex");
+      await this.save({ provider: "indexnow", enabled: true, settings: { key }, secrets: {} });
+      return key;
+    },
+    async notifySearchEngines(shopBaseUrl, urls) {
+      if (urls.length === 0) return;
+      try {
+        const key = await this.searchEngineKey();
+        if (key === undefined) return;
+        const host = new URL(shopBaseUrl).host;
+        await fetchExternal({
+          url: "https://api.indexnow.org/IndexNow",
+          method: "POST",
+          body: {
+            host,
+            key,
+            keyLocation: `${shopBaseUrl.replace(/\/+$/, "")}/${key}.txt`,
+            urlList: urls.slice(0, 100),
+          },
+          service: "IndexNow",
+          timeoutMs: 5000,
+        });
+      } catch {
+        // Nicht erreichbar oder abgelehnt: Die Suchmaschine kommt dann eben später von selbst.
       }
     },
     async recordCheck(provider, ok, message) {

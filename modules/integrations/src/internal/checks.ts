@@ -75,9 +75,21 @@ async function checkUnsplash(state: IntegrationState): Promise<CheckResult> {
     : { ok: true, message: "Verbunden. Die Bildersuche im Editor sucht ab jetzt auch bei Unsplash." };
 }
 
+async function checkPhoton(): Promise<CheckResult> {
+  const answer = await fetchExternal<{ features?: readonly unknown[] }>({
+    url: "https://photon.komoot.io/api/?q=Mönckebergstra%C3%9Fe%20Hamburg&limit=1&lang=de",
+    service: "Der Adressdienst",
+    timeoutMs: 6000,
+  });
+  return (answer.features ?? []).length > 0
+    ? { ok: true, message: "Der Adressdienst antwortet. Die Kasse schlägt ab jetzt Adressen vor." }
+    : { ok: false, message: "Der Adressdienst antwortet, findet aber nichts. Das ist ungewöhnlich." };
+}
+
 const CHECKS: Readonly<Record<string, (state: IntegrationState) => Promise<CheckResult>>> = {
   telegram: checkTelegram,
   unsplash: checkUnsplash,
+  photon: checkPhoton,
 };
 
 /** Führt die Prüfung einer Anbindung aus und fängt Fehler des fremden Dienstes ab. */

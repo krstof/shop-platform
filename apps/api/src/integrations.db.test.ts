@@ -90,6 +90,9 @@ describe.skipIf(adminUrl === undefined)("Anbindungen", () => {
         secretBox: createSecretBox(new Map([[1, randomBytes(32)]])),
       }),
       resolveActor: resolver,
+      // Die Store-Endpunkte (Adressvorschläge, Schlüsseldatei) finden den Shop über sein Kürzel.
+      storeShops: async (handle) =>
+        handle === "teeladen" ? TENANT_A : handle === "modeladen" ? TENANT_B : undefined,
       logger: createLogger({ level: "silent" }),
       idempotency: databaseIdempotencyStore(database),
     });
@@ -293,6 +296,102 @@ describe.skipIf(adminUrl === undefined)("Anbindungen", () => {
     } finally {
       globalThis.fetch = echt;
     }
+  });
+
+  it("schlägt Adressen vor und lässt Ausland und Dubletten weg", async () => {
+    const echt = globalThis.fetch;
+    const eintrag = (street: string, housenumber: string, postcode: string, city: string, cc = "DE") => ({
+      properties: { street, housenumber, postcode, city, countrycode: cc },
+    });
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          features: [
+            eintrag("Mönckebergstraße", "7", "20095", "Hamburg"),
+            eintrag("Mönckebergstraße", "7", "20095", "Hamburg"),
+            eintrag("Kärntner Straße", "1", "1010", "Wien", "AT"),
+            eintrag("Teeweg", "3", "20097", "Hamburg"),
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as typeof fetch;
+    try {
+      const r = await app
+        .getHttpAdapter()
+        .getInstance()
+        .inject({ method: "GET", url: "/store/v1/shops/teeladen/address-suggestions?q=Mönckeberg" });
+      expect(r.statusCode).toBe(200);
+      const body = r.json() as { data: { label: string; postalCode: string }[] };
+      expect(body.data).toHaveLength(2);
+      expect(body.data[0]).toMatchObject({ label: "Mönckebergstraße 7, 20095 Hamburg", postalCode: "20095" });
+      expect(body.data.some((d) => d.label.includes("Wien"))).toBe(false);
+    } finally {
+      globalThis.fetch = echt;
+    }
+  });
+
+  it("fragt bei zu kurzer Eingabe gar nicht erst nach", async () => {
+    const echt = globalThis.fetch;
+    const rufe: string[] = [];
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      rufe.push(String(input));
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    try {
+      const r = await app
+        .getHttpAdapter()
+        .getInstance()
+        .inject({ method: "GET", url: "/store/v1/shops/teeladen/address-suggestions?q=Mö" });
+      expect(r.json()).toEqual({ data: [] });
+      expect(rufe).toHaveLength(0);
+    } finally {
+      globalThis.fetch = echt;
+    }
+  });
+
+  it("hält den Kauf nicht auf, wenn der Adressdienst ausfällt", async () => {
+    const echt = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new Error("kein Netz");
+    }) as typeof fetch;
+    try {
+      const r = await app
+        .getHttpAdapter()
+        .getInstance()
+        .inject({ method: "GET", url: "/store/v1/shops/teeladen/address-suggestions?q=Teeweg" });
+      expect(r.statusCode).toBe(200);
+      expect(r.json()).toEqual({ data: [] });
+    } finally {
+      globalThis.fetch = echt;
+    }
+  });
+
+  it("erzeugt den IndexNow-Schlüssel einmal und behält ihn", async () => {
+    const lesen = async () =>
+      (
+        await app
+          .getHttpAdapter()
+          .getInstance()
+          .inject({ method: "GET", url: "/store/v1/shops/teeladen/indexnow-key" })
+      ).json() as { key: string | null };
+    const erst = await lesen();
+    expect(erst.key).toMatch(/^[0-9a-f]{32}$/);
+    expect((await lesen()).key).toBe(erst.key);
+  });
+
+  it("gibt keinen IndexNow-Schlüssel heraus, wenn die Anbindung aus ist", async () => {
+    const aus = await inject(
+      "PUT",
+      "/admin/v1/integrations",
+      { provider: "indexnow", enabled: false, values: {} },
+      asB,
+    );
+    expect(aus.statusCode).toBe(200);
+    const r = await app
+      .getHttpAdapter()
+      .getInstance()
+      .inject({ method: "GET", url: "/store/v1/shops/modeladen/indexnow-key" });
+    expect(r.json()).toEqual({ key: null });
   });
 
   it("lässt nur schreiben, wer das Recht dazu hat", async () => {

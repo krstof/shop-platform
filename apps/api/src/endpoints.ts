@@ -41,7 +41,12 @@ import {
 import { createOrders, orderEndpoints } from "@shop/orders";
 import { createPayments } from "@shop/payments";
 import { couponEndpoints, createPricing } from "@shop/pricing";
-import { createIntegrations, integrationEndpoints, stockPhotoEndpoints } from "@shop/integrations";
+import {
+  createIntegrations,
+  integrationEndpoints,
+  stockPhotoEndpoints,
+  storePublicEndpoints,
+} from "@shop/integrations";
 import { createShopSettings, generalSettingsEndpoints } from "@shop/shop-settings";
 import { createShipping, shippingEndpoints } from "@shop/shipping";
 import { storefrontEndpoints } from "@shop/storefront-design";
@@ -97,6 +102,16 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
   const secretBox = deps.secretBox ?? createSecretBox(new Map([[1, randomBytes(32)]]));
   const integrations = createIntegrations({ database: deps.database, secretBox });
   const prices = createPricing({ database: deps.database });
+  /**
+   * Adresse eines Shops im Netz, für IndexNow. Ohne öffentliche Adresse (lokal, in Tests) gibt es
+   * nichts zu melden, dann bleibt es beim undefined.
+   */
+  const shopBaseUrl = async (): Promise<string | undefined> => {
+    const tenantId = getContext()?.tenantId;
+    if (deps.storefrontBaseUrl === undefined || tenantId === undefined) return undefined;
+    const [shop] = await shops.getShops([tenantId]);
+    return shop === undefined ? undefined : `${deps.storefrontBaseUrl}/${shop.handle}`;
+  };
   const stock = createInventory({ database: deps.database });
   const images: ProductImages = {
     prepare: async (data, filename) => {
@@ -111,7 +126,16 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
   const platformOrders = createOrders({ database: deps.database, settings });
   return [
     // Katalog mit Preisen, Bestand und Bildern aus den Modulen pricing, inventory und media (M2).
-    ...catalogEndpoints({ database: deps.database, prices, stock, images }),
+    ...catalogEndpoints({
+      database: deps.database,
+      prices,
+      stock,
+      images,
+      onProductPublished: async ({ slug }) => {
+        const basis = await shopBaseUrl();
+        if (basis !== undefined) await integrations.notifySearchEngines(basis, [`${basis}/produkt/${slug}`]);
+      },
+    }),
     // Bestellungen im Backoffice (M7).
     ...orderEndpoints({
       database: deps.database,
@@ -159,6 +183,8 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...integrationEndpoints({ database: deps.database, secretBox }),
     // Bildersuche (Openverse immer, Unsplash wenn eingerichtet) für Editor und Produktbilder.
     ...stockPhotoEndpoints({ database: deps.database, secretBox }),
+    // Öffentliches aus den Anbindungen: Adressvorschläge in der Kasse, Schlüsseldatei für IndexNow.
+    ...storePublicEndpoints({ database: deps.database, secretBox }),
     // Einstellungen „Allgemein“: Adresse, Geschäftsangaben, Shop geöffnet, Shop-Name (Name in platform).
     ...generalSettingsEndpoints({
       database: deps.database,

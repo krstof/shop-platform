@@ -123,6 +123,15 @@ const autocomplete: Record<Feld, string> = {
               aria-invalid={fehler[f] ? "true" : undefined}
               aria-describedby={fehler[f] ? `${f}-fehler` : undefined}
             />
+            {f === "street" && (
+              <ul
+                class="adress-vorschlaege"
+                data-vorschlaege
+                hidden
+                role="listbox"
+                aria-label="Adressvorschläge"
+              ></ul>
+            )}
             {fehler[f] && (
               <span id={`${f}-fehler`} class="feld-fehler">
                 {fehler[f]}
@@ -174,3 +183,67 @@ const autocomplete: Record<Feld, string> = {
     )}
   </div>
 </Shop>
+
+<script define:vars={{ basis }}>
+  // Adressvorschläge (22.11.2026): Während der Kunde die Straße tippt, holt die Kasse passende
+  // Adressen und füllt auf Klick Straße, Postleitzahl und Ort aus. Fällt der Dienst aus oder ist
+  // er ausgeschaltet, kommt eine leere Liste, und das Formular verhält sich wie vorher.
+  const feld = document.getElementById("street");
+  const liste = document.querySelector("[data-vorschlaege]");
+  if (feld instanceof HTMLInputElement && liste instanceof HTMLElement) {
+    let laufend;
+    let warte;
+    const zu = () => {
+      liste.hidden = true;
+      liste.textContent = "";
+    };
+    const uebernehmen = (vorschlag) => {
+      feld.value = vorschlag.street;
+      for (const [name, wert] of [
+        ["postalCode", vorschlag.postalCode],
+        ["city", vorschlag.city],
+      ]) {
+        const ziel = document.getElementById(name);
+        if (ziel instanceof HTMLInputElement) ziel.value = wert;
+      }
+      zu();
+    };
+    const suchen = async (text) => {
+      laufend?.abort();
+      laufend = new AbortController();
+      try {
+        const antwort = await fetch(`${basis}/adressvorschlaege?q=${encodeURIComponent(text)}`, {
+          signal: laufend.signal,
+          headers: { accept: "application/json" },
+        });
+        if (!antwort.ok) return zu();
+        const { data } = await antwort.json();
+        if (!Array.isArray(data) || data.length === 0) return zu();
+        liste.textContent = "";
+        for (const vorschlag of data) {
+          const eintrag = document.createElement("li");
+          const knopf = document.createElement("button");
+          knopf.type = "button";
+          knopf.textContent = vorschlag.label;
+          knopf.addEventListener("click", () => uebernehmen(vorschlag));
+          eintrag.append(knopf);
+          liste.append(eintrag);
+        }
+        liste.hidden = false;
+      } catch {
+        // Abgebrochen oder kein Netz: einfach keine Vorschläge.
+      }
+    };
+    feld.setAttribute("autocomplete", "off");
+    feld.addEventListener("input", () => {
+      window.clearTimeout(warte);
+      const text = feld.value.trim();
+      if (text.length < 3) return zu();
+      warte = window.setTimeout(() => void suchen(text), 300);
+    });
+    feld.addEventListener("blur", () => window.setTimeout(zu, 200));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") zu();
+    });
+  }
+</script>

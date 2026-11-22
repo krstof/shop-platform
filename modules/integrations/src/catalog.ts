@@ -34,6 +34,17 @@ export interface IntegrationDefinition {
   readonly fields: readonly IntegrationField[];
   /** Kann „Verbindung prüfen“ etwas Sinnvolles tun? */
   readonly testable: boolean;
+  /**
+   * An, solange der Händler nichts anderes eingestellt hat. Nur für Anbindungen ohne Zugangsdaten,
+   * die nichts kosten und niemandem schaden — sonst müsste jeder Händler erst etwas einschalten,
+   * das er gar nicht vermisst hat.
+   */
+  readonly defaultEnabled?: boolean;
+  /**
+   * Pfad im Shop, den der Händler braucht, etwa „/produkte.xml“. Das Backoffice zeigt daraus die
+   * fertige Adresse zum Kopieren, weil nur es weiß, unter welcher Adresse der Shop läuft.
+   */
+  readonly shopUrlPath?: string;
 }
 
 export const INTEGRATIONS: readonly IntegrationDefinition[] = [
@@ -92,6 +103,46 @@ export const INTEGRATIONS: readonly IntegrationDefinition[] = [
         maxLength: 200,
       },
     ],
+  },
+  {
+    provider: "photon",
+    name: "Adressvorschläge in der Kasse",
+    description:
+      "Während der Kunde seine Straße tippt, schlägt die Kasse passende Adressen samt Postleitzahl " +
+      "und Ort vor. Das spart Tippfehler und bricht weniger Käufe ab.",
+    where: "Kasse im Shop",
+    helpUrl: "https://photon.komoot.io",
+    testable: true,
+    defaultEnabled: true,
+    fields: [],
+  },
+  {
+    provider: "produktfeed",
+    name: "Produktfeed",
+    description:
+      "Stellt alle Produkte als Datei bereit, wie Google Merchant Center, Meta und Preisvergleiche " +
+      "sie lesen. Dieselbe Datei ist die Grundlage dafür, dass dein Shop in der KI-Suche auftaucht.",
+    where: "Adresse unten kopieren und beim Dienst einreichen",
+    setup:
+      "Für Google brauchst du ein kostenloses Konto bei Google Merchant Center. Dort trägst du die " +
+      "Adresse unten als geplanten Abruf ein, dann holt Google den Feed selbst, einmal am Tag.",
+    helpUrl: "https://support.google.com/merchants/answer/7439058",
+    testable: false,
+    defaultEnabled: true,
+    shopUrlPath: "/produkte.xml",
+    fields: [],
+  },
+  {
+    provider: "indexnow",
+    name: "IndexNow",
+    description:
+      "Meldet Bing und Yandex sofort, wenn du ein Produkt veröffentlichst oder den Shop änderst. " +
+      "Ohne das dauert es Tage, bis eine Suchmaschine von selbst vorbeischaut.",
+    where: "Läuft im Hintergrund, sobald du etwas veröffentlichst",
+    helpUrl: "https://www.indexnow.org",
+    testable: false,
+    defaultEnabled: true,
+    fields: [],
   },
 ];
 

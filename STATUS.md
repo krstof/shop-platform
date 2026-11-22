@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 21.11.2026 (Fundament für Anbindungen steht; Telegram und die Bildersuche angebunden)
+Stand: 22.11.2026 (Welle A der Anbindungen fertig: Adressvorschläge, Produktfeed, IndexNow)
 
 ## Erledigt
 
@@ -98,6 +98,15 @@ Stand: 21.11.2026 (Fundament für Anbindungen steht; Telegram und die Bildersuch
   - In der Inhalts-Sicherheitsregel des Backoffice stehen dafür zwei neue Bildadressen (`api.openverse.org`, `images.unsplash.com`). Nur die kleinen Vorschaubilder kommen von dort.
   - ⚠️ In der Cloud-Arbeitsumgebung hat der API-Container kein Internet, deshalb meldet die Bildersuche dort „antwortet gerade nicht“. Auf dem Testserver (eigener Server mit Internet) funktioniert sie. Dasselbe gilt für Telegram.
   - Geprüft: 13 neue Tests im Modul, 15 neue Tests gegen die Datenbank (`apps/api/src/integrations.db.test.ts`), insgesamt 449 API-Tests grün, dazu `pnpm check` komplett. Im Browser durchgespielt: Seite „Anbindungen“, Editor mit geöffneter Bildersuche.
+
+- **Anbindungen Welle A: Adressvorschläge, Produktfeed, IndexNow (22.11.2026):**
+  - **Adressvorschläge in der Kasse** über Photon von Komoot (`modules/integrations/src/http/store-public.ts`, `apps/storefront/src/pages/[shop]/adressvorschlaege.ts`, `kasse.astro`): Tippt der Kunde drei Zeichen in das Feld „Straße und Hausnummer", schlägt die Kasse nach kurzer Pause passende Adressen vor; ein Klick füllt Straße, Postleitzahl und Ort. Der Dienst braucht keinen Schlüssel und ist deshalb von Anfang an eingeschaltet. Gesucht wird nur in Deutschland, Dubletten fallen raus, es kommen höchstens fünf Vorschläge. Fällt der Dienst aus, kommt eine leere Liste zurück und der Kunde tippt wie bisher weiter — der Kauf hängt nie an einem fremden Dienst.
+  - **Produktfeed** (`apps/storefront/src/lib/produktfeed.ts`, `apps/storefront/src/pages/[shop]/produkte.xml.ts`): Jeder Shop hat jetzt unter `/produkte.xml` eine Datei im Google-Merchant-Format, die auch Meta und Preisvergleiche lesen. Sie enthält Nummer, Name, Beschreibung, Adresse, Verfügbarkeit, Preis (bei Aktionspreisen auch den Streichpreis) und bis zu zehn Bilder je Produkt. Die fertige Adresse steht zum Kopieren in „Einstellungen → Anbindungen".
+  - **Öffentliche Adresse erkennen** (`apps/storefront/src/lib/basis.ts`): Der Feed braucht vollständige Adressen, der Node-Server hinter Caddy kennt aber nur seinen internen Namen. Die Basis kommt jetzt aus den Kopfzeilen, die Caddy weitergibt, mit Prüfung des Hostnamens, damit sich niemand eine fremde Adresse in den Feed schreiben kann.
+  - **IndexNow** (`modules/integrations/src/internal/store.ts`, `apps/storefront/src/pages/[shop]/[schluessel].txt.ts`): Veröffentlicht der Händler ein Produkt, meldet der Shop das sofort an Bing und Yandex, statt tagelang auf den nächsten Besuch einer Suchmaschine zu warten. Der nötige Schlüssel entsteht beim ersten Mal von selbst und liegt als Textdatei im Shop; ist die Anbindung aus, gibt es die Datei nicht.
+  - **Gefunden und behoben:** Die Storefront-API kennt bei den Produkten keinen Parameter `limit` und wies den Feed mit 422 ab. Der Feed holt jetzt die Liste ohne Parameter (die API liefert bis zu 200 Produkte).
+  - ⚠️ In der Cloud-Arbeitsumgebung haben die Container kein Internet, deshalb bleiben die Adressvorschläge dort leer und IndexNow meldet nichts. Produktfeed und Schlüsseldatei laufen auch dort, beide wurden im Browser geprüft.
+  - Geprüft: 9 Tests für den Feed, 6 für die Adresserkennung, 5 neue Tests gegen die Datenbank, 454 API-Tests grün, `pnpm check` komplett. Im Browser durchgespielt: Feed mit richtigen Adressen, Schlüsseldatei erreichbar (falscher Schlüssel ergibt 404), Seite „Anbindungen" mit allen fünf Kacheln.
 
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
@@ -197,8 +206,8 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
     3. **Bühne beherrschen:** Zuschnitt-Punkt wählbar (am Computer und am Handy getrennt) und ein Knopf in der Bühne.
     4. **Editor und Shop moderner machen.** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.
-    6. **Rest der Welle A aus `docs/09`:** Photon (Adressvervollständigung in der Kasse), IndexNow, Produktfeed. Alle drei brauchen nichts von Kristof.
-    7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.
+    6. ~~Rest der Welle A aus `docs/09`: Photon, IndexNow, Produktfeed~~ (erledigt 22.11.2026)
+    7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter. **Hier geht es weiter.**
     8. **Welle C aus `docs/09`:** Slopify als MCP-Server, eigene Bewertungen.
     9. **Welle D aus `docs/09`:** Plausible oder Umami auf einer neuen Seite „Statistiken", Google Search Console, DataForSEO.
     10. **Produktvarianten** (Größe und Farbe mit eigenem Preis und Bestand), **Shop-Detailseite** in der Plattform-Verwaltung, **Versandarten und Versandkosten**.

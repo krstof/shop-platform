@@ -589,6 +589,39 @@ main:focus-visible {
 .feld input[aria-invalid="true"] {
   border-color: #b4441f;
 }
+/* Adressvorschläge in der Kasse (22.11.2026): Liste direkt unter dem Straßenfeld. */
+.feld {
+  position: relative;
+}
+.adress-vorschlaege {
+  position: absolute;
+  z-index: 20;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  background: var(--sp-flaeche, #fff);
+  border: 1px solid var(--sp-linie, #d8d8d8);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.12);
+  overflow: hidden;
+}
+.adress-vorschlaege button {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.adress-vorschlaege button:hover,
+.adress-vorschlaege button:focus-visible {
+  background: var(--sp-sanft, #f2f2f2);
+}
+
 .feld-fehler {
   color: #9a3412;
   font-size: 0.9rem;

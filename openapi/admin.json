@@ -14960,6 +14960,10 @@
           "testable": {
             "type": "boolean"
           },
+          "shopUrlPath": {
+            "type": "string",
+            "description": "Pfad im Shop, aus dem das Backoffice eine Adresse zum Kopieren baut; leer, wenn keiner."
+          },
           "enabled": {
             "type": "boolean"
           },
@@ -14997,6 +15001,7 @@
           "setup",
           "helpUrl",
           "testable",
+          "shopUrlPath",
           "enabled",
           "fields",
           "checkedAt",
