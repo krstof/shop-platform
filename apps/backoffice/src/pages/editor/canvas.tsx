@@ -155,7 +155,7 @@ export function Canvas({
     <div
       className={
         `sp vorlage-${template} mx-auto overflow-hidden shadow-pop ring-1 ring-gray-200 ` +
-        (mobile ? "max-w-[390px] rounded-[1.75rem]" : "rounded-lg")
+        (mobile ? "max-w-[390px] rounded-[1.75rem]" : "max-w-[1400px] rounded-xl")
       }
       onClick={(e) => {
         if (e.target === e.currentTarget) onSelect(undefined);
@@ -390,8 +390,12 @@ function CanvasBlock({
   const info = BLOCK_INFO[block.type];
   const problem = blockProblem(block);
   const line = <span aria-hidden="true" className="my-1 block h-1 rounded-full bg-brand-500" />;
+  // Werkzeuge des Editors sind dunkel, der Shop darunter ist hell: So ist auf einen Blick klar,
+  // was zum Shop gehört und was nur im Editor steht.
   const tool =
-    "flex size-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-brand-600";
+    "flex size-7 items-center justify-center rounded-full text-gray-300 transition hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white";
+  const panelTool =
+    "flex size-7 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-brand-600";
 
   return (
     <div
@@ -404,7 +408,7 @@ function CanvasBlock({
       {adding && hint?.id === block.id && !hint.after && line}
       <div
         className={
-          "group/blk relative rounded-lg py-1 outline-offset-[6px] transition-[outline-color] " +
+          "blk group/blk relative rounded-lg py-1 outline-offset-[6px] transition-[outline-color] " +
           (selected
             ? "outline-2 outline-brand-500 outline-solid"
             : "outline-1 outline-transparent hover:outline-dashed hover:outline-brand-300")
@@ -412,8 +416,8 @@ function CanvasBlock({
       >
         <div
           className={
-            "absolute -top-4 right-1 z-20 items-center gap-0.5 rounded-lg bg-white px-1 py-0.5 font-sans text-sm text-gray-800 shadow-pop ring-1 ring-gray-200 " +
-            (selected ? "flex" : "hidden group-hover/blk:flex")
+            "blk-werkzeuge absolute -top-4 right-1 z-20 items-center gap-0.5 rounded-full bg-gray-900 px-1.5 py-1 font-sans text-sm text-white shadow-pop " +
+            (selected ? "blk-werkzeuge-an" : "")
           }
           style={{ fontFamily: "var(--font-sans)" }}
         >
@@ -428,14 +432,14 @@ function CanvasBlock({
           >
             <GripVertical className="size-4" aria-hidden="true" />
           </button>
-          <span className="px-1 text-xs font-medium text-gray-600">{info.name}</span>
+          <span className="px-1 text-xs font-medium text-gray-400">{info.name}</span>
           {onSettings && (
             <button
               type="button"
               aria-expanded={settingsOpen}
               aria-label={`${info.name}: Einstellungen`}
               title="Einstellungen"
-              className={tool + (settingsOpen ? " bg-brand-50 text-brand-700" : "")}
+              className={tool + (settingsOpen ? " bg-white/20 text-white" : "")}
               onClick={onSettings}
             >
               <Settings2 className="size-4" aria-hidden="true" />
@@ -485,7 +489,7 @@ function CanvasBlock({
             type="button"
             aria-label={`${info.name} entfernen`}
             title="Entfernen"
-            className={tool + " hover:bg-red-50 hover:text-red-700"}
+            className={tool + " hover:bg-red-500 hover:text-white"}
             onClick={onRemove}
           >
             <Trash className="size-4" aria-hidden="true" />
@@ -497,13 +501,20 @@ function CanvasBlock({
             style={{ fontFamily: "var(--font-sans)", lineHeight: 1.5 }}
             role="dialog"
             aria-label={`${info.name}: Einstellungen`}
+            // Escape schließt die Einstellungen, wie bei jedem anderen Fenster im Backoffice.
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                onSettings();
+              }
+            }}
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="font-semibold text-gray-900">{info.name}</p>
               <button
                 type="button"
                 aria-label="Einstellungen schließen"
-                className={tool}
+                className={panelTool}
                 onClick={onSettings}
               >
                 <X className="size-4" aria-hidden="true" />

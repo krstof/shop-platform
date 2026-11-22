@@ -416,7 +416,8 @@
   border-radius: 8px;
 }
 .sp-gruppe-raster.ist-ziel {
-  outline: 2px dashed var(--akzent);
+  /* Blau des Backoffice, nicht die Farbe des Shops: Das ist eine Hilfe des Editors, kein Inhalt. */
+  outline: 2px dashed #4a6ef3;
   outline-offset: 4px;
 }
 @container sp (min-width: 44rem) {

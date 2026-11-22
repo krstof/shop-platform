@@ -86,6 +86,23 @@
   background: transparent;
 }
 
+/* Editor: Werkzeugleiste an einem Baustein (pages/editor/canvas.tsx). Sie erscheint beim Zeigen,
+   aber nur beim innersten Baustein unter dem Zeiger. Ohne diese Regel klappten in einer Gruppe die
+   Leiste der Gruppe und die jedes Bausteins darin gleichzeitig auf. */
+.blk > .blk-werkzeuge {
+  display: none;
+}
+.blk:hover > .blk-werkzeuge {
+  display: flex;
+}
+.blk:has(.blk:hover) > .blk-werkzeuge:not(.blk-werkzeuge-an) {
+  display: none;
+}
+/* Der ausgewählte Baustein zeigt seine Leiste immer. */
+.blk > .blk-werkzeuge-an {
+  display: flex;
+}
+
 /* Pop-ups (components/dialog.tsx) */
 dialog.modal::backdrop {
   background: rgb(17 24 39 / 0.45);

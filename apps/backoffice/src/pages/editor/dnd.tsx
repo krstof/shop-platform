@@ -262,17 +262,14 @@ export function PaletteTile({
       aria-label={`${info.name} hinzufügen`}
       title={info.hint}
       className={
-        "flex w-full cursor-grab flex-col items-center gap-1.5 rounded-lg bg-white px-1.5 pt-3 pb-2 text-center ring-1 ring-gray-200 transition select-none hover:bg-brand-50/50 hover:ring-brand-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50 " +
+        // Flache Kacheln ohne eigenen Rahmen: 17 weiße Kärtchen mit grauem Kästchen darin waren eine
+        // Wand aus Rechtecken. Der Rahmen erscheint erst beim Zeigen, dort wo man ihn braucht.
+        "flex w-full cursor-grab flex-col items-center gap-1 rounded-lg px-1.5 py-2.5 text-center text-gray-600 transition select-none hover:bg-white hover:text-gray-900 hover:shadow-xs hover:ring-1 hover:ring-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50 " +
         (isDragging ? "opacity-50" : "")
       }
     >
-      <span
-        aria-hidden="true"
-        className="flex size-8 items-center justify-center rounded-md bg-gray-100 text-gray-700"
-      >
-        <BlockIcon type={type} />
-      </span>
-      <span className="text-xs leading-tight font-medium text-gray-800">{info.name}</span>
+      <BlockIcon type={type} className="size-5" />
+      <span className="text-xs leading-tight font-medium">{info.name}</span>
     </button>
   );
 }

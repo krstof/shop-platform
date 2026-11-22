@@ -253,7 +253,9 @@ function Editor({ initial }: { initial: DesignState }) {
       <div className="flex flex-col lg:h-[calc(100dvh-3.5rem)] lg:flex-row">
         <aside
           aria-label="Editor"
-          className="shrink-0 border-b border-gray-200 bg-gray-25 lg:w-[19rem] lg:overflow-y-auto lg:border-r lg:border-b-0"
+          // Drei Ebenen nebeneinander: graues Hauptmenü, weiße Werkzeugleiste, graue Arbeitsfläche.
+          // Darauf liegt der Shop als eigenes Blatt. So ist jede Spalte von der nächsten zu trennen.
+          className="shrink-0 border-b border-gray-200 bg-white lg:w-[19rem] lg:overflow-y-auto lg:border-r lg:border-b-0"
         >
           <Section title="Seiten" open={openPanel === "seiten"} onToggle={() => toggle("seiten")}>
             <PagesPanel
@@ -295,7 +297,7 @@ function Editor({ initial }: { initial: DesignState }) {
           </Section>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col bg-gray-100">
+        <div className="flex min-w-0 flex-1 flex-col bg-gray-150">
           <div className="sticky top-14 z-10 flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white/90 px-4 py-2 backdrop-blur lg:static">
             <p className="mr-2 font-semibold text-gray-900">
               {page ? page.title.trim() || "Ohne Titel" : "Startseite"}
@@ -380,7 +382,7 @@ function Editor({ initial }: { initial: DesignState }) {
             </div>
           )}
           <div
-            className="flex-1 overflow-auto px-3 py-6 sm:px-6"
+            className="flex-1 overflow-auto px-3 py-6 sm:px-8 sm:py-8"
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedId(undefined);
             }}
