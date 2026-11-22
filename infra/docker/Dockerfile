@@ -38,8 +38,8 @@ RUN --mount=type=secret,id=extra_ca \
     pnpm config set store-dir /pnpm/store && \
     pnpm install --frozen-lockfile --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." \
       --filter "@shop/backoffice..." --filter "@shop/storefront..." && \
-    pnpm --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." --filter "@shop/backoffice" \
-      --filter "@shop/storefront" run build && \
+    pnpm --filter "@shop/api..." --filter "@shop/migrate..." --filter "@shop/worker..." \
+      --filter "@shop/backoffice..." --filter "@shop/storefront..." run build && \
     pnpm --filter @shop/storefront deploy --prod --offline /out/storefront && \
     pnpm --filter @shop/api deploy --prod --offline /out/api && \
     pnpm --filter @shop/migrate deploy --prod --offline /out/migrate && \
