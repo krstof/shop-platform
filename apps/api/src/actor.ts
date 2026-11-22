@@ -71,10 +71,14 @@ export function sessionResolver(deps: SessionResolverDependencies): ActorResolve
       scopes: new Set(),
       passwordConfirmedAt: session.passwordConfirmedAt,
     };
+    // Eine kaputte oder doppelte Shop-Id ist keine Anfrage an die Platform-API: Dann gilt die
+    // Anfrage als angemeldet ohne Rechte, und niemand fragt dafür die Datenbank.
+    if (headers[SHOP_ID_HEADER] !== undefined && requestedShopId(headers) === undefined) return signedIn;
     const shopId = requestedShopId(headers);
     if (shopId === undefined) {
-      // Platform-API: nur Betreiber, nur mit bestätigtem zweitem Faktor.
-      if (session.secondFactor !== "verified") return signedIn;
+      // Platform-API: nur Betreiberkonten. Der zweite Faktor ist seit dem 22.11.2026 nicht mehr
+      // nötig (Entscheidung Kristof: privates Testsystem). Die Endpunkte dafür gibt es weiter, wer
+      // mag, schaltet ihn ein; dann fragt das Anmelden wie bisher nach dem Code.
       const operator = await deps.operators.findOperator(session.userId);
       return operator === undefined
         ? signedIn

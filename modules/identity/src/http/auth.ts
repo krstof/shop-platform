@@ -84,8 +84,9 @@ export const currentSessionSchema = z
     platformOperator: z
       .boolean()
       .describe(
-        "true: aktives Betreiberkonto. Die Platform-API gilt erst mit secondFactor verified; ohne " +
-          "zweiten Faktor zuerst Zwei-Faktor einrichten. Vor dem zweiten Faktor immer false.",
+        "true: aktives Betreiberkonto, die Platform-API steht offen. Ein zweiter Faktor ist dafür " +
+          "nicht nötig (seit 22.11.2026); wer ihn eingerichtet hat, bestätigt ihn beim Anmelden. " +
+          "Solange der Code einer Anmeldung fehlt, immer false.",
       ),
   })
   .meta({ id: "CurrentSession" });

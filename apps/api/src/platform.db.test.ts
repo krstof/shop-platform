@@ -172,14 +172,14 @@ describe.skipIf(adminUrl === undefined)("Betreiber mit Zwei-Faktor und Platform-
     expect(r.rows[0]).toEqual({ uid: true, other: false, write: false });
   });
 
-  it("ohne Anmeldung 401, ohne Zwei-Faktor 403", async () => {
+  it("ohne Anmeldung 401, angemeldet ohne Zwei-Faktor 200 (Kristof 22.11.2026)", async () => {
     expect((await get("/platform/v1/operator", "")).statusCode).toBe(401);
     const { body, cookie } = await signIn();
     expect(body.secondFactor).toBe("not_enrolled");
-    // M8: Die Oberfläche erkennt das Betreiberkonto und bietet das Einrichten an.
     expect(body.platformOperator).toBe(true);
+    // Der zweite Faktor ist keine Bedingung mehr: Das Betreiberkonto kommt gleich hinein.
     const r = await get("/platform/v1/operator", cookie);
-    expect(r.statusCode).toBe(403);
+    expect(r.statusCode).toBe(200);
   });
 
   it("Einrichten: Passwort erneut, dann Code aus der App; danach 200 in der Platform-API", async () => {

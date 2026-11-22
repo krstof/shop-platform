@@ -318,5 +318,11 @@ Betreiberkonto der Testdaten ist jetzt `maletzke@gmail.com` mit einem eigenen, k
 (Prüfwert `SHOP_SEED_OPERATOR_PASSWORD_HASH` in `infra/testserver/test-login.env`, das Passwort selbst
 kennt nur Kristof). Die Inhaberkonten der Testshops behalten ihr bisheriges Testpasswort. Der Seed
 legt das Konto beim nächsten Testserver-Lauf an und trägt es als Inhaber der Plattform ein; das alte
-`betreiber@plattform.example` bleibt liegen. Zwei-Faktor richtet das neue Konto beim ersten Anmelden
-neu ein.
+`betreiber@plattform.example` bleibt liegen.
+
+**Kein zweiter Faktor mehr (Kristof 22.11.2026):** Die Plattform-Verwaltung verlangt keine
+Authenticator-App mehr. Geändert sind nur zwei Stellen: `apps/api/src/actor.ts` prüft `secondFactor`
+nicht mehr, und `apps/backoffice/src/pages/platform.tsx` zeigt keine Einrichtungskarte mehr. Die
+Endpunkte `/auth/v1/two-factor/*` samt Ersatzcodes und Begrenzung bleiben in der Auth-API: Wer den
+zweiten Faktor einschaltet, wird beim Anmelden weiter nach dem Code gefragt. Zurückdrehen heißt, in
+`actor.ts` eine Zeile wieder einzusetzen.

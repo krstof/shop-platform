@@ -154,17 +154,18 @@ describe("Betreiberkonto und Platform-API (E6 Teil 4, ADR-011)", () => {
     }
   });
 
-  it("Betreiber ohne eingerichteten zweiten Faktor: angemeldet, aber ohne Platform-Rechte", async () => {
+  it("Betreiber ohne zweiten Faktor: volle Platform-Rechte (Kristof 22.11.2026)", async () => {
+    // Der zweite Faktor ist keine Bedingung mehr; wer ihn eingerichtet hat, gibt beim Anmelden
+    // weiter seinen Code ein, aber die Platform-API fragt nicht mehr danach.
     const d = deps({ secondFactor: "not_enrolled", operatorRole: "owner" });
     const a = await sessionResolver(d)({ headers: { cookie: COOKIE } });
-    expect(a?.scopes.size).toBe(0);
-    // Ohne zweiten Faktor wird gar nicht erst nachgesehen.
-    expect(d.calls).toEqual([]);
+    expect([...(a?.scopes ?? [])].sort()).toEqual(["platform:read", "platform:write"]);
+    expect(d.calls).toEqual(["operator"]);
   });
 
-  it("bestätigter zweiter Faktor allein macht niemanden zum Betreiber", async () => {
-    const a = await platform({ secondFactor: "verified" });
-    expect(a?.scopes.size).toBe(0);
+  it("angemeldet allein macht niemanden zum Betreiber", async () => {
+    expect((await platform({ secondFactor: "verified" }))?.scopes.size).toBe(0);
+    expect((await platform({ secondFactor: "not_enrolled" }))?.scopes.size).toBe(0);
   });
 
   it("Betreiber mit Shop-Id bekommt nur die Rechte im Shop, nie platform:*", async () => {

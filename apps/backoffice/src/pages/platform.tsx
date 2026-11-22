@@ -1,6 +1,8 @@
 // Plattform-Verwaltung (M8): Shops auflisten, anlegen (lädt die Inhaberin ein), sperren und wieder
-// freischalten, darüber Kennzahlen aller Shops (Umsatz, Bestellungen, offene Aufgaben). Nur für Betreiberkonten mit bestätigtem zweitem Faktor; wer noch keinen hat, richtet
-// ihn hier ein. Nutzt nur die Platform-API und die Auth-API, nie eine Shop-Id.
+// freischalten, darüber Kennzahlen aller Shops (Umsatz, Bestellungen, offene Aufgaben). Nur für
+// Betreiberkonten. Seit dem 22.11.2026 ohne Pflicht zum zweiten Faktor (Entscheidung Kristof:
+// privates Testsystem); die Endpunkte dafür gibt es in der Auth-API weiter.
+// Nutzt nur die Platform-API und die Auth-API, nie eine Shop-Id.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -10,17 +12,14 @@ import {
   listAllPlatform,
   request,
   type CreatedPlatformShop,
-  type CurrentSession,
   type OperatorRole,
   type PlatformShop,
   type PlatformStats,
-  type TwoFactorSetup,
 } from "../lib/api.js";
 import { handleFromName } from "../lib/handle.js";
 import { formatEuro } from "../lib/money.js";
 import { dayLabel } from "./overview.js";
 import { Clock, Euro, PackageCheck, Store, TrendingUp } from "lucide-react";
-import { groupSecret, qrPath } from "../lib/qr.js";
 import { sessionKey, useSession } from "../lib/session.js";
 import { FullPageSpinner, SignOutButton } from "./layout.js";
 import { SlopifyLogo } from "../components/logo.js";
@@ -44,12 +43,6 @@ export function PlatformPage() {
     return (
       <PlatformFrame email={s.user.email}>
         <Alert>Dieses Konto ist kein Betreiberkonto. Die Plattform-Verwaltung ist nur für den Betrieb.</Alert>
-      </PlatformFrame>
-    );
-  if (s.secondFactor !== "verified")
-    return (
-      <PlatformFrame email={s.user.email}>
-        <TwoFactorSetupCard />
       </PlatformFrame>
     );
   return (
@@ -98,143 +91,6 @@ function PlatformFrame({
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
     </div>
-  );
-}
-
-// --- Zwei-Faktor einrichten ---
-
-function TwoFactorSetupCard() {
-  const queryClient = useQueryClient();
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [setup, setSetup] = useState<TwoFactorSetup>();
-  const [error, setError] = useState<string>();
-  const [busy, setBusy] = useState(false);
-
-  async function start(e: FormEvent) {
-    e.preventDefault();
-    setError(undefined);
-    setBusy(true);
-    try {
-      setSetup(
-        await request<TwoFactorSetup>("/auth/v1/two-factor/setup", { method: "POST", body: { password } }),
-      );
-      setPassword("");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Das hat nicht geklappt.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function enable(e: FormEvent) {
-    e.preventDefault();
-    setError(undefined);
-    setBusy(true);
-    try {
-      const s = await request<CurrentSession>("/auth/v1/two-factor/enable", {
-        method: "POST",
-        body: { code },
-      });
-      queryClient.setQueryData(sessionKey, s);
-    } catch (err) {
-      // 401: zu viele falsche Codes, die Sitzung ist beendet. Dann neu anmelden.
-      if (err instanceof ApiError && err.status === 401)
-        await queryClient.invalidateQueries({ queryKey: sessionKey });
-      else
-        setError(
-          err instanceof ApiError ? (err.field("/body/code") ?? err.message) : "Das hat nicht geklappt.",
-        );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (setup === undefined)
-    return (
-      <Card className="mx-auto max-w-md">
-        <h1 className="text-xl font-semibold">Zwei-Faktor einrichten</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Die Plattform-Verwaltung öffnet sich nur mit einem zweiten Schritt beim Anmelden: einem Code aus
-          einer Authenticator-App auf dem Handy (etwa Google Authenticator, Microsoft Authenticator oder
-          2FAS). Das ist einmalig und dauert eine Minute.
-        </p>
-        <form onSubmit={start} className="mt-6 space-y-4" noValidate>
-          {error && <Alert>{error}</Alert>}
-          <Field label="Zur Sicherheit: dein Passwort">
-            {(p) => (
-              <Input
-                {...p}
-                type="password"
-                autoComplete="current-password"
-                required
-                autoFocus
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            )}
-          </Field>
-          <Button type="submit" busy={busy} className="w-full">
-            Weiter
-          </Button>
-        </form>
-      </Card>
-    );
-
-  const qr = qrPath(setup.otpauthUri);
-  return (
-    <Card className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold">Zwei-Faktor einrichten</h1>
-      <div className="mt-6 grid gap-8 sm:grid-cols-2">
-        <div>
-          <h2 className="text-sm font-semibold">1. Mit der App scannen</h2>
-          <svg
-            viewBox={`0 0 ${qr.size} ${qr.size}`}
-            className="mt-3 size-52 rounded-lg ring-1 ring-gray-200"
-            role="img"
-            aria-label="QR-Code für die Authenticator-App"
-            shapeRendering="crispEdges"
-          >
-            <rect width={qr.size} height={qr.size} fill="#fff" />
-            <path d={qr.path} fill="#000" />
-          </svg>
-          <p className="mt-3 text-xs text-gray-500">
-            Scannen klappt nicht? Diesen Schlüssel in der App eintippen:
-          </p>
-          <p className="mt-1 font-mono text-sm break-all select-all">{groupSecret(setup.secret)}</p>
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold">2. Ersatzcodes aufheben</h2>
-          <p className="mt-1 text-xs text-gray-500">
-            Falls das Handy weg ist: Jeder Code gilt einmal statt des App-Codes. Sie werden nur jetzt gezeigt.
-          </p>
-          <ul className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-gray-50 p-3 font-mono text-sm select-all">
-            {setup.backupCodes.map((c) => (
-              <li key={c}>{c}</li>
-            ))}
-          </ul>
-          <form onSubmit={enable} className="mt-6 space-y-4" noValidate>
-            <h2 className="text-sm font-semibold">3. Code aus der App eingeben</h2>
-            {error && <Alert>{error}</Alert>}
-            <Field label="6-stelliger Code">
-              {(p) => (
-                <Input
-                  {...p}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.trim())}
-                />
-              )}
-            </Field>
-            <Button type="submit" busy={busy} className="w-full">
-              Einschalten
-            </Button>
-          </form>
-        </div>
-      </div>
-    </Card>
   );
 }
 
