@@ -225,6 +225,33 @@ main:focus-visible {
 .fokus-y-100 {
   --fokus-y: 100%;
 }
+/* Zweites Produktbild beim Überfahren (22.11.2026). Nur dort, wo es ein Zeigegerät gibt; wer mit
+   dem Finger bedient, sieht immer das erste Bild. Wer schnelle Bewegungen ausgeschaltet hat
+   (prefers-reduced-motion), bekommt den Wechsel ohne Überblendung. */
+.bild-paar {
+  position: relative;
+  display: block;
+}
+.bild-zweit {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .bild-zweit {
+    transition: opacity 0.25s ease;
+  }
+  .karte-link:hover .bild-zweit,
+  .karte-link:focus-visible .bild-zweit {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bild-zweit {
+    transition: none;
+  }
+}
+
 /* Vertrauenszeile (22.11.2026): höchstens drei Punkte nebeneinander, am Handy untereinander. */
 .vertrauen {
   display: grid;

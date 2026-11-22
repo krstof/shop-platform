@@ -9,7 +9,11 @@ interface Props {
 }
 const { produkt: p, shop } = Astro.props;
 const bild = p.images[0];
+// Zweites Bild beim Überfahren (22.11.2026, docs/08 Punkt 5): zeigt Rückseite, Detail oder das
+// Produkt am Menschen, ohne dass jemand klicken muss. Nur am Computer, am Handy gibt es kein
+// Überfahren; geladen wird es erst, wenn die Karte sichtbar ist.
 const statt = p.compareAtPrice ?? null;
+const zweites = p.images[1];
 const neu = statt === null && istNeu(p.publishedAt);
 ---
 
@@ -18,15 +22,28 @@ const neu = statt === null && istNeu(p.publishedAt);
     {bild === undefined ? (
       <span class="bild bild-leer" aria-hidden="true" />
     ) : (
-      <img
-        class="bild"
-        src={bild.thumbnailUrl}
-        alt=""
-        width="400"
-        height="400"
-        loading="lazy"
-        decoding="async"
-      />
+      <span class="bild-paar">
+        <img
+          class="bild"
+          src={bild.thumbnailUrl}
+          alt=""
+          width="400"
+          height="400"
+          loading="lazy"
+          decoding="async"
+        />
+        {zweites !== undefined && (
+          <img
+            class="bild bild-zweit"
+            src={zweites.thumbnailUrl}
+            alt=""
+            width="400"
+            height="400"
+            loading="lazy"
+            decoding="async"
+          />
+        )}
+      </span>
     )}
     {statt !== null && <span class="angebot-marke">Angebot</span>}
     {neu && <span class="angebot-marke neu-marke">Neu</span>}

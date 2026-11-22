@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 22.11.2026 (Welle A der Anbindungen; Bühne, Kopfzeile, Vertrauenszeile)
+Stand: 22.11.2026 (Welle A der Anbindungen; Bühne, Kopfzeile, Vertrauenszeile, Produktkarte)
 
 ## Erledigt
 
@@ -119,6 +119,8 @@ Stand: 22.11.2026 (Welle A der Anbindungen; Bühne, Kopfzeile, Vertrauenszeile)
 - **Kopfzeile einstellbar (22.11.2026, aus Punkt 4 der Wunschliste):** Im Editor gibt es den neuen Bereich „Kopfzeile". Die Suche steht wahlweise als **offenes Feld**, als **Lupe**, die das Feld beim Klick aufklappt, oder gar nicht im Kopf. Dazu der Schalter, ob die Kopfzeile beim Scrollen oben stehen bleibt. Die Lupe klappt ohne JavaScript auf (`<details>`), passend dazu, dass der Shop ohne Skripte auskommt. Geprüft: neue Tests für das Lesen der Einstellung, `pnpm check` komplett, im Browser umgestellt, veröffentlicht und im Shop ausprobiert (Lupe auf, Suche abgeschickt).
 
 - **Vertrauenszeile als Baustein (22.11.2026, Punkt 9 aus `docs/08`):** Neuer Baustein „Vertrauen" mit höchstens drei Punkten: Symbol, kurze Überschrift, ein Satz. Zur Auswahl stehen sechs Symbole (Versand, Rückgabe, Kontakt, Zahlung, Qualität, Nachhaltig); der Shop zeichnet sie selbst, es wird nichts von außen geladen. Die Texte schreibt der Händler direkt in der Vorschau. Mehr als drei Punkte lässt der Baustein nicht zu, weil eine Wand aus Siegeln weniger überzeugt als drei klare Zusagen. Geprüft: neue Tests im Schema, `pnpm check` komplett, im Browser eingefügt, veröffentlicht und im Shop angesehen.
+
+- **Zweites Produktbild beim Überfahren (22.11.2026, Punkt 5 aus `docs/08`):** Hat ein Produkt mehr als ein Bild, blendet die Karte beim Überfahren das zweite ein — Rückseite, Detail oder das Produkt in Benutzung, ohne dass jemand klicken muss. Nur dort, wo es eine Maus gibt; wer mit dem Finger bedient, sieht immer das erste Bild, und wer schnelle Bewegungen abgeschaltet hat, bekommt den Wechsel ohne Überblendung. Ohne zweites Bild ändert sich nichts.
 
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
