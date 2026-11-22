@@ -205,7 +205,8 @@ garage bucket website --allow "$(envget SHOP_S3_BUCKET_PUBLIC)"
 log "Testshops und Testdaten (Inhaberkonten mit dem Testpasswort aus test-login.env)"
 # shellcheck source=/dev/null
 . "$APP_DIR/src/infra/testserver/test-login.env"
-"${COMPOSE[@]}" exec -T -e SHOP_SEED_PASSWORD_HASH="$SHOP_SEED_PASSWORD_HASH" api node dist/seed.js
+"${COMPOSE[@]}" exec -T -e SHOP_SEED_PASSWORD_HASH="$SHOP_SEED_PASSWORD_HASH" \
+  -e SHOP_SEED_OPERATOR_PASSWORD_HASH="$SHOP_SEED_OPERATOR_PASSWORD_HASH" api node dist/seed.js
 
 log "KI-Assistent: Weg nach außen prüfen (ohne Schlüssel, kostet nichts; 401 heißt: Anthropic erreicht)"
 gw_status="$("${COMPOSE[@]}" exec -T api node -e '

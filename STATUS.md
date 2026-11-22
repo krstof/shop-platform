@@ -288,4 +288,16 @@ Paket P1 aus `docs/10_Wunschliste.md`: die sofort sichtbaren Kleinigkeiten und d
 
 ## Offene Entscheidungen
 
-Siehe `FRAGEN.md`, dazu die drei Fragen aus dem Chat vom 22.11.2026 (eigenes CSS, Übersetzungsdienst, Bildmodell fürs Logo) in `docs/10_Wunschliste.md`.
+Siehe `FRAGEN.md`. Die Fragen aus dem Chat vom 22.11.2026 sind beantwortet und stehen in
+`docs/10_Wunschliste.md` unter „Entschieden am 22.11.2026": kein eigenes CSS und kein eigenes HTML,
+JavaScript nur als kleines eigenes Skript, Übersetzen über das eingebundene KI-Modell statt DeepL,
+Logo hochladen plus ein vom Modell gezeichnetes SVG.
+
+## Anmeldung der Plattform-Verwaltung (22.11.2026)
+
+Betreiberkonto der Testdaten ist jetzt `maletzke@gmail.com` mit einem eigenen, kurzen Testpasswort
+(Prüfwert `SHOP_SEED_OPERATOR_PASSWORD_HASH` in `infra/testserver/test-login.env`, das Passwort selbst
+kennt nur Kristof). Die Inhaberkonten der Testshops behalten ihr bisheriges Testpasswort. Der Seed
+legt das Konto beim nächsten Testserver-Lauf an und trägt es als Inhaber der Plattform ein; das alte
+`betreiber@plattform.example` bleibt liegen. Zwei-Faktor richtet das neue Konto beim ersten Anmelden
+neu ein.

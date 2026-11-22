@@ -27,7 +27,7 @@ const SEED_SHOPS = [
 ] as const;
 
 /** Betreiberkonto für die Plattform-Verwaltung (M8). Zwei-Faktor richtet es beim ersten Anmelden ein. */
-const SEED_OPERATOR = { email: "betreiber@plattform.example", name: "Betrieb" } as const;
+const SEED_OPERATOR = { email: "maletzke@gmail.com", name: "Betrieb" } as const;
 
 async function main(): Promise<void> {
   const config = loadApiConfig();
@@ -118,16 +118,23 @@ async function main(): Promise<void> {
       operatorId = existingUser.userId;
     }
     await addOperatorForTestData(platformDatabase, { userId: operatorId, role: "owner" });
-    await setFixed(SEED_OPERATOR.email);
+    // Eigenes Passwort für die Plattform-Verwaltung (Kristof 22.11.2026), unabhängig von den
+    // Inhaberkonten: Prüfwert aus SHOP_SEED_OPERATOR_PASSWORD_HASH (infra/testserver/test-login.env).
+    const operatorHash = process.env["SHOP_SEED_OPERATOR_PASSWORD_HASH"];
+    if (operatorHash !== undefined)
+      await identity.setPasswordForTestData({ email: SEED_OPERATOR.email, passwordHash: operatorHash });
+    else await setFixed(SEED_OPERATOR.email);
     const showOperator =
       operatorPassword !== undefined && fixedPassword === undefined && fixedHash === undefined;
     console.log(
       `Plattform-Verwaltung: Betreiberkonto ${SEED_OPERATOR.email}` +
-        (showOperator
-          ? `, Passwort ${operatorPassword}`
-          : fixedPassword !== undefined || fixedHash !== undefined
-            ? `, ${fixedNote}`
-            : ", gibt es schon") +
+        (operatorHash !== undefined
+          ? ", eigenes Testpasswort der Plattform-Verwaltung"
+          : showOperator
+            ? `, Passwort ${operatorPassword}`
+            : fixedPassword !== undefined || fixedHash !== undefined
+              ? `, ${fixedNote}`
+              : ", gibt es schon") +
         ". Zwei-Faktor wird beim ersten Öffnen eingerichtet.",
     );
     // Produkte (M2): nur in Shops, die noch keine haben.
