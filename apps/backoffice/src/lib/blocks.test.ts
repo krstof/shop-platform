@@ -15,6 +15,7 @@ import {
   insertInto,
   locate,
   MAX_GROUP_BLOCKS,
+  MAX_LOGOS,
   moveTo,
   removeBlock,
   updateBlock,
@@ -284,5 +285,41 @@ describe("Eigene Seiten", () => {
     expect(dropTarget(blocks, "k1", "group")).toEqual({ index: 2 });
     // Unbekanntes Ziel: ans Ende der Seite.
     expect(dropTarget(blocks, "gibtsnicht", "text")).toEqual({ index: 2 });
+  });
+
+  it("legt Logo-Leiste und „So geht's“ mit brauchbaren Anfangswerten an", () => {
+    const logos = newBlock("logos", []);
+    expect(logos).toMatchObject({ type: "logos", heading: "", imageIds: [] });
+    expect(blockSummary(logos)).toBe("Noch keine Logos");
+    expect(canAddTo([logos], undefined)).toBe(true);
+
+    const steps = newBlock("steps", []);
+    expect(steps).toMatchObject({ type: "steps", heading: "So geht's" });
+    expect(steps.type === "steps" ? steps.items.length : 0).toBe(3);
+    expect(blockSummary(steps)).toBe("Aussuchen · Bestellen · Genießen");
+    // Beide sind breite Abschnitte und gehören nicht in eine Gruppe; gezogen landen sie daneben.
+    expect(fitsInGroup("logos")).toBe(false);
+    expect(fitsInGroup("steps")).toBe(false);
+    expect(fitsInGroup("text")).toBe(true);
+  });
+
+  it("putzt Logo-Leiste und Schritte und zählt die Logos als Bilder", () => {
+    const logos: Block = { id: "l", type: "logos", heading: "  Partner  ", imageIds: [IMG] };
+    const steps: Block = {
+      id: "s",
+      type: "steps",
+      heading: "  So geht's  ",
+      items: [
+        { title: "  Aussuchen  ", text: "  Ein Satz  " },
+        { title: "", text: "" },
+      ],
+    };
+    const [l, st] = cleanBlocks([logos, steps]);
+    expect(l).toMatchObject({ heading: "Partner" });
+    expect(st).toMatchObject({ heading: "So geht's" });
+    // Der leere Schritt fällt weg, wie eine leere Frage im Fragen-Baustein.
+    expect(st?.type === "steps" ? st.items : []).toEqual([{ title: "Aussuchen", text: "Ein Satz" }]);
+    expect(blockImages([logos])).toEqual([IMG]);
+    expect(MAX_LOGOS).toBe(8);
   });
 });

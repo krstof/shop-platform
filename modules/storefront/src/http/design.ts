@@ -298,7 +298,7 @@ const homeInput = z
         description:
           "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new sowie text, textImage, " +
           "image, video (YouTube/Vimeo), map (Adresse), spacer, button, quote, divider, faq, gallery, " +
-          "bestseller, trust und group. Eine `group` enthält in `blocks` bis zu " +
+          "bestseller, trust, logos, steps und group. Eine `group` enthält in `blocks` bis zu " +
           "8 weitere Bausteine (keine Shop-Bereiche, keine Gruppe) und hat `columns` (1 bis 3), " +
           "`background` und `padding`. Fehlt das Feld, bleiben die Bausteine wie sie sind.",
       }),
@@ -521,6 +521,22 @@ const storeLaterInnerBlocks = [
 
 const storeLaterBlocks = [...storeLaterInnerBlocks, storeBestsellerBlock] as const;
 
+/** Neuere Arten stehen am Ende, damit die Bruchprüfung keine Art als entfernt meldet. */
+const storeNewerBlocks = [
+  z.object({
+    id: z.string(),
+    type: z.literal("logos"),
+    heading: z.string(),
+    images: z.array(storeImageSchema).meta({ description: "Logos in einer Reihe, gleich hoch." }),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("steps"),
+    heading: z.string(),
+    items: z.array(z.object({ title: z.string(), text: z.string() })),
+  }),
+] as const;
+
 /** Baustein in einer Gruppe, fertig zum Anzeigen (alles außer Shop-Bereichen und Gruppen). */
 const storeInnerBlockSchema = z.discriminatedUnion("type", [...storeFirstBlocks, ...storeLaterInnerBlocks]);
 
@@ -546,6 +562,7 @@ const storeBlockSchema = z.discriminatedUnion("type", [
   ...storeFirstBlocks,
   ...storeLaterBlocks,
   storeGroupSchema,
+  ...storeNewerBlocks,
 ]);
 
 /** Antwortfeld `blocks`: nur die Arten bis 13.11.2026 (Vertrag unverändert). */
@@ -616,6 +633,9 @@ const storePageSchema = z
     content: z.array(storeContentSchema),
   })
   .meta({ id: "StorePage", description: "Eigene Inhaltsseite, fertig zum Anzeigen." });
+
+/** Bausteine, die mehrere Bilder tragen; ihr Feld heißt `imageIds` statt `imageId`. */
+const MEHRERE_BILDER: ReadonlySet<string> = new Set(["gallery", "logos"]);
 
 /** Kleines gültiges PNG (32 × 32 Pixel) als Beispiel für Dokumentation und Tests. */
 const EXAMPLE_PNG =
@@ -720,6 +740,18 @@ function storeBlock(
               blocks: kinder,
             },
           ];
+    }
+    case "logos": {
+      const images = b.imageIds.flatMap((i) => {
+        const x = image(i);
+        return x === null ? [] : [x];
+      });
+      return images.length === 0 ? [] : [{ id: b.id, type: b.type, heading: b.heading, images }];
+    }
+    case "steps": {
+      // Schritte ohne Überschrift lässt der Shop weg; bleibt keiner übrig, fällt der Baustein weg.
+      const items = b.items.filter((i) => i.title.trim() !== "");
+      return items.length === 0 ? [] : [{ id: b.id, type: b.type, heading: b.heading, items }];
     }
     case "trust": {
       // Punkte ohne Überschrift lässt der Shop weg; bleibt keiner übrig, fällt die Zeile ganz weg.
@@ -921,7 +953,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           ...(home.blocks ?? []).flatMap((b, i) =>
             blockImages([b]).map((id) => ({
               id,
-              path: `/home/blocks/${i}/${b.type === "gallery" ? "imageIds" : "imageId"}`,
+              path: `/home/blocks/${i}/${MEHRERE_BILDER.has(b.type) ? "imageIds" : "imageId"}`,
               detail: "Ein Bild in einem Baustein gibt es nicht. Bitte neu hochladen.",
             })),
           ),
@@ -929,7 +961,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
             withSections(p.blocks, p.sections).flatMap((b, i) =>
               blockImages([b]).map((id) => ({
                 id,
-                path: `/pages/${pi}/blocks/${i}/${b.type === "gallery" ? "imageIds" : "imageId"}`,
+                path: `/pages/${pi}/blocks/${i}/${MEHRERE_BILDER.has(b.type) ? "imageIds" : "imageId"}`,
                 detail: "Ein Bild auf einer Seite gibt es nicht. Bitte neu hochladen.",
               })),
             ),

@@ -3208,7 +3208,9 @@
               "gallery",
               "bestseller",
               "trust",
-              "group"
+              "group",
+              "logos",
+              "steps"
             ]
           }
         },

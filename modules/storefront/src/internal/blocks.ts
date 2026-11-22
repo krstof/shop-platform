@@ -25,6 +25,8 @@ export const BLOCK_TYPES = [
   "bestseller",
   "trust",
   "group",
+  "logos",
+  "steps",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -49,6 +51,12 @@ export const MAX_TRUST_TEXT = 120;
  *  Nur eine Ebene: In einer Gruppe steckt keine weitere Gruppe und kein Shop-Bereich, damit der
  *  Editor übersichtlich bleibt und die Mandantentrennung und Bildverwaltung einfach bleiben. */
 export const MAX_GROUP_BLOCKS = 8;
+/** Logo-Leiste (22.11.2026): kleine Logos nebeneinander, etwa Zahlungsarten, Partner oder Presse. */
+export const MAX_LOGOS = 8;
+/** „So geht's" (22.11.2026): höchstens vier Schritte, sonst liest sie niemand mehr. */
+export const MAX_STEPS = 4;
+export const MAX_STEP_TITLE = 60;
+export const MAX_STEP_TEXT = 160;
 export const GROUP_COLUMNS = [1, 2, 3] as const;
 export const GROUP_BACKGROUNDS = ["keine", "flaeche", "akzent", "dunkel"] as const;
 export const GROUP_PADDINGS = ["s", "m", "l"] as const;
@@ -252,7 +260,38 @@ const laterInnerBlocks = [
 
 const laterBlocks = [...laterInnerBlocks, bestsellerBlock] as const;
 
-/** Baustein, der in eine Gruppe darf: alles außer Shop-Bereichen und Gruppen selbst. */
+/**
+ * Neue Arten kommen ans Ende dieser Liste, nie in die Mitte der Aufzählungen unten. Die
+ * Bruchprüfung der API (oasdiff) vergleicht die Teilschemata eines `oneOf` nach ihrer Stelle:
+ * Wer eine Art dazwischenschiebt, lässt alle folgenden ihre Stelle wechseln, und das meldet sie
+ * als entfernte Art.
+ */
+const newerBlocks = [
+  /** Logo-Leiste: Logos in einer Reihe, gleich hoch. Ohne Bilder zeigt der Shop nichts. */
+  z.strictObject({
+    id,
+    type: z.literal("logos"),
+    heading: line(MAX_BLOCK_HEADING),
+    imageIds: z.array(z.uuid()).max(MAX_LOGOS),
+  }),
+  /** „So geht's“: nummerierte Schritte mit Überschrift und einem Satz. */
+  z.strictObject({
+    id,
+    type: z.literal("steps"),
+    heading: line(MAX_BLOCK_HEADING),
+    items: z.array(z.strictObject({ title: line(MAX_STEP_TITLE), text: line(MAX_STEP_TEXT) })).max(MAX_STEPS),
+  }),
+] as const;
+
+/**
+ * Baustein, der in eine Gruppe darf: alles außer Shop-Bereichen und Gruppen selbst.
+ *
+ * Die Logo-Leiste und „So geht's“ gehören nicht hinein. Sie sind breite, eigenständige Abschnitte
+ * (eine Reihe Logos, drei bis vier Schritte nebeneinander) und wären in einer Spalte gequetscht.
+ * Dazu kommt: Eine neue Art in dieser Liste meldet die Bruchprüfung der API als entfernte Art,
+ * weil sie die Teile eines `oneOf` nach ihrem Inhalt vergleicht. Soll eine Gruppe später mehr
+ * aufnehmen, braucht das einen eigenen Schritt (siehe „Nachzutragen“ in STATUS.md).
+ */
 export const innerBlockSchema = z.discriminatedUnion("type", [...firstBlocks, ...laterInnerBlocks]);
 export type InnerBlock = z.infer<typeof innerBlockSchema>;
 
@@ -272,6 +311,7 @@ export const blockSchema = z.discriminatedUnion("type", [
   ...firstBlocks,
   ...laterBlocks,
   groupSchema,
+  ...newerBlocks,
 ]);
 
 /** Ein Baustein, wie er gespeichert ist (Shop-Bereiche mit Inhalt). */
@@ -280,6 +320,7 @@ export const storedBlockSchema = z.discriminatedUnion("type", [
   ...firstBlocks,
   ...laterBlocks,
   groupSchema,
+  ...newerBlocks,
 ]);
 
 /** Nur die Arten, die es bis 13.11.2026 gab: für das alte Antwortfeld `blocks` (Vertrag bleibt gleich). */
@@ -368,7 +409,7 @@ export function blockImages(blocks: readonly Block[] | null): string[] {
   return allBlocks(blocks ?? []).flatMap((b) => {
     if ((b.type === "textImage" || b.type === "image" || b.type === "hero") && typeof b.imageId === "string")
       return [b.imageId];
-    if (b.type === "gallery") return [...b.imageIds];
+    if (b.type === "gallery" || b.type === "logos") return [...b.imageIds];
     return [];
   });
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_BLOCKS,
   MAX_GROUP_BLOCKS,
+  MAX_LOGOS,
+  MAX_STEPS,
   sectionsSchema,
   storedBlockSchema,
   withSections,
@@ -297,5 +299,50 @@ describe("Bausteine", () => {
       },
     ]);
     expect(bilder).toEqual([IMG, IMG]);
+  });
+
+  it("nimmt die Logo-Leiste und „So geht's“ an und hält sich an die Obergrenzen", () => {
+    const logos = { id: "l", type: "logos", heading: "Sicher bezahlen", imageIds: [IMG] };
+    expect(blocksSchema.safeParse([logos]).success).toBe(true);
+    // Ohne Logos ist der Baustein erlaubt; der Shop zeigt ihn dann einfach nicht.
+    expect(blocksSchema.safeParse([{ ...logos, imageIds: [] }]).success).toBe(true);
+    expect(
+      blocksSchema.safeParse([{ ...logos, imageIds: Array.from({ length: MAX_LOGOS + 1 }, () => IMG) }])
+        .success,
+    ).toBe(false);
+    // Die Bilder der Logo-Leiste zählen mit, sonst würden sie beim Aufräumen gelöscht.
+    expect(blockImages([{ id: "l", type: "logos", heading: "", imageIds: [IMG] }])).toEqual([IMG]);
+
+    const steps = {
+      id: "s",
+      type: "steps",
+      heading: "So geht's",
+      items: [
+        { title: "Aussuchen", text: "Stöbere durch die Sorten." },
+        { title: "Bestellen", text: "" },
+      ],
+    };
+    expect(blocksSchema.safeParse([steps]).success).toBe(true);
+    expect(
+      blocksSchema.safeParse([
+        { ...steps, items: Array.from({ length: MAX_STEPS + 1 }, () => ({ title: "a", text: "" })) },
+      ]).success,
+    ).toBe(false);
+    // Ein Schritt ist einzeilig: Ein Umbruch im Titel gehört nicht hinein.
+    expect(blocksSchema.safeParse([{ ...steps, items: [{ title: "a\nb", text: "" }] }]).success).toBe(false);
+    // Beide sind breite Abschnitte und gehören nicht in eine Gruppe.
+    const gruppe = (kind: unknown) => ({
+      id: "g",
+      type: "group",
+      columns: 2,
+      background: "keine",
+      padding: "s",
+      blocks: [kind],
+    });
+    expect(blocksSchema.safeParse([gruppe(logos)]).success).toBe(false);
+    expect(blocksSchema.safeParse([gruppe(steps)]).success).toBe(false);
+    expect(blocksSchema.safeParse([gruppe({ id: "k", type: "text", heading: "", text: "" })]).success).toBe(
+      true,
+    );
   });
 });

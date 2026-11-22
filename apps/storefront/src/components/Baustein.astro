@@ -172,6 +172,36 @@ const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
   </ul>
 )}
 
+{b.type === "logos" && b.images.length > 0 && (
+  <section class="baustein baustein-logos">
+    {b.heading !== "" && <h2>{b.heading}</h2>}
+    <ul class="logo-reihe">
+      {b.images.map((i) => (
+        <li>
+          <img src={i.url} alt="" width={i.width} height={i.height} loading="lazy" />
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+{b.type === "steps" && b.items.length > 0 && (
+  <section class="baustein baustein-schritte">
+    {b.heading !== "" && <h2>{b.heading}</h2>}
+    <ol class:list={["schritte", `schritte-${b.items.length}`]}>
+      {b.items.map((i, n) => (
+        <li>
+          <span class="schritt-zahl" aria-hidden="true">
+            {n + 1}
+          </span>
+          <b>{i.title}</b>
+          {i.text !== "" && <span class="klein">{i.text}</span>}
+        </li>
+      ))}
+    </ol>
+  </section>
+)}
+
 {b.type === "faq" && (
   <section class="baustein baustein-faq">
     {b.heading !== "" && <h2>{b.heading}</h2>}

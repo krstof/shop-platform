@@ -109,6 +109,20 @@ export type StoreBlock =
     }
   | {
       readonly id: string;
+      readonly type: "logos";
+      readonly heading: string;
+      /** Logos in einer Reihe, gleich hoch. */
+      readonly images: readonly StoreBlockImage[];
+    }
+  | {
+      readonly id: string;
+      readonly type: "steps";
+      readonly heading: string;
+      /** Nummerierte Schritte, höchstens vier. */
+      readonly items: readonly { readonly title: string; readonly text: string }[];
+    }
+  | {
+      readonly id: string;
       readonly type: "group";
       /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
       readonly columns: number;

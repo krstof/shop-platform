@@ -51,6 +51,9 @@ export function StockPhotoButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        // Der Knopf steht auch in der Vorschau des Editors, wo die Schrift des Shops gilt. Er ist
+        // aber ein Knopf des Backoffice und behält deshalb dessen Schrift.
+        style={{ fontFamily: "var(--font-sans)" }}
         className={
           compact
             ? "inline-flex items-center gap-1.5 rounded-md bg-white/95 px-2.5 py-1.5 text-sm font-medium text-gray-800 shadow ring-1 ring-gray-200 hover:bg-white"

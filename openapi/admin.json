@@ -5638,6 +5638,85 @@
                                   "blocks"
                                 ],
                                 "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "logos"
+                                  },
+                                  "heading": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "imageIds": {
+                                    "maxItems": 8,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "heading",
+                                  "imageIds"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "steps"
+                                  },
+                                  "heading": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "items": {
+                                    "maxItems": 4,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 160
+                                        }
+                                      },
+                                      "required": [
+                                        "title",
+                                        "text"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "heading",
+                                  "items"
+                                ],
+                                "additionalProperties": false
                               }
                             ]
                           }
@@ -14132,7 +14211,9 @@
               "gallery",
               "bestseller",
               "trust",
-              "group"
+              "group",
+              "logos",
+              "steps"
             ]
           }
         },
@@ -14646,7 +14727,7 @@
             "type": "boolean"
           },
           "blocks": {
-            "description": "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new sowie text, textImage, image, video (YouTube/Vimeo), map (Adresse), spacer, button, quote, divider, faq, gallery, bestseller, trust und group. Eine `group` enthält in `blocks` bis zu 8 weitere Bausteine (keine Shop-Bereiche, keine Gruppe) und hat `columns` (1 bis 3), `background` und `padding`. Fehlt das Feld, bleiben die Bausteine wie sie sind.",
+            "description": "Bausteine der Startseite in Reihenfolge: hero, featured, categories, new sowie text, textImage, image, video (YouTube/Vimeo), map (Adresse), spacer, button, quote, divider, faq, gallery, bestseller, trust, logos, steps und group. Eine `group` enthält in `blocks` bis zu 8 weitere Bausteine (keine Shop-Bereiche, keine Gruppe) und hat `columns` (1 bis 3), `background` und `padding`. Fehlt das Feld, bleiben die Bausteine wie sie sind.",
             "anyOf": [
               {
                 "maxItems": 30,
@@ -15548,6 +15629,85 @@
                         "background",
                         "padding",
                         "blocks"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "logos"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "imageIds": {
+                          "maxItems": 8,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "imageIds"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "steps"
+                        },
+                        "heading": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "items": {
+                          "maxItems": 4,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "maxLength": 60
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 160
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "heading",
+                        "items"
                       ],
                       "additionalProperties": false
                     }

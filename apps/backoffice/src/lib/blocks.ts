@@ -18,12 +18,16 @@ export type FreeType =
   | "gallery"
   | "bestseller"
   | "trust"
+  | "logos"
+  | "steps"
   | "group";
 export type BlockType = FixedType | FreeType;
 
 /** Baustein, der in eine Gruppe darf: alles außer Shop-Bereichen und Gruppen selbst. „bestseller“
- *  gehört auch nicht hinein, weil der Shop ihn als eigenen Bereich mit Produkten zeichnet. */
-export type InnerType = Exclude<FreeType, "group" | "bestseller">;
+ *  gehört auch nicht hinein, weil der Shop ihn als eigenen Bereich mit Produkten zeichnet; die
+ *  Logo-Leiste und „So geht's“ sind breite, eigenständige Abschnitte und wären in einer Spalte
+ *  gequetscht (gleiche Liste wie in der API). */
+export type InnerType = Exclude<FreeType, "group" | "bestseller" | "logos" | "steps">;
 
 /** Inhalt eines Shop-Bereichs. Fehlende Felder: Inhalt der Startseite bzw. Standard. */
 export interface SectionContent {
@@ -90,6 +94,18 @@ export type Block =
     }
   | {
       readonly id: string;
+      readonly type: "logos";
+      readonly heading: string;
+      readonly imageIds: readonly string[];
+    }
+  | {
+      readonly id: string;
+      readonly type: "steps";
+      readonly heading: string;
+      readonly items: readonly { readonly title: string; readonly text: string }[];
+    }
+  | {
+      readonly id: string;
       readonly type: "group";
       /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
       readonly columns: number;
@@ -119,6 +135,11 @@ export const MAX_TRUST_TEXT = 120;
 /** Gruppen-Baustein (22.11.2026, Vorbild Shopify Horizon): Bausteine in einem Baustein. Nur eine Ebene,
  *  in einer Gruppe steckt also keine weitere Gruppe und kein Shop-Bereich. */
 export const MAX_GROUP_BLOCKS = 8;
+/** Logo-Leiste und „So geht's" (22.11.2026), gleiche Grenzen wie in der API. */
+export const MAX_LOGOS = 8;
+export const MAX_STEPS = 4;
+export const MAX_STEP_TITLE = 60;
+export const MAX_STEP_TEXT = 160;
 export const GROUP_COLUMNS = [1, 2, 3] as const;
 export const GROUP_BACKGROUNDS = [
   { id: "keine", name: "Keiner" },
@@ -171,12 +192,17 @@ export const BLOCK_INFO: Record<BlockType, { readonly name: string; readonly hin
   categories: { name: "Kategorien", hint: "Kacheln" },
   trust: { name: "Vertrauen", hint: "Versand, Rückgabe, Kontakt" },
   group: { name: "Gruppe", hint: "Bausteine in Spalten" },
+  logos: { name: "Logos", hint: "Zahlungsarten, Partner" },
+  steps: { name: "So geht's", hint: "Schritte mit Nummer" },
 };
 
 /** Gruppen in der Leiste „Bausteine“. */
 export const PALETTE: readonly { readonly title: string; readonly types: readonly BlockType[] }[] = [
-  { title: "Inhalte", types: ["text", "textImage", "image", "gallery", "video", "map"] },
-  { title: "Gestaltung", types: ["group", "button", "quote", "faq", "trust", "divider", "spacer"] },
+  { title: "Inhalte", types: ["text", "textImage", "image", "gallery", "logos", "video", "map"] },
+  {
+    title: "Gestaltung",
+    types: ["group", "button", "quote", "faq", "trust", "steps", "divider", "spacer"],
+  },
   { title: "Shop-Bereiche", types: ["hero", "featured", "new", "bestseller", "categories"] },
 ];
 
@@ -237,6 +263,19 @@ export function newBlock(type: BlockType, existing: readonly Block[], random?: (
           { icon: "kontakt", title: "Wir sind da", text: "Montags bis freitags von 9 bis 18 Uhr" },
         ],
       };
+    case "logos":
+      return { id, type, heading: "", imageIds: [] };
+    case "steps":
+      return {
+        id,
+        type,
+        heading: "So geht's",
+        items: [
+          { title: "Aussuchen", text: "" },
+          { title: "Bestellen", text: "" },
+          { title: "Genießen", text: "" },
+        ],
+      };
     case "group":
       // Mit Hintergrund und zwei Spalten sieht man sofort, was eine Gruppe ist.
       return { id, type, columns: 2, background: "flaeche", padding: "m", blocks: [] };
@@ -280,7 +319,9 @@ export function fitsInGroup(type: BlockType): type is InnerType {
     type !== "featured" &&
     type !== "new" &&
     type !== "bestseller" &&
-    type !== "categories"
+    type !== "categories" &&
+    type !== "logos" &&
+    type !== "steps"
   );
 }
 
@@ -571,6 +612,12 @@ export function blockSummary(b: Block): string {
       return b.items.length === 0
         ? "Noch keine Punkte"
         : b.items.map((i) => i.title.trim() || "…").join(", ");
+    case "logos":
+      return b.imageIds.length === 0 ? "Noch keine Logos" : `${b.imageIds.length} Logos`;
+    case "steps":
+      return b.items.length === 0
+        ? "Noch keine Schritte"
+        : b.items.map((i) => i.title.trim() || "…").join(" · ");
     case "group":
       return b.blocks.length === 0
         ? "Noch leer"
@@ -596,6 +643,16 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
       case "image":
       case "gallery":
         return { ...b, caption: b.caption.trim() };
+      case "logos":
+        return { ...b, heading: b.heading.trim() };
+      case "steps":
+        return {
+          ...b,
+          heading: b.heading.trim(),
+          items: b.items
+            .map((i) => ({ title: i.title.trim(), text: i.text.trim() }))
+            .filter((i) => i.title !== "" || i.text !== ""),
+        };
       case "video":
         return { ...b, url: b.url.trim() };
       case "map":
@@ -666,7 +723,7 @@ export function blockImages(blocks: readonly Block[]): string[] {
   return allBlocks(blocks).flatMap((b) => {
     if ((b.type === "textImage" || b.type === "image" || b.type === "hero") && typeof b.imageId === "string")
       return [b.imageId];
-    if (b.type === "gallery") return [...b.imageIds];
+    if (b.type === "gallery" || b.type === "logos") return [...b.imageIds];
     return [];
   });
 }

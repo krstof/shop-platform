@@ -21,8 +21,10 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import {
   Columns2,
+  CreditCard,
   Group as GroupIcon,
   Heart,
+  ListOrdered,
   CircleQuestionMark,
   Image as ImageIcon,
   Images,
@@ -85,6 +87,8 @@ export const BLOCK_ICONS: Record<BlockType, typeof Type> = {
   categories: LayoutGrid,
   trust: ShieldCheck,
   group: GroupIcon,
+  logos: CreditCard,
+  steps: ListOrdered,
 };
 
 export function BlockIcon({ type, className = "size-4" }: { type: BlockType; className?: string }) {

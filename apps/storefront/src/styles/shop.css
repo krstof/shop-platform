@@ -1319,6 +1319,111 @@ form.gutschein:has(.knopf-leise) {
   margin-top: 0.5rem;
   text-align: center;
 }
+/* Logo-Leiste (22.11.2026): Zahlungsarten, Partner oder Presse. Alle Logos gleich hoch, ruhig
+   gehalten, damit sie die Seite nicht übertönen. Beim Zeigen kommt die volle Farbe zurück. */
+.baustein-logos h2 {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--text-leise);
+  margin-bottom: 1.25rem;
+}
+.logo-reihe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem 2.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.logo-reihe img {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+  max-width: 9rem;
+  object-fit: contain;
+  filter: grayscale(1);
+  opacity: 0.7;
+  transition:
+    filter 0.18s ease-out,
+    opacity 0.18s ease-out;
+}
+.logo-reihe li:hover img {
+  filter: none;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-reihe img {
+    transition: none;
+  }
+}
+@media (min-width: 48rem) {
+  .logo-reihe img {
+    height: 2.75rem;
+  }
+}
+
+/* „So geht's" (22.11.2026): nummerierte Schritte nebeneinander, am Handy untereinander. */
+.baustein-schritte h2 {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+.schritte {
+  display: grid;
+  gap: 1.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: schritt;
+}
+@media (min-width: 48rem) {
+  .schritte-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .schritte-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .schritte-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.schritte li {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+.schritt-zahl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-bottom: 0.4rem;
+  border-radius: 999px;
+  background: var(--akzent);
+  color: #fff;
+  font-family: var(--schrift-titel);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.schritte b {
+  font-size: 1.05rem;
+}
+.schritte .klein {
+  color: var(--text-leise);
+}
+/* In einer Gruppe auf farbigem Grund erbt die Zahl die Schriftfarbe der Gruppe. */
+/* Auf farbigem Grund wäre die Hauptfarbe im Kreis unsichtbar: heller Kreis, dunkle Ziffer. */
+.gruppe-grund-akzent .schritt-zahl {
+  background: #fff;
+  color: var(--akzent-dunkel);
+}
+.gruppe-grund-dunkel .schritt-zahl {
+  background: #f4efe6;
+  color: #26221e;
+}
+
 /* Gruppen-Baustein (22.11.2026): ein Baustein, der andere Bausteine enthält. Spalten gibt es erst ab
    Tablet-Breite; am Handy steht alles untereinander, damit nichts gequetscht wird. */
 .baustein-gruppe {

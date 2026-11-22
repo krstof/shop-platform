@@ -38,6 +38,10 @@ import {
   GROUP_COLUMNS,
   GROUP_PADDINGS,
   MAX_GROUP_BLOCKS,
+  MAX_LOGOS,
+  MAX_STEPS,
+  MAX_STEP_TEXT,
+  MAX_STEP_TITLE,
   MAX_BLOCK_HEADING,
   MAX_BLOCK_TEXT,
   MAX_BUTTON_LABEL,
@@ -750,7 +754,12 @@ function BlockView({
             <button
               type="button"
               className="sp-klein"
-              style={{ display: "block", margin: "0.5rem auto 0", textDecoration: "underline" }}
+              style={{
+                display: "block",
+                margin: "0.5rem auto 0",
+                textDecoration: "underline",
+                fontFamily: "var(--font-sans)",
+              }}
               onClick={openSettings}
             >
               Wohin führt der Knopf? Ziel wählen
@@ -816,6 +825,106 @@ function BlockView({
             );
           })}
         </ul>
+      );
+    case "logos":
+      return (
+        <section className="sp-abschnitt sp-logos">
+          <InlineText
+            as="h2"
+            value={b.heading}
+            onChange={(heading) => update({ heading })}
+            placeholder="Überschrift (freiwillig)"
+            label="Überschrift"
+            maxLength={MAX_BLOCK_HEADING}
+          />
+          <div className="sp-logo-reihe">
+            {b.imageIds.map((id, i) => {
+              const img = ctx.images.get(id);
+              return (
+                <div key={`${id}-${i}`} className="group/img relative">
+                  {img ? <img src={img.url} alt="" /> : <span className="sp-logo-leer" />}
+                  <button
+                    type="button"
+                    aria-label={`Logo ${i + 1} entfernen`}
+                    className="absolute -top-2 -right-2 hidden size-6 items-center justify-center rounded-full bg-white text-gray-700 shadow ring-1 ring-gray-200 group-hover/img:flex focus-visible:flex"
+                    onClick={() => update({ imageIds: b.imageIds.filter((_, j) => j !== i) })}
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              );
+            })}
+            {b.imageIds.length < MAX_LOGOS && (
+              <UploadButton
+                ctx={ctx}
+                onUploaded={(img) => update({ imageIds: [...b.imageIds, img.id] })}
+                label={b.imageIds.length === 0 ? "Logos hochladen" : "Logo hinzufügen"}
+                compact
+              />
+            )}
+          </div>
+        </section>
+      );
+    case "steps":
+      return (
+        <section className="sp-abschnitt sp-schritte-block">
+          <InlineText
+            as="h2"
+            value={b.heading}
+            onChange={(heading) => update({ heading })}
+            placeholder="Überschrift (freiwillig)"
+            label="Überschrift"
+            maxLength={MAX_BLOCK_HEADING}
+          />
+          <ol className={`sp-schritte s${Math.max(b.items.length, 1)}`}>
+            {b.items.map((i, n) => (
+              <li key={n} className="group/step relative">
+                <span className="sp-schritt-zahl" aria-hidden="true">
+                  {n + 1}
+                </span>
+                <InlineText
+                  as="b"
+                  value={i.title}
+                  onChange={(title) =>
+                    update({ items: b.items.map((x, k) => (k === n ? { ...x, title } : x)) })
+                  }
+                  placeholder="Was passiert hier?"
+                  label={`Überschrift von Schritt ${n + 1}`}
+                  maxLength={MAX_STEP_TITLE}
+                />
+                <InlineText
+                  as="span"
+                  className="sp-klein"
+                  value={i.text}
+                  onChange={(text) =>
+                    update({ items: b.items.map((x, k) => (k === n ? { ...x, text } : x)) })
+                  }
+                  placeholder="Ein Satz dazu (freiwillig)"
+                  label={`Text von Schritt ${n + 1}`}
+                  maxLength={MAX_STEP_TEXT}
+                />
+                <button
+                  type="button"
+                  aria-label={`Schritt ${n + 1} entfernen`}
+                  className="absolute top-0 right-0 hidden size-7 items-center justify-center rounded-md text-gray-500 group-hover/step:flex hover:bg-white focus-visible:flex"
+                  onClick={() => update({ items: b.items.filter((_, k) => k !== n) })}
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ol>
+          {b.items.length < MAX_STEPS && (
+            <button
+              type="button"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-brand-700 hover:bg-brand-50"
+              style={{ fontFamily: "var(--font-sans)" }}
+              onClick={() => update({ items: [...b.items, { title: "", text: "" }] })}
+            >
+              <Plus className="size-4" aria-hidden="true" /> Schritt hinzufügen
+            </button>
+          )}
+        </section>
       );
     case "faq":
       return (
