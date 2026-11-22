@@ -190,9 +190,21 @@ describe("Bausteine", () => {
           { id: "h", type: "hero" },
           { id: "t", type: "spacer", size: "s" },
         ],
+        // Einstellungen je Baustein (22.11.2026); diese Seite hat keine.
+        layouts: {},
       },
     ]);
     expect(readPages(undefined)).toEqual([]);
+
+    // Einstellungen werden gelesen; was zu keinem Baustein gehört, fällt weg.
+    const mitLayout = readPages([
+      {
+        ...page,
+        blocks: [{ id: "t", type: "spacer", size: "s" }],
+        layouts: { t: { spacing: "l", align: "mitte" }, weg: { spacing: "s" }, t2: { spacing: "quer" } },
+      },
+    ]);
+    expect(mitLayout[0]?.layouts).toEqual({ t: { spacing: "l", align: "mitte" } });
   });
 
   it("nimmt eine Gruppe mit Bausteinen an", () => {

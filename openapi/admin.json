@@ -5807,6 +5807,54 @@
                             },
                             "additionalProperties": false
                           }
+                        },
+                        "layouts": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]{1,24}$"
+                          },
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "spacing": {
+                                "type": "string",
+                                "enum": [
+                                  "s",
+                                  "m",
+                                  "l"
+                                ]
+                              },
+                              "width": {
+                                "type": "string",
+                                "enum": [
+                                  "seite",
+                                  "voll"
+                                ]
+                              },
+                              "align": {
+                                "type": "string",
+                                "enum": [
+                                  "links",
+                                  "mitte"
+                                ]
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 2,
+                                "maximum": 12
+                              },
+                              "columns": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "showAll": {
+                                "type": "boolean"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "required": [
@@ -15000,6 +15048,9 @@
             ],
             "description": "Alle Bausteine in Reihenfolge, auch neuere Arten; null = alte feste Reihenfolge."
           },
+          "layouts": {
+            "$ref": "#/components/schemas/DesignLayouts"
+          },
           "blockImages": {
             "type": "array",
             "items": {
@@ -15017,6 +15068,7 @@
           "showNew",
           "blocks",
           "content",
+          "layouts",
           "blockImages"
         ],
         "additionalProperties": false,
@@ -16150,6 +16202,55 @@
               },
               "additionalProperties": false
             }
+          },
+          "layouts": {
+            "description": "Einstellungen je Baustein-ID (22.11.2026): `spacing` (Abstand oben und unten: s, m, l), `width` (seite oder voll), `align` (links oder mitte) und bei Produktlisten `count` (2 bis 12), `columns` (2, 3 oder 4) und `showAll` (Button „Alle ansehen“). Einträge ohne Baustein fallen weg. Fehlt das Feld, bleibt alles.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{1,24}$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "spacing": {
+                  "type": "string",
+                  "enum": [
+                    "s",
+                    "m",
+                    "l"
+                  ]
+                },
+                "width": {
+                  "type": "string",
+                  "enum": [
+                    "seite",
+                    "voll"
+                  ]
+                },
+                "align": {
+                  "type": "string",
+                  "enum": [
+                    "links",
+                    "mitte"
+                  ]
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 12
+                },
+                "columns": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "showAll": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -16197,6 +16298,41 @@
         ],
         "additionalProperties": false,
         "description": "Bild, ausgeliefert über media.<Domain> (WebP)."
+      },
+      "DesignLayouts": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "spacing": {
+              "type": "string"
+            },
+            "width": {
+              "type": "string"
+            },
+            "align": {
+              "type": "string"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "columns": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "showAll": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "description": "Einstellungen je Baustein-ID: Abstand (`spacing`), Breite (`width`), Ausrichtung (`align`) und bei Produktlisten Anzahl (`count`), Spalten (`columns`) und Button (`showAll`)."
       },
       "DesignPage": {
         "type": "object",
@@ -16440,6 +16576,9 @@
             },
             "description": "Alle Bausteine in Reihenfolge."
           },
+          "layouts": {
+            "$ref": "#/components/schemas/DesignLayouts"
+          },
           "blockImages": {
             "type": "array",
             "items": {
@@ -16455,6 +16594,7 @@
           "inFooter",
           "blocks",
           "content",
+          "layouts",
           "blockImages"
         ],
         "additionalProperties": false,

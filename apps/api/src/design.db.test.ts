@@ -311,6 +311,8 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       showNew: true,
       blocks: null,
       content: null,
+      // Einstellungen je Baustein (22.11.2026); am Anfang hat kein Baustein welche.
+      layouts: {},
       blockImages: [],
     });
 
@@ -778,5 +780,79 @@ describe.skipIf(adminUrl === undefined)("Aussehen des Shops (Shop-Editor Teil 1,
       "divider",
       "faq",
     ]);
+  });
+
+  it("speichert Einstellungen je Baustein und zeigt sie im Shop", async () => {
+    // Kristof 22.11.2026: Abstand, Breite, Ausrichtung je Baustein, bei Produktlisten dazu Anzahl,
+    // Spalten und der Button „Alle ansehen“. Sie gehen getrennt von den Bausteinen an die API.
+    const start = (await call("GET", "/admin/v1/design", "a")).json();
+    const gespeichert = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        accentColor: "#1f5f8b",
+        font: "modern",
+        logoImageId: null,
+        home: {
+          heroImageId: null,
+          heroTitle: "",
+          heroText: "",
+          featuredProductIds: [],
+          showCategories: false,
+          showNew: false,
+          blocks: [
+            { id: "t1", type: "text", heading: "Hallo", text: "Welt" },
+            { id: "f1", type: "featured" },
+          ],
+          layouts: {
+            t1: { spacing: "l", width: "voll", align: "mitte" },
+            f1: { count: 6, columns: 3, showAll: true },
+            weg: { spacing: "s" },
+          },
+        },
+      },
+      start.version,
+    );
+    expect(gespeichert.statusCode).toBe(200);
+    const entwurf = gespeichert.json().draft.home;
+    // Einträge ohne Baustein fallen weg.
+    expect(entwurf.layouts).toEqual({
+      t1: { spacing: "l", width: "voll", align: "mitte" },
+      f1: { count: 6, columns: 3, showAll: true },
+    });
+    // Im offenen Feld `content` stecken sie am Baustein, im alten Feld `blocks` nicht.
+    expect(entwurf.content[0]).toMatchObject({ id: "t1", spacing: "l", width: "voll", align: "mitte" });
+    expect(entwurf.blocks[0]).toEqual({ id: "t1", type: "text", heading: "Hallo", text: "Welt" });
+
+    expect((await call("POST", "/admin/v1/design/publish", "a")).statusCode).toBe(200);
+    const shop = (await call("GET", "/store/v1/shops/design-a/design")).json();
+    expect(shop.home.content[0]).toMatchObject({ id: "t1", spacing: "l", align: "mitte" });
+    expect(shop.home.content[1]).toMatchObject({ id: "f1", count: 6, columns: 3, showAll: true });
+    expect(shop.home.blocks[0]).toEqual({ id: "t1", type: "text", heading: "Hallo", text: "Welt" });
+
+    // Unsinn weist die API ab.
+    const kaputt = await call(
+      "PUT",
+      "/admin/v1/design/draft",
+      "a",
+      {
+        accentColor: "#1f5f8b",
+        font: "modern",
+        logoImageId: null,
+        home: {
+          heroImageId: null,
+          heroTitle: "",
+          heroText: "",
+          featuredProductIds: [],
+          showCategories: false,
+          showNew: false,
+          blocks: [{ id: "t1", type: "text", heading: "Hallo", text: "Welt" }],
+          layouts: { t1: { columns: 7 } },
+        },
+      },
+      (await call("GET", "/admin/v1/design", "a")).json().version,
+    );
+    expect(kaputt.statusCode).toBe(422);
   });
 });

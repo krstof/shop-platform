@@ -3,7 +3,17 @@
 // Datenbank, damit sie einzeln getestet werden können. Gespeichert wird als JSON in
 // storefront.theme_installation (settings_draft und settings_published).
 import { z } from "zod";
-import { blockImages, pageImages, readBlocks, readPages, type Block, type ContentPage } from "./blocks.js";
+import {
+  blockImages,
+  keepLayouts,
+  pageImages,
+  readBlocks,
+  readLayouts,
+  readPages,
+  type Block,
+  type BlockLayouts,
+  type ContentPage,
+} from "./blocks.js";
 
 /** Schriftarten: nur Systemschriften, keine Dienste von außen (Stil „schlicht“, 29.10.2026). */
 export const FONTS = ["klassisch", "modern", "freundlich"] as const;
@@ -33,6 +43,8 @@ export interface HomeSettings {
   readonly showNew: boolean;
   /** Bausteine in Reihenfolge (Baukasten); `null` = alte feste Reihenfolge aus den Schaltern. */
   readonly blocks: readonly Block[] | null;
+  /** Einstellungen je Baustein (22.11.2026): Baustein-ID → Abstand, Breite, Spalten … */
+  readonly layouts: BlockLayouts;
 }
 
 /** Kopf- und Fußzeile (Teil 3). */
@@ -145,6 +157,7 @@ export interface DesignSettings {
 }
 
 export const DEFAULT_HOME: HomeSettings = {
+  layouts: {},
   heroImageId: null,
   heroTitle: "",
   heroText: "",
@@ -188,8 +201,10 @@ const stored = z.object({
       showCategories: z.boolean().catch(true),
       showNew: z.boolean().catch(true),
       blocks: z.unknown().optional().transform(readBlocks),
+      layouts: z.unknown().optional().transform(readLayouts),
     })
-    .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [], blocks: null })),
+    .transform((h) => ({ ...h, layouts: keepLayouts(h.layouts, h.blocks ?? []) }))
+    .catch(() => ({ ...DEFAULT_HOME, featuredProductIds: [], blocks: null, layouts: {} })),
   tagline: z.string().max(MAX_TAGLINE).catch(""),
   footer: z
     .object({

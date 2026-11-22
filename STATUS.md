@@ -299,10 +299,31 @@ ein Datenbanktest für das Symbol (sofort gültig, Mandantentrennung, Entfernen)
 mit nachgebildeter API (Kopfzeile, Briefumschlag, Symbol-Karte, Editor-Panel, Leiste bei 1280 und
 390 Pixeln). `pnpm check` komplett grün, Caddy-Grenze für das neue Hochladen ergänzt.
 
+**P12 Einstellungen je Baustein (22.11.2026, Vorbild Shopify Horizon):** Jeder Baustein hat jetzt
+ein Zahnrad mit denselben drei Einstellungen: Abstand oben und unten (klein, mittel, groß), Breite
+(Seitenbreite oder randlos über die ganze Fläche) und Ausrichtung (links oder mittig). Produktlisten
+(Empfehlungen, Neu im Shop, Bestseller, Kategorien) haben dazu Anzahl (2 bis 12), Spalten am
+Computer (automatisch, 2, 3 oder 4) und den Button „Alle Produkte ansehen"; der führt auf die neue
+Seite `/<shop>/produkte`, die alle Produkte mit Sortierung und dem Filter „nur verfügbare" zeigt.
+
+Wichtig für später: Die Einstellungen stehen **nicht** im Baustein, sondern daneben in einer Liste
+Baustein-ID → Einstellungen (`home.layouts`, `pages[].layouts`), genau wie der Inhalt der
+Shop-Bereiche in `sections`. Grund ist der Vertrag der API: Jede Änderung an einem Teilschema der
+Baustein-Aufzählung meldet die Bruchprüfung (oasdiff) als entfernte und neue Art, weil sie die Teile
+eines `oneOf` nach ihrem Inhalt vergleicht. Wer künftig ein Feld an allen Bausteinen braucht, nimmt
+denselben Weg. In der Antwort stecken die Werte zusätzlich an jedem Baustein im offenen Feld
+`content`; das alte Feld `blocks` bleibt unverändert.
+
+**Getestet:** neue Prüfungen in `blocks.test.ts` und `design.test.ts` (Modul und Shop),
+`form.test.ts` im Backoffice (Trennen und Zusammensetzen, auch in Gruppen) und ein Datenbanktest
+(speichern, Einträge ohne Baustein fallen weg, 422 bei unsinnigen Spalten, Shop zeigt die Werte).
+Durchlauf im Browser: Zahnrad an Text und Empfehlungen, Darstellung bei 1280 und 390 Pixeln
+(randlos erreicht beide Ränder, drei Spalten am Computer, eine am Handy, kein seitliches Scrollen).
+`pnpm check` komplett grün, oasdiff meldet keine Brüche.
+
 ## Nächster Schritt
 
-Paket P2 aus `docs/10_Wunschliste.md` (Produktvarianten) oder P12 (Einstellungen je Baustein im
-Editor, Vorbild Shopify). P1 ist fertig, siehe unten. Die Reihenfolge der Pakete steht in derselben
+Paket P2 aus `docs/10_Wunschliste.md` (Produktvarianten). P1 und P12 sind fertig, siehe oben. Die Reihenfolge der Pakete steht in derselben
 Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
 
 ## Offene Entscheidungen

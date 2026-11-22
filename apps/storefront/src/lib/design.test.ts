@@ -4,8 +4,11 @@ import {
   DEFAULT_HOME,
   designCss,
   designVersion,
+  anzahl,
   gruppenInhalt,
   gruppenKlassen,
+  layoutKlassen,
+  spaltenKlasse,
   TESTHINWEIS,
   uspLeiste,
   isExternal,
@@ -160,5 +163,32 @@ describe("Leiste über der Kopfzeile", () => {
   it("bleibt leer, wenn der Händler die Leiste ausschaltet", () => {
     expect(mit({ uspOn: false, usp: ["Versand frei"] })).toEqual([]);
     expect(mit({ uspOn: false })).toEqual([]);
+  });
+});
+
+describe("Einstellungen je Baustein", () => {
+  it("macht aus Abstand, Breite und Ausrichtung Klassen und ignoriert Unsinn", () => {
+    expect(layoutKlassen({})).toEqual([]);
+    expect(layoutKlassen({ spacing: "l", width: "voll", align: "mitte" })).toEqual([
+      "bs-abstand-l",
+      "bs-voll",
+      "bs-mitte",
+    ]);
+    // Seitenbreite und linksbündig sind der Standard: keine Klasse nötig.
+    expect(layoutKlassen({ width: "seite", align: "links" })).toEqual([]);
+    expect(layoutKlassen({ spacing: "riesig", width: "<script>", align: "schraeg" })).toEqual([]);
+  });
+
+  it("nimmt nur 2, 3 oder 4 Spalten", () => {
+    expect(spaltenKlasse({ columns: 3 })).toEqual(["raster-spalten-3"]);
+    expect(spaltenKlasse({ columns: 7 })).toEqual([]);
+    expect(spaltenKlasse({})).toEqual([]);
+  });
+
+  it("nimmt die Anzahl nur im erlaubten Bereich, sonst den Standard", () => {
+    expect(anzahl({ count: 6 }, 4)).toBe(6);
+    expect(anzahl({}, 4)).toBe(4);
+    expect(anzahl({ count: 99 }, 4)).toBe(4);
+    expect(anzahl({ count: 1 }, 4)).toBe(4);
   });
 });

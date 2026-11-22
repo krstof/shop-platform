@@ -34,6 +34,64 @@ const symbol = {
   height: 64,
 };
 
+describe("Editor-Formular: Einstellungen je Baustein", () => {
+  it("trennt die Einstellungen von den Bausteinen und lässt die Spalten der Gruppe stehen", () => {
+    const form = formOf(zustand({}));
+    const body = bodyOf({
+      ...form,
+      blocks: [
+        { id: "t1", type: "text", heading: "Hallo", text: "Welt", spacing: "l", align: "mitte" },
+        { id: "f1", type: "featured", count: 6, columns: 3, showAll: true },
+        {
+          id: "g1",
+          type: "group",
+          columns: 2,
+          background: "keine",
+          padding: "m",
+          width: "voll",
+          blocks: [{ id: "k1", type: "quote", text: "Ein Zitat", author: "", spacing: "s" }],
+        },
+      ],
+    });
+    // Die Bausteine selbst tragen die Einstellungen nicht mehr …
+    expect(body.home.blocks).toEqual([
+      { id: "t1", type: "text", heading: "Hallo", text: "Welt" },
+      { id: "f1", type: "featured" },
+      {
+        id: "g1",
+        type: "group",
+        columns: 2,
+        background: "keine",
+        padding: "m",
+        blocks: [{ id: "k1", type: "quote", text: "Ein Zitat", author: "" }],
+      },
+    ]);
+    // … sie stehen daneben, auch die der Bausteine in der Gruppe.
+    expect(body.home.layouts).toEqual({
+      t1: { spacing: "l", align: "mitte" },
+      f1: { count: 6, columns: 3, showAll: true },
+      g1: { width: "voll" },
+      k1: { spacing: "s" },
+    });
+  });
+
+  it("liest die Einstellungen aus der Antwort der API wieder in die Bausteine", () => {
+    const form = formOf(
+      zustand({
+        home: {
+          ...leeresDesign.home,
+          content: [
+            { id: "t1", type: "text", heading: "Hallo", text: "", spacing: "l" },
+            { id: "f1", type: "featured", heading: "", productIds: [], count: 4 },
+          ],
+        },
+      }),
+    );
+    expect(form.blocks[0]).toMatchObject({ id: "t1", spacing: "l" });
+    expect(form.blocks[1]).toMatchObject({ id: "f1", count: 4 });
+  });
+});
+
 describe("Editor-Formular: Leiste oben und Symbol", () => {
   it("liest die Leiste aus der API; ältere Stände ohne die Felder sind an und leer", () => {
     const alt = formOf(zustand({ header: { search: "lupe", sticky: true } }));

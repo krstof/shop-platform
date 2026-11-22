@@ -5,6 +5,7 @@ import {
   fillSections,
   legacyBlocks,
   pageProblem,
+  splitLayouts,
   splitSections,
   type Block,
   type ContentPage,
@@ -124,7 +125,10 @@ export function socialProblem(url: string): string | undefined {
 /** Was „Entwurf speichern“ an die API schickt. */
 export function bodyOf(f: Form) {
   const blocks = f.blocks;
-  const home = splitSections(blocks);
+  // Erst die Einstellungen je Baustein heraustrennen, dann den Inhalt der Shop-Bereiche: beide
+  // gehen getrennt an die API (`layouts` und `sections`), die Bausteine bleiben schlank.
+  const ohneLayout = splitLayouts(blocks);
+  const home = splitSections(ohneLayout.blocks);
   return {
     accentColor: f.accentColor,
     font: f.font,
@@ -149,6 +153,7 @@ export function bodyOf(f: Form) {
       showNew: blocks.some((b) => b.type === "new"),
       blocks: home.blocks,
       sections: home.sections,
+      layouts: ohneLayout.layouts,
     },
     tagline: f.tagline.trim(),
     footer: {
@@ -157,7 +162,8 @@ export function bodyOf(f: Form) {
       social: Object.fromEntries(SOCIAL.map((n) => [n.id, completeSocialUrl(f.social[n.id] ?? "")])),
     },
     pages: f.pages.map((p) => {
-      const s = splitSections(p.blocks);
+      const ohne = splitLayouts(p.blocks);
+      const s = splitSections(ohne.blocks);
       return {
         id: p.id,
         title: p.title.trim(),
@@ -165,6 +171,7 @@ export function bodyOf(f: Form) {
         inFooter: p.inFooter,
         blocks: s.blocks,
         sections: s.sections,
+        layouts: ohne.layouts,
       };
     }),
   };

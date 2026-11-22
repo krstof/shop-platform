@@ -32,105 +32,115 @@ export interface StoreBlockImage {
   readonly height: number;
 }
 
-/** Baustein der Startseite, wie die Storefront-API ihn liefert. */
-export type StoreBlock =
-  | {
-      readonly id: string;
-      readonly type: "hero";
-      /** Ältere API-Stände ohne: dann gilt der Inhalt der Startseite. */
-      readonly title?: string;
-      readonly text?: string;
-      readonly image?: StoreBlockImage | null;
-      /** Zuschnitt-Punkt des Bildes in Prozent, am Computer und am Handy getrennt; fehlt: Mitte. */
-      readonly focusX?: number;
-      readonly focusY?: number;
-      readonly focusMobileX?: number;
-      readonly focusMobileY?: number;
-      /** Button in der Bühne; ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
-      readonly buttonLabel?: string;
-      readonly buttonUrl?: string;
-    }
-  | {
-      readonly id: string;
-      readonly type: "featured";
-      readonly heading?: string;
-      readonly productIds?: readonly string[];
-    }
-  | { readonly id: string; readonly type: "categories" | "new"; readonly heading?: string }
-  | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
-  | {
-      readonly id: string;
-      readonly type: "textImage";
-      readonly heading: string;
-      readonly text: string;
-      readonly image: StoreBlockImage | null;
-      readonly imageSide: "left" | "right";
-    }
-  | { readonly id: string; readonly type: "image"; readonly image: StoreBlockImage; readonly caption: string }
-  | {
-      readonly id: string;
-      readonly type: "video";
-      readonly provider: "youtube" | "vimeo";
-      readonly videoId: string;
-    }
-  | { readonly id: string; readonly type: "map"; readonly address: string }
-  | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" }
-  | {
-      readonly id: string;
-      readonly type: "button";
-      readonly label: string;
-      readonly url: string;
-      readonly style: "primary" | "secondary";
-    }
-  | { readonly id: string; readonly type: "quote"; readonly text: string; readonly author: string }
-  | { readonly id: string; readonly type: "divider" }
-  | {
-      readonly id: string;
-      readonly type: "faq";
-      readonly heading: string;
-      readonly items: readonly { readonly question: string; readonly answer: string }[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "gallery";
-      readonly images: readonly StoreBlockImage[];
-      readonly caption: string;
-    }
-  | { readonly id: string; readonly type: "bestseller"; readonly heading: string }
-  | {
-      readonly id: string;
-      readonly type: "trust";
-      /** Bis zu drei kurze Punkte mit Symbol (Versand, Rückgabe, Kontakt). */
-      readonly items: readonly {
-        readonly icon: string;
-        readonly title: string;
+/**
+ * Baustein der Startseite, wie die Storefront-API ihn liefert. Jede Art trägt zusätzlich die
+ * Einstellungen aus `BausteinLayout` (Abstand, Breite, Ausrichtung, Produktlisten).
+ */
+export type StoreBlock = BausteinLayout &
+  (
+    | {
+        readonly id: string;
+        readonly type: "hero";
+        /** Ältere API-Stände ohne: dann gilt der Inhalt der Startseite. */
+        readonly title?: string;
+        readonly text?: string;
+        readonly image?: StoreBlockImage | null;
+        /** Zuschnitt-Punkt des Bildes in Prozent, am Computer und am Handy getrennt; fehlt: Mitte. */
+        readonly focusX?: number;
+        readonly focusY?: number;
+        readonly focusMobileX?: number;
+        readonly focusMobileY?: number;
+        /** Button in der Bühne; ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
+        readonly buttonLabel?: string;
+        readonly buttonUrl?: string;
+      }
+    | {
+        readonly id: string;
+        readonly type: "featured";
+        readonly heading?: string;
+        readonly productIds?: readonly string[];
+      }
+    | { readonly id: string; readonly type: "categories" | "new"; readonly heading?: string }
+    | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
+    | {
+        readonly id: string;
+        readonly type: "textImage";
+        readonly heading: string;
         readonly text: string;
-      }[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "logos";
-      readonly heading: string;
-      /** Logos in einer Reihe, gleich hoch. */
-      readonly images: readonly StoreBlockImage[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "steps";
-      readonly heading: string;
-      /** Nummerierte Schritte, höchstens vier. */
-      readonly items: readonly { readonly title: string; readonly text: string }[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "group";
-      /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
-      readonly columns: number;
-      readonly background: string;
-      readonly padding: string;
-      /** Die Bausteine in der Gruppe. Shop-Bereiche und weitere Gruppen kommen hier nie vor. */
-      readonly blocks: readonly StoreBlock[];
-    };
+        readonly image: StoreBlockImage | null;
+        readonly imageSide: "left" | "right";
+      }
+    | {
+        readonly id: string;
+        readonly type: "image";
+        readonly image: StoreBlockImage;
+        readonly caption: string;
+      }
+    | {
+        readonly id: string;
+        readonly type: "video";
+        readonly provider: "youtube" | "vimeo";
+        readonly videoId: string;
+      }
+    | { readonly id: string; readonly type: "map"; readonly address: string }
+    | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" }
+    | {
+        readonly id: string;
+        readonly type: "button";
+        readonly label: string;
+        readonly url: string;
+        readonly style: "primary" | "secondary";
+      }
+    | { readonly id: string; readonly type: "quote"; readonly text: string; readonly author: string }
+    | { readonly id: string; readonly type: "divider" }
+    | {
+        readonly id: string;
+        readonly type: "faq";
+        readonly heading: string;
+        readonly items: readonly { readonly question: string; readonly answer: string }[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "gallery";
+        readonly images: readonly StoreBlockImage[];
+        readonly caption: string;
+      }
+    | { readonly id: string; readonly type: "bestseller"; readonly heading: string }
+    | {
+        readonly id: string;
+        readonly type: "trust";
+        /** Bis zu drei kurze Punkte mit Symbol (Versand, Rückgabe, Kontakt). */
+        readonly items: readonly {
+          readonly icon: string;
+          readonly title: string;
+          readonly text: string;
+        }[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "logos";
+        readonly heading: string;
+        /** Logos in einer Reihe, gleich hoch. */
+        readonly images: readonly StoreBlockImage[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "steps";
+        readonly heading: string;
+        /** Nummerierte Schritte, höchstens vier. */
+        readonly items: readonly { readonly title: string; readonly text: string }[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "group";
+        /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
+        readonly columns: number;
+        readonly background: string;
+        readonly padding: string;
+        /** Die Bausteine in der Gruppe. Shop-Bereiche und weitere Gruppen kommen hier nie vor. */
+        readonly blocks: readonly StoreBlock[];
+      }
+  );
 
 /** Hintergründe einer Gruppe (gleiche Liste wie die API). */
 export const GRUPPEN_HINTERGRUENDE = ["keine", "flaeche", "akzent", "dunkel"] as const;
@@ -224,6 +234,43 @@ export interface StoreFooter {
   readonly text: string;
   readonly links: readonly { readonly label: string; readonly url: string }[];
   readonly social?: Readonly<Partial<Record<string, string>>>;
+}
+
+/**
+ * Einstellungen je Baustein (Kristof 22.11.2026): Abstand oben und unten, Breite und Ausrichtung,
+ * bei Produktlisten dazu Anzahl, Spalten und der Button „Alle ansehen“. Die API liefert sie im
+ * offenen Feld `content` an jedem Baustein mit; ältere Stände haben sie nicht.
+ */
+export interface BausteinLayout {
+  readonly spacing?: string;
+  readonly width?: string;
+  readonly align?: string;
+  readonly count?: number;
+  readonly columns?: number;
+  readonly showAll?: boolean;
+}
+
+const ABSTAENDE = new Set(["s", "m", "l"]);
+const SPALTEN = new Set([2, 3, 4]);
+
+/** CSS-Klassen für Abstand, Breite und Ausrichtung eines Bausteins; Unbekanntes wird ignoriert. */
+export function layoutKlassen(b: BausteinLayout): string[] {
+  const aus: string[] = [];
+  if (typeof b.spacing === "string" && ABSTAENDE.has(b.spacing)) aus.push(`bs-abstand-${b.spacing}`);
+  if (b.width === "voll") aus.push("bs-voll");
+  if (b.align === "mitte") aus.push("bs-mitte");
+  return aus;
+}
+
+/** Spalten einer Produktliste am Computer; ohne Angabe richtet sich das Raster nach der Breite. */
+export function spaltenKlasse(b: BausteinLayout): string[] {
+  return typeof b.columns === "number" && SPALTEN.has(b.columns) ? [`raster-spalten-${b.columns}`] : [];
+}
+
+/** Wie viele Einträge eine Liste zeigt. Ohne Angabe gilt der bisherige Standard. */
+export function anzahl(b: BausteinLayout, standard: number): number {
+  const n = b.count;
+  return typeof n === "number" && Number.isInteger(n) && n >= 2 && n <= 12 ? n : standard;
 }
 
 export interface StoreDesign {

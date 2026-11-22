@@ -57,6 +57,24 @@ export const MAX_LOGOS = 8;
 export const MAX_STEPS = 4;
 export const MAX_STEP_TITLE = 60;
 export const MAX_STEP_TEXT = 160;
+/**
+ * Einstellungen je Baustein (Kristof 22.11.2026, Vorbild Shopify Horizon): Abstand oben und unten,
+ * Breite und Ausrichtung bei jedem Baustein, dazu Anzahl, Spalten und der Button „Alle ansehen“ bei
+ * Produktlisten. Sie stehen nicht im Baustein selbst, sondern daneben in einer Liste
+ * Baustein-ID → Einstellungen, genau wie der Inhalt der Shop-Bereiche (`sections`). Grund ist der
+ * Vertrag der API: Jede Änderung an einem Teilschema der Baustein-Aufzählung gilt der Bruchprüfung
+ * (oasdiff) als neue Art, weil sie die Teile eines `oneOf` nach ihrem Inhalt vergleicht.
+ */
+export const BLOCK_SPACINGS = ["s", "m", "l"] as const;
+export type BlockSpacing = (typeof BLOCK_SPACINGS)[number];
+export const BLOCK_WIDTHS = ["seite", "voll"] as const;
+export type BlockWidth = (typeof BLOCK_WIDTHS)[number];
+export const BLOCK_ALIGNS = ["links", "mitte"] as const;
+export type BlockAlign = (typeof BLOCK_ALIGNS)[number];
+export const LIST_COLUMNS = [2, 3, 4] as const;
+export const MIN_LIST_COUNT = 2;
+export const MAX_LIST_COUNT = 12;
+
 export const GROUP_COLUMNS = [1, 2, 3] as const;
 export const GROUP_BACKGROUNDS = ["keine", "flaeche", "akzent", "dunkel"] as const;
 export const GROUP_PADDINGS = ["s", "m", "l"] as const;
@@ -131,6 +149,42 @@ const line = (max: number) =>
     .refine((v) => !SINGLE_LINE_FORBIDDEN.test(v), "Bitte nur eine Zeile.");
 
 const id = z.string().regex(BLOCK_ID);
+
+/** Einstellungen eines Bausteins. Jedes Feld freiwillig: Fehlt es, bleibt alles wie bisher. */
+export const blockLayoutSchema = z.strictObject({
+  spacing: z.enum(BLOCK_SPACINGS).optional(),
+  width: z.enum(BLOCK_WIDTHS).optional(),
+  align: z.enum(BLOCK_ALIGNS).optional(),
+  count: z.int().min(MIN_LIST_COUNT).max(MAX_LIST_COUNT).optional(),
+  columns: z
+    .int()
+    .refine((n) => (LIST_COLUMNS as readonly number[]).includes(n), "Erlaubt sind 2, 3 oder 4 Spalten.")
+    .optional(),
+  showAll: z.boolean().optional(),
+});
+export type BlockLayout = z.infer<typeof blockLayoutSchema>;
+
+/** Einstellungen aller Bausteine einer Seite: Baustein-ID → Einstellungen. */
+export const layoutsSchema = z.record(z.string().regex(BLOCK_ID), blockLayoutSchema);
+export type BlockLayouts = Readonly<Record<string, BlockLayout>>;
+
+/** Gespeicherte Einstellungen robust lesen; Kaputtes fällt einzeln weg. */
+export function readLayouts(json: unknown): BlockLayouts {
+  if (typeof json !== "object" || json === null) return {};
+  const out: Record<string, BlockLayout> = {};
+  for (const [key, value] of Object.entries(json)) {
+    if (!BLOCK_ID.test(key)) continue;
+    const r = blockLayoutSchema.safeParse(value);
+    if (r.success && Object.keys(r.data).length > 0) out[key] = r.data;
+  }
+  return out;
+}
+
+/** Nur die Einstellungen behalten, zu denen es den Baustein noch gibt. */
+export function keepLayouts(layouts: BlockLayouts, blocks: readonly Block[]): BlockLayouts {
+  const da = new Set(allBlocks(blocks).map((b) => b.id));
+  return Object.fromEntries(Object.entries(layouts).filter(([key]) => da.has(key)));
+}
 
 const SECTION_TYPES = ["hero", "featured", "categories", "new"] as const;
 
@@ -429,6 +483,8 @@ export interface ContentPage {
   readonly inFooter: boolean;
   /** Bausteine wie auf der Startseite (auch Shop-Bereiche). */
   readonly blocks: readonly Block[];
+  /** Einstellungen je Baustein (22.11.2026); leer heißt: alles wie bisher. */
+  readonly layouts: BlockLayouts;
 }
 
 export const pageSchema = z.strictObject({
@@ -438,6 +494,7 @@ export const pageSchema = z.strictObject({
   inFooter: z.boolean(),
   blocks: blocksSchema,
   sections: sectionsSchema.optional(),
+  layouts: layoutsSchema.optional(),
 });
 
 export const pagesSchema = z
@@ -454,14 +511,17 @@ export function readPages(json: unknown): ContentPage[] {
   const out: ContentPage[] = [];
   for (const raw of json.slice(0, MAX_PAGES)) {
     if (typeof raw !== "object" || raw === null) continue;
+    // Bausteine und Einstellungen werden eigens robust gelesen: Ein kaputter Eintrag darf nicht die
+    // ganze Seite wegwerfen.
     const head = pageSchema
-      .omit({ blocks: true })
-      .safeParse(Object.fromEntries(Object.entries(raw).filter(([k]) => k !== "blocks")));
+      .omit({ blocks: true, layouts: true })
+      .safeParse(Object.fromEntries(Object.entries(raw).filter(([k]) => k !== "blocks" && k !== "layouts")));
     if (!head.success || ids.has(head.data.id) || slugs.has(head.data.slug)) continue;
     ids.add(head.data.id);
     slugs.add(head.data.slug);
     const blocks = readBlocks((raw as { blocks?: unknown }).blocks) ?? [];
-    out.push({ ...head.data, blocks });
+    const layouts = keepLayouts(readLayouts((raw as { layouts?: unknown }).layouts), blocks);
+    out.push({ ...head.data, blocks, layouts });
   }
   return out;
 }

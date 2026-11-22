@@ -1,0 +1,62 @@
+---
+// Alle Produkte des Shops (Kristof 22.11.2026). Ziel des Buttons „Alle Produkte ansehen“ unter den
+// Produktlisten und ein fester Punkt, den der Händler überall verlinken kann. Sortierung und der
+// Filter „nur verfügbare“ funktionieren wie auf einer Kategorieseite, ganz ohne JavaScript.
+import Shop from "../../layouts/Shop.astro";
+import Produktkarte from "../../components/Produktkarte.astro";
+import Sortierung from "../../components/Sortierung.astro";
+import { loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
+import { warenkorbAnzahl } from "../../lib/cart.js";
+import { sortierung } from "../../lib/sortierung.js";
+import { nurVerfuegbar } from "../../lib/neu.js";
+
+const daten = await loadShop(Astro.params.shop);
+if (daten === undefined) return Astro.rewrite("/404");
+const { shop, categories } = daten;
+const sort = sortierung(Astro.url.searchParams.get("sortierung"));
+const verfuegbar = nurVerfuegbar(Astro.url.searchParams.get("verfuegbar"));
+const filter = `sort=${sort}${verfuegbar ? "&available=true" : ""}`;
+const produkte = (await storeApi<{ data: StoreProduct[] }>(shop.handle, `/products?${filter}`)).data;
+const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
+---
+
+<Shop
+  shop={shop}
+  categories={categories}
+  titel="Alle Produkte"
+  beschreibung={`Alle Produkte von ${shop.name}`}
+  korb={korb}
+>
+  <nav class="pfadleiste" aria-label="Brotkrümelnavigation">
+    <ol>
+      <li>
+        <a href={`/${shop.handle}`}>Startseite</a>
+      </li>
+      <li>
+        <a href={`/${shop.handle}/produkte`} aria-current="page">
+          Alle Produkte
+        </a>
+      </li>
+    </ol>
+  </nav>
+  <h1>Alle Produkte</h1>
+  {produkte.length === 0 ? (
+    verfuegbar ? (
+      <>
+        <Sortierung nurVerfuegbar={verfuegbar} aktuell={sort} anzahl={0} />
+        <p>Gerade ist nichts vorrätig.</p>
+      </>
+    ) : (
+      <p>Hier gibt es noch keine Produkte.</p>
+    )
+  ) : (
+    <>
+      <Sortierung nurVerfuegbar={verfuegbar} aktuell={sort} anzahl={produkte.length} />
+      <ul class="raster">
+        {produkte.map((p) => (
+          <Produktkarte produkt={p} shop={shop.handle} />
+        ))}
+      </ul>
+    </>
+  )}
+</Shop>

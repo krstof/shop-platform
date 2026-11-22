@@ -21,6 +21,8 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  /* Randlose Bausteine rechnen mit der Fensterbreite; ein Rollbalken darf dabei nicht entstehen. */
+  overflow-x: clip;
 }
 body {
   margin: 0;
@@ -29,6 +31,9 @@ body {
   font-family: var(--schrift-text);
   font-size: 1.0625rem;
   line-height: 1.6;
+  /* Randlose Bausteine rechnen mit der Fensterbreite; ein Rollbalken darf dabei nicht
+     entstehen. */
+  overflow-x: clip;
 }
 h1,
 h2,
@@ -1172,6 +1177,68 @@ form.gutschein:has(.knopf-leise) {
 /* --- Bausteine der Startseite (Baukasten) --- */
 .baustein {
   margin: 2.5rem 0;
+}
+
+/* Einstellungen je Baustein (Kristof 22.11.2026): Abstand oben und unten, Breite, Ausrichtung.
+   Die Hülle trägt die Klassen; ohne Klasse bleibt alles wie bisher. */
+.bausteinbox {
+  /* Eigene Abstände hat der Baustein selbst; die Hülle mischt sich nur ein, wenn sie eine Klasse hat. */
+  margin: 0;
+}
+.bs-abstand-s > * {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+.bs-abstand-m > * {
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+.bs-abstand-l > * {
+  margin-top: 5rem;
+  margin-bottom: 5rem;
+}
+
+/* Randlos über die ganze Breite: Die Hülle bricht aus der Seitenbreite aus (dabei auch aus dem
+   Innenabstand von `.breite`, daher das zusätzliche 1rem) und gibt ihrem Inhalt selbst wieder
+   Abstand, damit Text nicht am Bildschirmrand klebt. Eine Gruppe darin verliert ihre runden Ecken,
+   weil sie sonst mitten am Bildschirmrand abgeschnitten aussähen. */
+.bs-voll {
+  margin-left: calc(50% - 50vw - 1rem);
+  margin-right: calc(50% - 50vw - 1rem);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  max-width: none;
+}
+.bs-voll > .baustein-gruppe {
+  border-radius: 0;
+}
+
+.bs-mitte {
+  text-align: center;
+}
+.bs-mitte .baustein-text,
+.bs-mitte .karte-text {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Spalten einer Produktliste am Computer; am Handy bleiben es zwei bzw. eine. */
+@media (min-width: 48rem) {
+  .raster-spalten-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .raster-spalten-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .raster-spalten-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Button „Alle ansehen“ unter einer Produktliste. */
+.alle-ansehen {
+  margin: -1.5rem 0 3rem;
+  text-align: center;
 }
 .baustein-text {
   max-width: 46rem;

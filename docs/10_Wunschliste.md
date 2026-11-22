@@ -30,7 +30,7 @@ Kristof hat am 22.11.2026 ausdrücklich gesagt: **Branchen-Startpunkte will er n
 | P9 | Versandarten, Versandkosten, Zahlungs- und Versandlogos, Mollie | Hängt zusammen, größerer Brocken |
 | P10 | Sprachen und automatische Übersetzung, Steuersätze | Größter Brocken, betrifft jedes Modul |
 | P11 | Aussehen: Textfarbe, Kopfzeilen-Varianten | Kleinigkeiten, jederzeit einschiebbar |
-| P12 | Einstellungen je Baustein im Editor | Von Kristof am 22.11.2026 gewünscht, Vorbild Shopify |
+| P12 ✅ | Einstellungen je Baustein im Editor | Von Kristof am 22.11.2026 gewünscht, Vorbild Shopify |
 | P13 | Formatierung in Textfeldern (fett, kursiv, Link) | Hängt mit P5 zusammen |
 
 ## P1 Sofort sichtbare Kleinigkeiten ✅ fertig am 22.11.2026
@@ -122,6 +122,8 @@ Eine Seite je Shop mit Zahlen, Inhaberin, Tarif, Zustand und den Knöpfen zum Sp
 
 ## P11 Aussehen
 
+- **Produktkarte zentral einstellen:** Bildformat (quadratisch, hochkant, Originalverhältnis) und ob Preis, Hersteller und „In den Warenkorb" auf der Karte stehen. Einmal für den ganzen Shop, nicht je Baustein (aus P12 übrig).
+- **Produkte von Hand auswählen** auch bei „Neu im Shop" und „Bestseller", so wie es bei „Empfehlungen" schon geht (aus P12 übrig).
 - **Schriftfarbe wählbar** (heute: Hauptfarbe, Hintergrundfarbe, zwei Schriften). Klein und sinnvoll.
 - **Mehrere Kopfzeilen-Designs** zur Auswahl, so wie es heute vier Design-Vorlagen gibt.
 - **Google Maps:** Gibt es schon als Baustein „Karte“.
@@ -129,7 +131,7 @@ Eine Seite je Shop mit Zahlen, Inhaberin, Tarif, Zustand und den Knöpfen zum Sp
 - **Soziale Netzwerke in der Fußzeile:** Gibt es schon.
 - **Kopfzeile einstellbar:** Gibt es schon (Suche offen, als Lupe oder aus; Kopf bleibt beim Scrollen stehen).
 
-## P12 Einstellungen je Baustein (Vorbild Shopify)
+## P12 Einstellungen je Baustein ✅ fertig am 22.11.2026
 
 Kristofs Wunsch vom 22.11.2026: „es sollte natürlich nicht 10.000 Einstellungen geben", aber mehr als heute. Shopifys Horizon-Themes lösen das mit wenigen Einstellungen, die bei **jedem** Baustein gleich heißen, plus einer Handvoll eigener je Art. Genau so hier:
 
@@ -152,6 +154,11 @@ Kristofs Wunsch vom 22.11.2026: „es sollte natürlich nicht 10.000 Einstellung
 9. Preis, Hersteller und „In den Warenkorb" auf der Karte an oder aus.
 
 Nicht übernommen von Shopify: Farbschemata je Abschnitt (zu viel für diesen Shop), Karussell auf dem Handy (bräuchte JavaScript ohne Nutzen), Höhe je Abschnitt (macht Layouts kaputt).
+
+**Gebaut am 22.11.2026:** Punkt 1 bis 6, dazu die neue Seite `/<shop>/produkte`. Offen bleiben
+Punkt 7 (Produkte von Hand auswählen auch bei „Neu im Shop" und „Bestseller") sowie 8 und 9
+(Bildformat und Inhalt der Produktkarte, zentral einstellbar). Beides sind eigene Schritte und
+stehen jetzt in P11.
 
 ## P13 Formatierung in Textfeldern
 

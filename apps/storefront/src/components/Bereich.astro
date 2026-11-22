@@ -3,7 +3,14 @@
 // Kategorien-Kacheln, dazu Bestseller (14.11.2026). Sie dürfen mehrfach und auf eigenen Seiten vorkommen; ohne eigenen Inhalt
 // (ältere Daten) gilt der Inhalt der Startseite.
 import Produktkarte from "./Produktkarte.astro";
-import { buttonHref, isExternal, type StoreHome, type StoreSection } from "../lib/design.js";
+import {
+  anzahl,
+  buttonHref,
+  isExternal,
+  spaltenKlasse,
+  type StoreHome,
+  type StoreSection,
+} from "../lib/design.js";
 import type { StoreCategory, StoreProduct } from "../lib/store-api.js";
 
 interface Props {
@@ -70,6 +77,14 @@ const fokusKlassen =
 const knopfZiel = b.type === "hero" && b.buttonUrl !== undefined ? buttonHref(b.buttonUrl, shop) : undefined;
 const knopfText = b.type === "hero" ? (b.buttonLabel ?? "").trim() : "";
 const knopfExtern = knopfZiel !== undefined && isExternal(knopfZiel);
+
+// Einstellungen der Produktlisten (Kristof 22.11.2026): wie viele, wie viele Spalten, Button darunter.
+const spalten = spaltenKlasse(b);
+const alleAnsehen = b.showAll === true && b.type !== "categories";
+const zeigEmpfohlen = empfohlen.slice(0, anzahl(b, empfohlen.length));
+const zeigNeu = neu.slice(0, anzahl(b, 4));
+const zeigBestseller = bestseller.slice(0, anzahl(b, 4));
+const zeigKategorien = kategorien.slice(0, anzahl(b, kategorien.length));
 ---
 
 {b.type === "hero" && (
@@ -104,44 +119,65 @@ const knopfExtern = knopfZiel !== undefined && isExternal(knopfZiel);
   </section>
 )}
 
-{b.type === "featured" && empfohlen.length > 0 && (
+{b.type === "featured" && zeigEmpfohlen.length > 0 && (
   <section aria-labelledby={id}>
     <h2 id={id}>{b.heading ? b.heading : "Empfohlen"}</h2>
-    <ul class="raster">
-      {empfohlen.map((p) => (
+    <ul class:list={["raster", ...spalten]}>
+      {zeigEmpfohlen.map((p) => (
         <Produktkarte produkt={p} shop={shop} />
       ))}
     </ul>
+    {alleAnsehen && (
+      <p class="alle-ansehen">
+        <a href={`/${shop}/produkte`} class="knopf knopf-zweit">
+          Alle Produkte ansehen
+        </a>
+      </p>
+    )}
   </section>
 )}
 
-{b.type === "new" && neu.length > 1 && (
+{b.type === "new" && zeigNeu.length > 1 && (
   <section aria-labelledby={id}>
     <h2 id={id}>{b.heading ? b.heading : "Neu im Shop"}</h2>
-    <ul class="raster">
-      {neu.map((p) => (
+    <ul class:list={["raster", ...spalten]}>
+      {zeigNeu.map((p) => (
         <Produktkarte produkt={p} shop={shop} />
       ))}
     </ul>
+    {alleAnsehen && (
+      <p class="alle-ansehen">
+        <a href={`/${shop}/produkte`} class="knopf knopf-zweit">
+          Alle Produkte ansehen
+        </a>
+      </p>
+    )}
   </section>
 )}
 
-{b.type === "bestseller" && bestseller.length > 0 && (
+{b.type === "bestseller" && zeigBestseller.length > 0 && (
   <section aria-labelledby={id}>
     <h2 id={id}>{b.heading ? b.heading : "Bestseller"}</h2>
-    <ul class="raster">
-      {bestseller.map((p) => (
+    <ul class:list={["raster", ...spalten]}>
+      {zeigBestseller.map((p) => (
         <Produktkarte produkt={p} shop={shop} />
       ))}
     </ul>
+    {alleAnsehen && (
+      <p class="alle-ansehen">
+        <a href={`/${shop}/produkte`} class="knopf knopf-zweit">
+          Alle Produkte ansehen
+        </a>
+      </p>
+    )}
   </section>
 )}
 
-{b.type === "categories" && kategorien.length > 0 && (
+{b.type === "categories" && zeigKategorien.length > 0 && (
   <section aria-labelledby={id}>
     <h2 id={id}>{b.heading ? b.heading : "Kategorien"}</h2>
-    <ul class="kategorien">
-      {kategorien.map((k) => (
+    <ul class:list={["kategorien", ...spalten]}>
+      {zeigKategorien.map((k) => (
         <li>
           <a href={`/${shop}/kategorie/${k.slug}`} class:list={{ "mit-bild": k.image != null }}>
             {k.image != null && (

@@ -71,6 +71,7 @@ describe("Aussehen: Rechenregeln", () => {
         featuredProductIds: ["0190a3c4-0000-7000-8000-000000000003"],
         showCategories: false,
         showNew: false,
+        layouts: { b1: { spacing: "l", width: "voll" } },
         blocks: [{ id: "b1", type: "text", heading: "Hallo", text: "Welt" }],
       },
       tagline: "Tee mit Herz",
@@ -92,6 +93,7 @@ describe("Aussehen: Rechenregeln", () => {
           slug: "ueber-uns",
           inFooter: true,
           blocks: [{ id: "b2", type: "map", address: "Teeweg 1" }],
+          layouts: {},
         },
       ],
     };

@@ -46,73 +46,133 @@ export interface SectionContent {
   readonly buttonUrl?: string;
 }
 
-export type Block =
-  | ({ readonly id: string; readonly type: FixedType } & SectionContent)
-  | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
-  | {
-      readonly id: string;
-      readonly type: "textImage";
-      readonly heading: string;
-      readonly text: string;
-      readonly imageId: string | null;
-      readonly imageSide: "left" | "right";
-    }
-  | { readonly id: string; readonly type: "image"; readonly imageId: string | null; readonly caption: string }
-  | { readonly id: string; readonly type: "video"; readonly url: string }
-  | { readonly id: string; readonly type: "map"; readonly address: string }
-  | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" }
-  | {
-      readonly id: string;
-      readonly type: "button";
-      readonly label: string;
-      readonly url: string;
-      readonly style: "primary" | "secondary";
-    }
-  | { readonly id: string; readonly type: "quote"; readonly text: string; readonly author: string }
-  | { readonly id: string; readonly type: "divider" }
-  | {
-      readonly id: string;
-      readonly type: "faq";
-      readonly heading: string;
-      readonly items: readonly { readonly question: string; readonly answer: string }[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "gallery";
-      readonly imageIds: readonly string[];
-      readonly caption: string;
-    }
-  | { readonly id: string; readonly type: "bestseller"; readonly heading: string }
-  | {
-      readonly id: string;
-      readonly type: "trust";
-      readonly items: readonly {
-        readonly icon: TrustIcon;
-        readonly title: string;
+/**
+ * Einstellungen, die jeder Baustein hat (Kristof 22.11.2026): Abstand oben und unten, Breite und
+ * Ausrichtung; bei Produktlisten dazu Anzahl, Spalten und der Button „Alle ansehen“. Beim Speichern
+ * gehen sie getrennt im Feld `layouts` an die API, genau wie der Inhalt der Shop-Bereiche.
+ */
+export const BLOCK_SPACINGS = [
+  { id: "s", name: "Klein" },
+  { id: "m", name: "Mittel" },
+  { id: "l", name: "Groß" },
+] as const;
+export type BlockSpacing = (typeof BLOCK_SPACINGS)[number]["id"];
+export const BLOCK_WIDTHS = [
+  { id: "seite", name: "Seitenbreite" },
+  { id: "voll", name: "Randlos" },
+] as const;
+export type BlockWidth = (typeof BLOCK_WIDTHS)[number]["id"];
+export const BLOCK_ALIGNS = [
+  { id: "links", name: "Links" },
+  { id: "mitte", name: "Mittig" },
+] as const;
+export type BlockAlign = (typeof BLOCK_ALIGNS)[number]["id"];
+export const LIST_COLUMNS = [2, 3, 4] as const;
+export const MIN_LIST_COUNT = 2;
+export const MAX_LIST_COUNT = 12;
+
+export interface BlockLayout {
+  // Ausdrücklich „| undefined“: Der Editor setzt eine Einstellung damit wieder auf den Standard.
+  readonly spacing?: BlockSpacing | undefined;
+  readonly width?: BlockWidth | undefined;
+  readonly align?: BlockAlign | undefined;
+  readonly count?: number | undefined;
+  readonly columns?: number | undefined;
+  readonly showAll?: boolean | undefined;
+}
+
+/** Diese Arten zeigen eine Liste: Für sie gibt es Anzahl, Spalten und den Button „Alle ansehen“. */
+export const LIST_TYPES: ReadonlySet<BlockType> = new Set<BlockType>([
+  "featured",
+  "new",
+  "bestseller",
+  "categories",
+]);
+
+/** Bei diesen Arten bringt eine mittige Ausrichtung nichts (sie haben keinen eigenen Text). */
+const OHNE_AUSRICHTUNG: ReadonlySet<BlockType> = new Set<BlockType>(["spacer", "divider", "image"]);
+export function hatAusrichtung(t: BlockType): boolean {
+  return !OHNE_AUSRICHTUNG.has(t);
+}
+/** Der Abstands-Baustein ist selbst ein Abstand; er braucht keinen weiteren. */
+export function hatAbstand(t: BlockType): boolean {
+  return t !== "spacer";
+}
+
+export type Block = BlockLayout &
+  (
+    | ({ readonly id: string; readonly type: FixedType } & SectionContent)
+    | { readonly id: string; readonly type: "text"; readonly heading: string; readonly text: string }
+    | {
+        readonly id: string;
+        readonly type: "textImage";
+        readonly heading: string;
         readonly text: string;
-      }[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "logos";
-      readonly heading: string;
-      readonly imageIds: readonly string[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "steps";
-      readonly heading: string;
-      readonly items: readonly { readonly title: string; readonly text: string }[];
-    }
-  | {
-      readonly id: string;
-      readonly type: "group";
-      /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
-      readonly columns: number;
-      readonly background: GroupBackground;
-      readonly padding: GroupPadding;
-      readonly blocks: readonly InnerBlock[];
-    };
+        readonly imageId: string | null;
+        readonly imageSide: "left" | "right";
+      }
+    | {
+        readonly id: string;
+        readonly type: "image";
+        readonly imageId: string | null;
+        readonly caption: string;
+      }
+    | { readonly id: string; readonly type: "video"; readonly url: string }
+    | { readonly id: string; readonly type: "map"; readonly address: string }
+    | { readonly id: string; readonly type: "spacer"; readonly size: "s" | "m" | "l" }
+    | {
+        readonly id: string;
+        readonly type: "button";
+        readonly label: string;
+        readonly url: string;
+        readonly style: "primary" | "secondary";
+      }
+    | { readonly id: string; readonly type: "quote"; readonly text: string; readonly author: string }
+    | { readonly id: string; readonly type: "divider" }
+    | {
+        readonly id: string;
+        readonly type: "faq";
+        readonly heading: string;
+        readonly items: readonly { readonly question: string; readonly answer: string }[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "gallery";
+        readonly imageIds: readonly string[];
+        readonly caption: string;
+      }
+    | { readonly id: string; readonly type: "bestseller"; readonly heading: string }
+    | {
+        readonly id: string;
+        readonly type: "trust";
+        readonly items: readonly {
+          readonly icon: TrustIcon;
+          readonly title: string;
+          readonly text: string;
+        }[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "logos";
+        readonly heading: string;
+        readonly imageIds: readonly string[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "steps";
+        readonly heading: string;
+        readonly items: readonly { readonly title: string; readonly text: string }[];
+      }
+    | {
+        readonly id: string;
+        readonly type: "group";
+        /** Spalten am Computer (1 bis 3); am Handy steht alles untereinander. */
+        readonly columns: number;
+        readonly background: GroupBackground;
+        readonly padding: GroupPadding;
+        readonly blocks: readonly InnerBlock[];
+      }
+  );
 
 /** Baustein in einer Gruppe (nie ein Shop-Bereich, nie selbst eine Gruppe). */
 export type InnerBlock = Extract<Block, { type: InnerType }>;
@@ -695,12 +755,46 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
         }
         if (b.buttonLabel !== undefined) c["buttonLabel"] = trim(b.buttonLabel);
         if (b.buttonUrl !== undefined) c["buttonUrl"] = trim(b.buttonUrl);
-        return c as Block;
+        return c as unknown as Block;
       }
       default:
         return b;
     }
   });
+}
+
+/**
+ * Für die API: die Einstellungen je Baustein getrennt in `layouts` (Baustein-ID → Einstellungen),
+ * die Bausteine selbst ohne sie. Gruppen geben ihre Kinder mit; jede ID steht nur einmal.
+ */
+export function splitLayouts(blocks: readonly Block[]): {
+  blocks: Block[];
+  layouts: Record<string, BlockLayout>;
+} {
+  const layouts: Record<string, BlockLayout> = {};
+  const ohne = (b: Block): Block => {
+    const { spacing, width, align, count, columns, showAll, ...rest } = b as Block & {
+      columns?: number;
+    };
+    const eigene: Record<string, unknown> = {};
+    if (spacing !== undefined) eigene["spacing"] = spacing;
+    if (width !== undefined) eigene["width"] = width;
+    if (align !== undefined) eigene["align"] = align;
+    if (count !== undefined) eigene["count"] = count;
+    if (showAll !== undefined) eigene["showAll"] = showAll;
+    // „columns“ gibt es zweimal: als Spalten einer Gruppe (gehört in den Baustein) und als Spalten
+    // einer Produktliste (gehört in die Einstellungen).
+    if (columns !== undefined && b.type !== "group") eigene["columns"] = columns;
+    if (Object.keys(eigene).length > 0) layouts[b.id] = eigene as BlockLayout;
+    const rumpf = b.type === "group" ? { ...rest, columns } : rest;
+    if (b.type === "group" && Array.isArray((rumpf as { blocks?: unknown }).blocks))
+      return {
+        ...(rumpf as object),
+        blocks: ((rumpf as { blocks: readonly Block[] }).blocks as readonly Block[]).map(ohne),
+      } as unknown as Block;
+    return rumpf as Block;
+  };
+  return { blocks: blocks.map(ohne), layouts };
 }
 
 /** Für die API: Shop-Bereiche nur mit ID und Art, ihr Inhalt getrennt in `sections`. */

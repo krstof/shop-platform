@@ -11,7 +11,14 @@ import {
   StoreApiError,
   type StoreProduct,
 } from "../../../lib/store-api.js";
-import { DEFAULT_HOME, EXTERN_COOKIE, isSection, safePageSlug, type StorePage } from "../../../lib/design.js";
+import {
+  DEFAULT_HOME,
+  EXTERN_COOKIE,
+  isSection,
+  layoutKlassen,
+  safePageSlug,
+  type StorePage,
+} from "../../../lib/design.js";
 import { warenkorbAnzahl } from "../../../lib/cart.js";
 
 const slug = safePageSlug(Astro.params.seite);
@@ -38,7 +45,7 @@ const produkte =
 const neu = braucht("new")
   ? (
       await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
-    ).data.slice(0, 4)
+    ).data.slice(0, 12)
   : [];
 const bestseller = braucht("bestseller") ? await loadBestseller(shop.handle, produkte) : [];
 const home = shop.design?.home ?? DEFAULT_HOME;
@@ -47,21 +54,23 @@ const home = shop.design?.home ?? DEFAULT_HOME;
 <Shop shop={shop} categories={categories} titel={seite.title} korb={korb}>
   <h1>{seite.title}</h1>
   {inhalt.length === 0 && <p>Diese Seite hat noch keinen Inhalt.</p>}
-  {inhalt.map((b) =>
-    isSection(b) ? (
-      <Bereich
-        block={b}
-        home={home}
-        shopName={shop.name}
-        shop={shop.handle}
-        produkte={produkte}
-        neu={neu}
-        bestseller={bestseller}
-        kategorien={categories}
-        hauptueberschrift={false}
-      />
-    ) : (
-      <Baustein block={b} shop={shop.handle} extern={extern} />
-    ),
-  )}
+  {inhalt.map((b) => (
+    <div class:list={["bausteinbox", ...layoutKlassen(b)]}>
+      {isSection(b) ? (
+        <Bereich
+          block={b}
+          home={home}
+          shopName={shop.name}
+          shop={shop.handle}
+          produkte={produkte}
+          neu={neu}
+          bestseller={bestseller}
+          kategorien={categories}
+          hauptueberschrift={false}
+        />
+      ) : (
+        <Baustein block={b} shop={shop.handle} extern={extern} />
+      )}
+    </div>
+  ))}
 </Shop>

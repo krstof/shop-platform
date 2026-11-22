@@ -151,10 +151,13 @@ export async function loadBestseller(
   try {
     const { productIds } = await storeApi<{ productIds: string[] }>(handle, "/bestsellers");
     const nachId = new Map(produkte.map((p) => [p.id, p]));
-    return productIds
-      .map((id) => nachId.get(id))
-      .filter((p): p is StoreProduct => p !== undefined)
-      .slice(0, 4);
+    return (
+      productIds
+        .map((id) => nachId.get(id))
+        .filter((p): p is StoreProduct => p !== undefined)
+        // Bis zu zwölf: Wie viele davon ein Baustein zeigt, steht in seinen Einstellungen.
+        .slice(0, 12)
+    );
   } catch {
     return [];
   }

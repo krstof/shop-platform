@@ -20,6 +20,12 @@ import {
   MAX_BLOCKS,
   sectionsSchema,
   withSections,
+  keepLayouts,
+  layoutsSchema,
+  MAX_LIST_COUNT,
+  MIN_LIST_COUNT,
+  type BlockLayout,
+  type BlockLayouts,
   blockImages,
   legacyBlocks,
   MAX_PAGES,
@@ -152,6 +158,26 @@ const contentItemSchema = z
       "hinzukommen; unbekannte bitte überspringen.",
   });
 
+/** Einstellungen je Baustein, wie die Antwort sie zeigt (dieselben Werte stecken auch in `content`). */
+const layoutsViewSchema = z
+  .record(
+    z.string(),
+    z.looseObject({
+      spacing: z.string().optional(),
+      width: z.string().optional(),
+      align: z.string().optional(),
+      count: z.number().int().optional(),
+      columns: z.number().int().optional(),
+      showAll: z.boolean().optional(),
+    }),
+  )
+  .meta({
+    id: "DesignLayouts",
+    description:
+      "Einstellungen je Baustein-ID: Abstand (`spacing`), Breite (`width`), Ausrichtung (`align`) " +
+      "und bei Produktlisten Anzahl (`count`), Spalten (`columns`) und Button (`showAll`).",
+  });
+
 const homeViewSchema = z
   .object({
     heroImage: imageSchema.nullable().meta({ description: "Großes Bild oben auf der Startseite." }),
@@ -178,6 +204,7 @@ const homeViewSchema = z
     content: z.array(contentItemSchema).nullable().meta({
       description: "Alle Bausteine in Reihenfolge, auch neuere Arten; null = alte feste Reihenfolge.",
     }),
+    layouts: layoutsViewSchema,
     blockImages: z
       .array(imageSchema)
       .meta({ description: "Die Bilder, die die Bausteine benutzen (für Vorschaubilder im Editor)." }),
@@ -198,6 +225,7 @@ const pageViewSchema = z
       .max(MAX_BLOCKS)
       .meta({ description: "Nur die Arten bis 13.11.2026; alle stehen in `content`." }),
     content: z.array(contentItemSchema).meta({ description: "Alle Bausteine in Reihenfolge." }),
+    layouts: layoutsViewSchema,
     blockImages: z.array(imageSchema).meta({ description: "Die Bilder der Bausteine (für den Editor)." }),
   })
   .meta({ id: "DesignPage", description: "Eigene Inhaltsseite aus Bausteinen." });
@@ -316,6 +344,13 @@ const homeInput = z
       description:
         "Inhalt der Shop-Bereiche je Baustein-ID (Bühne: title, text, imageId; Empfehlungen: heading, " +
         "productIds; Neu und Kategorien: heading). Shop-Bereiche dürfen mehrfach vorkommen.",
+    }),
+    layouts: layoutsSchema.optional().meta({
+      description:
+        "Einstellungen je Baustein-ID (22.11.2026): `spacing` (Abstand oben und unten: s, m, l), " +
+        "`width` (seite oder voll), `align` (links oder mitte) und bei Produktlisten `count` " +
+        `(${MIN_LIST_COUNT} bis ${MAX_LIST_COUNT}), \`columns\` (2, 3 oder 4) und \`showAll\` ` +
+        "(Button „Alle ansehen“). Einträge ohne Baustein fallen weg. Fehlt das Feld, bleibt alles.",
     }),
   })
   .meta({ id: "DesignHomeInput" });
@@ -786,14 +821,35 @@ function storeBlock(
 type StoreBlockOut = z.input<typeof storeBlockSchema>;
 
 /** Antwort mit beiden Feldern: `blocks` (alte Arten, Vertrag unverändert) und `content` (alle). */
-function split(all: StoreBlockOut[]): {
+function split(
+  all: StoreBlockOut[],
+  layouts: BlockLayouts,
+): {
   blocks: z.input<typeof storeFirstBlockSchema>[];
-  content: StoreBlockOut[];
+  content: (StoreBlockOut & BlockLayout)[];
 } {
   return {
     blocks: all.filter((b): b is z.input<typeof storeFirstBlockSchema> => FIRST_BLOCK_TYPES.has(b.type)),
-    content: all,
+    content: withLayouts(all, layouts),
   };
+}
+
+/**
+ * Einstellungen je Baustein in die Bausteine mischen. Das Ergebnis geht nur ins offene Feld
+ * `content`; das alte Feld `blocks` bleibt unverändert (Vertrag, siehe blocks.ts). Gruppen geben
+ * die Einstellungen an ihre Kinder weiter, die ebenfalls eigene haben dürfen.
+ */
+function withLayouts<T extends { id: string; blocks?: unknown }>(
+  blocks: readonly T[],
+  layouts: BlockLayouts,
+): (T & BlockLayout)[] {
+  return blocks.map((b) => {
+    const eigene = layouts[b.id] ?? {};
+    const kinder = Array.isArray(b.blocks)
+      ? { blocks: withLayouts(b.blocks as { id: string }[], layouts) }
+      : {};
+    return { ...b, ...eigene, ...kinder } as T & BlockLayout;
+  });
 }
 
 /** Fußzeile für Antworten: frische Arrays statt readonly. */
@@ -831,7 +887,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         featuredProductIds: [...s.home.featuredProductIds],
         heroImage: image(s.home.heroImageId),
         blocks: s.home.blocks === null ? null : firstBlocksOf(s.home.blocks),
-        content: s.home.blocks === null ? null : s.home.blocks.map((b) => ({ ...b })),
+        content: s.home.blocks === null ? null : withLayouts(s.home.blocks, s.home.layouts),
         blockImages: blockImages(s.home.blocks).flatMap((id) => {
           const i = found.get(id);
           return i === undefined ? [] : [i];
@@ -847,7 +903,7 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       pages: s.pages.map((p) => ({
         ...p,
         blocks: firstBlocksOf(p.blocks),
-        content: p.blocks.map((b) => ({ ...b })),
+        content: withLayouts(p.blocks, p.layouts),
         blockImages: blockImages(p.blocks).flatMap((id) => {
           const i = found.get(id);
           return i === undefined ? [] : [i];
@@ -951,23 +1007,27 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         const logo = body.logoImageId;
         const favicon =
           body.faviconImageId === undefined ? current.draft.faviconImageId : body.faviconImageId;
-        const home: HomeSettings =
-          body.home === undefined
-            ? current.draft.home
-            : {
-                heroImageId: body.home.heroImageId,
-                heroTitle: body.home.heroTitle,
-                heroText: body.home.heroText,
-                featuredProductIds: body.home.featuredProductIds,
-                showCategories: body.home.showCategories,
-                showNew: body.home.showNew ?? current.draft.home.showNew,
-                blocks:
-                  body.home.blocks === undefined
-                    ? current.draft.home.blocks
-                    : body.home.blocks === null
-                      ? null
-                      : withSections(body.home.blocks, body.home.sections),
-              };
+        const home: HomeSettings = ((): HomeSettings => {
+          if (body.home === undefined) return current.draft.home;
+          const blocks =
+            body.home.blocks === undefined
+              ? current.draft.home.blocks
+              : body.home.blocks === null
+                ? null
+                : withSections(body.home.blocks, body.home.sections);
+          // Einstellungen je Baustein: nur die behalten, zu denen es den Baustein noch gibt.
+          const layouts = keepLayouts(body.home.layouts ?? current.draft.home.layouts, blocks ?? []);
+          return {
+            heroImageId: body.home.heroImageId,
+            heroTitle: body.home.heroTitle,
+            heroText: body.home.heroText,
+            featuredProductIds: body.home.featuredProductIds,
+            showCategories: body.home.showCategories,
+            showNew: body.home.showNew ?? current.draft.home.showNew,
+            blocks,
+            layouts,
+          };
+        })();
         // Nur Bilder, die es in diesem Shop gibt (fremde oder erfundene IDs fehlen in der Antwort).
         const wanted = [
           { id: logo, path: "/logoImageId", detail: "Dieses Logo gibt es nicht. Bitte neu hochladen." },
@@ -1024,13 +1084,17 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
         const pages: readonly ContentPage[] =
           body.pages === undefined
             ? current.draft.pages
-            : body.pages.map((p) => ({
-                id: p.id,
-                title: p.title,
-                slug: p.slug,
-                inFooter: p.inFooter,
-                blocks: withSections(p.blocks, p.sections),
-              }));
+            : body.pages.map((p) => {
+                const blocks = withSections(p.blocks, p.sections);
+                return {
+                  id: p.id,
+                  title: p.title,
+                  slug: p.slug,
+                  inFooter: p.inFooter,
+                  blocks,
+                  layouts: keepLayouts(p.layouts ?? {}, blocks),
+                };
+              });
         const background = (body.backgroundColor ?? current.draft.backgroundColor).toLowerCase();
         if (!readableBackground(background))
           throw new ValidationError({
@@ -1259,7 +1323,10 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
           featuredProductIds: [...home.featuredProductIds],
           showCategories: home.showCategories,
           showNew: home.showNew,
-          ...split((home.blocks ?? legacyBlocks(home)).flatMap((b) => storeBlock(b, image, home))),
+          ...split(
+            (home.blocks ?? legacyBlocks(home)).flatMap((b) => storeBlock(b, image, home)),
+            home.layouts,
+          ),
         },
         tagline: published.tagline,
         footer: footerView(published.footer),
@@ -1305,7 +1372,10 @@ export function designEndpoints({ db, images }: DesignEndpointDependencies): End
       return {
         title: page.title,
         slug: page.slug,
-        ...split(page.blocks.flatMap((b) => storeBlock(b, image, published.home))),
+        ...split(
+          page.blocks.flatMap((b) => storeBlock(b, image, published.home)),
+          page.layouts,
+        ),
       };
     },
   });

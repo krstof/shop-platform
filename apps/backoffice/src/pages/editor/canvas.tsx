@@ -29,7 +29,10 @@ import { Select } from "../../components/select.js";
 import { StockPhotoButton } from "../../components/stock-photos.js";
 import type { Category, DesignImage, Product } from "../../lib/api.js";
 import {
+  BLOCK_ALIGNS,
   BLOCK_INFO,
+  BLOCK_SPACINGS,
+  BLOCK_WIDTHS,
   blockProblem,
   blockSummary,
   duplicateById,
@@ -56,7 +59,13 @@ import {
   MAX_TRUST_TEXT,
   MAX_TRUST_TITLE,
   groupZone,
+  hatAbstand,
+  hatAusrichtung,
+  LIST_COLUMNS,
+  LIST_TYPES,
   locate,
+  MAX_LIST_COUNT,
+  MIN_LIST_COUNT,
   moveTo,
   parseVideoUrl,
   removeBlock,
@@ -262,10 +271,6 @@ export function Canvas({
   );
 }
 
-function hasSettings(b: Block): boolean {
-  return ["textImage", "video", "button", "spacer", "featured", "hero", "image", "group"].includes(b.type);
-}
-
 /** Was jede Baustein-Liste braucht. `blocks` ist immer die ganze Seite, nicht nur die eigene Ebene. */
 interface Shared {
   blocks: readonly Block[];
@@ -304,9 +309,9 @@ function BlockList({ list, groupId, shared }: { list: readonly Block[]; groupId?
             onSelect(undefined);
           }}
           settingsOpen={settingsFor === b.id}
-          onSettings={
-            hasSettings(b) ? () => setSettingsFor(settingsFor === b.id ? undefined : b.id) : undefined
-          }
+          // Seit dem 22.11.2026 hat jeder Baustein ein Zahnrad: Abstand, Breite und Ausrichtung
+          // gibt es überall, dazu je nach Art das Bisherige (Bild, Zuschnitt, Spalten …).
+          onSettings={() => setSettingsFor(settingsFor === b.id ? undefined : b.id)}
           settings={<BlockSettings block={b} update={(c) => update(b.id, c)} ctx={ctx} />}
         >
           {b.type === "group" ? (
@@ -501,7 +506,7 @@ function CanvasBlock({
         </div>
         {settingsOpen && onSettings && (
           <div
-            className="absolute top-5 right-1 z-30 w-80 max-w-[calc(100%-0.5rem)] rounded-lg bg-white p-4 text-left text-sm text-gray-800 shadow-pop ring-1 ring-gray-200"
+            className="absolute top-5 right-1 z-30 max-h-[70vh] w-80 max-w-[calc(100%-0.5rem)] overflow-y-auto rounded-lg bg-white p-4 text-left text-sm text-gray-800 shadow-pop ring-1 ring-gray-200"
             style={{ fontFamily: "var(--font-sans)", lineHeight: 1.5 }}
             role="dialog"
             aria-label={`${info.name}: Einstellungen`}
@@ -1303,8 +1308,108 @@ function fokusPosition(b: Block, mobile: boolean): string {
   return mobile ? `${stufe(b.focusMobileX, x)}% ${stufe(b.focusMobileY, y)}%` : `${x}% ${y}%`;
 }
 
-/** Einstellungen unter ⚙: alles, was man nicht direkt schreiben kann. */
+/**
+ * Einstellungen unter ⚙ (Kristof 22.11.2026, Vorbild Shopify Horizon): oben die drei, die jeder
+ * Baustein hat, darunter die der Art. Mehr soll es nicht werden; Farben und Schriften gehören
+ * weiter ins Design, damit der Shop zusammenbleibt.
+ */
 function BlockSettings({
+  block: b,
+  update,
+  ctx,
+}: {
+  block: Block;
+  update: (c: Partial<Block>) => void;
+  ctx: Ctx;
+}) {
+  const eigene = ArtSettings({ block: b, update, ctx });
+  return (
+    <div className="space-y-4">
+      <LayoutSettings block={b} update={update} />
+      {eigene !== null && <div className="border-t border-gray-200 pt-4">{eigene}</div>}
+    </div>
+  );
+}
+
+/** Abstand, Breite, Ausrichtung – und bei Produktlisten Anzahl, Spalten und „Alle ansehen“. */
+function LayoutSettings({ block: b, update }: { block: Block; update: (c: Partial<Block>) => void }) {
+  const liste = LIST_TYPES.has(b.type);
+  return (
+    <div className="space-y-3">
+      {hatAbstand(b.type) && (
+        <Toggle
+          label="Abstand oben und unten"
+          value={b.spacing ?? "m"}
+          options={BLOCK_SPACINGS.map((o) => [o.id, o.name] as const)}
+          onChange={(spacing) => update({ spacing })}
+        />
+      )}
+      <Toggle
+        label="Breite"
+        value={b.width ?? "seite"}
+        options={BLOCK_WIDTHS.map((o) => [o.id, o.name] as const)}
+        onChange={(width) => update({ width })}
+      />
+      {hatAusrichtung(b.type) && (
+        <Toggle
+          label="Ausrichtung"
+          value={b.align ?? "links"}
+          options={BLOCK_ALIGNS.map((o) => [o.id, o.name] as const)}
+          onChange={(align) => update({ align })}
+        />
+      )}
+      {liste && (
+        <>
+          <label className="block text-sm font-medium">
+            Wie viele zeigen
+            <input
+              type="number"
+              min={MIN_LIST_COUNT}
+              max={MAX_LIST_COUNT}
+              value={b.count ?? ""}
+              placeholder="alle"
+              className="mt-1 block w-24 rounded-md border-0 px-2.5 py-1.5 text-sm ring-1 ring-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                update({
+                  count:
+                    e.target.value === "" || !Number.isFinite(n)
+                      ? undefined
+                      : Math.min(MAX_LIST_COUNT, Math.max(MIN_LIST_COUNT, Math.round(n))),
+                });
+              }}
+            />
+          </label>
+          <Toggle
+            label="Spalten am Computer"
+            value={String(b.columns ?? "auto")}
+            options={[["auto", "Automatisch"], ...LIST_COLUMNS.map((c) => [String(c), String(c)] as const)]}
+            onChange={(v) => update({ columns: v === "auto" ? undefined : Number(v) })}
+          />
+          {b.type !== "categories" && (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={b.showAll === true}
+                onChange={(e) => update({ showAll: e.target.checked ? true : undefined })}
+              />
+              <span>
+                Button „Alle Produkte ansehen“
+                <span className="block text-xs text-gray-500">
+                  Führt auf die Seite mit allen Produkten deines Shops.
+                </span>
+              </span>
+            </label>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Die Einstellungen, die nur eine bestimmte Art hat. */
+function ArtSettings({
   block: b,
   update,
   ctx,

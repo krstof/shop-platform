@@ -5,7 +5,13 @@
 import Shop from "../../layouts/Shop.astro";
 import Produktkarte from "../../components/Produktkarte.astro";
 import { loadBestseller, loadShop, storeApi, type StoreProduct } from "../../lib/store-api.js";
-import { DEFAULT_HOME, EXTERN_COOKIE, isSection, startseitenBausteine } from "../../lib/design.js";
+import {
+  DEFAULT_HOME,
+  EXTERN_COOKIE,
+  isSection,
+  layoutKlassen,
+  startseitenBausteine,
+} from "../../lib/design.js";
 import Bereich from "../../components/Bereich.astro";
 import Baustein from "../../components/Baustein.astro";
 import { warenkorbAnzahl } from "../../lib/cart.js";
@@ -27,12 +33,13 @@ const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 const bausteine = startseitenBausteine(home);
 const zeigt = (t: string) => bausteine.some((b) => b.type === t);
 const extern = Astro.cookies.get(EXTERN_COOKIE)?.value === "ja";
-// „Neu im Shop“: die vier neuesten lieferbaren Produkte (eigene Abfrage, unabhängig von der Sortierung unten).
+// „Neu im Shop“: die neuesten lieferbaren Produkte (eigene Abfrage, unabhängig von der Sortierung
+// unten). Bis zu zwölf; wie viele ein Baustein zeigt, steht in seinen Einstellungen (22.11.2026).
 const neu = !zeigt("new")
   ? []
   : (
       await storeApi<{ data: StoreProduct[] }>(shop.handle, "/products?sort=newest&available=true")
-    ).data.slice(0, 4);
+    ).data.slice(0, 12);
 const bestseller = zeigt("bestseller") ? await loadBestseller(shop.handle, produkte) : [];
 // Die erste Bühne ist die Hauptüberschrift; ohne Bühne gibt es eine unsichtbare.
 const ersteBuehne = bausteine.find((b) => b.type === "hero")?.id;
@@ -40,23 +47,25 @@ const ersteBuehne = bausteine.find((b) => b.type === "hero")?.id;
 
 <Shop shop={shop} categories={categories} titel={shop.name} korb={korb}>
   {ersteBuehne === undefined && <h1 class="unsichtbar">{shop.name}</h1>}
-  {bausteine.map((b) =>
-    isSection(b) ? (
-      <Bereich
-        block={b}
-        home={home}
-        shopName={shop.name}
-        shop={shop.handle}
-        produkte={produkte}
-        neu={neu}
-        bestseller={bestseller}
-        kategorien={categories}
-        hauptueberschrift={b.id === ersteBuehne}
-      />
-    ) : (
-      <Baustein block={b} shop={shop.handle} extern={extern} />
-    ),
-  )}
+  {bausteine.map((b) => (
+    <div class:list={["bausteinbox", ...layoutKlassen(b)]}>
+      {isSection(b) ? (
+        <Bereich
+          block={b}
+          home={home}
+          shopName={shop.name}
+          shop={shop.handle}
+          produkte={produkte}
+          neu={neu}
+          bestseller={bestseller}
+          kategorien={categories}
+          hauptueberschrift={b.id === ersteBuehne}
+        />
+      ) : (
+        <Baustein block={b} shop={shop.handle} extern={extern} />
+      )}
+    </div>
+  ))}
 
   <h2 id="alle">Alle Produkte</h2>
   {(produkte.length > 1 || verfuegbar) && (
