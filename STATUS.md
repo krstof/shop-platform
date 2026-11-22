@@ -218,7 +218,7 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
     1. ~~Fundament für Anbindungen~~ (erledigt 21.11.2026)
     2. ~~Telegram-Benachrichtigung~~ (erledigt 21.11.2026; Kristof muss nur noch den Schlüssel vom BotFather in „Einstellungen → Anbindungen" eintragen)
     3. ~~Bühne beherrschen: Zuschnitt-Punkt und Knopf~~ (erledigt 22.11.2026)
-    4. **Editor und Shop moderner machen (hier geht es weiter).** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: ~~Suche im Kopf wählbar~~ (erledigt 22.11.2026), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
+    4. **Editor und Shop moderner machen (hier geht es weiter).** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: ~~Suche im Kopf wählbar~~, ~~Punkt 4 (Bühnen-Zuschnitt)~~, ~~Punkt 5 (zweites Produktbild beim Überfahren)~~ und ~~Punkt 9 (Vertrauenszeile)~~ aus `docs/08` (alle erledigt 22.11.2026). **Offen und als Nächstes dran:** Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon, Spalten und Hintergrund je Gruppe), weitere Bausteine, und das Aussehen des Editors selbst.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.
     6. ~~Rest der Welle A aus `docs/09`: Photon, IndexNow, Produktfeed~~ (erledigt 22.11.2026)
     7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.
