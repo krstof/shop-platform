@@ -26,6 +26,14 @@ export interface SectionContent {
   readonly imageId?: string | null;
   readonly heading?: string;
   readonly productIds?: readonly string[];
+  /** Bühne: Zuschnitt-Punkt des Bildes in Prozent, am Computer und am Handy getrennt. */
+  readonly focusX?: number;
+  readonly focusY?: number;
+  readonly focusMobileX?: number;
+  readonly focusMobileY?: number;
+  /** Bühne: Knopf unter dem Text. Ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
+  readonly buttonLabel?: string;
+  readonly buttonUrl?: string;
 }
 
 export type Block =
@@ -275,6 +283,8 @@ export function blockProblem(b: Block): string | undefined {
     return "Bitte einen Link zu einem YouTube- oder Vimeo-Video einfügen.";
   if (b.type === "button" && b.url.trim() !== "" && !isSafeButtonUrl(b.url.trim()))
     return "Bitte eine Webadresse (https://…), E-Mail (mailto:…) oder eine eigene Seite wählen.";
+  if (b.type === "hero" && (b.buttonUrl ?? "").trim() !== "" && !isSafeButtonUrl((b.buttonUrl ?? "").trim()))
+    return "Bitte eine Webadresse (https://…), E-Mail (mailto:…) oder eine eigene Seite wählen.";
   return undefined;
 }
 
@@ -349,6 +359,11 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
         if (b.imageId !== undefined) c["imageId"] = b.imageId;
         if (b.heading !== undefined) c["heading"] = trim(b.heading);
         if (b.productIds !== undefined) c["productIds"] = [...b.productIds];
+        for (const k of ["focusX", "focusY", "focusMobileX", "focusMobileY"] as const) {
+          if (b[k] !== undefined) c[k] = b[k];
+        }
+        if (b.buttonLabel !== undefined) c["buttonLabel"] = trim(b.buttonLabel);
+        if (b.buttonUrl !== undefined) c["buttonUrl"] = trim(b.buttonUrl);
         return c as Block;
       }
       default:

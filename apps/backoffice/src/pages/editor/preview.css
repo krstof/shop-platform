@@ -157,6 +157,9 @@
 .sp-buehne.mit-bild .sp-buehne-text p {
   color: rgba(255, 255, 255, 0.92);
 }
+.sp-buehne-knopf {
+  margin: 1rem 0 0;
+}
 
 /* Produkte und Kategorien */
 .sp-raster {

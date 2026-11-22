@@ -189,7 +189,78 @@ main:focus-visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: var(--fokus-x, 50%) var(--fokus-y, 50%);
   z-index: -2;
+}
+/* Zuschnitt-Punkt der Bühne (22.11.2026). Der Händler wählt im Editor, welche Stelle des Fotos
+   stehen bleibt, wenn der Shop das Bild beschneidet. Als Klassen statt als Stil in der Seite, weil
+   die Sicherheitsregeln (CSP, style-src 'self') keine Stile in der Seite erlauben. */
+.fokus-x-0 {
+  --fokus-x: 0%;
+}
+.fokus-x-25 {
+  --fokus-x: 25%;
+}
+.fokus-x-50 {
+  --fokus-x: 50%;
+}
+.fokus-x-75 {
+  --fokus-x: 75%;
+}
+.fokus-x-100 {
+  --fokus-x: 100%;
+}
+.fokus-y-0 {
+  --fokus-y: 0%;
+}
+.fokus-y-25 {
+  --fokus-y: 25%;
+}
+.fokus-y-50 {
+  --fokus-y: 50%;
+}
+.fokus-y-75 {
+  --fokus-y: 75%;
+}
+.fokus-y-100 {
+  --fokus-y: 100%;
+}
+/* Knopf in der Bühne: Abstand nach oben, damit er nicht am Text klebt. */
+.buehne-knopf {
+  margin: 1.25rem 0 0;
+}
+@media (max-width: 47.99rem) {
+  /* Am Handy wird ein breites Foto viel enger beschnitten, deshalb ein eigener Zuschnitt-Punkt. */
+  .fokus-handy-x-0 {
+    --fokus-x: 0%;
+  }
+  .fokus-handy-x-25 {
+    --fokus-x: 25%;
+  }
+  .fokus-handy-x-50 {
+    --fokus-x: 50%;
+  }
+  .fokus-handy-x-75 {
+    --fokus-x: 75%;
+  }
+  .fokus-handy-x-100 {
+    --fokus-x: 100%;
+  }
+  .fokus-handy-y-0 {
+    --fokus-y: 0%;
+  }
+  .fokus-handy-y-25 {
+    --fokus-y: 25%;
+  }
+  .fokus-handy-y-50 {
+    --fokus-y: 50%;
+  }
+  .fokus-handy-y-75 {
+    --fokus-y: 75%;
+  }
+  .fokus-handy-y-100 {
+    --fokus-y: 100%;
+  }
 }
 /* Ein Verlauf über die ganze Bühne, nicht nur hinter dem Text: Sonst steht weiße Schrift je nach
    Foto auf einer hellen Stelle und ist nicht mehr lesbar (21.11.2026). */

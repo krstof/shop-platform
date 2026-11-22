@@ -41,6 +41,14 @@ export type StoreBlock =
       readonly title?: string;
       readonly text?: string;
       readonly image?: StoreBlockImage | null;
+      /** Zuschnitt-Punkt des Bildes in Prozent, am Computer und am Handy getrennt; fehlt: Mitte. */
+      readonly focusX?: number;
+      readonly focusY?: number;
+      readonly focusMobileX?: number;
+      readonly focusMobileY?: number;
+      /** Knopf in der Bühne; ohne Beschriftung oder ohne Ziel zeigt der Shop keinen. */
+      readonly buttonLabel?: string;
+      readonly buttonUrl?: string;
     }
   | {
       readonly id: string;

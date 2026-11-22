@@ -2711,6 +2711,38 @@
                   }
                 ]
               },
+              "focusX": {
+                "description": "Bühne: Zuschnitt-Punkt des Bildes von links in Prozent; fehlt = Mitte.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "focusY": {
+                "description": "Bühne: Zuschnitt-Punkt des Bildes von oben in Prozent; fehlt = Mitte.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "focusMobileX": {
+                "description": "Bühne: Zuschnitt-Punkt am Handy von links; fehlt = wie am Computer.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "focusMobileY": {
+                "description": "Bühne: Zuschnitt-Punkt am Handy von oben; fehlt = wie am Computer.",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "buttonLabel": {
+                "description": "Bühne: Beschriftung des Knopfs; leer = kein Knopf.",
+                "type": "string"
+              },
+              "buttonUrl": {
+                "description": "Bühne: Ziel des Knopfs; leer = kein Knopf.",
+                "type": "string"
+              },
               "heading": {
                 "description": "Empfehlungen, Neu, Kategorien: Überschrift; leer = Standard.",
                 "type": "string"

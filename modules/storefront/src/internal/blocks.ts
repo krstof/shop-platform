@@ -103,14 +103,33 @@ const id = z.string().regex(BLOCK_ID);
 
 const SECTION_TYPES = ["hero", "featured", "categories", "new"] as const;
 
-/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild; Empfehlungen: Überschrift, Produkte; Neu und
- *  Kategorien: Überschrift). Fehlt ein Feld, gilt der Inhalt der Startseite bzw. der Standard. */
+/** Zuschnitt-Punkt eines Bühnenbildes in Prozent: 0 ist links bzw. oben, 100 rechts bzw. unten.
+ *  Fehlt er, bleibt die Mitte stehen. Am Computer und am Handy getrennt, weil ein breites Foto am
+ *  Handy viel enger beschnitten wird und sonst das Falsche in der Mitte landet. */
+const focus = z.int().min(0).max(100).optional();
+
+/** Inhalt eines Shop-Bereichs (Bühne: Titel, Text, Bild, Zuschnitt, Knopf; Empfehlungen: Überschrift,
+ *  Produkte; Neu und Kategorien: Überschrift). Fehlt ein Feld, gilt der Inhalt der Startseite bzw.
+ *  der Standard. */
 export const sectionContentSchema = z.strictObject({
   title: line(MAX_SECTION_TITLE).optional(),
   text: text(MAX_SECTION_TEXT).optional(),
   imageId: z.uuid().nullable().optional(),
   heading: line(MAX_SECTION_TITLE).optional(),
   productIds: z.array(z.uuid()).max(MAX_SECTION_PRODUCTS).optional(),
+  focusX: focus,
+  focusY: focus,
+  focusMobileX: focus,
+  focusMobileY: focus,
+  buttonLabel: line(MAX_BUTTON_LABEL).optional(),
+  buttonUrl: z
+    .string()
+    .max(300)
+    .refine(
+      (u) => u === "" || isSafeButtonUrl(u),
+      "Bitte eine Webadresse, E-Mail, Telefonnummer oder /seite/… angeben.",
+    )
+    .optional(),
 });
 export type SectionContent = z.infer<typeof sectionContentSchema>;
 

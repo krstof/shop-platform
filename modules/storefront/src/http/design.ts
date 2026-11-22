@@ -392,6 +392,31 @@ const storeSectionSchema = z.object({
   title: z.string().optional().meta({ description: "Bühne: Überschrift; leer = Standard." }),
   text: z.string().optional().meta({ description: "Bühne: Text; leer = Standard." }),
   image: storeImageSchema.nullable().optional().meta({ description: "Bühne: großes Bild." }),
+  focusX: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt des Bildes von links in Prozent; fehlt = Mitte." }),
+  focusY: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt des Bildes von oben in Prozent; fehlt = Mitte." }),
+  focusMobileX: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt am Handy von links; fehlt = wie am Computer." }),
+  focusMobileY: z
+    .number()
+    .int()
+    .optional()
+    .meta({ description: "Bühne: Zuschnitt-Punkt am Handy von oben; fehlt = wie am Computer." }),
+  buttonLabel: z
+    .string()
+    .optional()
+    .meta({ description: "Bühne: Beschriftung des Knopfs; leer = kein Knopf." }),
+  buttonUrl: z.string().optional().meta({ description: "Bühne: Ziel des Knopfs; leer = kein Knopf." }),
   heading: z
     .string()
     .optional()
@@ -549,6 +574,14 @@ function storeBlock(
           title: b.title ?? home.heroTitle,
           text: b.text ?? home.heroText,
           image: image(b.imageId === undefined ? home.heroImageId : b.imageId),
+          // Zuschnitt und Knopf gibt es erst seit dem 22.11.2026; fehlen sie, bleibt es bei Mitte
+          // und ohne Knopf.
+          ...(b.focusX === undefined ? {} : { focusX: b.focusX }),
+          ...(b.focusY === undefined ? {} : { focusY: b.focusY }),
+          ...(b.focusMobileX === undefined ? {} : { focusMobileX: b.focusMobileX }),
+          ...(b.focusMobileY === undefined ? {} : { focusMobileY: b.focusMobileY }),
+          ...(b.buttonLabel === undefined ? {} : { buttonLabel: b.buttonLabel }),
+          ...(b.buttonUrl === undefined ? {} : { buttonUrl: b.buttonUrl }),
         },
       ];
     case "featured":

@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 22.11.2026 (Welle A der Anbindungen fertig: Adressvorschläge, Produktfeed, IndexNow)
+Stand: 22.11.2026 (Welle A der Anbindungen fertig; Bühne mit Zuschnitt-Punkt und Knopf)
 
 ## Erledigt
 
@@ -108,6 +108,14 @@ Stand: 22.11.2026 (Welle A der Anbindungen fertig: Adressvorschläge, Produktfee
   - ⚠️ In der Cloud-Arbeitsumgebung haben die Container kein Internet, deshalb bleiben die Adressvorschläge dort leer und IndexNow meldet nichts. Produktfeed und Schlüsseldatei laufen auch dort, beide wurden im Browser geprüft.
   - Geprüft: 9 Tests für den Feed, 6 für die Adresserkennung, 5 neue Tests gegen die Datenbank, 454 API-Tests grün, `pnpm check` komplett. Im Browser durchgespielt: Feed mit richtigen Adressen, Schlüsseldatei erreichbar (falscher Schlüssel ergibt 404), Seite „Anbindungen" mit allen fünf Kacheln.
 
+- **Bühne beherrschen: Zuschnitt-Punkt und Knopf (22.11.2026, Punkt 3 von Kristofs Wunschliste):**
+  - **Zuschnitt-Punkt**: Im Editor stehen unter ⚙ der Bühne zwei kleine Bilder, „Computer" (breit) und „Handy" (hoch). Ein Klick setzt den Punkt, der stehen bleibt, wenn der Shop das Foto beschneidet; die Pfeiltasten verschieben ihn. Beide Geräte haben einen eigenen Punkt, weil ein breites Foto am Handy viel enger beschnitten wird. Ohne Angabe bleibt es bei der Mitte.
+  - **Knopf in der Bühne**: Beschriftung und Ziel wie beim Knopf-Baustein (eigene Seiten zur Auswahl oder eine eigene Adresse). Ohne Beschriftung oder ohne Ziel zeigt der Shop keinen Knopf.
+  - **Umgesetzt als Klassen, nicht als Stil in der Seite** (`apps/storefront/src/styles/shop.css`): Die Sicherheitsregeln des Shops erlauben keine Stile in der Seite (CSP, `style-src 'self'`). Der Punkt wird deshalb auf Viertelschritte gerundet und als Klasse gesetzt (`fokus-x-75`, `fokus-handy-y-100`). Fünf Stufen je Richtung reichen in der Praxis und kosten nichts.
+  - **Gefunden und behoben:** Die Storefront-API gab neue Bühnenfelder nicht heraus; der Shop hätte sie nie gesehen. Jetzt stehen sie im Vertrag (`modules/storefront/src/http/design.ts`).
+  - Die Testshops bekommen das beim Einrichten mit: Teeladen zeigt „Tees ansehen" und schneidet aufs Teefeld, Modeladen „Zur Kollektion" (`apps/api/src/seed-catalog.ts`).
+  - Geprüft: neue Tests für Schema und Editor-Daten, `pnpm check` komplett; im Browser gesetzt, veröffentlicht und im Shop auf 1280 und 390 Pixel angesehen.
+
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 
 Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobieren merkt (CLAUDE.md 1a). Der alte Plan mit 26 Etappen in `docs/06_Welle1_Anforderungen.md` gilt nur noch als Nachschlagewerk. Fundament (E1 bis E6) ist fertig. Ab jetzt je Lauf eine sichtbare Etappe, API und Oberfläche zusammen, jeweils die einfachste Version:
@@ -203,11 +211,11 @@ Kristof will schneller sichtbare Ergebnisse und nur das, was man beim Ausprobier
 36. **Kristofs Wunschliste vom 21.11.2026**, nach seinen Antworten vom selben Tag sortiert. Grundlage für alles, was Aussehen betrifft, ist `docs/08_Shop_Design_Best_Practices.md`, für alle Anbindungen `docs/09_Anbindungen.md`:
     1. ~~Fundament für Anbindungen~~ (erledigt 21.11.2026)
     2. ~~Telegram-Benachrichtigung~~ (erledigt 21.11.2026; Kristof muss nur noch den Schlüssel vom BotFather in „Einstellungen → Anbindungen" eintragen)
-    3. **Bühne beherrschen:** Zuschnitt-Punkt wählbar (am Computer und am Handy getrennt) und ein Knopf in der Bühne.
-    4. **Editor und Shop moderner machen.** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
+    3. ~~Bühne beherrschen: Zuschnitt-Punkt und Knopf~~ (erledigt 22.11.2026)
+    4. **Editor und Shop moderner machen (hier geht es weiter).** Kristof am 21.11.2026 auf die Frage, was ihm am Editor fehlt: „Es soll moderner aussehen irgendwie." Also keine fehlende Funktion, sondern das Aussehen. Dazu gehören: Suche im Kopf wählbar (offenes Feld oder Lupe, die aufklappt), Gruppen-Baustein (Bausteine in Bausteinen wie bei Shopify Horizon), mehr Bausteine, und die Punkte 4, 5 und 9 aus `docs/08`.
     5. **Branchen-Startpunkte:** drei bis vier fertige Shop-Anfänge mit Farben, Schrift, Bausteinen und Beispieltexten.
     6. ~~Rest der Welle A aus `docs/09`: Photon, IndexNow, Produktfeed~~ (erledigt 22.11.2026)
-    7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter. **Hier geht es weiter.**
+    7. **Welle B aus `docs/09`:** ~~Unsplash samt Openverse im Editor~~ (erledigt 21.11.2026), rembg zum Freistellen, Mollie als zweiter Zahlungsanbieter.
     8. **Welle C aus `docs/09`:** Slopify als MCP-Server, eigene Bewertungen.
     9. **Welle D aus `docs/09`:** Plausible oder Umami auf einer neuen Seite „Statistiken", Google Search Console, DataForSEO.
     10. **Produktvarianten** (Größe und Farbe mit eigenem Preis und Bestand), **Shop-Detailseite** in der Plattform-Verwaltung, **Versandarten und Versandkosten**.

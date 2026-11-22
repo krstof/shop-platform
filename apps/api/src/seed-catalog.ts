@@ -59,6 +59,15 @@ interface SeedDesign {
   readonly template: "klassisch" | "modern" | "galerie" | "editorial";
   readonly heroTitle: string;
   readonly heroText: string;
+  /** Beschriftung und Ziel des Knopfs in der Bühne. */
+  readonly heroButton: { readonly label: string; readonly url: string };
+  /** Zuschnitt-Punkt des Bühnenbilds in Prozent (Computer und Handy getrennt). */
+  readonly heroFocus: {
+    readonly x: number;
+    readonly y: number;
+    readonly mobileX: number;
+    readonly mobileY: number;
+  };
   readonly tagline: string;
   readonly footerText: string;
   /** Namen der Produkte, die als Empfehlungen oben stehen. */
@@ -161,6 +170,9 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
       heroText:
         "Wir kaufen in kleinen Mengen direkt bei den Gärten ein und füllen jede Sorte von Hand ab. " +
         "So kommt der Tee frisch bei dir an.",
+      heroButton: { label: "Tees ansehen", url: "/" },
+      // Das Teefeld liegt im unteren Drittel des Fotos, am Handy noch etwas weiter unten.
+      heroFocus: { x: 50, y: 75, mobileX: 50, mobileY: 100 },
       tagline: "Lose Tees seit 1998",
       footerText: "Wir sind montags bis freitags von 9 bis 18 Uhr für dich da.",
       featured: ["Sencha Frühlingshauch", "Earl Grey Classic", "Rooibos Vanille"],
@@ -222,6 +234,8 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
       heroText:
         "Wenige Teile, gute Stoffe, ruhige Farben. Alles so geschnitten, dass es nach dem zehnten " +
         "Waschen noch sitzt.",
+      heroButton: { label: "Zur Kollektion", url: "/" },
+      heroFocus: { x: 50, y: 25, mobileX: 50, mobileY: 25 },
       tagline: "Schlichte Mode aus guten Stoffen",
       footerText: "Versand innerhalb Deutschlands, Rückgabe innerhalb von 30 Tagen.",
       featured: ["Leinenhemd Sommer", "Wollmütze Fjord"],
@@ -371,6 +385,24 @@ async function seedDesign(
         featuredProductIds: featured,
         showCategories: true,
         showNew: true,
+        // Dieselbe Reihenfolge wie ohne Bausteine, aber mit Inhalt: nur so bekommt die Bühne
+        // Zuschnitt-Punkt und Knopf (22.11.2026).
+        blocks: [
+          { id: "buehne", type: "hero" },
+          { id: "empfohlen", type: "featured" },
+          { id: "neu", type: "new" },
+          { id: "kategorien", type: "categories" },
+        ],
+        sections: {
+          buehne: {
+            focusX: design.heroFocus.x,
+            focusY: design.heroFocus.y,
+            focusMobileX: design.heroFocus.mobileX,
+            focusMobileY: design.heroFocus.mobileY,
+            buttonLabel: design.heroButton.label,
+            buttonUrl: design.heroButton.url,
+          },
+        },
       },
       footer: { text: design.footerText, links: [] },
     },

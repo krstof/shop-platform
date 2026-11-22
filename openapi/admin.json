@@ -5178,6 +5178,34 @@
                                   "format": "uuid",
                                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                                 }
+                              },
+                              "focusX": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "focusY": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "focusMobileX": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "focusMobileY": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "buttonLabel": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "buttonUrl": {
+                                "type": "string",
+                                "maxLength": 300
                               }
                             },
                             "additionalProperties": false
@@ -14489,6 +14517,34 @@
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
+                },
+                "focusX": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "focusY": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "focusMobileX": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "focusMobileY": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "buttonLabel": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "buttonUrl": {
+                  "type": "string",
+                  "maxLength": 300
                 }
               },
               "additionalProperties": false

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  sectionsSchema,
   storedBlockSchema,
   withSections,
   blockImages,
@@ -14,6 +15,29 @@ import {
 const IMG = "0190a3c4-0000-7000-8000-000000000001";
 
 describe("Bausteine", () => {
+  it("nimmt Zuschnitt-Punkt und Knopf der Bühne an und weist Unsinn ab", () => {
+    const gut = sectionsSchema.safeParse({
+      buehne: {
+        focusX: 0,
+        focusY: 100,
+        focusMobileX: 25,
+        focusMobileY: 75,
+        buttonLabel: "Jetzt stöbern",
+        buttonUrl: "/seite/ueber-uns",
+      },
+    });
+    expect(gut.success).toBe(true);
+    // Ohne Angabe bleibt alles offen: Die Bühne nimmt dann die Mitte und zeigt keinen Knopf.
+    expect(sectionsSchema.safeParse({ buehne: {} }).success).toBe(true);
+    expect(sectionsSchema.safeParse({ buehne: { focusX: 101 } }).success).toBe(false);
+    expect(sectionsSchema.safeParse({ buehne: { focusX: -1 } }).success).toBe(false);
+    expect(sectionsSchema.safeParse({ buehne: { focusY: 12.5 } }).success).toBe(false);
+    // Gefährliche Ziele lässt der Knopf nicht durch.
+    expect(sectionsSchema.safeParse({ buehne: { buttonUrl: "javascript:alert(1)" } }).success).toBe(false);
+    expect(sectionsSchema.safeParse({ buehne: { buttonUrl: "https://example.com" } }).success).toBe(true);
+    expect(sectionsSchema.safeParse({ buehne: { buttonLabel: "x".repeat(200) } }).success).toBe(false);
+  });
+
   it("erkennt YouTube- und Vimeo-Links, sonst nichts", () => {
     expect(parseVideoUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10")).toEqual({
       provider: "youtube",

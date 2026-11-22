@@ -3,7 +3,7 @@
 // Kategorien-Kacheln, dazu Bestseller (14.11.2026). Sie dürfen mehrfach und auf eigenen Seiten vorkommen; ohne eigenen Inhalt
 // (ältere Daten) gilt der Inhalt der Startseite.
 import Produktkarte from "./Produktkarte.astro";
-import type { StoreHome, StoreSection } from "../lib/design.js";
+import { buttonHref, isExternal, type StoreHome, type StoreSection } from "../lib/design.js";
 import type { StoreCategory, StoreProduct } from "../lib/store-api.js";
 
 interface Props {
@@ -45,13 +45,38 @@ const empfohlen =
         .filter((p): p is StoreProduct => p !== undefined)
     : [];
 const H = hauptueberschrift ? "h1" : "h2";
+
+// Zuschnitt-Punkt des Bühnenbildes: ohne Angabe bleibt die Mitte stehen. Am Handy gilt ein eigener
+// Punkt, weil ein breites Foto dort viel enger beschnitten wird. Der Punkt wird auf Viertelschritte
+// gerundet und als Klasse gesetzt, weil die Sicherheitsregeln des Shops keine Stile in der Seite
+// erlauben (CSP, style-src 'self').
+const stufe = (wert: number | undefined, ersatz: number): number => {
+  if (typeof wert !== "number" || !Number.isFinite(wert)) return ersatz;
+  return Math.min(100, Math.max(0, Math.round(wert / 25) * 25));
+};
+const fokusX = b.type === "hero" ? stufe(b.focusX, 50) : 50;
+const fokusY = b.type === "hero" ? stufe(b.focusY, 50) : 50;
+const fokusKlassen =
+  b.type === "hero" && bild !== null
+    ? [
+        `fokus-x-${fokusX}`,
+        `fokus-y-${fokusY}`,
+        `fokus-handy-x-${stufe(b.focusMobileX, fokusX)}`,
+        `fokus-handy-y-${stufe(b.focusMobileY, fokusY)}`,
+      ]
+    : [];
+
+// Knopf in der Bühne: nur mit Beschriftung und erlaubtem Ziel.
+const knopfZiel = b.type === "hero" && b.buttonUrl !== undefined ? buttonHref(b.buttonUrl, shop) : undefined;
+const knopfText = b.type === "hero" ? (b.buttonLabel ?? "").trim() : "";
+const knopfExtern = knopfZiel !== undefined && isExternal(knopfZiel);
 ---
 
 {b.type === "hero" && (
   <section class:list={["buehne", { "buehne-bild": bild !== null }]} aria-labelledby={id}>
     {bild !== null && (
       <img
-        class="buehne-foto"
+        class:list={["buehne-foto", fokusKlassen]}
         src={bild.url}
         alt=""
         width={bild.width}
@@ -63,6 +88,18 @@ const H = hauptueberschrift ? "h1" : "h2";
     <div class="buehne-text">
       <H id={id}>{titel !== "" ? titel : `Willkommen bei ${shopName}`}</H>
       <p>{text !== "" ? text : "Schön, dass du da bist. Stöbere durch unser Sortiment."}</p>
+      {knopfZiel !== undefined && knopfText !== "" && (
+        <p class="buehne-knopf">
+          <a
+            href={knopfZiel}
+            class="knopf"
+            target={knopfExtern ? "_blank" : undefined}
+            rel={knopfExtern ? "noopener noreferrer" : undefined}
+          >
+            {knopfText}
+          </a>
+        </p>
+      )}
     </div>
   </section>
 )}
