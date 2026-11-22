@@ -25,6 +25,7 @@ import {
   MAX_PAGES,
   pagesSchema,
   parseVideoUrl,
+  TRUST_ICONS,
   type Block,
   type ContentPage,
 } from "../internal/blocks.js";
@@ -497,6 +498,17 @@ const storeLaterBlocks = [
     type: z.literal("bestseller"),
     heading: z.string().meta({ description: "Produkte dazu liefert GET /shops/{shopHandle}/bestsellers." }),
   }),
+  z.object({
+    id: z.string(),
+    type: z.literal("trust"),
+    items: z.array(
+      z.object({
+        icon: z.string().meta({ "x-extensible-enum": [...TRUST_ICONS], description: "Symbol des Punkts." }),
+        title: z.string(),
+        text: z.string(),
+      }),
+    ),
+  }),
 ] as const;
 
 /** Alle Arten (nur für die Typen im Code; in Antworten steht `content` offen für neue Arten). */
@@ -662,6 +674,11 @@ function storeBlock(
       return b.address.trim() === "" ? [] : [{ id: b.id, type: b.type, address: b.address.trim() }];
     case "spacer":
       return [{ ...b }];
+    case "trust": {
+      // Punkte ohne Überschrift lässt der Shop weg; bleibt keiner übrig, fällt die Zeile ganz weg.
+      const items = b.items.filter((i) => i.title.trim() !== "");
+      return items.length === 0 ? [] : [{ id: b.id, type: b.type, items }];
+    }
   }
 }
 

@@ -16,7 +16,8 @@ export type FreeType =
   | "divider"
   | "faq"
   | "gallery"
-  | "bestseller";
+  | "bestseller"
+  | "trust";
 export type BlockType = FixedType | FreeType;
 
 /** Inhalt eines Shop-Bereichs. Fehlende Felder: Inhalt der Startseite bzw. Standard. */
@@ -72,7 +73,30 @@ export type Block =
       readonly imageIds: readonly string[];
       readonly caption: string;
     }
-  | { readonly id: string; readonly type: "bestseller"; readonly heading: string };
+  | { readonly id: string; readonly type: "bestseller"; readonly heading: string }
+  | {
+      readonly id: string;
+      readonly type: "trust";
+      readonly items: readonly {
+        readonly icon: TrustIcon;
+        readonly title: string;
+        readonly text: string;
+      }[];
+    };
+
+/** Symbole der Vertrauenszeile (gleiche Liste wie in der API). */
+export const TRUST_ICONS = [
+  { id: "versand", name: "Versand" },
+  { id: "ruecksendung", name: "Rückgabe" },
+  { id: "kontakt", name: "Kontakt" },
+  { id: "zahlung", name: "Zahlung" },
+  { id: "qualitaet", name: "Qualität" },
+  { id: "nachhaltig", name: "Nachhaltig" },
+] as const;
+export type TrustIcon = (typeof TRUST_ICONS)[number]["id"];
+export const MAX_TRUST_ITEMS = 3;
+export const MAX_TRUST_TITLE = 40;
+export const MAX_TRUST_TEXT = 120;
 
 export const MAX_BLOCKS = 30;
 export const MAX_BLOCK_HEADING = 120;
@@ -109,12 +133,13 @@ export const BLOCK_INFO: Record<BlockType, { readonly name: string; readonly hin
   new: { name: "Neu im Shop", hint: "Neueste Produkte" },
   bestseller: { name: "Bestseller", hint: "Meistverkaufte Produkte" },
   categories: { name: "Kategorien", hint: "Kacheln" },
+  trust: { name: "Vertrauen", hint: "Versand, Rückgabe, Kontakt" },
 };
 
 /** Gruppen in der Leiste „Bausteine“. */
 export const PALETTE: readonly { readonly title: string; readonly types: readonly BlockType[] }[] = [
   { title: "Inhalte", types: ["text", "textImage", "image", "gallery", "video", "map"] },
-  { title: "Gestaltung", types: ["button", "quote", "faq", "divider", "spacer"] },
+  { title: "Gestaltung", types: ["button", "quote", "faq", "trust", "divider", "spacer"] },
   { title: "Shop-Bereiche", types: ["hero", "featured", "new", "bestseller", "categories"] },
 ];
 
@@ -165,6 +190,16 @@ export function newBlock(type: BlockType, existing: readonly Block[], random?: (
       return { id, type, imageIds: [], caption: "" };
     case "bestseller":
       return { id, type, heading: "Bestseller" };
+    case "trust":
+      return {
+        id,
+        type,
+        items: [
+          { icon: "versand", title: "Versandkostenfrei ab 50 €", text: "Lieferung in 2 bis 3 Tagen" },
+          { icon: "ruecksendung", title: "30 Tage Rückgabe", text: "Ohne Angabe von Gründen" },
+          { icon: "kontakt", title: "Wir sind da", text: "Montags bis freitags von 9 bis 18 Uhr" },
+        ],
+      };
     case "hero":
       return { id, type, title: "", text: "", imageId: null };
     case "featured":
@@ -312,6 +347,10 @@ export function blockSummary(b: Block): string {
       return b.heading.trim() || "Fragen";
     case "divider":
       return "Linie";
+    case "trust":
+      return b.items.length === 0
+        ? "Noch keine Punkte"
+        : b.items.map((i) => i.title.trim() || "…").join(", ");
     case "hero":
       return b.title?.trim() || "Begrüßung";
     default:
@@ -341,6 +380,13 @@ export function cleanBlocks(blocks: readonly Block[]): Block[] {
         return { ...b, text: b.text.trim(), author: b.author.trim() };
       case "bestseller":
         return { ...b, heading: b.heading.trim() };
+      case "trust":
+        return {
+          ...b,
+          items: b.items
+            .map((i) => ({ icon: i.icon, title: i.title.trim(), text: i.text.trim() }))
+            .filter((i) => i.title !== "" || i.text !== ""),
+        };
       case "faq":
         return {
           ...b,

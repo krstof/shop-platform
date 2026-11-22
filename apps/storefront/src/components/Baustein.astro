@@ -4,6 +4,7 @@
 // Video und Karte kommen von fremden Servern; sie laden erst, wenn die Besucherin zustimmt
 // (Cookie „externe-inhalte“). Bis dahin steht dort ein Hinweis mit Knopf, ganz ohne JavaScript.
 import { absaetze } from "../lib/format.js";
+import Vertrauenssymbol from "./Vertrauenssymbol.astro";
 import { buttonHref, isExternal, mapUrls, videoEmbedUrl, type StoreBlock } from "../lib/design.js";
 
 interface Props {
@@ -135,6 +136,20 @@ const ziel = b.type === "button" ? buttonHref(b.url, shop) : undefined;
 )}
 
 {b.type === "divider" && <hr class="baustein baustein-linie" />}
+
+{b.type === "trust" && b.items.length > 0 && (
+  <ul class="baustein vertrauen">
+    {b.items.map((i) => (
+      <li>
+        <Vertrauenssymbol name={i.icon} />
+        <span>
+          <b>{i.title}</b>
+          {i.text !== "" && <span class="klein">{i.text}</span>}
+        </span>
+      </li>
+    ))}
+  </ul>
+)}
 
 {b.type === "faq" && (
   <section class="baustein baustein-faq">

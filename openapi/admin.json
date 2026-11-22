@@ -5133,6 +5133,59 @@
                                   "heading"
                                 ],
                                 "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]{1,24}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "const": "trust"
+                                  },
+                                  "items": {
+                                    "maxItems": 3,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "icon": {
+                                          "type": "string",
+                                          "enum": [
+                                            "versand",
+                                            "ruecksendung",
+                                            "kontakt",
+                                            "zahlung",
+                                            "qualitaet",
+                                            "nachhaltig"
+                                          ]
+                                        },
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 40
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 120
+                                        }
+                                      },
+                                      "required": [
+                                        "icon",
+                                        "title",
+                                        "text"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "items"
+                                ],
+                                "additionalProperties": false
                               }
                             ]
                           }
@@ -13605,7 +13658,8 @@
               "divider",
               "faq",
               "gallery",
-              "bestseller"
+              "bestseller",
+              "trust"
             ]
           }
         },
@@ -14516,6 +14570,59 @@
                         "id",
                         "type",
                         "heading"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]{1,24}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "trust"
+                        },
+                        "items": {
+                          "maxItems": 3,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "icon": {
+                                "type": "string",
+                                "enum": [
+                                  "versand",
+                                  "ruecksendung",
+                                  "kontakt",
+                                  "zahlung",
+                                  "qualitaet",
+                                  "nachhaltig"
+                                ]
+                              },
+                              "title": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 120
+                              }
+                            },
+                            "required": [
+                              "icon",
+                              "title",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "items"
                       ],
                       "additionalProperties": false
                     }

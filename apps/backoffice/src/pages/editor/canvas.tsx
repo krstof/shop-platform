@@ -7,12 +7,18 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowDown,
   ArrowUp,
+  BadgeCheck,
   Copy,
+  CreditCard,
+  Leaf,
+  MessageSquare,
   GripVertical,
   Plus,
   Search,
+  RotateCcw,
   Settings2,
   Trash,
+  Truck,
   Upload,
   X,
 } from "lucide-react";
@@ -36,10 +42,15 @@ import {
   MAX_SECTION_PRODUCTS,
   MAX_SECTION_TEXT,
   MAX_SECTION_TITLE,
+  MAX_TRUST_ITEMS,
+  MAX_TRUST_TEXT,
+  MAX_TRUST_TITLE,
   moveBlock,
   parseVideoUrl,
+  TRUST_ICONS,
   type Block,
   type ContentPage,
+  type TrustIcon,
 } from "../../lib/blocks.js";
 import { formatEuro } from "../../lib/money.js";
 import { END_ZONE, useDragState } from "./dnd.js";
@@ -53,6 +64,16 @@ const SOCIAL_ICONS: Record<string, { path: string; title: string }> = {
   youtube: siYoutube,
   pinterest: siPinterest,
   x: siX,
+};
+
+/** Symbole der Vertrauenszeile in der Vorschau (lucide, gleiche Bedeutung wie im Shop). */
+const TRUST_ICON_COMPONENTS: Record<TrustIcon, typeof Truck> = {
+  versand: Truck,
+  ruecksendung: RotateCcw,
+  kontakt: MessageSquare,
+  zahlung: CreditCard,
+  qualitaet: BadgeCheck,
+  nachhaltig: Leaf,
 };
 
 export interface CanvasShop {
@@ -660,6 +681,41 @@ function BlockView({
       );
     case "divider":
       return <hr className="sp-linie" />;
+    case "trust":
+      return (
+        <ul className="sp-vertrauen">
+          {b.items.map((i, n) => {
+            const I = TRUST_ICON_COMPONENTS[i.icon];
+            return (
+              <li key={n}>
+                <I className="size-6" aria-hidden="true" />
+                <span>
+                  <InlineText
+                    as="b"
+                    value={i.title}
+                    onChange={(title) =>
+                      update({ items: b.items.map((x, k) => (k === n ? { ...x, title } : x)) })
+                    }
+                    placeholder="Kurz und knapp"
+                    label="Überschrift des Punkts"
+                    maxLength={MAX_TRUST_TITLE}
+                  />
+                  <InlineText
+                    as="span"
+                    value={i.text}
+                    onChange={(text) =>
+                      update({ items: b.items.map((x, k) => (k === n ? { ...x, text } : x)) })
+                    }
+                    placeholder="Ein Satz dazu"
+                    label="Text des Punkts"
+                    maxLength={MAX_TRUST_TEXT}
+                  />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      );
     case "faq":
       return (
         <section className="sp-abschnitt">
@@ -1231,6 +1287,55 @@ function BlockSettings({
         </div>
       );
     }
+    case "trust":
+      return (
+        <div className="space-y-3">
+          <p className="text-sm font-medium">Punkte (höchstens {MAX_TRUST_ITEMS})</p>
+          {b.items.map((i, n) => (
+            <div key={n} className="space-y-2 rounded-lg p-2 ring-1 ring-gray-200">
+              <label className="block text-sm font-medium">
+                Symbol
+                <Select
+                  className="mt-1 font-normal"
+                  value={i.icon}
+                  onChange={(e) =>
+                    update({
+                      items: b.items.map((x, k) =>
+                        k === n ? { ...x, icon: e.target.value as TrustIcon } : x,
+                      ),
+                    })
+                  }
+                >
+                  {TRUST_ICONS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <button
+                type="button"
+                className="rounded-md px-2 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => update({ items: b.items.filter((_, k) => k !== n) })}
+              >
+                Punkt entfernen
+              </button>
+            </div>
+          ))}
+          {b.items.length < MAX_TRUST_ITEMS && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-brand-700 hover:bg-brand-50"
+              onClick={() => update({ items: [...b.items, { icon: "versand", title: "", text: "" }] })}
+            >
+              <Plus className="size-4" aria-hidden="true" /> Punkt hinzufügen
+            </button>
+          )}
+          <p className="text-xs text-gray-500">
+            Die Texte schreibst du direkt in der Vorschau. Mehr als drei Punkte glaubt niemand mehr.
+          </p>
+        </div>
+      );
     case "featured": {
       const chosen = b.productIds ?? [];
       return (

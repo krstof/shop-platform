@@ -38,6 +38,27 @@ describe("Bausteine", () => {
     expect(sectionsSchema.safeParse({ buehne: { buttonLabel: "x".repeat(200) } }).success).toBe(false);
   });
 
+  it("nimmt die Vertrauenszeile mit höchstens drei Punkten an", () => {
+    const zeile = {
+      id: "v",
+      type: "trust",
+      items: [
+        { icon: "versand", title: "Versandkostenfrei ab 50 €", text: "In 2 bis 3 Tagen da" },
+        { icon: "ruecksendung", title: "30 Tage Rückgabe", text: "" },
+      ],
+    };
+    expect(blocksSchema.safeParse([zeile]).success).toBe(true);
+    expect(blocksSchema.safeParse([{ id: "v", type: "trust", items: [] }]).success).toBe(true);
+    // Vier Punkte sind zu viele, und ein erfundenes Symbol gibt es nicht.
+    expect(blocksSchema.safeParse([{ ...zeile, items: [...zeile.items, ...zeile.items] }]).success).toBe(
+      false,
+    );
+    expect(
+      blocksSchema.safeParse([{ id: "v", type: "trust", items: [{ icon: "einhorn", title: "a", text: "" }] }])
+        .success,
+    ).toBe(false);
+  });
+
   it("erkennt YouTube- und Vimeo-Links, sonst nichts", () => {
     expect(parseVideoUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10")).toEqual({
       provider: "youtube",

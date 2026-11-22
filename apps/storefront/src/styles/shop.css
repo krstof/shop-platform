@@ -225,6 +225,41 @@ main:focus-visible {
 .fokus-y-100 {
   --fokus-y: 100%;
 }
+/* Vertrauenszeile (22.11.2026): höchstens drei Punkte nebeneinander, am Handy untereinander. */
+.vertrauen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+}
+.vertrauen li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.vertrauen b {
+  display: block;
+  font-weight: 600;
+}
+.vertrauen .klein {
+  display: block;
+  color: var(--text-leise);
+}
+.vertrauen-symbol {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: none;
+  fill: none;
+  stroke: var(--akzent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* Knopf in der Bühne: Abstand nach oben, damit er nicht am Text klebt. */
 .buehne-knopf {
   margin: 1.25rem 0 0;

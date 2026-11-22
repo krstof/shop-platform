@@ -96,7 +96,17 @@ export type StoreBlock =
       readonly images: readonly StoreBlockImage[];
       readonly caption: string;
     }
-  | { readonly id: string; readonly type: "bestseller"; readonly heading: string };
+  | { readonly id: string; readonly type: "bestseller"; readonly heading: string }
+  | {
+      readonly id: string;
+      readonly type: "trust";
+      /** Bis zu drei kurze Punkte mit Symbol (Versand, Rückgabe, Kontakt). */
+      readonly items: readonly {
+        readonly icon: string;
+        readonly title: string;
+        readonly text: string;
+      }[];
+    };
 
 /** Shop-Bereiche (Bühne, Empfehlungen, Neu im Shop, Kategorien, Bestseller): brauchen Produkte oder Kategorien. */
 export type StoreSection = Extract<

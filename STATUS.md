@@ -1,6 +1,6 @@
 # STATUS
 
-Stand: 22.11.2026 (Welle A der Anbindungen; Bühne mit Zuschnitt und Knopf; Kopfzeile einstellbar)
+Stand: 22.11.2026 (Welle A der Anbindungen; Bühne, Kopfzeile, Vertrauenszeile)
 
 ## Erledigt
 
@@ -117,6 +117,8 @@ Stand: 22.11.2026 (Welle A der Anbindungen; Bühne mit Zuschnitt und Knopf; Kopf
   - Geprüft: neue Tests für Schema und Editor-Daten, `pnpm check` komplett; im Browser gesetzt, veröffentlicht und im Shop auf 1280 und 390 Pixel angesehen.
 
 - **Kopfzeile einstellbar (22.11.2026, aus Punkt 4 der Wunschliste):** Im Editor gibt es den neuen Bereich „Kopfzeile". Die Suche steht wahlweise als **offenes Feld**, als **Lupe**, die das Feld beim Klick aufklappt, oder gar nicht im Kopf. Dazu der Schalter, ob die Kopfzeile beim Scrollen oben stehen bleibt. Die Lupe klappt ohne JavaScript auf (`<details>`), passend dazu, dass der Shop ohne Skripte auskommt. Geprüft: neue Tests für das Lesen der Einstellung, `pnpm check` komplett, im Browser umgestellt, veröffentlicht und im Shop ausprobiert (Lupe auf, Suche abgeschickt).
+
+- **Vertrauenszeile als Baustein (22.11.2026, Punkt 9 aus `docs/08`):** Neuer Baustein „Vertrauen" mit höchstens drei Punkten: Symbol, kurze Überschrift, ein Satz. Zur Auswahl stehen sechs Symbole (Versand, Rückgabe, Kontakt, Zahlung, Qualität, Nachhaltig); der Shop zeichnet sie selbst, es wird nichts von außen geladen. Die Texte schreibt der Händler direkt in der Vorschau. Mehr als drei Punkte lässt der Baustein nicht zu, weil eine Wand aus Siegeln weniger überzeugt als drei klare Zusagen. Geprüft: neue Tests im Schema, `pnpm check` komplett, im Browser eingefügt, veröffentlicht und im Shop angesehen.
 
 ## Nächste Schritte (neuer MVP-Plan ab 09.11.2026)
 

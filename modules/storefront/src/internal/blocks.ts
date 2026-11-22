@@ -23,6 +23,7 @@ export const BLOCK_TYPES = [
   "faq",
   "gallery",
   "bestseller",
+  "trust",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -38,6 +39,19 @@ export const MAX_GALLERY = 8;
 export const MAX_SECTION_TITLE = 80;
 export const MAX_SECTION_TEXT = 300;
 export const MAX_SECTION_PRODUCTS = 8;
+/** Vertrauenszeile (22.11.2026): höchstens drei Punkte, sonst glaubt sie keiner mehr. */
+export const MAX_TRUST_ITEMS = 3;
+export const MAX_TRUST_TITLE = 40;
+export const MAX_TRUST_TEXT = 120;
+/** Symbole der Vertrauenszeile; der Shop zeichnet sie selbst, nichts kommt von außen. */
+export const TRUST_ICONS = [
+  "versand",
+  "ruecksendung",
+  "kontakt",
+  "zahlung",
+  "qualitaet",
+  "nachhaltig",
+] as const;
 
 /** Ziel eines Knopfs: Webseite, E-Mail, Telefon oder ein Pfad im eigenen Shop („/seite/ueber-uns“). */
 export function isSafeButtonUrl(url: string): boolean {
@@ -205,6 +219,20 @@ const laterBlocks = [
   }),
   /** Meistverkaufte Produkte (füllt der Shop selbst aus den Bestellungen). */
   z.strictObject({ id, type: z.literal("bestseller"), heading: line(MAX_BLOCK_HEADING) }),
+  /** Vertrauenszeile: bis zu drei kurze Punkte mit Symbol (Versand, Rückgabe, Kontakt). */
+  z.strictObject({
+    id,
+    type: z.literal("trust"),
+    items: z
+      .array(
+        z.strictObject({
+          icon: z.enum(TRUST_ICONS),
+          title: line(MAX_TRUST_TITLE),
+          text: line(MAX_TRUST_TEXT),
+        }),
+      )
+      .max(MAX_TRUST_ITEMS),
+  }),
 ] as const;
 
 /** Ein Baustein, so wie er gespeichert und über die API geschrieben wird. */
