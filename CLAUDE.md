@@ -69,4 +69,5 @@ Wenn etwas blockiert (fehlende Entscheidung, Fehler), nicht raten, sondern als F
 - `docs/` – Analysen, Featurekatalog, Architektur, Entscheidungen (`docs/entscheidungen/` als ADRs)
 - `STATUS.md` – Fortschritt und nächster Schritt
 - `FRAGEN.md` – offene und beantwortete Fragen an Kristof
+- `docs/10_Wunschliste.md` – Kristofs Wünsche und der Fahrplan in Paketen; zusammen mit `STATUS.md` lesen, bevor ein neues Paket beginnt
 - Code-Ordner entstehen ab Welle 1 laut Architektur-Dokument.
