@@ -30,6 +30,9 @@ interface FormState {
   salePrice: string;
   taxClass: "standard" | "reduced";
   stock: string;
+  lowStockThreshold: string;
+  newBadge: "auto" | "always" | "never";
+  searchKeywords: string;
   categoryIds: string[];
   sku: string;
   deliveryMin: string;
@@ -44,6 +47,9 @@ const emptyForm: FormState = {
   salePrice: "",
   taxClass: "standard",
   stock: "0",
+  lowStockThreshold: "",
+  newBadge: "auto",
+  searchKeywords: "",
   categoryIds: [],
   sku: "",
   deliveryMin: "",
@@ -59,6 +65,10 @@ function formFrom(p: Product): FormState {
     salePrice: p.salePrice === null ? "" : centsToInput(p.salePrice.amount),
     taxClass: p.taxClass,
     stock: String(p.stock),
+    lowStockThreshold:
+      p.lowStockThreshold === null || p.lowStockThreshold === undefined ? "" : String(p.lowStockThreshold),
+    newBadge: p.newBadge ?? "auto",
+    searchKeywords: p.searchKeywords ?? "",
     categoryIds: categoryIdsOf(p),
     sku: p.sku ?? "",
     deliveryMin: p.deliveryDays ? String(p.deliveryDays.min) : "",
@@ -69,6 +79,19 @@ function formFrom(p: Product): FormState {
 
 type Errors = Partial<Record<keyof FormState | "form", string>>;
 
+/** Liegt der eingetragene Bestand auf oder unter dem eingetragenen Mindestbestand? */
+function bestandNiedrig(f: FormState): boolean {
+  const bestand = Number(f.stock.trim());
+  const grenze = Number(f.lowStockThreshold.trim());
+  if (f.lowStockThreshold.trim() === "" || !Number.isInteger(bestand) || !Number.isInteger(grenze))
+    return false;
+  return bestand <= grenze;
+}
+
+function neuWert(v: string): "auto" | "always" | "never" {
+  return v === "always" || v === "never" ? v : "auto";
+}
+
 /** Prüft im Browser, was sofort klar ist; der Rest kommt von der API. */
 function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
   const errors: Errors = {};
@@ -78,6 +101,10 @@ function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
   if (f.name.trim() === "") errors.name = "Bitte einen Namen angeben.";
   if (price === undefined) errors.price = "Bitte einen Preis wie 8,90 angeben.";
   if (stock === undefined) errors.stock = "Bitte eine ganze Zahl ab 0 angeben.";
+  const minRoh = f.lowStockThreshold.trim();
+  const lowStockThreshold = minRoh === "" ? null : /^\d+$/.test(minRoh) ? Number(minRoh) : undefined;
+  if (lowStockThreshold === undefined)
+    errors.lowStockThreshold = "Bitte eine ganze Zahl ab 0 angeben oder leer lassen.";
   const dMin = f.deliveryMin.trim();
   const dMax = f.deliveryMax.trim() === "" ? dMin : f.deliveryMax.trim();
   let deliveryDays: { min: number; max: number } | null = null;
@@ -91,7 +118,13 @@ function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
   if (sale === undefined) errors.salePrice = "Bitte einen Preis wie 6,90 angeben oder leer lassen.";
   else if (sale !== null && price !== undefined && sale >= price)
     errors.salePrice = "Der Angebotspreis muss kleiner als der normale Preis sein.";
-  if (Object.keys(errors).length > 0 || price === undefined || stock === undefined || sale === undefined)
+  if (
+    Object.keys(errors).length > 0 ||
+    price === undefined ||
+    stock === undefined ||
+    sale === undefined ||
+    lowStockThreshold === undefined
+  )
     return { errors };
   return {
     errors,
@@ -102,6 +135,9 @@ function toInput(f: FormState): { input?: ProductInput; errors: Errors } {
       salePrice: sale === null ? null : { amount: sale },
       taxClass: f.taxClass,
       stock,
+      lowStockThreshold,
+      newBadge: f.newBadge,
+      searchKeywords: f.searchKeywords.trim() === "" ? null : f.searchKeywords.trim(),
       categoryIds: f.categoryIds,
       sku: f.sku.trim() === "" ? null : f.sku.trim(),
       deliveryDays,
@@ -124,6 +160,8 @@ function errorsFromApi(e: unknown): Errors {
     ["/price", "price"],
     ["/salePrice", "salePrice"],
     ["/stock", "stock"],
+    ["/lowStockThreshold", "lowStockThreshold"],
+    ["/searchKeywords", "searchKeywords"],
     ["/categoryIds", "categoryIds"],
     ["/categoryId", "categoryIds"],
     ["/sku", "sku"],
@@ -370,6 +408,28 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                 )}
               </Field>
               <Field
+                label="Mindestbestand"
+                hint="Freiwillig. Fällt der Bestand auf diese Zahl oder darunter, steht in der Produktliste „Bestand niedrig“."
+                error={errors.lowStockThreshold}
+              >
+                {(p) => (
+                  <div>
+                    <Input
+                      {...p}
+                      inputMode="numeric"
+                      placeholder="keiner"
+                      value={form.lowStockThreshold}
+                      onChange={(e) => set("lowStockThreshold")(e.target.value)}
+                    />
+                    {bestandNiedrig(form) && (
+                      <p className="mt-1.5 text-sm text-amber-700">
+                        Der Bestand liegt schon auf oder unter dieser Zahl.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Field>
+              <Field
                 label="Lieferzeit (Werktage)"
                 hint="Freiwillig, etwa 2 bis 3. Leer: „Sofort lieferbar“."
                 error={errors.deliveryMin}
@@ -404,6 +464,22 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                   />
                 )}
               </Field>
+              <Field
+                label="Suchwörter"
+                hint="Freiwillig, durch Komma getrennt. Damit findet die Suche im Shop das Produkt auch unter Wörtern, die nicht im Namen oder Text stehen."
+                error={errors.searchKeywords}
+                className="sm:col-span-2"
+              >
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.searchKeywords}
+                    maxLength={300}
+                    placeholder="Geschenk, Mitbringsel, Grüntee"
+                    onChange={(e) => set("searchKeywords")(e.target.value)}
+                  />
+                )}
+              </Field>
             </div>
           </Card>
         </div>
@@ -422,6 +498,24 @@ function ProductEditor({ product }: { product: Product | undefined }) {
                 <span className="block text-gray-500">Sonst bleibt das Produkt ein Entwurf.</span>
               </span>
             </label>
+            <div className="mt-5">
+              <Field
+                label="Neu-Schildchen"
+                hint="Das Schildchen „Neu“ auf der Produktkarte im Shop. Bei einem Angebot steht dort „Angebot“."
+              >
+                {(p) => (
+                  <Select
+                    {...p}
+                    value={form.newBadge}
+                    onChange={(e) => set("newBadge")(neuWert(e.target.value))}
+                  >
+                    <option value="auto">Automatisch (14 Tage nach dem Veröffentlichen)</option>
+                    <option value="always">Immer zeigen</option>
+                    <option value="never">Nie zeigen</option>
+                  </Select>
+                )}
+              </Field>
+            </div>
           </Card>
           <Card>
             <Field

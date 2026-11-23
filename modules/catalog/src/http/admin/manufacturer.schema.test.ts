@@ -65,7 +65,12 @@ describe("Hersteller in der Admin-API", () => {
     const endpoints = catalogEndpoints({
       database: { destroy: async () => undefined } as Database<unknown>,
       prices: { setBasePrice: unused, getBasePrices: unused, setSalePrice: unused, getSalePrices: unused },
-      stock: { setOnHand: unused, getAvailable: unused },
+      stock: {
+        setOnHand: unused,
+        getAvailable: unused,
+        setLowStockThreshold: unused,
+        getLowStockThresholds: unused,
+      },
       images: { prepare: unused, get: unused, remove: unused },
     });
     expect(endpoints.map((e) => e.operationId)).toEqual([

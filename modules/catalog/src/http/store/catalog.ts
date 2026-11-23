@@ -59,6 +59,10 @@ export const storeProductSchema = z
       .string()
       .nullable()
       .meta({ description: "Seit wann im Shop (ISO 8601); der Shop zeigt damit „Neu“." }),
+    newBadge: z.enum(["auto", "always", "never"]).meta({
+      description:
+        "Neu-Schildchen: `auto` = 14 Tage nach `publishedAt`, `always` = immer zeigen, `never` = nie.",
+    }),
   })
   .meta({ id: "StoreProduct", description: "Produkt, wie Besucher eines Shops es sehen." });
 
@@ -120,6 +124,7 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
         categoryId: r.category_id,
         categoryIds: [...r.category_ids],
         publishedAt: r.published_at?.toISOString() ?? null,
+        newBadge: r.new_badge,
         deliveryDays:
           r.delivery_time_min_days === null || r.delivery_time_max_days === null
             ? null

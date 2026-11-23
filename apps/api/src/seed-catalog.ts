@@ -30,6 +30,12 @@ interface SeedProduct {
   readonly stock: number;
   /** Dateiname ohne Endung in `apps/api/seed-images`. */
   readonly image: string;
+  /** Suchwörter für die Shop-Suche (P5), durch Komma getrennt. */
+  readonly searchKeywords?: string;
+  /** Mindestbestand (P5): darunter steht in der Produktliste „Bestand niedrig“. */
+  readonly lowStockThreshold?: number;
+  /** Neu-Schildchen im Shop (P5). */
+  readonly newBadge?: "auto" | "always" | "never";
 }
 
 interface SeedWebFont {
@@ -101,11 +107,14 @@ export const SEED_CATALOG: Readonly<Record<string, SeedCatalog>> = {
         name: "Sencha Frühlingshauch",
         category: "gruentee",
         description:
-          "Ein klassischer gedämpfter Grüntee aus Shizuoka. Leuchtend grüne Tasse, frischer Duft nach Gras und ein sanfter, leicht süßer Abgang.\n\nZubereitung: 3 g auf 250 ml, 75 °C, 1 bis 2 Minuten.",
+          "Ein klassischer gedämpfter Grüntee aus Shizuoka. Leuchtend grüne Tasse, frischer Duft nach Gras und ein sanfter, leicht süßer Abgang.\n\n## Zubereitung\n\n- 3 g auf 250 ml Wasser\n- 75 °C, nicht heißer\n- 1 bis 2 Minuten ziehen lassen",
         price: 890,
         taxClass: "reduced",
         stock: 30,
         image: "tee-sencha",
+        searchKeywords: "Geschenk, Japan, Shizuoka, Grüner Tee",
+        lowStockThreshold: 35,
+        newBadge: "always",
       },
       {
         name: "Jasmin-Perlen",
@@ -306,6 +315,9 @@ export async function seedCatalog(options: {
           stock: p.stock,
           categoryId: categoryIds.get(p.category),
           status: "published",
+          ...(p.searchKeywords === undefined ? {} : { searchKeywords: p.searchKeywords }),
+          ...(p.lowStockThreshold === undefined ? {} : { lowStockThreshold: p.lowStockThreshold }),
+          ...(p.newBadge === undefined ? {} : { newBadge: p.newBadge }),
         });
       }
       parts.push(`${catalog.categories.length} Kategorien und ${catalog.products.length} Produkte angelegt`);
@@ -329,6 +341,35 @@ export async function seedCatalog(options: {
       pictures++;
     }
     if (pictures > 0) parts.push(`${pictures} Produktfotos hochgeladen`);
+
+    // Beispiele aus Paket P5 (Suchwörter, Mindestbestand, Neu-Schildchen) in Shops nachtragen, die
+    // es schon vor P5 gab. Angefasst wird nur, wer noch keines der drei Felder gesetzt hat; was der
+    // Händler selbst eingestellt hat, bleibt.
+    let pflege = 0;
+    for (const p of catalog.products) {
+      if (p.searchKeywords === undefined && p.lowStockThreshold === undefined && p.newBadge === undefined)
+        continue;
+      const product = products.find((x) => x.name === p.name);
+      if (product === undefined) continue;
+      const unberuehrt =
+        (product.searchKeywords ?? null) === null &&
+        (product.lowStockThreshold ?? null) === null &&
+        (product.newBadge ?? "auto") === "auto";
+      if (!unberuehrt) continue;
+      await call(
+        "PATCH",
+        `/admin/v1/products/${product.id}`,
+        {
+          description: p.description,
+          ...(p.searchKeywords === undefined ? {} : { searchKeywords: p.searchKeywords }),
+          ...(p.lowStockThreshold === undefined ? {} : { lowStockThreshold: p.lowStockThreshold }),
+          ...(p.newBadge === undefined ? {} : { newBadge: p.newBadge }),
+        },
+        { "if-match": `"${product.version}"` },
+      );
+      pflege++;
+    }
+    if (pflege > 0) parts.push(`${pflege} Produkte um Suchwörter und Mindestbestand ergänzt`);
 
     // Kategoriebilder: nur für Kategorien, die noch keines haben.
     const categories = (await call("GET", "/admin/v1/categories?limit=100")).data as SeedCategoryRow[];
@@ -412,7 +453,7 @@ async function seedDesign(
   return true;
 }
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type HeaderMap = Record<string, string>;
 
 interface SeedResponse {
@@ -425,6 +466,11 @@ interface SeedProductRow {
   readonly name: string;
   readonly slug: string;
   readonly images: readonly { readonly id: string; readonly width: number; readonly height: number }[];
+  readonly version: number;
+  /** Felder aus Paket P5; ältere Shops haben sie noch nicht gesetzt. */
+  readonly searchKeywords?: string | null;
+  readonly lowStockThreshold?: number | null;
+  readonly newBadge?: "auto" | "always" | "never";
 }
 
 interface SeedCategoryRow {

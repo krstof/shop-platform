@@ -1,13 +1,14 @@
 // Leiste zum Formatieren über einem mehrzeiligen Textfeld (Paket P13, Kristof 22.11.2026):
-// fett, kursiv, Aufzählung, nummerierte Liste und Link. Sie schreibt eine kleine Auszeichnung in
-// den Text (**fett**, *kursiv*, „- “, „1. “, [Text](Adresse)); der Shop macht daraus sein HTML.
+// fett, kursiv, Überschrift (Paket P5), Aufzählung, nummerierte Liste und Link. Sie schreibt eine
+// kleine Auszeichnung in den Text (**fett**, *kursiv*, „## “, „- “, „1. “, [Text](Adresse)); der
+// Shop macht daraus sein HTML.
 //
 // Warum keine Schriftart, Schriftgröße und Textfarbe je Textstelle: Die gehören in die
 // Design-Einstellungen, damit der Shop zusammenbleibt. Unterstrichen gibt es auch nicht, weil
 // unterstrichener Text im Web wie ein Link aussieht.
-import { Bold, Italic, Link2, List, ListOrdered } from "lucide-react";
+import { Bold, Heading, Italic, Link2, List, ListOrdered } from "lucide-react";
 import { useRef, useState, type ComponentProps } from "react";
-import { alsLink, alsListe, umschliessen } from "@shop/text";
+import { alsLink, alsListe, alsUeberschrift, umschliessen } from "@shop/text";
 
 export interface Auswahl {
   readonly text: string;
@@ -54,6 +55,15 @@ export function FormatBar({
         onClick={() => onChange(umschliessen(text, start, ende, "*"))}
       >
         <Italic className="size-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className={knopf}
+        title="Überschrift"
+        aria-label="Überschrift"
+        onClick={() => onChange(alsUeberschrift(text, start, ende))}
+      >
+        <Heading className="size-4" aria-hidden="true" />
       </button>
       <button
         type="button"

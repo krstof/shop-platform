@@ -65,15 +65,17 @@ interface FieldProps {
   label: string;
   hint?: string | undefined;
   error?: string | undefined;
+  /** Zusätzliche Klassen für das umgebende Feld, etwa um im Raster zwei Spalten zu belegen. */
+  className?: string | undefined;
   children: (props: { id: string; "aria-describedby"?: string; "aria-invalid"?: true }) => ReactNode;
 }
 
 /** Beschriftetes Feld mit Hinweis und Fehlertext, richtig verknüpft für Screenreader. */
-export function Field({ label, hint, error, children }: FieldProps) {
+export function Field({ label, hint, error, className, children }: FieldProps) {
   const id = useId();
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");
   return (
-    <div className="space-y-1.5">
+    <div className={className === undefined ? "space-y-1.5" : `space-y-1.5 ${className}`}>
       <label htmlFor={id} className="block text-sm font-medium text-gray-800">
         {label}
       </label>

@@ -82,17 +82,25 @@ export function productReader({ prices, stock, images }: Omit<ProductEndpointDep
       trx,
       rows.map((r) => r.id),
     );
-    const [p, sale, s, img] = await Promise.all([
+    const [p, sale, s, img, low] = await Promise.all([
       prices.getBasePrices(ids, CURRENCY),
       prices.getSalePrices(ids, CURRENCY),
       stock.getAvailable(ids),
       images.get([...imageIds.values()].flat()),
+      stock.getLowStockThresholds(ids),
     ]);
     return rows.map((r) => {
       const list = (imageIds.get(r.id) ?? [])
         .map((id) => img.get(id))
         .filter((i): i is ProductImage => i !== undefined);
-      return toProduct(r, p.get(r.variant_id), s.get(r.variant_id), list, sale.get(r.variant_id));
+      return toProduct(
+        r,
+        p.get(r.variant_id),
+        s.get(r.variant_id),
+        list,
+        sale.get(r.variant_id),
+        low.get(r.variant_id),
+      );
     });
   };
 }
@@ -227,6 +235,8 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           if (body.salePrice !== undefined && body.salePrice !== null)
             await prices.setSalePrice(row.variant_id, body.salePrice.amount, CURRENCY);
           await stock.setOnHand(row.variant_id, body.stock ?? 0);
+          if (body.lowStockThreshold !== undefined && body.lowStockThreshold !== null)
+            await stock.setLowStockThreshold(row.variant_id, body.lowStockThreshold);
           await publishEvent(trx, productCreated, { id: row.id, name: row.name });
           return (await withDetails(trx, [row]))[0] as Product;
         }),
@@ -275,6 +285,8 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
               currency: CURRENCY,
             });
           if (body.stock !== undefined) await stock.setOnHand(r.row.variant_id, body.stock);
+          if (body.lowStockThreshold !== undefined)
+            await stock.setLowStockThreshold(r.row.variant_id, body.lowStockThreshold);
           const [after] = await withDetails(trx, [r.row]);
           if (before === undefined || after === undefined) throw new Error("Produkt nicht lesbar");
           const changes = diff(productFacts(before), productFacts(after));

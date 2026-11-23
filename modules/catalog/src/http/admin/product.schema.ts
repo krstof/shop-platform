@@ -46,6 +46,17 @@ export const productSchema = z
         "Angebotspreis (brutto). Gesetzt: Der Shop verkauft zu diesem Preis und zeigt `price` durchgestrichen.",
     }),
     stock: z.number().int().meta({ description: "Verfügbarer Bestand (vorhanden minus reserviert)." }),
+    lowStockThreshold: z.number().int().nullable().meta({
+      description:
+        "Mindestbestand: Fällt `stock` auf diese Zahl oder darunter, gilt der Bestand als niedrig. null = keine Angabe.",
+    }),
+    newBadge: z.enum(["auto", "always", "never"]).meta({
+      description:
+        "Neu-Schildchen im Shop: `auto` = 14 Tage nach dem Veröffentlichen, `always` = immer, `never` = nie.",
+    }),
+    searchKeywords: z.string().nullable().meta({
+      description: "Eigene Suchwörter, durch Komma getrennt; die Shop-Suche findet das Produkt auch darüber.",
+    }),
     categoryId: z.uuid().nullable().meta({ description: "Hauptkategorie (erste aus `categoryIds`)." }),
     categoryIds: z
       .array(z.uuid())
@@ -72,6 +83,7 @@ export function toProduct(
   stock: number | undefined,
   images: readonly ProductImage[],
   salePrice?: number,
+  lowStockThreshold?: number,
 ): Product {
   return {
     id: row.id,
@@ -83,6 +95,9 @@ export function toProduct(
     price: price === undefined ? null : { amount: price, currency: CURRENCY },
     salePrice: salePrice === undefined ? null : { amount: salePrice, currency: CURRENCY },
     stock: stock ?? 0,
+    lowStockThreshold: lowStockThreshold ?? null,
+    newBadge: row.new_badge,
+    searchKeywords: row.search_keywords,
     categoryId: row.category_id,
     categoryIds: [...row.category_ids],
     sku: row.sku,
@@ -116,6 +131,19 @@ const fields = {
   status: z.enum(["draft", "published"]).optional(),
   taxClass: z.enum(["standard", "reduced"]).optional(),
   stock: z.number().int().min(0).max(1_000_000).optional().meta({ description: "Bestand im Lager." }),
+  lowStockThreshold: z
+    .number()
+    .int()
+    .min(0)
+    .max(1_000_000)
+    .nullable()
+    .optional()
+    .meta({ description: "Mindestbestand; `null` nimmt die Angabe weg." }),
+  newBadge: z.enum(["auto", "always", "never"]).optional(),
+  searchKeywords: singleLineText(300)
+    .nullable()
+    .optional()
+    .meta({ description: "Suchwörter, durch Komma getrennt; `null` nimmt sie weg." }),
   categoryId: z.uuid().nullable().optional().meta({
     description: "Hauptkategorie setzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien.",
   }),
@@ -145,6 +173,8 @@ export function toProductValues(input: UpdateProductInput): ProductValues {
   if (input.description !== undefined) v.description = input.description;
   if (input.status !== undefined) v.status = input.status;
   if (input.taxClass !== undefined) v.tax_class_code = input.taxClass;
+  if (input.newBadge !== undefined) v.new_badge = input.newBadge;
+  if (input.searchKeywords !== undefined) v.search_keywords = input.searchKeywords;
   if (input.categoryId !== undefined) v.category_id = input.categoryId;
   if (input.categoryIds !== undefined) v.category_ids = input.categoryIds;
   if (input.sku !== undefined) v.sku = input.sku;
@@ -163,6 +193,9 @@ export function productFacts(p: Product): Record<string, string | number | null>
     price: p.price?.amount ?? null,
     salePrice: p.salePrice?.amount ?? null,
     stock: p.stock,
+    lowStockThreshold: p.lowStockThreshold,
+    newBadge: p.newBadge,
+    searchKeywords: p.searchKeywords,
     categoryId: p.categoryId,
     categories: p.categoryIds.length === 0 ? null : p.categoryIds.join(","),
     sku: p.sku,

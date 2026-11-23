@@ -145,6 +145,7 @@ export interface CatalogProduct {
   id: Generated<string>;
   is_shippable: Generated<boolean>;
   manufacturer_id: string | null;
+  new_badge: Generated<string>;
   product_type_id: string | null;
   published_at: Timestamp | null;
   status: Generated<string>;
@@ -208,6 +209,7 @@ export interface CatalogProductTranslation {
   name: string;
   product_id: string;
   safety_information: string | null;
+  search_keywords: string | null;
   seo_description: string | null;
   seo_title: string | null;
   slug: string;

@@ -8,6 +8,9 @@ import { docFromText, firstFreeSlug, slugify, textFromDoc } from "./text.js";
 
 export type ProductStatus = "draft" | "published";
 export type TaxClass = "standard" | "reduced";
+/** Neu-Schildchen im Shop (P5): automatisch nach Veröffentlichungsdatum, immer oder nie. */
+export type NewBadge = "auto" | "always" | "never";
+export const NEW_BADGES: readonly NewBadge[] = ["auto", "always", "never"];
 
 export interface ProductRow {
   id: string;
@@ -16,6 +19,9 @@ export interface ProductRow {
   slug: string;
   description: string;
   tax_class_code: TaxClass;
+  new_badge: NewBadge;
+  /** Eigene Suchwörter, durch Komma getrennt; `null` = keine. */
+  search_keywords: string | null;
   category_id: string | null;
   /** Alle Kategorien (15.11.2026), die Hauptkategorie zuerst. */
   category_ids: string[];
@@ -48,7 +54,9 @@ function baseQuery(trx: Transaction<DB>) {
       "t.name",
       "t.slug",
       "t.description",
+      "t.search_keywords",
       "p.tax_class_code",
+      "p.new_badge",
       "pc.category_id",
       (eb) =>
         eb
@@ -82,6 +90,7 @@ function toRow(r: RawRow): ProductRow {
     ...r,
     status: r.status === "published" ? "published" : "draft",
     tax_class_code: r.tax_class_code === "reduced" ? "reduced" : "standard",
+    new_badge: NEW_BADGES.includes(r.new_badge as NewBadge) ? (r.new_badge as NewBadge) : "auto",
     description: textFromDoc(r.description),
     category_id: r.category_id ?? null,
     category_ids: r.category_ids ?? [],
@@ -126,7 +135,13 @@ export async function findProducts(trx: Transaction<DB>, f: ProductFilter): Prom
   }
   if (f.search !== undefined) {
     const pattern = likePattern(f.search);
-    q = q.where((eb) => eb.or([eb("t.name", "ilike", pattern), eb("v.sku", "ilike", pattern)]));
+    q = q.where((eb) =>
+      eb.or([
+        eb("t.name", "ilike", pattern),
+        eb("v.sku", "ilike", pattern),
+        eb("t.search_keywords", "ilike", pattern),
+      ]),
+    );
   }
   if (f.searchText !== undefined) {
     const pattern = likePattern(f.searchText);
@@ -134,6 +149,8 @@ export async function findProducts(trx: Transaction<DB>, f: ProductFilter): Prom
     q = q.where((eb) =>
       eb.or([
         eb("t.name", "ilike", pattern),
+        // Suchwörter des Produkts (P5): findet es auch unter Wörtern, die nirgends im Text stehen.
+        eb("t.search_keywords", "ilike", pattern),
         eb.exists(
           eb
             .selectFrom(
@@ -175,6 +192,9 @@ export interface ProductValues {
   description?: string | null;
   status?: ProductStatus;
   tax_class_code?: TaxClass;
+  new_badge?: NewBadge;
+  /** Eigene Suchwörter, durch Komma getrennt; `null` nimmt sie weg. */
+  search_keywords?: string | null;
   /** Hauptkategorie ersetzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien. */
   category_id?: string | null;
   /** Alle Kategorien neu setzen, die erste ist die Hauptkategorie; geht vor `category_id`. */
@@ -235,6 +255,7 @@ export async function insertProduct(
       tenant_id: tenantId,
       status,
       tax_class_code: v.tax_class_code ?? "standard",
+      new_badge: v.new_badge ?? "auto",
       published_at: status === "published" ? new Date() : null,
       delivery_time_min_days: v.delivery_days?.min ?? null,
       delivery_time_max_days: v.delivery_days?.max ?? null,
@@ -254,6 +275,7 @@ export async function insertProduct(
       name: v.name,
       slug: v.slug,
       description: JSON.stringify(docFromText(v.description)),
+      search_keywords: v.search_keywords ?? null,
     })
     .execute();
   await setCategories(trx, tenantId, p.id, categoriesOf(v, []));
@@ -290,10 +312,11 @@ export async function updateProduct(
   const before = await findProductById(trx, id);
   if (before === undefined) return { kind: "not_found" };
 
-  const t: { name?: string; slug?: string; description?: string } = {};
+  const t: { name?: string; slug?: string; description?: string; search_keywords?: string | null } = {};
   if (v.name !== undefined) t.name = v.name;
   if (v.slug !== undefined) t.slug = v.slug;
   if (v.description !== undefined) t.description = JSON.stringify(docFromText(v.description));
+  if (v.search_keywords !== undefined) t.search_keywords = v.search_keywords;
   if (Object.keys(t).length > 0) {
     await trx
       .updateTable("catalog.product_translation")
@@ -317,6 +340,7 @@ export async function updateProduct(
     .set({
       ...(v.status === undefined ? {} : { status: v.status }),
       ...(v.tax_class_code === undefined ? {} : { tax_class_code: v.tax_class_code }),
+      ...(v.new_badge === undefined ? {} : { new_badge: v.new_badge }),
       ...(firstPublish ? { published_at: new Date() } : {}),
       ...(v.delivery_days === undefined
         ? {}

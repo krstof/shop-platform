@@ -4021,6 +4021,15 @@
               "string",
               "null"
             ]
+          },
+          "newBadge": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "always",
+              "never"
+            ],
+            "description": "Neu-Schildchen: `auto` = 14 Tage nach `publishedAt`, `always` = immer zeigen, `never` = nie."
           }
         },
         "required": [
@@ -4037,7 +4046,8 @@
           "categoryIds",
           "images",
           "deliveryDays",
-          "publishedAt"
+          "publishedAt",
+          "newBadge"
         ],
         "additionalProperties": false,
         "description": "Produkt, wie Besucher eines Shops es sehen."

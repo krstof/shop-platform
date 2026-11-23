@@ -376,11 +376,39 @@ eingetragen, Tabellenzahlen in den Prüfungen nachgezogen.
 **Offen aus P3:** die SEO-Seite (Probleme finden, Suchbegriffe und Platzierungen über DataForSEO,
 Google Search Console, Sitemap). Dafür braucht es Zugangsdaten, die es im Testsystem noch nicht gibt.
 
+**P5 Produktpflege, Teil 1 (23.11.2026).** Fünf Dinge am Produkt:
+
+- **Suchwörter** je Produkt (Feld unter „Preis und Lager“, durch Komma getrennt). Shop-Suche und
+  Backoffice-Suche finden das Produkt darüber, auch wenn das Wort nirgends im Text steht
+  (`catalog.product_translation.search_keywords`, zusätzliche Bedingung in `findProducts`).
+- **Mindestbestand** je Produkt. Gespeichert wird er dort, wo er hingehört: in der schon
+  vorhandenen Spalte `inventory.stock_level.low_stock_threshold`; die Fassade des Moduls inventory
+  hat dafür `setLowStockThreshold` und `getLowStockThresholds` bekommen. Fällt der Bestand auf die
+  Zahl oder darunter, steht in der Produktliste „Bestand niedrig“, und im Formular ein Hinweis.
+  Eine Nachricht darüber gehört zu P6.
+- **Neu-Schildchen** als Auswahl am Produkt (`catalog.product.new_badge`: auto, always, never).
+  „auto“ ist die bisherige Regel (14 Tage nach dem Veröffentlichen) und bleibt voreingestellt.
+- **Überschriften** in Textfeldern: `@shop/text` kennt jetzt `## `, macht daraus `<h3>`, und die
+  Formatierungsleiste hat einen Button dafür. Damit ist der Beschreibungs-Editor aus P5 fertig.
+- **Lupe auf dem Produktbild**: Beim Überfahren mit der Maus wächst das Bild im Rahmen. Reines CSS
+  (`.bild-lupe`), kein JavaScript, am Handy unverändert.
+
+**Getestet:** neuer Prüffall in `apps/api/src/store-catalog.db.test.ts` (Suchwörter wirken in beiden
+Suchen, Schalter kommt im Shop an, interne Felder bleiben drin, Wegnehmen funktioniert), drei neue
+Einheitstests in `packages/text` und `apps/storefront/src/lib/neu.test.ts`. Durchlauf gegen die
+komplett laufende Plattform im Browser (Produktseite, Karten, Suche, Produktliste, Formular,
+390 px). `pnpm check` komplett grün, oasdiff ohne Bruch.
+
+**Offen aus P5:** Video am Produkt. Der alte Hinweis in der Wunschliste („braucht JavaScript“)
+stimmt nicht — ein `<video controls>` bringt seine Bedienelemente selbst mit, automatisches
+Abspielen geht stumm ebenfalls ohne JavaScript. Zu entscheiden ist nur, woher die Videos kommen.
+
 ## Nächster Schritt
 
 Die Reihenfolge hat Kristof am Abend des 22.11.2026 neu gesetzt; sie steht in
-`docs/10_Wunschliste.md` unter „Reihenfolge" und gilt vor allem Früheren. Als Nächstes der zweite
-Teil von P3 (SEO-Seite, sobald Zugangsdaten da sind) oder P5, danach P6 und P10. Produktvarianten (P2) kommen ausdrücklich zuletzt.
+`docs/10_Wunschliste.md` unter „Reihenfolge" und gilt vor allem Früheren. Als Nächstes das Video am
+Produkt (Rest von P5), danach P6 (Assistent) und P10. Der zweite Teil von P3 (SEO-Seite) wartet auf
+Zugangsdaten. Produktvarianten (P2) kommen ausdrücklich zuletzt.
 Fertig sind P1, P12, P13 und P14. Die Reihenfolge der Pakete steht in derselben
 Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
 

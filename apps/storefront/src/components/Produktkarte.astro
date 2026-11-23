@@ -14,7 +14,7 @@ const bild = p.images[0];
 // Überfahren; geladen wird es erst, wenn die Karte sichtbar ist.
 const statt = p.compareAtPrice ?? null;
 const zweites = p.images[1];
-const neu = statt === null && istNeu(p.publishedAt);
+const neu = statt === null && istNeu(p.publishedAt, new Date(), p.newBadge ?? "auto");
 ---
 
 <li class="karte">

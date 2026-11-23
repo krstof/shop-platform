@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { alsLink, alsListe, formatText, isSafeTextUrl, plainText, umschliessen } from "./index.js";
+import {
+  alsLink,
+  alsListe,
+  alsUeberschrift,
+  formatText,
+  isSafeTextUrl,
+  plainText,
+  umschliessen,
+} from "./index.js";
 
 describe("Formatierung in Textfeldern", () => {
   it("macht Absätze, fett und kursiv", () => {
@@ -14,6 +22,21 @@ describe("Formatierung in Textfeldern", () => {
     expect(formatText("- Tee\n- Kaffee")).toBe("<ul><li>Tee</li><li>Kaffee</li></ul>");
     expect(formatText("1. Erst\n2. Dann")).toBe("<ol><li>Erst</li><li>Dann</li></ol>");
     expect(formatText("Text\n\n- Punkt")).toBe("<p>Text</p><ul><li>Punkt</li></ul>");
+  });
+
+  it("macht Überschriften (Paket P5)", () => {
+    expect(formatText("## Zubereitung")).toBe("<h3>Zubereitung</h3>");
+    expect(formatText("## Zubereitung\nMit 80 Grad")).toBe("<h3>Zubereitung</h3><p>Mit 80 Grad</p>");
+    expect(formatText("## **Wichtig**")).toBe("<h3><strong>Wichtig</strong></h3>");
+    // Ohne Leerzeichen ist es keine Überschrift, sondern Text.
+    expect(formatText("#1 im Shop")).toBe("<p>#1 im Shop</p>");
+    expect(plainText("## Zubereitung")).toBe("Zubereitung");
+  });
+
+  it("macht eine Zeile zur Überschrift und wieder zurück", () => {
+    expect(alsUeberschrift("Zubereitung", 0, 11).text).toBe("## Zubereitung");
+    expect(alsUeberschrift("## Zubereitung", 3, 5).text).toBe("Zubereitung");
+    expect(alsUeberschrift("Eins\nZwei", 0, 9).text).toBe("## Eins\n## Zwei");
   });
 
   it("macht Links nur zu erlaubten Adressen und markiert fremde Seiten", () => {

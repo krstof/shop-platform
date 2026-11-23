@@ -67,13 +67,17 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
       {hauptbild === undefined ? (
         <span class="bild bild-leer" aria-hidden="true" />
       ) : (
-        <img
-          class="bild"
-          src={hauptbild.url}
-          alt={p.name}
-          width={hauptbild.width}
-          height={hauptbild.height}
-        />
+        /* Lupe (P5): Beim Überfahren mit der Maus wächst das Bild im Rahmen. Reines CSS, kein
+           JavaScript; am Handy gibt es kein Überfahren, dort bleibt alles wie vorher. */
+        <span class="bild-lupe">
+          <img
+            class="bild"
+            src={hauptbild.url}
+            alt={p.name}
+            width={hauptbild.width}
+            height={hauptbild.height}
+          />
+        </span>
       )}
       {p.images.length > 1 && (
         <ul class="galerie-weitere" aria-label="Weitere Bilder">

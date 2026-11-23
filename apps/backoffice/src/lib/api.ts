@@ -125,6 +125,12 @@ export interface Product {
   /** Angebotspreis; gesetzt verkauft der Shop dazu und streicht `price` durch. */
   readonly salePrice: { readonly amount: number; readonly currency: "EUR" } | null;
   readonly stock: number;
+  /** Mindestbestand (P5); null = keine Angabe. Ältere Antworten haben das Feld nicht. */
+  readonly lowStockThreshold?: number | null;
+  /** Neu-Schildchen im Shop (P5). */
+  readonly newBadge?: "auto" | "always" | "never";
+  /** Eigene Suchwörter, durch Komma getrennt (P5). */
+  readonly searchKeywords?: string | null;
   readonly categoryId: string | null;
   /** Alle Kategorien, die Hauptkategorie zuerst (seit 15.11.2026; ältere Antworten ohne). */
   readonly categoryIds?: readonly string[];
@@ -245,6 +251,12 @@ export interface ProductInput {
   salePrice: { amount: number } | null;
   taxClass: "standard" | "reduced";
   stock: number;
+  /** Mindestbestand (P5); null nimmt die Angabe weg. */
+  lowStockThreshold: number | null;
+  /** Neu-Schildchen im Shop (P5). */
+  newBadge: "auto" | "always" | "never";
+  /** Eigene Suchwörter, durch Komma getrennt (P5); null nimmt sie weg. */
+  searchKeywords: string | null;
   /** Alle Kategorien, die erste ist die Hauptkategorie. */
   categoryIds: string[];
   sku: string | null;

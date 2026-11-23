@@ -48,6 +48,8 @@ export interface StoreProduct {
   readonly deliveryDays?: { readonly min: number; readonly max: number } | null;
   /** Seit wann im Shop (für „Neu“); ältere API-Stände ohne. */
   readonly publishedAt?: string | null;
+  /** Schalter für das Neu-Schildchen (P5); ältere API-Stände ohne, dann gilt „auto“. */
+  readonly newBadge?: "auto" | "always" | "never";
 }
 
 /** Fehler der API mit Statuscode; 404 heißt „gibt es nicht“ (Seite 404), alles andere 500. */

@@ -14,6 +14,10 @@ export interface ProductPrices {
 export interface ProductStock {
   setOnHand(variantId: string, quantity: number): Promise<void>;
   getAvailable(variantIds: readonly string[]): Promise<Map<string, number>>;
+  /** Mindestbestand je Variante setzen (Paket P5); `null` nimmt die Angabe weg. */
+  setLowStockThreshold(variantId: string, threshold: number | null): Promise<void>;
+  /** Mindestbestände je Variante; ohne Angabe fehlt der Eintrag. */
+  getLowStockThresholds(variantIds: readonly string[]): Promise<Map<string, number>>;
 }
 
 /** Ein fertiges Produktbild (Modul media). */

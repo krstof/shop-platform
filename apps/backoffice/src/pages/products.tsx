@@ -1,4 +1,5 @@
 // Produktliste (M3): Bild, Name, Status, Kategorie, Preis, Bestand. Klick öffnet das Produkt.
+// Seit Paket P5 steht neben dem Bestand „Bestand niedrig“, sobald er den Mindestbestand erreicht.
 // Suche und Filter (12.11.2026) stehen in der Adresse und gehen als Filter an die Admin-API.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
@@ -24,6 +25,12 @@ import { useConfirm } from "../components/dialog.js";
 
 /** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
 type FilterInput = { [K in keyof ProductFilter]?: ProductFilter[K] | undefined };
+
+/** Bestand auf oder unter dem Mindestbestand (P5); ohne Mindestbestand nie. */
+export function bestandNiedrig(p: Product): boolean {
+  const grenze = p.lowStockThreshold;
+  return grenze !== null && grenze !== undefined && p.stock <= grenze;
+}
 
 export function productsKey(shopId: string) {
   return ["products", shopId] as const;
@@ -448,7 +455,16 @@ export function ProductsPage() {
                     )}
                   </td>
                   <td className="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
-                    {p.stock === 0 ? <Badge tone="amber">ausverkauft</Badge> : p.stock}
+                    {p.stock === 0 ? (
+                      <Badge tone="amber">ausverkauft</Badge>
+                    ) : bestandNiedrig(p) ? (
+                      <span className="inline-flex items-center gap-2">
+                        {p.stock}
+                        <Badge tone="amber">Bestand niedrig</Badge>
+                      </span>
+                    ) : (
+                      p.stock
+                    )}
                   </td>
                 </tr>
               ))}

@@ -11097,6 +11097,40 @@
                     "minimum": 0,
                     "maximum": 1000000
                   },
+                  "lowStockThreshold": {
+                    "description": "Mindestbestand; `null` nimmt die Angabe weg.",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "newBadge": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "always",
+                      "never"
+                    ]
+                  },
+                  "searchKeywords": {
+                    "description": "Suchwörter, durch Komma getrennt; `null` nimmt sie weg.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "categoryId": {
                     "description": "Hauptkategorie setzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien.",
                     "anyOf": [
@@ -11742,6 +11776,40 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 1000000
+                  },
+                  "lowStockThreshold": {
+                    "description": "Mindestbestand; `null` nimmt die Angabe weg.",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "newBadge": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "always",
+                      "never"
+                    ]
+                  },
+                  "searchKeywords": {
+                    "description": "Suchwörter, durch Komma getrennt; `null` nimmt sie weg.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "categoryId": {
                     "description": "Hauptkategorie setzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien.",
@@ -18070,6 +18138,35 @@
             "maximum": 9007199254740991,
             "description": "Verfügbarer Bestand (vorhanden minus reserviert)."
           },
+          "lowStockThreshold": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mindestbestand: Fällt `stock` auf diese Zahl oder darunter, gilt der Bestand als niedrig. null = keine Angabe."
+          },
+          "newBadge": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "always",
+              "never"
+            ],
+            "description": "Neu-Schildchen im Shop: `auto` = 14 Tage nach dem Veröffentlichen, `always` = immer, `never` = nie."
+          },
+          "searchKeywords": {
+            "description": "Eigene Suchwörter, durch Komma getrennt; die Shop-Suche findet das Produkt auch darüber.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "categoryId": {
             "anyOf": [
               {
@@ -18155,6 +18252,9 @@
           "price",
           "salePrice",
           "stock",
+          "lowStockThreshold",
+          "newBadge",
+          "searchKeywords",
           "categoryId",
           "categoryIds",
           "sku",

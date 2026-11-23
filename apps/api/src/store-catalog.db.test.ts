@@ -46,7 +46,7 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
   let app: NestFastifyApplication;
 
   const inject = (
-    method: "GET" | "POST" | "PATCH",
+    method: "GET" | "POST" | "PATCH" | "DELETE",
     url: string,
     shop?: "a" | "b",
     payload?: object,
@@ -199,6 +199,57 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect(await names("/store/v1/shops/mode-b/products?q=sencha")).toEqual([]);
     expect((await inject("GET", "/store/v1/shops/tee-a/products?q=")).statusCode).toBe(422);
     expect((await inject("GET", `/store/v1/shops/tee-a/products?q=${"x".repeat(101)}`)).statusCode).toBe(422);
+  });
+
+  it("Suchwörter und Neu-Schildchen je Produkt (Paket P5)", async () => {
+    const angelegt = (
+      await inject("POST", "/admin/v1/products", "a", {
+        name: "Teedose Kirschblüte",
+        status: "published",
+        stock: 5,
+        price: { amount: 1490 },
+        description: "Luftdichte Dose aus Weißblech.",
+        searchKeywords: "Geschenk, Mitbringsel",
+        lowStockThreshold: 2,
+        newBadge: "always",
+      })
+    ).json();
+    expect(angelegt.searchKeywords).toBe("Geschenk, Mitbringsel");
+    expect(angelegt.lowStockThreshold).toBe(2);
+    expect(angelegt.newBadge).toBe("always");
+
+    const names = async (url: string) =>
+      (await inject("GET", url)).json().data.map((p: { name: string }) => p.name);
+    // Das Wort steht nirgends im Text, die Suche findet das Produkt trotzdem.
+    expect(await names("/store/v1/shops/tee-a/products?q=geschenk")).toEqual(["Teedose Kirschblüte"]);
+    expect(await names("/store/v1/shops/tee-a/products?q=MITBRING")).toEqual(["Teedose Kirschblüte"]);
+    // Auch die Suche im Backoffice findet es über die Suchwörter.
+    const imBackoffice = (await inject("GET", "/admin/v1/products?q=mitbringsel", "a")).json();
+    expect(imBackoffice.data.map((p: { name: string }) => p.name)).toEqual(["Teedose Kirschblüte"]);
+    // Der Shop sieht den Schalter, aber keine internen Felder.
+    const imShop = (await inject("GET", "/store/v1/shops/tee-a/products?q=geschenk")).json().data[0];
+    expect(imShop.newBadge).toBe("always");
+    expect(imShop.lowStockThreshold).toBeUndefined();
+    expect(imShop.searchKeywords).toBeUndefined();
+
+    // Suchwörter und Mindestbestand wieder wegnehmen.
+    const geaendert = (
+      await inject(
+        "PATCH",
+        `/admin/v1/products/${angelegt.id}`,
+        "a",
+        { searchKeywords: null, lowStockThreshold: null, newBadge: "never" },
+        { "if-match": `"${angelegt.version}"` },
+      )
+    ).json();
+    expect(geaendert.searchKeywords).toBeNull();
+    expect(geaendert.lowStockThreshold).toBeNull();
+    expect(geaendert.newBadge).toBe("never");
+    expect(await names("/store/v1/shops/tee-a/products?q=geschenk")).toEqual([]);
+
+    // Aufräumen, damit die folgenden Prüfungen denselben Katalog sehen wie vorher.
+    const weg = await inject("DELETE", `/admin/v1/products/${angelegt.id}`, "a");
+    expect(weg.statusCode).toBe(200);
   });
 
   it("sortiert nach Preis, Name und Neuheit; falsche Sortierung 422", async () => {

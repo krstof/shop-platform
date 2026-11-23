@@ -23,7 +23,7 @@ Am Abend des 22.11.2026 hat er die Reihenfolge neu gesetzt. Sie gilt vor allen f
 |---|---|---|
 | ✅ fertig | P13 | Formatierung in Textfeldern (fett, kursiv, Listen, Link), dazu P14 (Beispieltexte im Editor) |
 | halb fertig | P3 | Analytics-Seite ✅ 23.11.2026; SEO-Seite offen (braucht Zugangsdaten) |
-| wichtig | P5 | Produktpflege: Editor, Video, Zoom, Schlüsselwörter, Mindestbestand |
+| fast fertig | P5 | Produktpflege: Editor, Video, Zoom, Schlüsselwörter, Mindestbestand |
 | wichtig | P6 | Assistent: eigene Seite, Benachrichtigungen, Report, Einstellungen |
 | wichtig | P10 | Sprachen und automatische Übersetzung, Steuersätze |
 | mittel | P11 | Aussehen: Produktkarte zentral, Textfarbe, Kopfzeilen-Varianten |
@@ -74,12 +74,12 @@ Der Shop wird für fremde KI-Programme ansprechbar, so wie der ePages-Shop-Condu
 
 ## P5 Produktpflege
 
-- **Editor für die Produktbeschreibung:** fett, kursiv, Aufzählung, Links, Überschriften. Heute ist das Feld reiner Text.
-- **Video statt oder neben Bildern:** „Bild oder Video hinzufügen“, mit Schalter für automatisches Abspielen. ⚠️ Braucht JavaScript im Shop; bisher kommt der Shop ohne aus. Eigene Entscheidung nötig.
-- **Zoom auf dem Produktbild** beim Überfahren mit der Maus. Braucht ebenfalls JavaScript.
-- **Neu-Markierung:** Schalter am Produkt, der im Shop ein „Neu“-Schildchen auf der Karte zeigt.
-- **Schlüsselwörter für die Shop-Suche** je Produkt, damit ein Produkt auch unter Wörtern gefunden wird, die nicht im Text stehen.
-- **Mindestlagerbestand** je Produkt, und eine Meldung, sobald er unterschritten ist (siehe P6, Benachrichtigungen).
+- ✅ **Editor für die Produktbeschreibung:** fett, kursiv, Aufzählung, Links (P13) und seit 23.11.2026 auch **Überschriften** (Button „Ü“ in der Leiste, im Text `## `).
+- **Video statt oder neben Bildern:** „Bild oder Video hinzufügen“, mit Schalter für automatisches Abspielen. Offen, als Nächstes dran. ⚠️ Der frühere Hinweis „braucht JavaScript“ stimmt nicht: Ein Video läuft im Browser mit eigenen Bedienelementen, ohne eine Zeile JavaScript; dasselbe gilt für automatisches Abspielen (dann stumm). Zu klären ist nur, wo die Videodateien liegen (Upload wie Bilder oder Link zu YouTube und Vimeo).
+- ✅ **Zoom auf dem Produktbild** beim Überfahren mit der Maus (23.11.2026). Auch das ging ohne JavaScript, mit reinem CSS; am Handy gibt es kein Überfahren, dort bleibt alles wie vorher.
+- ✅ **Neu-Markierung** (23.11.2026): Auswahl am Produkt unter „Sichtbarkeit“ — automatisch (14 Tage nach dem Veröffentlichen, wie bisher), immer oder nie.
+- ✅ **Schlüsselwörter für die Shop-Suche** (23.11.2026): Feld „Suchwörter“ am Produkt, durch Komma getrennt. Die Suche im Shop und die Suche im Backoffice finden das Produkt darüber.
+- ✅ **Mindestlagerbestand** je Produkt (23.11.2026): Feld „Mindestbestand“; in der Produktliste steht dann „Bestand niedrig“. Die Meldung per Nachricht gehört zu P6 (Benachrichtigungen).
 - **Streichpreise:** Gibt es schon. Trägt man einen Angebotspreis ein, zeigt der Shop den alten Preis durchgestrichen daneben.
 
 ## P6 Assistent

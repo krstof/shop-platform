@@ -4,6 +4,7 @@
 //
 //   **fett**            fett
 //   *kursiv*            kursiv
+//   ## Zeile            Überschrift (Paket P5)
 //   [Text](Adresse)     Link
 //   - Zeile             Aufzählung
 //   1. Zeile            nummerierte Liste
@@ -63,12 +64,21 @@ function beschriftungHtml(text: string): string {
 
 type Abschnitt =
   | { readonly art: "absatz"; readonly zeilen: string[] }
-  | { readonly art: "liste"; readonly nummeriert: boolean; readonly punkte: string[] };
+  | { readonly art: "liste"; readonly nummeriert: boolean; readonly punkte: string[] }
+  | { readonly art: "ueberschrift"; readonly text: string };
 
-/** Text in Absätze und Listen zerlegen. Eine Leerzeile trennt, `- ` und `1. ` beginnen eine Liste. */
+/**
+ * Text in Absätze, Überschriften und Listen zerlegen. Eine Leerzeile trennt, `- ` und `1. `
+ * beginnen eine Liste, `## ` eine Überschrift.
+ */
 export function abschnitte(text: string): Abschnitt[] {
   const aus: Abschnitt[] = [];
   for (const zeile of text.replace(/\r\n?/g, "\n").split("\n")) {
+    const ueberschrift = /^\s*#{1,3}\s+(.*)$/.exec(zeile);
+    if (ueberschrift !== null) {
+      aus.push({ art: "ueberschrift", text: (ueberschrift[1] ?? "").trim() });
+      continue;
+    }
     const punkt = /^\s*[-*]\s+(.*)$/.exec(zeile);
     const nummer = /^\s*\d{1,2}[.)]\s+(.*)$/.exec(zeile);
     const letzter = aus[aus.length - 1];
@@ -89,22 +99,31 @@ export function abschnitte(text: string): Abschnitt[] {
     if (letzter !== undefined && letzter.art === "absatz") letzter.zeilen.push(zeile.trim());
     else aus.push({ art: "absatz", zeilen: [zeile.trim()] });
   }
-  return aus.filter((a) => (a.art === "absatz" ? a.zeilen.length > 0 : a.punkte.some((p) => p !== "")));
+  return aus.filter((a) =>
+    a.art === "absatz"
+      ? a.zeilen.length > 0
+      : a.art === "ueberschrift"
+        ? a.text !== ""
+        : a.punkte.some((p) => p !== ""),
+  );
 }
 
 /**
- * Der ganze Text als sicheres HTML: Absätze als `<p>`, Listen als `<ul>`/`<ol>`, darin fett,
- * kursiv und Links. Zeilenumbrüche innerhalb eines Absatzes bleiben als `<br />` erhalten.
+ * Der ganze Text als sicheres HTML: Absätze als `<p>`, Überschriften als `<h3>` (die Seite hat
+ * schon eine `<h1>` und meist eine `<h2>`), Listen als `<ul>`/`<ol>`, darin fett, kursiv und
+ * Links. Zeilenumbrüche innerhalb eines Absatzes bleiben als `<br />` erhalten.
  */
 export function formatText(text: string): string {
   return abschnitte(text)
     .map((a) =>
-      a.art === "absatz"
-        ? `<p>${a.zeilen.map(formatInline).join("<br />")}</p>`
-        : `<${a.nummeriert ? "ol" : "ul"}>${a.punkte
-            .filter((p) => p !== "")
-            .map((p) => `<li>${formatInline(p)}</li>`)
-            .join("")}</${a.nummeriert ? "ol" : "ul"}>`,
+      a.art === "ueberschrift"
+        ? `<h3>${formatInline(a.text)}</h3>`
+        : a.art === "absatz"
+          ? `<p>${a.zeilen.map(formatInline).join("<br />")}</p>`
+          : `<${a.nummeriert ? "ol" : "ul"}>${a.punkte
+              .filter((p) => p !== "")
+              .map((p) => `<li>${formatInline(p)}</li>`)
+              .join("")}</${a.nummeriert ? "ol" : "ul"}>`,
     )
     .join("");
 }
@@ -115,7 +134,7 @@ export function plainText(text: string): string {
     .replace(/\[([^\]\n]{1,200})\]\([^)\s]{1,300}\)/g, "$1")
     .replace(/\*\*([^*\n]{1,500})\*\*/g, "$1")
     .replace(/(^|[^*])\*([^*\n]{1,500})\*(?!\*)/g, "$1$2")
-    .replace(/^\s*(?:[-*]|\d{1,2}[.)])\s+/gm, "");
+    .replace(/^\s*(?:#{1,3}|[-*]|\d{1,2}[.)])\s+/gm, "");
 }
 
 /**
@@ -168,6 +187,31 @@ export function alsListe(
     .join("\n");
   const text2 = text.slice(0, zeilenAnfang) + neu + text.slice(zeilenEnde);
   return { text: text2, start: zeilenAnfang, ende: zeilenAnfang + neu.length };
+}
+
+/** Die ausgewählten Zeilen zu Überschriften machen; stehen sie schon so da, wieder zurück. */
+export function alsUeberschrift(
+  text: string,
+  start: number,
+  ende: number,
+): { text: string; start: number; ende: number } {
+  const zeilenAnfang = text.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+  const zeilenEndeRoh = text.indexOf("\n", ende);
+  const zeilenEnde = zeilenEndeRoh === -1 ? text.length : zeilenEndeRoh;
+  const zeilen = text.slice(zeilenAnfang, zeilenEnde).split("\n");
+  const schon = zeilen.every((z) => /^\s*#{1,3}\s+/.test(z) || z.trim() === "");
+  const neu = zeilen
+    .map((z) => {
+      if (z.trim() === "") return z;
+      if (schon) return z.replace(/^\s*#{1,3}\s+/, "");
+      return `## ${z.replace(/^\s*(?:[-*]|\d{1,2}[.)])\s+/, "").trim()}`;
+    })
+    .join("\n");
+  return {
+    text: text.slice(0, zeilenAnfang) + neu + text.slice(zeilenEnde),
+    start: zeilenAnfang,
+    ende: zeilenAnfang + neu.length,
+  };
 }
 
 /** Einen Link einsetzen: der ausgewählte Teil wird die Beschriftung. */

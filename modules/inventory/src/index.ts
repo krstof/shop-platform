@@ -30,6 +30,13 @@ export interface Inventory {
   setOnHand(variantId: string, quantity: number): Promise<void>;
   /** Verfügbarer Bestand (vorhanden minus reserviert) je Variante über alle Lager. Ohne Bestand: fehlt. */
   getAvailable(variantIds: readonly string[]): Promise<Map<string, number>>;
+  /**
+   * Mindestbestand einer Variante im Standardlager (Paket P5): Unterschreitet der verfügbare
+   * Bestand diese Zahl, gilt der Bestand als niedrig. `null` nimmt die Angabe wieder weg.
+   */
+  setLowStockThreshold(variantId: string, threshold: number | null): Promise<void>;
+  /** Mindestbestände je Variante. Ohne Angabe fehlt der Eintrag. */
+  getLowStockThresholds(variantIds: readonly string[]): Promise<Map<string, number>>;
 }
 
 async function defaultLocationId(trx: Transaction<DB>, tenantId: string): Promise<string> {
@@ -165,6 +172,48 @@ export function createInventory(deps: InventoryDependencies): Inventory {
             .execute();
         }
       });
+    },
+
+    async setLowStockThreshold(variantId, threshold) {
+      if (threshold !== null && (!Number.isSafeInteger(threshold) || threshold < 0))
+        throw new RangeError("Mindestbestand muss ganz und ≥ 0 sein");
+      const tenantId = getContext()?.tenantId ?? "";
+      await withTenantTransaction(db, async (trx) => {
+        const locationId = await defaultLocationId(trx, tenantId);
+        // Ohne Bestandszeile gibt es nichts zu merken; dann entsteht sie mit Bestand 0. Das ist
+        // keine Lagerbewegung, weil sich am Bestand nichts ändert.
+        await trx
+          .insertInto("inventory.stock_level")
+          .values({
+            tenant_id: tenantId,
+            variant_id: variantId,
+            location_id: locationId,
+            on_hand: 0,
+            low_stock_threshold: threshold,
+          })
+          .onConflict((oc) =>
+            oc
+              .columns(["tenant_id", "variant_id", "location_id"])
+              .doUpdateSet({ low_stock_threshold: threshold }),
+          )
+          .execute();
+      });
+    },
+
+    async getLowStockThresholds(variantIds) {
+      const result = new Map<string, number>();
+      if (variantIds.length === 0) return result;
+      const rows = await withTenantTransaction(db, (trx) =>
+        trx
+          .selectFrom("inventory.stock_level")
+          .select(["variant_id", "low_stock_threshold"])
+          .where("variant_id", "in", [...variantIds])
+          .where("low_stock_threshold", "is not", null)
+          .execute(),
+      );
+      for (const r of rows)
+        if (r.low_stock_threshold !== null) result.set(r.variant_id, r.low_stock_threshold);
+      return result;
     },
 
     async getAvailable(variantIds) {
