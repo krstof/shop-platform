@@ -8,7 +8,8 @@ import { loadShop, safeSlug, storeApi, StoreApiError, type StoreProduct } from "
 import { warenkorbAnzahl } from "../../../lib/cart.js";
 import Produktkarte from "../../../components/Produktkarte.astro";
 import { aehnlicheProdukte } from "../../../lib/aehnliche.js";
-import { bildNummer } from "../../../lib/galerie.js";
+import { bildNummer, zeigtVideo } from "../../../lib/galerie.js";
+import { EXTERN_COOKIE, videoEmbedUrl } from "../../../lib/design.js";
 
 const daten = await loadShop(Astro.params.shop);
 const slug = safeSlug(Astro.params.slug);
@@ -25,6 +26,16 @@ const k = categories.find((c) => c.id === p.categoryId);
 // Galerie ohne JavaScript: ?bild=2 zeigt das zweite Bild groß (Klick auf ein kleines Bild).
 const gewaehlt = bildNummer(Astro.url.searchParams.get("bild"), p.images.length);
 const hauptbild = p.images[gewaehlt - 1];
+// Video am Produkt (P5): Es steht als erstes Feld in der Galerie, groß kommt es erst auf Klick.
+// So bleibt das Hauptbild vorn, das der Händler ausgesucht hat.
+const video = p.video ?? null;
+const videoGross = zeigtVideo(Astro.url.searchParams.get("bild"), video !== null);
+const extern = Astro.cookies.get(EXTERN_COOKIE)?.value === "ja";
+const einbettung =
+  video === null || video.kind === "file" || video.providerId === null
+    ? undefined
+    : videoEmbedUrl(video.kind, video.providerId, video.autoplay);
+const anbieter = video === null ? "" : video.kind === "youtube" ? "YouTube" : "Vimeo";
 const korb = await warenkorbAnzahl(Astro.cookies, shop.handle);
 // Aus derselben Kategorie; ohne Kategorie die neuesten anderen Produkte. Klappt das Laden nicht,
 // fehlt nur dieser Abschnitt.
@@ -64,7 +75,46 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
   </nav>
   <article class="produkt">
     <div class="galerie">
-      {hauptbild === undefined ? (
+      {videoGross && video !== null ? (
+        video.kind === "file" ? (
+          <video
+            class="bild"
+            src={video.url}
+            controls
+            preload="metadata"
+            playsinline
+            autoplay={video.autoplay}
+            muted={video.autoplay}
+          />
+        ) : extern && einbettung !== undefined ? (
+          <div class="einbettung video">
+            <iframe
+              src={einbettung}
+              title={`Video zu ${p.name}`}
+              loading="lazy"
+              allow="encrypted-media; picture-in-picture; fullscreen"
+              referrerpolicy="strict-origin-when-cross-origin"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+            />
+          </div>
+        ) : (
+          <div class="extern-hinweis">
+            <p>
+              <strong>Video zu {p.name}</strong>
+            </p>
+            <p class="klein">
+              Hier ist Inhalt von {anbieter} eingebunden. Beim Anzeigen erhält {anbieter} Daten wie deine
+              IP-Adresse.
+            </p>
+            <form method="post" action={`/${shop.handle}/externe-inhalte`}>
+              <input type="hidden" name="zurueck" value={`${Astro.url.pathname}?bild=video`} />
+              <button class="knopf" type="submit">
+                Video anzeigen
+              </button>
+            </form>
+          </div>
+        )
+      ) : hauptbild === undefined ? (
         <span class="bild bild-leer" aria-hidden="true" />
       ) : (
         /* Lupe (P5): Beim Überfahren mit der Maus wächst das Bild im Rahmen. Reines CSS, kein
@@ -79,14 +129,28 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
           />
         </span>
       )}
-      {p.images.length > 1 && (
+      {(p.images.length > 1 || video !== null) && (
         <ul class="galerie-weitere" aria-label="Weitere Bilder">
+          {video !== null && (
+            <li>
+              <a
+                class:list={["galerie-wahl", "galerie-video", { aktiv: videoGross }]}
+                href={`/${shop.handle}/produkt/${p.slug}?bild=video#inhalt`}
+                aria-current={videoGross ? "true" : undefined}
+              >
+                <span class="bild video-kachel" aria-hidden="true">
+                  <span class="video-pfeil" />
+                </span>
+                <span class="unsichtbar">Video zeigen</span>
+              </a>
+            </li>
+          )}
           {p.images.map((b, i) => (
             <li>
               <a
-                class:list={["galerie-wahl", { aktiv: i + 1 === gewaehlt }]}
+                class:list={["galerie-wahl", { aktiv: i + 1 === gewaehlt && !videoGross }]}
                 href={`/${shop.handle}/produkt/${p.slug}${i === 0 ? "" : `?bild=${i + 1}`}#inhalt`}
-                aria-current={i + 1 === gewaehlt ? "true" : undefined}
+                aria-current={i + 1 === gewaehlt && !videoGross ? "true" : undefined}
               >
                 <img
                   class="bild"

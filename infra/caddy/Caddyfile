@@ -48,11 +48,16 @@ import profile.caddy
 # Grenzen für Anfragen an die API, gemeinsam für api.<Domain> und admin.<Domain>.
 (api_limits)
 {
-	# Hochladen (Bilder und Fotos im Chat mit dem Assistenten): bis 12 MB, alles andere 1 MB.
-	# Die API prüft dieselben Grenzen noch einmal je Endpunkt (bodyLimit); dass beide Listen
-	# zusammenpassen, prüft tools/test/upload-limits.test.mjs gegen openapi/admin.json.
+	# Hochladen (Bilder und Fotos im Chat mit dem Assistenten): bis 12 MB, Produktvideos bis 16 MB
+	# (Paket P5), alles andere 1 MB. Die API prüft dieselben Grenzen noch einmal je Endpunkt
+	# (bodyLimit); dass beide Listen zusammenpassen, prüft tools/test/upload-limits.test.mjs gegen
+	# openapi/admin.json.
+	@video path_regexp ^/admin/v1/products/[0-9a-f-]{36}/video$
 	@upload path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$
-	@not_upload not path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$
+	@not_upload not path_regexp ^/admin/v1/(products/[0-9a-f-]{36}/(images|video)|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$
+	request_body @video {
+		max_size 16MB
+	}
 	request_body @upload {
 		max_size 12MB
 	}
@@ -61,12 +66,12 @@ import profile.caddy
 	}
 	# Zu große Anfragen schon hier ablehnen, sobald die Länge angekündigt ist. Sonst schneiden API und
 	# Caddy gleichzeitig ab, und der Besucher sieht manchmal 502 statt 413 (Rauchtest 04.11.2026).
-	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > ({http.request.uri.path}.matches("^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$") ? 12582912 : 1048576)`
+	@too_large expression `int({http.request.header.Content-Length}.size() == 0 ? "0" : {http.request.header.Content-Length}) > ({http.request.uri.path}.matches("^/admin/v1/products/[0-9a-f-]{36}/video$") ? 16777216 : ({http.request.uri.path}.matches("^/admin/v1/(products/[0-9a-f-]{36}/images|categories/[0-9a-f-]{36}/image|design/(logo|favicon|hero-image|images)|assistant/chat)$") ? 12582912 : 1048576))`
 	handle @too_large {
 		header Content-Type "application/problem+json; charset=utf-8"
 		header Cache-Control "no-store"
 		header X-Content-Type-Options "nosniff"
-		respond `{"type":"https://docs.shop.localhost/errors/payload_too_large","title":"Die Anfrage ist zu groß. Bei Bildern sind bis 8 MB erlaubt.","status":413,"code":"payload_too_large"}` 413 {
+		respond `{"type":"https://docs.shop.localhost/errors/payload_too_large","title":"Die Anfrage ist zu groß. Bei Bildern sind bis 8 MB erlaubt, bei Videos bis 10 MB.","status":413,"code":"payload_too_large"}` 413 {
 			close
 		}
 	}
@@ -118,7 +123,7 @@ admin.{$SHOP_DOMAIN} {
 			# img-src: dazu die zwei Vorschau-Adressen der Bildersuche (21.11.2026). Nur die kleinen
 			# Vorschaubilder kommen von dort; das gewählte Bild holt der Server und legt es im
 			# eigenen Medienspeicher ab, damit der Shop später von keinem fremden Dienst abhängt.
-			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.bunny.net; img-src 'self' blob: https://media.{$SHOP_DOMAIN} https://api.openverse.org https://images.unsplash.com; connect-src 'self'; font-src 'self' https://fonts.bunny.net; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.bunny.net; img-src 'self' blob: https://media.{$SHOP_DOMAIN} https://api.openverse.org https://images.unsplash.com; media-src 'self' https://media.{$SHOP_DOMAIN}; connect-src 'self'; font-src 'self' https://fonts.bunny.net; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 			Cross-Origin-Resource-Policy "same-origin"
 		}
 		request_body {
@@ -138,7 +143,7 @@ shop.{$SHOP_DOMAIN} {
 	import guard
 	import security_headers
 	header {
-		Content-Security-Policy "default-src 'none'; style-src 'self' https://fonts.bunny.net; font-src https://fonts.bunny.net; img-src 'self' https://media.{$SHOP_DOMAIN}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+		Content-Security-Policy "default-src 'none'; style-src 'self' https://fonts.bunny.net; font-src https://fonts.bunny.net; img-src 'self' https://media.{$SHOP_DOMAIN}; media-src 'self' https://media.{$SHOP_DOMAIN}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 		Cross-Origin-Resource-Policy "same-origin"
 	}
 	request_body {

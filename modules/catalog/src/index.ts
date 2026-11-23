@@ -6,9 +6,10 @@ import type { DB } from "./db.generated.js";
 import { categoryEndpoints } from "./http/admin/categories.js";
 import { manufacturerEndpoints } from "./http/admin/manufacturers.js";
 import { productImageEndpoints } from "./http/admin/product-images.js";
+import { productVideoEndpoints } from "./http/admin/product-video.js";
 import { productEndpoints } from "./http/admin/products.js";
 import { storeCatalogEndpoints } from "./http/store/catalog.js";
-import type { ProductImages, ProductPrices, ProductStock } from "./ports.js";
+import type { ProductImages, ProductPrices, ProductStock, ProductVideos } from "./ports.js";
 
 export type { Manufacturer } from "./http/admin/manufacturer.schema.js";
 export type { Product } from "./http/admin/product.schema.js";
@@ -27,6 +28,9 @@ export type {
   ProductImages,
   ProductPrices,
   ProductStock,
+  ProductVideoFile,
+  ProductVideos,
+  VideoRejection,
 } from "./ports.js";
 export {
   catalogEvents,
@@ -49,6 +53,8 @@ export interface CatalogDependencies {
   readonly stock: ProductStock;
   /** Bilder (Modul media, zusammengesteckt in apps/api). */
   readonly images: ProductImages;
+  /** Videodateien (Modul media, zusammengesteckt in apps/api; Paket P5). */
+  readonly videos: ProductVideos;
   /**
    * Wird nach dem Anlegen oder Ändern eines sichtbaren Produkts aufgerufen (22.11.2026), damit
    * Suchmaschinen über IndexNow sofort Bescheid wissen. Zusammengesteckt in apps/api.
@@ -68,10 +74,30 @@ export function catalogEndpoints(deps: CatalogDependencies): Endpoint[] {
       prices: deps.prices,
       stock: deps.stock,
       images: deps.images,
+      videos: deps.videos,
       onPublished: deps.onProductPublished,
     }),
-    ...productImageEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
+    ...productImageEndpoints({
+      db,
+      prices: deps.prices,
+      stock: deps.stock,
+      images: deps.images,
+      videos: deps.videos,
+    }),
+    ...productVideoEndpoints({
+      db,
+      prices: deps.prices,
+      stock: deps.stock,
+      images: deps.images,
+      videos: deps.videos,
+    }),
     // Storefront-API (M4): nur Sichtbares, öffentlich je Shop.
-    ...storeCatalogEndpoints({ db, prices: deps.prices, stock: deps.stock, images: deps.images }),
+    ...storeCatalogEndpoints({
+      db,
+      prices: deps.prices,
+      stock: deps.stock,
+      images: deps.images,
+      videos: deps.videos,
+    }),
   ];
 }

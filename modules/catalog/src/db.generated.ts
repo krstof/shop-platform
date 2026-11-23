@@ -154,6 +154,10 @@ export interface CatalogProduct {
   updated_at: Generated<Timestamp>;
   updated_by: Generated<string | null>;
   version: Generated<number>;
+  video_autoplay: Generated<boolean>;
+  video_kind: string | null;
+  video_media_id: string | null;
+  video_provider_id: string | null;
   withdrawal_exclusion: string | null;
 }
 

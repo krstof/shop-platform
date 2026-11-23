@@ -8,6 +8,20 @@ import { docFromText, firstFreeSlug, slugify, textFromDoc } from "./text.js";
 
 export type ProductStatus = "draft" | "published";
 export type TaxClass = "standard" | "reduced";
+/** Video am Produkt (P5): eigene Datei oder ein Video bei YouTube oder Vimeo. */
+export type VideoKind = "file" | "youtube" | "vimeo";
+export const VIDEO_KINDS: readonly VideoKind[] = ["file", "youtube", "vimeo"];
+
+/** Was am Produkt über das Video gespeichert ist; `null` heißt: kein Video. */
+export interface ProductVideo {
+  readonly kind: VideoKind;
+  /** Bei einer eigenen Datei die Kennung im Modul media. */
+  readonly mediaId: string | null;
+  /** Bei YouTube oder Vimeo die Kennung des Videos dort. */
+  readonly providerId: string | null;
+  readonly autoplay: boolean;
+}
+
 /** Neu-Schildchen im Shop (P5): automatisch nach Veröffentlichungsdatum, immer oder nie. */
 export type NewBadge = "auto" | "always" | "never";
 export const NEW_BADGES: readonly NewBadge[] = ["auto", "always", "never"];
@@ -20,6 +34,8 @@ export interface ProductRow {
   description: string;
   tax_class_code: TaxClass;
   new_badge: NewBadge;
+  /** Video am Produkt oder `null`. */
+  video: ProductVideo | null;
   /** Eigene Suchwörter, durch Komma getrennt; `null` = keine. */
   search_keywords: string | null;
   category_id: string | null;
@@ -57,6 +73,10 @@ function baseQuery(trx: Transaction<DB>) {
       "t.search_keywords",
       "p.tax_class_code",
       "p.new_badge",
+      "p.video_kind",
+      "p.video_media_id",
+      "p.video_provider_id",
+      "p.video_autoplay",
       "pc.category_id",
       (eb) =>
         eb
@@ -91,6 +111,14 @@ function toRow(r: RawRow): ProductRow {
     status: r.status === "published" ? "published" : "draft",
     tax_class_code: r.tax_class_code === "reduced" ? "reduced" : "standard",
     new_badge: NEW_BADGES.includes(r.new_badge as NewBadge) ? (r.new_badge as NewBadge) : "auto",
+    video: VIDEO_KINDS.includes(r.video_kind as VideoKind)
+      ? {
+          kind: r.video_kind as VideoKind,
+          mediaId: r.video_media_id,
+          providerId: r.video_provider_id,
+          autoplay: r.video_autoplay,
+        }
+      : null,
     description: textFromDoc(r.description),
     category_id: r.category_id ?? null,
     category_ids: r.category_ids ?? [],
@@ -193,6 +221,10 @@ export interface ProductValues {
   status?: ProductStatus;
   tax_class_code?: TaxClass;
   new_badge?: NewBadge;
+  /** Video setzen oder (`null`) wegnehmen. */
+  video?: ProductVideo | null;
+  /** Nur das automatische Abspielen umstellen, ohne das Video zu wechseln. */
+  video_autoplay?: boolean;
   /** Eigene Suchwörter, durch Komma getrennt; `null` nimmt sie weg. */
   search_keywords?: string | null;
   /** Hauptkategorie ersetzen (weitere bleiben); `null` nimmt das Produkt aus allen Kategorien. */
@@ -256,6 +288,10 @@ export async function insertProduct(
       status,
       tax_class_code: v.tax_class_code ?? "standard",
       new_badge: v.new_badge ?? "auto",
+      video_kind: v.video?.kind ?? null,
+      video_media_id: v.video?.mediaId ?? null,
+      video_provider_id: v.video?.providerId ?? null,
+      video_autoplay: v.video?.autoplay ?? v.video_autoplay ?? false,
       published_at: status === "published" ? new Date() : null,
       delivery_time_min_days: v.delivery_days?.min ?? null,
       delivery_time_max_days: v.delivery_days?.max ?? null,
@@ -341,6 +377,17 @@ export async function updateProduct(
       ...(v.status === undefined ? {} : { status: v.status }),
       ...(v.tax_class_code === undefined ? {} : { tax_class_code: v.tax_class_code }),
       ...(v.new_badge === undefined ? {} : { new_badge: v.new_badge }),
+      ...(v.video === undefined
+        ? {}
+        : {
+            video_kind: v.video?.kind ?? null,
+            video_media_id: v.video?.mediaId ?? null,
+            video_provider_id: v.video?.providerId ?? null,
+            video_autoplay: v.video?.autoplay ?? false,
+          }),
+      ...(v.video_autoplay === undefined || v.video !== undefined
+        ? {}
+        : { video_autoplay: v.video_autoplay }),
       ...(firstPublish ? { published_at: new Date() } : {}),
       ...(v.delivery_days === undefined
         ? {}

@@ -8,6 +8,7 @@ import { MultiSelect } from "../components/select.js";
 import {
   ApiError,
   categoryIdsOf,
+  fileToBase64,
   imageUploadData,
   request,
   type Product,
@@ -344,6 +345,8 @@ function ProductEditor({ product }: { product: Product | undefined }) {
             setPending={setPending}
             onChanged={(p) => remember(p)}
           />
+
+          <VideoCard product={product} onChanged={(p) => remember(p)} />
 
           <Card title="Preis und Lager">
             <div className="grid gap-5 sm:grid-cols-2">
@@ -859,4 +862,200 @@ function usePreviews(files: File[]): string[] {
     return () => next.forEach((u) => URL.revokeObjectURL(u));
   }, [files]);
   return urls;
+}
+
+/** Höchstgröße einer Videodatei (wie in der API). */
+const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
+const VIDEO_TYPES = ["video/mp4", "video/webm"];
+
+/**
+ * Video am Produkt (Paket P5): entweder eine eigene Datei im Shop oder ein Video bei YouTube oder
+ * Vimeo. Beides gleichzeitig gibt es nicht; das Neue ersetzt das Alte. Die Karte erscheint erst,
+ * wenn das Produkt gespeichert ist — vorher gibt es noch keine Stelle, an die das Video gehört.
+ */
+function VideoCard({
+  product,
+  onChanged,
+}: {
+  product: Product | undefined;
+  onChanged: (p: Product) => void;
+}) {
+  if (product === undefined) {
+    return (
+      <Card title="Video">
+        <p className="text-sm text-gray-500">
+          Erst speichern, danach kannst du hier ein Video hochladen oder einen Link zu YouTube oder Vimeo
+          einsetzen.
+        </p>
+      </Card>
+    );
+  }
+  return <VideoKarteInhalt product={product} onChanged={onChanged} />;
+}
+
+function VideoKarteInhalt({ product, onChanged }: { product: Product; onChanged: (p: Product) => void }) {
+  const shop = useShop();
+  const datei = useRef<HTMLInputElement>(null);
+  const [link, setLink] = useState("");
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
+  const video = product.video ?? null;
+
+  async function run(action: () => Promise<Product>) {
+    setError(undefined);
+    setBusy(true);
+    try {
+      onChanged(await action());
+      setLink("");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Das hat nicht geklappt.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function upload(file: File) {
+    if (!VIDEO_TYPES.includes(file.type)) {
+      setError("Bitte ein Video als MP4 oder WebM wählen.");
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      setError(
+        "Das Video ist zu groß (höchstens 10 MB). Kürzer schneiden oder bei YouTube hochladen und hier den Link einsetzen.",
+      );
+      return;
+    }
+    void run(async () =>
+      request<Product>(`/admin/v1/products/${product.id}/video`, {
+        method: "POST",
+        body: { data: await fileToBase64(file), filename: file.name, autoplay: video?.autoplay ?? false },
+        shopId: shop.id,
+      }),
+    );
+  }
+
+  function setzeLink() {
+    const url = link.trim();
+    if (url === "") return;
+    void run(() =>
+      request<Product>(`/admin/v1/products/${product.id}`, {
+        method: "PATCH",
+        body: { videoUrl: url, videoAutoplay: video?.autoplay ?? false },
+        shopId: shop.id,
+        version: product.version,
+      }),
+    );
+  }
+
+  function entfernen() {
+    void confirm({
+      title: "Video entfernen?",
+      message:
+        video?.kind === "file"
+          ? "Die hochgeladene Datei wird dabei gelöscht."
+          : "Der Link wird entfernt; das Video beim Anbieter bleibt natürlich bestehen.",
+      confirmLabel: "Entfernen",
+    }).then((ja) => {
+      if (!ja) return;
+      void run(() =>
+        request<Product>(`/admin/v1/products/${product.id}/video`, { method: "DELETE", shopId: shop.id }),
+      );
+    });
+  }
+
+  function autoplay(an: boolean) {
+    void run(() =>
+      request<Product>(`/admin/v1/products/${product.id}`, {
+        method: "PATCH",
+        body: { videoAutoplay: an },
+        shopId: shop.id,
+        version: product.version,
+      }),
+    );
+  }
+
+  return (
+    <Card title="Video">
+      <div className="space-y-5">
+        {error !== undefined && <Alert tone="error">{error}</Alert>}
+        {video !== null ? (
+          <>
+            {video.kind === "file" ? (
+              <video src={video.url} controls className="w-full rounded-lg bg-gray-900" />
+            ) : (
+              <p className="text-sm text-gray-700">
+                Video bei {video.kind === "youtube" ? "YouTube" : "Vimeo"}:{" "}
+                <a
+                  href={video.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-700 underline"
+                >
+                  {video.url}
+                </a>
+              </p>
+            )}
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 rounded border-gray-300 text-brand-700 focus:ring-brand-600"
+                checked={video.autoplay}
+                disabled={busy}
+                onChange={(e) => autoplay(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">Von selbst abspielen</span>
+                <span className="block text-gray-500">
+                  Immer ohne Ton; mit Ton lassen die Browser es nicht zu.
+                </span>
+              </span>
+            </label>
+            <Button variant="secondary" onClick={entfernen} disabled={busy}>
+              Video entfernen
+            </Button>
+          </>
+        ) : (
+          <>
+            <div>
+              <p className="text-sm text-gray-700">Eigene Datei (MP4 oder WebM, höchstens 10 MB)</p>
+              <input
+                ref={datei}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-gray-200"
+                disabled={busy}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f !== undefined) upload(f);
+                }}
+              />
+            </div>
+            <Field
+              label="oder Link zu YouTube oder Vimeo"
+              hint="Zum Beispiel https://www.youtube.com/watch?v=… oder https://vimeo.com/…"
+            >
+              {(p) => (
+                <div className="flex items-center gap-2">
+                  <Input
+                    {...p}
+                    value={link}
+                    maxLength={300}
+                    placeholder="https://…"
+                    disabled={busy}
+                    onChange={(e) => setLink(e.target.value)}
+                  />
+                  <Button variant="secondary" onClick={setzeLink} disabled={busy || link.trim() === ""}>
+                    Setzen
+                  </Button>
+                </div>
+              )}
+            </Field>
+          </>
+        )}
+        {busy && <p className="text-sm text-gray-500">Einen Moment …</p>}
+      </div>
+    </Card>
+  );
 }

@@ -10,6 +10,7 @@ const p = (name: string, amount: number | null): StoreProduct => ({
   price: amount === null ? null : { amount, currency: "EUR" },
   compareAtPrice: null,
   newBadge: "auto",
+  video: null,
   publishedAt: null,
   deliveryDays: null,
   taxRatePercent: 19,

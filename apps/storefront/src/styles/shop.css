@@ -614,6 +614,40 @@ blockquote > p:last-child {
   display: grid;
   gap: 0.75rem;
 }
+/* Video in der Produktgalerie (P5): Kachel mit Dreieck und das große Feld. */
+.video-kachel {
+  display: grid;
+  place-items: center;
+  background: #1f2421;
+}
+.video-pfeil {
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 0.65rem solid transparent;
+  border-bottom: 0.65rem solid transparent;
+  border-left: 1.1rem solid #fff;
+  margin-left: 0.25rem;
+}
+.galerie video.bild {
+  background: #1f2421;
+  object-fit: contain;
+}
+.galerie .einbettung.video,
+.galerie .extern-hinweis {
+  aspect-ratio: 1;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.galerie .extern-hinweis {
+  display: grid;
+  align-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: var(--flaeche);
+  text-align: center;
+}
+
 /* Lupe auf dem Produktbild (P5): nur am Computer, nur mit CSS. */
 .bild-lupe {
   display: block;

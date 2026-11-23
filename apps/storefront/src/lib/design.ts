@@ -209,11 +209,20 @@ export function startseitenBausteine(home: StoreHome): readonly StoreBlock[] {
   ];
 }
 
-/** Einbettung für Videos: wir bauen die Adresse selbst (nur bekannte Anbieter, datensparsam). */
-export function videoEmbedUrl(provider: "youtube" | "vimeo", id: string): string | undefined {
+/**
+ * Einbettung für Videos: wir bauen die Adresse selbst (nur bekannte Anbieter, datensparsam).
+ * Mit `autoplay` startet das Video von selbst — immer stumm, sonst lässt der Browser es nicht zu.
+ */
+export function videoEmbedUrl(
+  provider: "youtube" | "vimeo",
+  id: string,
+  autoplay = false,
+): string | undefined {
+  const auto = autoplay ? "&autoplay=1&muted=1&mute=1" : "";
   if (provider === "youtube" && /^[A-Za-z0-9_-]{11}$/.test(id))
-    return `https://www.youtube-nocookie.com/embed/${id}`;
-  if (provider === "vimeo" && /^\d{6,12}$/.test(id)) return `https://player.vimeo.com/video/${id}?dnt=1`;
+    return `https://www.youtube-nocookie.com/embed/${id}?rel=0${auto}`;
+  if (provider === "vimeo" && /^\d{6,12}$/.test(id))
+    return `https://player.vimeo.com/video/${id}?dnt=1${auto}`;
   return undefined;
 }
 

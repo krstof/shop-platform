@@ -252,6 +252,82 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect(weg.statusCode).toBe(200);
   });
 
+  it("Video am Produkt: eigene Datei und YouTube (Paket P5)", async () => {
+    const neu = (
+      await inject("POST", "/admin/v1/products", "a", {
+        name: "Teekanne Guss",
+        status: "published",
+        stock: 2,
+        price: { amount: 4900 },
+      })
+    ).json();
+    expect(neu.video).toBeNull();
+
+    // Eigene Datei: ein winziges, gültiges MP4-Gerüst reicht für die Prüfung der Schnittstelle.
+    const mp4 = Buffer.concat([
+      Buffer.from([0, 0, 0, 24]),
+      Buffer.from("ftypisom"),
+      Buffer.alloc(12),
+    ]).toString("base64");
+    const mitDatei = (
+      await inject("POST", `/admin/v1/products/${neu.id}/video`, "a", {
+        data: mp4,
+        filename: "kanne.mp4",
+        autoplay: true,
+      })
+    ).json();
+    expect(mitDatei.video.kind).toBe("file");
+    expect(mitDatei.video.autoplay).toBe(true);
+    expect(mitDatei.video.url).toMatch(/\/video\.mp4$/);
+
+    // Im Shop ist das Video sichtbar.
+    const imShop = (await inject("GET", "/store/v1/shops/tee-a/products/teekanne-guss")).json();
+    expect(imShop.video.kind).toBe("file");
+    expect(imShop.video.autoplay).toBe(true);
+
+    // Keine Videodatei: 422 mit Hinweis, das alte Video bleibt.
+    const falsch = await inject("POST", `/admin/v1/products/${neu.id}/video`, "a", {
+      data: Buffer.from("das ist kein Video").toString("base64"),
+    });
+    expect(falsch.statusCode).toBe(422);
+    expect(falsch.json().errors[0].code).toBe("unsupported_format");
+
+    // Link zu YouTube ersetzt die Datei.
+    const mitLink = (
+      await inject(
+        "PATCH",
+        `/admin/v1/products/${neu.id}`,
+        "a",
+        { videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+        { "if-match": `"${mitDatei.video === null ? neu.version : mitDatei.version}"` },
+      )
+    ).json();
+    expect(mitLink.video).toEqual({
+      kind: "youtube",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      providerId: "dQw4w9WgXcQ",
+      autoplay: false,
+    });
+
+    // Eine fremde Adresse wird abgelehnt.
+    const fremd = await inject(
+      "PATCH",
+      `/admin/v1/products/${neu.id}`,
+      "a",
+      { videoUrl: "https://evil.example/watch?v=dQw4w9WgXcQ" },
+      { "if-match": `"${mitLink.version}"` },
+    );
+    expect(fremd.statusCode).toBe(422);
+    expect(fremd.json().errors[0].path).toBe("/videoUrl");
+
+    // Wegnehmen.
+    const ohne = (await inject("DELETE", `/admin/v1/products/${neu.id}/video`, "a")).json();
+    expect(ohne.video).toBeNull();
+    expect((await inject("DELETE", `/admin/v1/products/${neu.id}/video`, "a")).statusCode).toBe(404);
+
+    await inject("DELETE", `/admin/v1/products/${neu.id}`, "a");
+  });
+
   it("sortiert nach Preis, Name und Neuheit; falsche Sortierung 422", async () => {
     await inject("POST", "/admin/v1/products", "a", {
       name: "Assam",

@@ -3,7 +3,7 @@
 import { aiEndpoints, type AssistantModel } from "@shop/ai";
 import { auditEndpoints } from "@shop/audit";
 import { createCarts } from "@shop/cart";
-import { catalogEndpoints, createCatalogReader, type ProductImages } from "@shop/catalog";
+import { catalogEndpoints, createCatalogReader, type ProductImages, type ProductVideos } from "@shop/catalog";
 import { checkoutEndpoints, type MailSender } from "@shop/checkout";
 import { contactEndpoints, customerEndpoints } from "@shop/customers";
 import type { Endpoint } from "@shop/http";
@@ -121,6 +121,14 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     get: (ids) => media.getImages(ids),
     remove: (ids) => media.deleteImages(ids),
   };
+  const videos: ProductVideos = {
+    prepare: (data, filename) => {
+      const r = media.prepareVideo(data, filename);
+      return r.ok ? { ok: true, save: () => media.saveVideo(r.video) } : r;
+    },
+    get: (ids) => media.getVideos(ids),
+    remove: (ids) => media.deleteVideos(ids),
+  };
   const settings = createShopSettings({ database: deps.database });
   const shops = createShopDirectory({ database: deps.database });
   const platformOrders = createOrders({ database: deps.database, settings });
@@ -131,6 +139,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
       prices,
       stock,
       images,
+      videos,
       onProductPublished: async ({ slug }) => {
         const basis = await shopBaseUrl();
         if (basis !== undefined) await integrations.notifySearchEngines(basis, [`${basis}/produkt/${slug}`]);
@@ -155,7 +164,7 @@ export function allEndpoints(deps: EndpointDependencies): Endpoint[] {
     ...checkoutEndpoints({
       database: deps.database,
       carts: createCarts({ database: deps.database }),
-      catalog: createCatalogReader({ database: deps.database, prices, stock, images }),
+      catalog: createCatalogReader({ database: deps.database, prices, stock, images, videos }),
       shipping: createShipping({ database: deps.database }),
       coupons: prices,
       inventory: stock,

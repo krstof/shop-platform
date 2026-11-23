@@ -5,7 +5,7 @@ import type { DB } from "./db.generated.js";
 import { storeProductReader, type StoreProduct } from "./http/store/catalog.js";
 import { imageIdsOf } from "./internal/product-image-repository.js";
 import { findPublishedProductsByIds } from "./internal/product-repository.js";
-import type { ProductImages, ProductPrices, ProductStock } from "./ports.js";
+import type { ProductImages, ProductPrices, ProductStock, ProductVideos } from "./ports.js";
 
 export interface SellableProduct extends StoreProduct {
   readonly variantId: string;
@@ -28,6 +28,7 @@ export interface CatalogReaderDependencies {
   readonly prices: ProductPrices;
   readonly stock: ProductStock;
   readonly images: ProductImages;
+  readonly videos: ProductVideos;
 }
 
 export function createCatalogReader(deps: CatalogReaderDependencies): CatalogReader {

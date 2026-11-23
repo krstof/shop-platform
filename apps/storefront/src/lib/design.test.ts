@@ -65,9 +65,12 @@ describe("Links im Fuß (Shop-Editor Teil 3)", () => {
 
   it("baut Video- und Kartenadressen nur aus geprüften Teilen", () => {
     expect(videoEmbedUrl("youtube", "dQw4w9WgXcQ")).toBe(
-      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0",
     );
     expect(videoEmbedUrl("vimeo", "76979871")).toBe("https://player.vimeo.com/video/76979871?dnt=1");
+    // Mit automatischem Abspielen immer stumm (P5).
+    expect(videoEmbedUrl("youtube", "dQw4w9WgXcQ", true)).toContain("autoplay=1");
+    expect(videoEmbedUrl("youtube", "dQw4w9WgXcQ", true)).toContain("mute=1");
     expect(videoEmbedUrl("youtube", '"><script>')).toBeUndefined();
     expect(mapUrls("Teeweg 1 & Co, Hamburg").embed).toBe(
       "https://www.google.com/maps?q=Teeweg%201%20%26%20Co%2C%20Hamburg&output=embed",

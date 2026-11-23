@@ -138,7 +138,18 @@ export interface Product {
   /** Lieferzeit in Werktagen oder null. */
   readonly deliveryDays?: { readonly min: number; readonly max: number } | null;
   readonly images: readonly ProductImage[];
+  /** Video am Produkt (P5); ältere Antworten ohne. */
+  readonly video?: ProductVideo | null;
   readonly version: number;
+}
+
+/** Video am Produkt: eigene Datei im Shop oder ein Video bei YouTube oder Vimeo. */
+export interface ProductVideo {
+  readonly kind: "file" | "youtube" | "vimeo";
+  /** Bei `file` die Datei zum Abspielen, sonst die Adresse beim Anbieter. */
+  readonly url: string;
+  readonly providerId: string | null;
+  readonly autoplay: boolean;
 }
 
 /** Bild des Logos (Shop-Editor Teil 1). */
@@ -257,6 +268,10 @@ export interface ProductInput {
   newBadge: "auto" | "always" | "never";
   /** Eigene Suchwörter, durch Komma getrennt (P5); null nimmt sie weg. */
   searchKeywords: string | null;
+  /** Adresse eines Videos bei YouTube oder Vimeo; null nimmt das Video weg (auch eine Datei). */
+  videoUrl?: string | null;
+  /** Video startet im Shop von selbst, immer ohne Ton. */
+  videoAutoplay?: boolean;
   /** Alle Kategorien, die erste ist die Hauptkategorie. */
   categoryIds: string[];
   sku: string | null;

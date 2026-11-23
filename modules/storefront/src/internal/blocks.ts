@@ -102,35 +102,12 @@ const BLOCK_ID = /^[a-z0-9]{1,24}$/;
 /** Ein Baustein (aus dem Schema unten abgeleitet). */
 export type Block = z.infer<typeof storedBlockSchema>;
 
-/** Erlaubte Videos: YouTube und Vimeo. Wir bauen die Einbettung selbst, nie aus fremdem HTML. */
-export type VideoRef = { readonly provider: "youtube" | "vimeo"; readonly id: string };
-
-export function parseVideoUrl(url: string): VideoRef | undefined {
-  let u: URL;
-  try {
-    u = new URL(url.trim());
-  } catch {
-    return undefined;
-  }
-  if (u.protocol !== "https:" && u.protocol !== "http:") return undefined;
-  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, "");
-  const yt = /^[A-Za-z0-9_-]{11}$/;
-  if (host === "youtu.be") {
-    const id = u.pathname.slice(1).split("/")[0] ?? "";
-    return yt.test(id) ? { provider: "youtube", id } : undefined;
-  }
-  if (host === "youtube.com" || host === "youtube-nocookie.com") {
-    const v = u.searchParams.get("v");
-    if (u.pathname === "/watch" && v !== null && yt.test(v)) return { provider: "youtube", id: v };
-    const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{11})\/?$/);
-    return m?.[1] === undefined ? undefined : { provider: "youtube", id: m[1] };
-  }
-  if (host === "vimeo.com" || host === "player.vimeo.com") {
-    const m = u.pathname.match(/^\/(?:video\/)?(\d{6,12})\/?$/);
-    return m?.[1] === undefined ? undefined : { provider: "vimeo", id: m[1] };
-  }
-  return undefined;
-}
+/**
+ * Erlaubte Videos: YouTube und Vimeo. Wir bauen die Einbettung selbst, nie aus fremdem HTML.
+ * Das Lesen der Adresse steht im Werkzeugkasten, weil catalog dieselbe Prüfung braucht (P5).
+ */
+export { parseVideoUrl, type VideoRef } from "@shop/kernel";
+import { parseVideoUrl } from "@shop/kernel";
 
 /** Zeilenumbrüche erlaubt, sonst keine Steuerzeichen. */
 // eslint-disable-next-line no-control-regex -- genau diese Zeichen sind verboten

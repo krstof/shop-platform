@@ -72,6 +72,11 @@ describe("Hersteller in der Admin-API", () => {
         getLowStockThresholds: unused,
       },
       images: { prepare: unused, get: unused, remove: unused },
+      videos: {
+        prepare: () => ({ ok: false, reason: "unreadable" }),
+        get: unused,
+        remove: unused,
+      },
     });
     expect(endpoints.map((e) => e.operationId)).toEqual([
       "listManufacturers",
@@ -94,6 +99,8 @@ describe("Hersteller in der Admin-API", () => {
       "addProductImage",
       "deleteProductImage",
       "reorderProductImages",
+      "addProductVideo",
+      "deleteProductVideo",
       "listStoreCategories",
       "listStoreProducts",
       "getStoreProduct",

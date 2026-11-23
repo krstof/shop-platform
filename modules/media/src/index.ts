@@ -9,6 +9,7 @@
 import { getContext, uuidv7, withTenantTransaction, type Database } from "@shop/kernel";
 import type { DB } from "./db.generated.js";
 import { prepareImage, type PreparedImage, type PrepareResult } from "./internal/image.js";
+import { prepareVideo, type PrepareVideoResult, type PreparedVideo } from "./internal/video.js";
 import type { ObjectStorage } from "./internal/storage.js";
 
 export {
@@ -17,6 +18,12 @@ export {
   type PreparedImage,
   type PrepareResult,
 } from "./internal/image.js";
+export {
+  MAX_VIDEO_BYTES,
+  type PreparedVideo,
+  type PrepareVideoResult,
+  type VideoRejection,
+} from "./internal/video.js";
 export {
   createS3Storage,
   memoryStorage,
@@ -46,6 +53,15 @@ export interface MediaImage {
   readonly height: number;
 }
 
+/** Ein fertiges Video, so wie Oberflächen es brauchen (P5). */
+export interface MediaVideo {
+  readonly id: string;
+  /** Adresse der Datei, direkt abspielbar (`<video src=…>`). */
+  readonly url: string;
+  readonly mimeType: string;
+  readonly byteSize: number;
+}
+
 export interface Media {
   prepareImage(data: Uint8Array, filename?: string): Promise<PrepareResult>;
   saveImage(image: PreparedImage): Promise<MediaImage>;
@@ -53,6 +69,14 @@ export interface Media {
   getImages(ids: readonly string[]): Promise<Map<string, MediaImage>>;
   /** Löscht Bilder samt Dateien. Fehlende IDs sind kein Fehler. */
   deleteImages(ids: readonly string[]): Promise<void>;
+  /** Prüft eine Videodatei (MP4 oder WebM, höchstens 25 MB), ohne Datenbank. */
+  prepareVideo(data: Uint8Array, filename?: string): PrepareVideoResult;
+  /** Legt ein geprüftes Video ab und trägt es ein. */
+  saveVideo(video: PreparedVideo): Promise<MediaVideo>;
+  /** Fertige Videos zu den IDs. Unbekannte oder fremde IDs fehlen in der Antwort. */
+  getVideos(ids: readonly string[]): Promise<Map<string, MediaVideo>>;
+  /** Löscht Videos samt Dateien. Fehlende IDs sind kein Fehler. */
+  deleteVideos(ids: readonly string[]): Promise<void>;
 }
 
 /** Dateien eines Bildes im Speicher: tenants/<shop>/media/<bild>/… (wie im Datenmodell). */
@@ -151,6 +175,82 @@ export function createMedia(deps: MediaDependencies): Media {
         width: image.width,
         height: image.height,
       };
+    },
+
+    prepareVideo,
+
+    async saveVideo(video) {
+      const tenantId = tenant();
+      const id = uuidv7();
+      // Anders als beim Bild liegt die Datei im öffentlichen Bereich: Der Shop liefert sie
+      // unverändert aus, es gibt keine umgerechnete Fassung, die man stattdessen zeigen könnte.
+      const key = `${assetPrefix(tenantId, id)}/video.${video.format}`;
+      await deps.storage.put({
+        bucket: "public",
+        key,
+        body: video.data,
+        contentType: video.mimeType,
+        cacheControl: IMMUTABLE,
+      });
+      try {
+        await withTenantTransaction(db, (trx) =>
+          trx
+            .insertInto("media.media_asset")
+            .values({
+              tenant_id: tenantId,
+              id,
+              kind: "video",
+              storage_key: key,
+              original_filename: video.filename,
+              mime_type: video.mimeType,
+              byte_size: video.data.length,
+              checksum_sha256: video.checksum,
+              status: "ready",
+            })
+            .execute(),
+        );
+      } catch (error) {
+        await deps.storage.delete("public", [key]).catch(() => undefined);
+        throw error;
+      }
+      return { id, url: url(key), mimeType: video.mimeType, byteSize: video.data.length };
+    },
+
+    async getVideos(ids) {
+      const result = new Map<string, MediaVideo>();
+      if (ids.length === 0) return result;
+      const rows = await withTenantTransaction(db, (trx) =>
+        trx
+          .selectFrom("media.media_asset")
+          .select(["id", "storage_key", "mime_type", "byte_size"])
+          .where("id", "in", [...ids])
+          .where("status", "=", "ready")
+          .where("kind", "=", "video")
+          .execute(),
+      );
+      for (const r of rows)
+        result.set(r.id, {
+          id: r.id,
+          url: url(r.storage_key),
+          mimeType: r.mime_type,
+          byteSize: Number(r.byte_size ?? 0),
+        });
+      return result;
+    },
+
+    async deleteVideos(ids) {
+      if (ids.length === 0) return;
+      const keys = await withTenantTransaction(db, async (trx) =>
+        (
+          await trx
+            .deleteFrom("media.media_asset")
+            .where("id", "in", [...ids])
+            .where("kind", "=", "video")
+            .returning("storage_key")
+            .execute()
+        ).map((r) => r.storage_key),
+      );
+      await deps.storage.delete("public", keys);
     },
 
     async getImages(ids) {

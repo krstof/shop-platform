@@ -15,22 +15,29 @@ const caddyfile = readFileSync(join(repoRoot, "infra/caddy/Caddyfile"), "utf8");
 const spec = JSON.parse(readFileSync(join(repoRoot, "openapi/admin.json"), "utf8"));
 
 /**
- * Die drei Stellen im Caddyfile, die den Upload-Pfad nennen (Matcher, Gegenstück, Vorab-Ablehnung).
- * @returns {{ matchers: string[], expression: string | undefined }}
+ * Die Muster im Caddyfile: @video (Produktvideo), @upload (Bilder und Chat-Fotos), @not_upload
+ * (alles andere) und die beiden Muster in der Vorab-Ablehnung @too_large.
+ * @returns {{ video: string | undefined, upload: string | undefined, notUpload: string | undefined, expression: string[] }}
  */
 function uploadPatterns() {
-  const matchers = [...caddyfile.matchAll(/^\t@(?:not_)?upload (?:not )?path_regexp (\S+)$/gm)].flatMap(
+  /** @param {string} name @returns {string | undefined} */
+  const matcher = (name) => new RegExp(`^\\t@${name} (?:not )?path_regexp (\\S+)$`, "m").exec(caddyfile)?.[1];
+  const expression = [...caddyfile.matchAll(/\{http\.request\.uri\.path\}\.matches\("([^"]+)"\)/g)].flatMap(
     (m) => (m[1] === undefined ? [] : [m[1]]),
   );
-  const expression = /\{http\.request\.uri\.path\}\.matches\("([^"]+)"\)/.exec(caddyfile)?.[1];
-  return { matchers, expression };
+  return {
+    video: matcher("video"),
+    upload: matcher("upload"),
+    notUpload: matcher("not_upload"),
+    expression,
+  };
 }
 
-/** Das Muster des Matchers @upload als Regex. @returns {RegExp} */
+/** Muster, das alle Endpunkte mit großem Körper trifft (Video oder Bild). @returns {RegExp} */
 function uploadPattern() {
-  const [first] = uploadPatterns().matchers;
-  assert.ok(first !== undefined, "Matcher @upload nicht im Caddyfile gefunden");
-  return new RegExp(first);
+  const { video, upload } = uploadPatterns();
+  assert.ok(video !== undefined && upload !== undefined, "Matcher @video und @upload erwartet");
+  return new RegExp(`(?:${video})|(?:${upload})`);
 }
 
 /** Pfade der Admin-API, deren Endpunkt mehr als 1 MB annimmt. @returns {string[]} */
@@ -49,11 +56,23 @@ function largeBodyPaths() {
   return [...new Set(paths)];
 }
 
-test("Caddy nennt den Upload-Pfad an allen drei Stellen gleich", () => {
-  const { matchers, expression } = uploadPatterns();
-  assert.equal(matchers.length, 2, "Matcher @upload und @not_upload erwartet");
-  assert.ok(expression !== undefined, "Vorab-Ablehnung @too_large erwartet");
-  assert.deepEqual(new Set([...matchers, expression]).size, 1, "alle drei Stellen müssen gleich sein");
+test("Caddy nennt dieselben Pfade in Matcher und Vorab-Ablehnung", () => {
+  const { video, upload, notUpload, expression } = uploadPatterns();
+  assert.ok(video !== undefined && upload !== undefined, "Matcher @video und @upload erwartet");
+  assert.ok(notUpload !== undefined, "Matcher @not_upload erwartet");
+  assert.deepEqual(expression, [video, upload], "@too_large muss erst das Video, dann die Bilder prüfen");
+  // @not_upload ist das Gegenstück: Es darf keinen Pfad treffen, der schon groß sein darf.
+  const gross = new RegExp(`(?:${video})|(?:${upload})`);
+  const id = "11111111-2222-4333-8444-555555555555";
+  for (const pfad of [
+    `/admin/v1/products/${id}/video`,
+    `/admin/v1/products/${id}/images`,
+    `/admin/v1/design/logo`,
+    `/admin/v1/assistant/chat`,
+  ]) {
+    assert.ok(gross.test(pfad), `${pfad} soll groß sein dürfen`);
+    assert.ok(new RegExp(notUpload).test(pfad), `${pfad} fehlt im Gegenstück @not_upload`);
+  }
 });
 
 test("Caddy lässt genau die Endpunkte groß durch, die die API groß annimmt", () => {
@@ -70,5 +89,5 @@ test("Caddy lässt genau die Endpunkte groß durch, die die API groß annimmt", 
 test("Caddy lässt gewöhnliche Endpunkte nicht groß durch", () => {
   const pattern = uploadPattern();
   for (const path of ["/admin/v1/products", "/admin/v1/orders", "/admin/v1/design/draft", "/admin/v1/me"])
-    assert.ok(!pattern.test(path), `${path} braucht keine 12 MB`);
+    assert.ok(!pattern.test(path), `${path} braucht keinen großen Körper`);
 });

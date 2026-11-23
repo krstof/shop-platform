@@ -3,7 +3,8 @@
 import { multiLineText, singleLineText, timestamp } from "@shop/http";
 import { z } from "zod";
 import type { ProductRow, ProductValues } from "../../internal/product-repository.js";
-import type { ProductImage } from "../../ports.js";
+import type { ProductImage, ProductVideoFile } from "../../ports.js";
+import { videoWatchUrl } from "@shop/kernel";
 import { slugInput } from "./category.schema.js";
 import { productImageSchema } from "./image.schema.js";
 
@@ -29,6 +30,40 @@ const deliveryDaysSchema = z
 const deliveryDaysInput = z
   .strictObject({ min: z.number().int().min(0).max(120), max: z.number().int().min(0).max(120) })
   .refine((d) => d.max >= d.min, { message: "„bis“ muss mindestens so groß sein wie „von“.", path: ["max"] });
+
+export const productVideoSchema = z
+  .object({
+    kind: z.enum(["file", "youtube", "vimeo"]).meta({
+      description: "`file` = eigene Datei im Shop, sonst ein Video bei YouTube oder Vimeo.",
+    }),
+    url: z.string().meta({
+      description:
+        "Bei `file` die Adresse der Datei zum Abspielen, sonst die Adresse beim Anbieter zum Anschauen.",
+    }),
+    providerId: z
+      .string()
+      .nullable()
+      .meta({ description: "Kennung des Videos bei YouTube oder Vimeo, sonst null." }),
+    autoplay: z.boolean().meta({
+      description: "Startet im Shop von selbst, immer ohne Ton (sonst lässt der Browser es nicht zu).",
+    }),
+  })
+  .meta({ id: "ProductVideo", description: "Video am Produkt: eigene Datei oder YouTube/Vimeo." });
+
+export type ProductVideoView = z.infer<typeof productVideoSchema>;
+
+/** Baut die Ansicht des Videos; ohne Video oder ohne lesbare Datei: null. */
+export function toProductVideo(row: ProductRow, file: ProductVideoFile | undefined): ProductVideoView | null {
+  const v = row.video;
+  if (v === null) return null;
+  if (v.kind === "file")
+    return file === undefined
+      ? null
+      : { kind: "file", url: file.url, providerId: null, autoplay: v.autoplay };
+  const url = v.providerId === null ? undefined : videoWatchUrl(v.kind, v.providerId);
+  if (url === undefined || v.providerId === null) return null;
+  return { kind: v.kind, url, providerId: v.providerId, autoplay: v.autoplay };
+}
 
 export const productSchema = z
   .object({
@@ -68,6 +103,9 @@ export const productSchema = z
     images: z
       .array(productImageSchema)
       .meta({ description: "Bilder in Anzeigereihenfolge, das erste ist das Hauptbild." }),
+    video: productVideoSchema
+      .nullable()
+      .meta({ description: "Video am Produkt oder null. Der Shop zeigt es neben den Bildern." }),
     publishedAt: timestamp.nullable(),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -84,6 +122,7 @@ export function toProduct(
   images: readonly ProductImage[],
   salePrice?: number,
   lowStockThreshold?: number,
+  videoFile?: ProductVideoFile,
 ): Product {
   return {
     id: row.id,
@@ -106,6 +145,7 @@ export function toProduct(
         ? null
         : { min: row.delivery_time_min_days, max: row.delivery_time_max_days },
     images: images.map((i) => ({ ...i })),
+    video: toProductVideo(row, videoFile),
     publishedAt: row.published_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -155,6 +195,18 @@ const fields = {
       description: `Alle Kategorien neu setzen (bis zu ${MAX_CATEGORIES_PER_PRODUCT}), die erste ist die Hauptkategorie. Geht vor \`categoryId\`.`,
     }),
   sku: singleLineText(64).nullable().optional(),
+  videoUrl: singleLineText(300)
+    .nullable()
+    .optional()
+    .meta({
+      description:
+        "Adresse eines Videos bei YouTube oder Vimeo. `null` nimmt das Video weg, auch eine eigene Datei. " +
+        "Eine eigene Datei lädt man über `POST /products/{productId}/video` hoch.",
+    }),
+  videoAutoplay: z
+    .boolean()
+    .optional()
+    .meta({ description: "Video startet im Shop von selbst, immer ohne Ton." }),
   deliveryDays: deliveryDaysInput.nullable().optional(),
 };
 
@@ -175,6 +227,8 @@ export function toProductValues(input: UpdateProductInput): ProductValues {
   if (input.taxClass !== undefined) v.tax_class_code = input.taxClass;
   if (input.newBadge !== undefined) v.new_badge = input.newBadge;
   if (input.searchKeywords !== undefined) v.search_keywords = input.searchKeywords;
+  if (input.videoAutoplay !== undefined) v.video_autoplay = input.videoAutoplay;
+  // videoUrl wird im Endpunkt gelesen und geprüft (dort ist bekannt, ob eine Datei zu löschen ist).
   if (input.categoryId !== undefined) v.category_id = input.categoryId;
   if (input.categoryIds !== undefined) v.category_ids = input.categoryIds;
   if (input.sku !== undefined) v.sku = input.sku;
@@ -201,5 +255,7 @@ export function productFacts(p: Product): Record<string, string | number | null>
     sku: p.sku,
     deliveryDays: p.deliveryDays === null ? null : `${p.deliveryDays.min}-${p.deliveryDays.max}`,
     images: p.images.length === 0 ? null : p.images.map((i) => i.id).join(","),
+    video: p.video === null ? null : `${p.video.kind}:${p.video.providerId ?? "datei"}`,
+    videoAutoplay: p.video === null ? null : String(p.video.autoplay),
   };
 }

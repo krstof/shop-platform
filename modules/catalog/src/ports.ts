@@ -20,6 +20,31 @@ export interface ProductStock {
   getLowStockThresholds(variantIds: readonly string[]): Promise<Map<string, number>>;
 }
 
+/** Ein fertiges Video (Modul media), das zum Produkt gehört. */
+export interface ProductVideoFile {
+  readonly id: string;
+  readonly url: string;
+  readonly mimeType: string;
+  readonly byteSize: number;
+}
+
+/** Warum ein Video abgelehnt wurde. */
+export type VideoRejection = "unsupported_format" | "too_large" | "unreadable";
+
+/** Geprüftes Video, das noch gespeichert werden muss; oder die Ablehnung. */
+export type PreparedProductVideo =
+  | { readonly ok: true; save(): Promise<ProductVideoFile> }
+  | { readonly ok: false; readonly reason: VideoRejection };
+
+/** Was der Katalog von Videodateien braucht (P5). Erfüllt das Modul media. */
+export interface ProductVideos {
+  /** Prüft die Datei, ohne Datenbank. */
+  prepare(data: Uint8Array, filename?: string): PreparedProductVideo;
+  get(ids: readonly string[]): Promise<Map<string, ProductVideoFile>>;
+  /** Löscht Videos samt Dateien. Erst nach der eigenen Transaktion aufrufen. */
+  remove(ids: readonly string[]): Promise<void>;
+}
+
 /** Ein fertiges Produktbild (Modul media). */
 export interface ProductImage {
   readonly id: string;

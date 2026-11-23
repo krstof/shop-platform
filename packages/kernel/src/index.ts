@@ -9,6 +9,7 @@ export { PROBLEM_TITLES } from "./problem-texts.js";
 export * from "./context.js";
 export * from "./config.js";
 export * from "./ip.js";
+export * from "./video-link.js";
 export * from "./logger.js";
 export * from "./secret-box.js";
 export {

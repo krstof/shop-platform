@@ -13,6 +13,7 @@ import {
 import {
   getContext,
   NotFoundError,
+  parseVideoUrl,
   PreconditionFailedError,
   publishEvent,
   ValidationError,
@@ -33,9 +34,10 @@ import {
   insertProduct,
   updateProduct,
   type ProductRow,
+  type ProductVideo,
 } from "../../internal/product-repository.js";
 import { appendImage, imageIdsOf } from "../../internal/product-image-repository.js";
-import type { ProductImage, ProductImages, ProductPrices, ProductStock } from "../../ports.js";
+import type { ProductImage, ProductImages, ProductPrices, ProductStock, ProductVideos } from "../../ports.js";
 import {
   createProductInput,
   CURRENCY,
@@ -61,11 +63,26 @@ function requireSaleBelow(sale: number | null | undefined, price: number | undef
   });
 }
 
+const VIDEO_URL_FALSCH =
+  "Bitte die Adresse eines Videos bei YouTube oder Vimeo angeben, etwa https://www.youtube.com/watch?v=…";
+
+/** Liest die Videoadresse aus der Eingabe; wirft 422, wenn sie zu keinem erlaubten Anbieter gehört. */
+function videoFromUrl(url: string, autoplay: boolean): ProductVideo {
+  const ref = parseVideoUrl(url);
+  if (ref === undefined)
+    throw new ValidationError({
+      detail: VIDEO_URL_FALSCH,
+      errors: [{ path: "/videoUrl", code: "unknown_video_provider", message: VIDEO_URL_FALSCH }],
+    });
+  return { kind: ref.provider, mediaId: null, providerId: ref.id, autoplay };
+}
+
 export interface ProductEndpointDependencies {
   readonly db: Database<DB>;
   readonly prices: ProductPrices;
   readonly stock: ProductStock;
   readonly images: ProductImages;
+  readonly videos: ProductVideos;
   /**
    * Wird nach dem Anlegen oder Ändern eines sichtbaren Produkts aufgerufen (22.11.2026). Gedacht
    * für IndexNow: Suchmaschinen erfahren sofort, dass es die Seite gibt. Fehler ändern nichts am
@@ -75,19 +92,23 @@ export interface ProductEndpointDependencies {
 }
 
 /** Liest Produkte vollständig: Zeilen plus Preis, Bestand und Bilder (vier Abfragen je Seite). */
-export function productReader({ prices, stock, images }: Omit<ProductEndpointDependencies, "db">) {
+export function productReader({ prices, stock, images, videos }: Omit<ProductEndpointDependencies, "db">) {
   return async function withDetails(trx: Transaction<DB>, rows: readonly ProductRow[]): Promise<Product[]> {
     const ids = rows.map((r) => r.variant_id);
     const imageIds = await imageIdsOf(
       trx,
       rows.map((r) => r.id),
     );
-    const [p, sale, s, img, low] = await Promise.all([
+    const videoIds = rows
+      .map((r) => (r.video?.kind === "file" ? r.video.mediaId : null))
+      .filter((id): id is string => id !== null);
+    const [p, sale, s, img, low, vid] = await Promise.all([
       prices.getBasePrices(ids, CURRENCY),
       prices.getSalePrices(ids, CURRENCY),
       stock.getAvailable(ids),
       images.get([...imageIds.values()].flat()),
       stock.getLowStockThresholds(ids),
+      videos.get(videoIds),
     ]);
     return rows.map((r) => {
       const list = (imageIds.get(r.id) ?? [])
@@ -100,6 +121,7 @@ export function productReader({ prices, stock, images }: Omit<ProductEndpointDep
         list,
         sale.get(r.variant_id),
         low.get(r.variant_id),
+        r.video === null || r.video.mediaId === null ? undefined : vid.get(r.video.mediaId),
       );
     });
   };
@@ -226,7 +248,16 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           await requireCategory(trx, body.categoryId, body.categoryIds);
           requireSaleBelow(body.salePrice?.amount, body.price.amount);
           const slug = body.slug ?? (await freeProductSlug(trx, body.name));
-          const row = await insertProduct(trx, tenantId, { ...toProductValues(body), name: body.name, slug });
+          const video =
+            body.videoUrl === undefined || body.videoUrl === null
+              ? undefined
+              : videoFromUrl(body.videoUrl, body.videoAutoplay ?? false);
+          const row = await insertProduct(trx, tenantId, {
+            ...toProductValues(body),
+            ...(video === undefined ? {} : { video }),
+            name: body.name,
+            slug,
+          });
           await prices.setBasePrice({
             variantId: row.variant_id,
             amount: body.price.amount,
@@ -270,8 +301,20 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
       const result = await withConflictMapping(() =>
         withTenantTransaction(db, async (trx) => {
           await requireCategory(trx, body.categoryId, body.categoryIds);
-          const r = await updateProduct(trx, tenantId, params.productId, ifMatch ?? 0, toProductValues(body));
+          // Videoadresse: `null` nimmt das Video weg, eine Adresse ersetzt es. Lag vorher eine
+          // eigene Datei am Produkt, wird sie nach der Transaktion gelöscht.
+          const video =
+            body.videoUrl === undefined
+              ? undefined
+              : body.videoUrl === null
+                ? null
+                : videoFromUrl(body.videoUrl, body.videoAutoplay ?? false);
+          const r = await updateProduct(trx, tenantId, params.productId, ifMatch ?? 0, {
+            ...toProductValues(body),
+            ...(video === undefined ? {} : { video }),
+          });
           if (r.kind !== "updated") return r;
+          const altesVideo = r.before.video;
           const [before] = await withDetails(trx, [r.before]);
           // Neues Angebot gegen den neuen Preis prüfen; neuer Preis gegen ein bestehendes Angebot.
           const sale = body.salePrice === undefined ? before?.salePrice?.amount : body.salePrice?.amount;
@@ -292,11 +335,15 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
           const changes = diff(productFacts(before), productFacts(after));
           if (Object.keys(changes).length > 0)
             await publishEvent(trx, productUpdated, { id: r.row.id, changes });
-          return { kind: "updated" as const, product: after };
+          const verwaisteDatei =
+            video !== undefined && altesVideo?.kind === "file" ? altesVideo.mediaId : null;
+          return { kind: "updated" as const, product: after, verwaisteDatei };
         }),
       );
       if (result.kind === "not_found") throw new NotFoundError();
       if (result.kind === "version_mismatch") throw new PreconditionFailedError();
+      // Erst nach dem Commit: Die Datei ist weg, sobald niemand mehr auf sie zeigt.
+      if (result.verwaisteDatei !== null) await deps.videos.remove([result.verwaisteDatei]);
       if (result.product.status === "published") await announce(result.product.slug);
       return result.product;
     },

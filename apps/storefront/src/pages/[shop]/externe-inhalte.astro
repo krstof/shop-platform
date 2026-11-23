@@ -10,7 +10,10 @@ const basis = `/${handle}`;
 if (Astro.request.method !== "POST") return Astro.redirect(basis, 303);
 const form = await Astro.request.formData();
 const zurueck = String(form.get("zurueck") ?? "");
-const ziel = zurueck === basis || /^\/[a-z0-9-]+\/[a-z0-9/-]*$/.test(zurueck) ? zurueck : basis;
+// Erlaubt ist nur ein Pfad im eigenen Shop, dazu eine schlichte Abfrage wie ?bild=video (P5),
+// damit die Galerie nach dem Zustimmen wieder beim Video steht.
+const erlaubt = /^\/[a-z0-9-]+\/[a-z0-9/-]*(?:\?[a-z0-9=&_-]{1,60})?$/;
+const ziel = zurueck === basis || erlaubt.test(zurueck) ? zurueck : basis;
 Astro.cookies.set(EXTERN_COOKIE, "ja", {
   path: basis,
   httpOnly: true,

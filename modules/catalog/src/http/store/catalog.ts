@@ -13,8 +13,8 @@ import {
   type ProductRow,
 } from "../../internal/product-repository.js";
 import { STORE_SORTS, sortStoreProducts } from "./sort.js";
-import type { ProductImage, ProductImages, ProductPrices, ProductStock } from "../../ports.js";
-import { CURRENCY, productImageSchema } from "../admin/product.schema.js";
+import type { ProductImage, ProductImages, ProductPrices, ProductStock, ProductVideos } from "../../ports.js";
+import { CURRENCY, productImageSchema, toProductVideo } from "../admin/product.schema.js";
 
 /** Kürzel eines Shops im Pfad. */
 export const shopHandleParam = z
@@ -59,6 +59,17 @@ export const storeProductSchema = z
       .string()
       .nullable()
       .meta({ description: "Seit wann im Shop (ISO 8601); der Shop zeigt damit „Neu“." }),
+    video: z
+      .object({
+        kind: z.enum(["file", "youtube", "vimeo"]),
+        url: z
+          .string()
+          .meta({ description: "Bei `file` die Datei zum Abspielen, sonst die Adresse beim Anbieter." }),
+        providerId: z.string().nullable(),
+        autoplay: z.boolean(),
+      })
+      .nullable()
+      .meta({ description: "Video am Produkt oder null." }),
     newBadge: z.enum(["auto", "always", "never"]).meta({
       description:
         "Neu-Schildchen: `auto` = 14 Tage nach `publishedAt`, `always` = immer zeigen, `never` = nie.",
@@ -83,6 +94,7 @@ export interface StoreCatalogDependencies {
   readonly prices: ProductPrices;
   readonly stock: ProductStock;
   readonly images: ProductImages;
+  readonly videos: ProductVideos;
 }
 
 const PUBLIC = {
@@ -91,18 +103,22 @@ const PUBLIC = {
 } as const;
 
 /** Liest veröffentlichte Produkte mit Preis, Verfügbarkeit und Bildern. */
-export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogDependencies, "db">) {
+export function storeProductReader({ prices, stock, images, videos }: Omit<StoreCatalogDependencies, "db">) {
   return async (trx: Transaction<DB>, rows: readonly ProductRow[]): Promise<StoreProduct[]> => {
     const variantIds = rows.map((r) => r.variant_id);
     const imageIds = await imageIdsOf(
       trx,
       rows.map((r) => r.id),
     );
-    const [p, sale, s, img] = await Promise.all([
+    const videoIds = rows
+      .map((r) => (r.video?.kind === "file" ? r.video.mediaId : null))
+      .filter((id): id is string => id !== null);
+    const [p, sale, s, img, vid] = await Promise.all([
       prices.getBasePrices(variantIds, CURRENCY),
       prices.getSalePrices(variantIds, CURRENCY),
       stock.getAvailable(variantIds),
       images.get([...imageIds.values()].flat()),
+      videos.get(videoIds),
     ]);
     return rows.map((r) => {
       const base = p.get(r.variant_id);
@@ -125,6 +141,10 @@ export function storeProductReader({ prices, stock, images }: Omit<StoreCatalogD
         categoryIds: [...r.category_ids],
         publishedAt: r.published_at?.toISOString() ?? null,
         newBadge: r.new_badge,
+        video: toProductVideo(
+          r,
+          r.video === null || r.video.mediaId === null ? undefined : vid.get(r.video.mediaId),
+        ),
         deliveryDays:
           r.delivery_time_min_days === null || r.delivery_time_max_days === null
             ? null

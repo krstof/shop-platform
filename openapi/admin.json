@@ -11166,6 +11166,23 @@
                       }
                     ]
                   },
+                  "videoUrl": {
+                    "description": "Adresse eines Videos bei YouTube oder Vimeo. `null` nimmt das Video weg, auch eine eigene Datei. Eine eigene Datei lädt man über `POST /products/{productId}/video` hoch.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "videoAutoplay": {
+                    "description": "Video startet im Shop von selbst, immer ohne Ton.",
+                    "type": "boolean"
+                  },
                   "deliveryDays": {
                     "anyOf": [
                       {
@@ -11845,6 +11862,23 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "videoUrl": {
+                    "description": "Adresse eines Videos bei YouTube oder Vimeo. `null` nimmt das Video weg, auch eine eigene Datei. Eine eigene Datei lädt man über `POST /products/{productId}/video` hoch.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "videoAutoplay": {
+                    "description": "Video startet im Shop von selbst, immer ohne Ton.",
+                    "type": "boolean"
                   },
                   "deliveryDays": {
                     "anyOf": [
@@ -12717,6 +12751,366 @@
           },
           "404": {
             "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "products:write"
+        ]
+      }
+    },
+    "/admin/v1/products/{productId}/video": {
+      "delete": {
+        "operationId": "deleteProductVideo",
+        "summary": "Video entfernen",
+        "description": "Nimmt das Video vom Produkt. Eine eigene Datei wird dabei gelöscht, ein Video bei YouTube oder Vimeo bleibt dort natürlich liegen. Antwort ist das ganze Produkt.",
+        "tags": [
+          "Produkte"
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Das Produkt ohne Video.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "products:write"
+        ]
+      },
+      "post": {
+        "operationId": "addProductVideo",
+        "summary": "Video hochladen",
+        "description": "Lädt ein Video hoch (MP4 oder WebM als Base64, höchstens 10 MB) und hängt es an das Produkt. Ein Produkt hat höchstens ein Video; ein vorhandenes wird ersetzt. Für YouTube und Vimeo stattdessen `videoUrl` beim Ändern des Produkts benutzen. Antwort ist das ganze Produkt.",
+        "tags": [
+          "Produkte"
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "UUID des Datensatzes.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "maxLength": 13981016,
+                    "format": "base64",
+                    "contentEncoding": "base64",
+                    "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
+                    "description": "Videodatei als Base64 (MP4 oder WebM, höchstens 10 MB)."
+                  },
+                  "filename": {
+                    "description": "Ursprünglicher Dateiname, nur zur Info.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "autoplay": {
+                    "description": "Startet im Shop von selbst, immer ohne Ton. Ohne Angabe: nein.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "data"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "data": "AAAAGGZ0eXBpc29tAAAAAGlzb21tcDQy",
+                "filename": "sencha.mp4"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Das Produkt mit dem Video.",
+            "headers": {
+              "ETag": {
+                "description": "Version des Datensatzes, für Änderungen als If-Match zurückschicken, z. B. \"3\".",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden, auch bei Datensätzen anderer Shops.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 14 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -18214,6 +18608,17 @@
             },
             "description": "Bilder in Anzeigereihenfolge, das erste ist das Hauptbild."
           },
+          "video": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductVideo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Video am Produkt oder null. Der Shop zeigt es neben den Bildern."
+          },
           "publishedAt": {
             "anyOf": [
               {
@@ -18260,6 +18665,7 @@
           "sku",
           "deliveryDays",
           "images",
+          "video",
           "publishedAt",
           "createdAt",
           "updatedAt",
@@ -18321,6 +18727,43 @@
         ],
         "additionalProperties": false,
         "description": "Produktbild, ausgeliefert über media.<Domain>."
+      },
+      "ProductVideo": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "file",
+              "youtube",
+              "vimeo"
+            ],
+            "description": "`file` = eigene Datei im Shop, sonst ein Video bei YouTube oder Vimeo."
+          },
+          "url": {
+            "type": "string",
+            "description": "Bei `file` die Adresse der Datei zum Abspielen, sonst die Adresse beim Anbieter zum Anschauen."
+          },
+          "providerId": {
+            "description": "Kennung des Videos bei YouTube oder Vimeo, sonst null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "autoplay": {
+            "type": "boolean",
+            "description": "Startet im Shop von selbst, immer ohne Ton (sonst lässt der Browser es nicht zu)."
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "providerId",
+          "autoplay"
+        ],
+        "additionalProperties": false,
+        "description": "Video am Produkt: eigene Datei oder YouTube/Vimeo."
       },
       "RemovedMember": {
         "type": "object",

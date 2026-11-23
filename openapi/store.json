@@ -4022,6 +4022,47 @@
               "null"
             ]
           },
+          "video": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "file",
+                      "youtube",
+                      "vimeo"
+                    ]
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Bei `file` die Datei zum Abspielen, sonst die Adresse beim Anbieter."
+                  },
+                  "providerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "autoplay": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "url",
+                  "providerId",
+                  "autoplay"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Video am Produkt oder null."
+          },
           "newBadge": {
             "type": "string",
             "enum": [
@@ -4047,6 +4088,7 @@
           "images",
           "deliveryDays",
           "publishedAt",
+          "video",
           "newBadge"
         ],
         "additionalProperties": false,
