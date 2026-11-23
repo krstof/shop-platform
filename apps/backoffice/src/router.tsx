@@ -2,6 +2,7 @@
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet } from "@tanstack/react-router";
 import { AssistantPage } from "./pages/assistant.js";
 import { CategoriesPage, EditCategoryPage, NewCategoryPage } from "./pages/categories.js";
+import { AnalyticsPage } from "./pages/analytics.js";
 import { DesignPage } from "./pages/editor/editor.js";
 import { GeneralSettingsPage } from "./pages/settings.js";
 import { ForgotPasswordPage, ResetPasswordPage, SignInPage } from "./pages/auth.js";
@@ -102,6 +103,9 @@ const categoryEdit = createRoute({
   component: EditCategoryPage,
 });
 
+// Analytics (Paket P3): Zahlen des Shops über einen wählbaren Zeitraum.
+const analytics = createRoute({ getParentRoute: () => shop, path: "/analytics", component: AnalyticsPage });
+
 // Shop-Editor (früher „Aussehen“ unter /aussehen).
 const design = createRoute({ getParentRoute: () => shop, path: "/editor", component: DesignPage });
 const designOld = createRoute({
@@ -186,6 +190,7 @@ const routeTree = root.addChildren([
     order,
     design,
     designOld,
+    analytics,
     assistant,
     team,
     settings,

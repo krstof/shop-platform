@@ -155,6 +155,15 @@ function placed(trx: Transaction<DB>) {
   return trx.selectFrom("orders.order");
 }
 
+export interface TopProduct {
+  readonly productId: string;
+  readonly name: string;
+  /** Verkaufte Stück im Zeitraum (bezahlte Bestellungen). */
+  readonly quantity: number;
+  /** Umsatz brutto in Cent. */
+  readonly revenue: number;
+}
+
 export interface OrderSummaryStats {
   /** Älteste zuerst, je Kalendertag in deutscher Zeit, auch Tage ohne Bestellung. */
   readonly days: readonly { readonly date: string; readonly orders: number; readonly revenue: number }[];
@@ -612,6 +621,41 @@ export function orderRepository(database: Database<unknown>, settings: ShopSetti
           toShip: Number(counts.to_ship),
           awaitingPayment: Number(counts.awaiting),
         };
+      });
+    },
+
+    /**
+     * Meistverkaufte Produkte im Zeitraum (Paket P3, Analytics). Gezählt werden die Zeilen bezahlter
+     * Bestellungen; der Name ist der aus der Bestellung, nicht der heutige aus dem Katalog.
+     */
+    async topProducts(now: Date, days: number, limit: number): Promise<TopProduct[]> {
+      return withTenantTransaction(db, async (trx) => {
+        const from = berlinMidnight(berlinDates(now, days)[0] ?? "");
+        const rows = await trx
+          .selectFrom("orders.order_line")
+          .innerJoin("orders.order", (join) =>
+            join
+              .onRef("orders.order.id", "=", "orders.order_line.order_id")
+              .onRef("orders.order.tenant_id", "=", "orders.order_line.tenant_id"),
+          )
+          .select(({ fn }) => [
+            "orders.order_line.product_id as product_id",
+            "orders.order_line.product_name as product_name",
+            fn.sum<string>("orders.order_line.quantity").as("quantity"),
+            fn.sum<string>("orders.order_line.line_total_amount").as("revenue"),
+          ])
+          .where("orders.order.payment_status", "=", "paid")
+          .where("orders.order.placed_at", ">=", from)
+          .groupBy(["orders.order_line.product_id", "orders.order_line.product_name"])
+          .orderBy("revenue", "desc")
+          .limit(limit)
+          .execute();
+        return rows.map((r) => ({
+          productId: r.product_id,
+          name: r.product_name,
+          quantity: Number(r.quantity),
+          revenue: Number(r.revenue),
+        }));
       });
     },
 

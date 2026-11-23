@@ -2357,6 +2357,204 @@
         "x-public": true,
         "x-public-reason": "Gäste kaufen ohne Konto; Warenkorb und Zahlung schützt ein geheimes Token im Pfad."
       }
+    },
+    "/store/v1/shops/{shopHandle}/views": {
+      "post": {
+        "operationId": "reportPageViews",
+        "summary": "Seitenaufrufe melden",
+        "description": "Meldet gebündelt, welche Seiten des Shops aufgerufen wurden. Gezählt wird auf dem Server der Storefront, ohne Cookie und ohne etwas über einzelne Besucher zu speichern. Gespeichert ist nur die Zahl je Seite und Tag. Höchstens 50 Seiten je Meldung, höchstens 1000 Aufrufe je Seite.",
+        "tags": [
+          "Statistik"
+        ],
+        "parameters": [
+          {
+            "name": "shopHandle",
+            "in": "path",
+            "required": true,
+            "description": "Kennung des Shops in der Adresse.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Zufällige Kennung je Vorgang. Eine Wiederholung mit demselben Schlüssel liefert die gespeicherte Antwort (24 Stunden).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entries": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "description": "Pfad ohne Shop-Kennung, z. B. /produkt/sencha."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "start",
+                            "produkt",
+                            "kategorie",
+                            "seite",
+                            "sonstige"
+                          ],
+                          "description": "Art der Seite."
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "kind",
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "entries"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "entries": [
+                  {
+                    "path": "/",
+                    "kind": "start",
+                    "count": 3
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Gezählt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageViewsCounted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Die Aktion passt nicht zum aktuellen Zustand (oder dieselbe Anfrage läuft noch).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Die Anfrage ist größer als 1 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Nur application/json wird angenommen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-public": true,
+        "x-public-reason": "Der Server der Storefront meldet ohne Konto; gespeichert wird nur eine Zahl je Seite."
+      }
     }
   },
   "components": {
@@ -2536,6 +2734,19 @@
         ],
         "additionalProperties": false,
         "description": "Schlüssel für IndexNow."
+      },
+      "PageViewsCounted": {
+        "type": "object",
+        "properties": {
+          "counted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "counted"
+        ],
+        "additionalProperties": false
       },
       "Problem": {
         "type": "object",

@@ -22,7 +22,7 @@ Am Abend des 22.11.2026 hat er die Reihenfolge neu gesetzt. Sie gilt vor allen f
 | Rang | Paket | Inhalt |
 |---|---|---|
 | ✅ fertig | P13 | Formatierung in Textfeldern (fett, kursiv, Listen, Link), dazu P14 (Beispieltexte im Editor) |
-| als Nächstes | P3 | Statistiken und SEO (Analytics-Seite, SEO-Seite, Plausible, Search Console, DataForSEO) |
+| halb fertig | P3 | Analytics-Seite ✅ 23.11.2026; SEO-Seite offen (braucht Zugangsdaten) |
 | wichtig | P5 | Produktpflege: Editor, Video, Zoom, Schlüsselwörter, Mindestbestand |
 | wichtig | P6 | Assistent: eigene Seite, Benachrichtigungen, Report, Einstellungen |
 | wichtig | P10 | Sprachen und automatische Übersetzung, Steuersätze |
@@ -54,9 +54,9 @@ Zwei neue Menüpunkte unter „Onlineshop“, nicht im Dashboard und nicht unter
 
 **Seite „Analytics“**
 
-- Umsatz, Bestellungen, Warenkorbwert über einen wählbaren Zeitraum, umschaltbar zwischen Balken und Linie.
-- Besucher, Besuche, Verweildauer, Absprünge, Herkunft und meistbesuchte Seiten aus **Plausible** (selbst gehostet, ohne Cookies).
-- Meistverkaufte Produkte, Umsatz je Kategorie. Ausführlicher als das Dashboard, das die Kurzfassung bleibt.
+- ✅ Umsatz, Bestellungen, durchschnittlicher Warenkorb über einen wählbaren Zeitraum (7, 30, 90 Tage), als Balken je Tag.
+- ✅ Seitenaufrufe je Tag und meistbesuchte Seiten. **Ohne Plausible:** Der Server der Storefront zählt selbst, ohne Cookie und ohne JavaScript. Plausible bräuchte ClickHouse und einen eigenen Dienst und zeigt dasselbe. Was dadurch fehlt: Besucher (statt Aufrufe), Verweildauer, Absprünge und Herkunft — alles Dinge, die ohne Wiedererkennung nicht gehen.
+- ✅ Meistverkaufte Produkte. Umsatz je Kategorie fehlt noch (bräuchte den Katalog neben den Bestellungen).
 
 **Seite „SEO“**
 

@@ -59,7 +59,7 @@ test("jedes Modul hat eine db.generated.ts nur mit Tabellen des eigenen Schemas"
     assert.deepEqual([...new Set(keys)], [m.schema], `${m.name}: nur Schema ${m.schema}`);
     total += keys.length;
   }
-  assert.equal(total, 116, "alle 116 Tabellen sind genau einem Modul zugeordnet");
+  assert.equal(total, 117, "alle 117 Tabellen sind genau einem Modul zugeordnet");
 });
 
 test("Abfrage auf eigene Tabelle lässt sich übersetzen", () => {

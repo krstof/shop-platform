@@ -9,6 +9,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -22,6 +24,16 @@ export type JsonPrimitive = boolean | number | string | null;
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+export interface StorefrontPageView {
+  created_at: Generated<Timestamp>;
+  day: Timestamp;
+  kind: string;
+  path: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  views: Generated<Int8>;
+}
 
 export interface StorefrontTemplate {
   created_at: Generated<Timestamp>;
@@ -76,6 +88,7 @@ export interface StorefrontThemeInstallation {
 }
 
 export interface DB {
+  "storefront.page_view": StorefrontPageView;
   "storefront.template": StorefrontTemplate;
   "storefront.template_version": StorefrontTemplateVersion;
   "storefront.theme": StorefrontTheme;

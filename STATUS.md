@@ -348,11 +348,39 @@ Beispieltexte; Durchlauf im Browser (Leiste erscheint, Auswahl bleibt nach dem K
 stehen, Feld zeigt beim Verlassen das Ergebnis) und die Darstellung im Shop bei 1000 Pixeln.
 `pnpm check` komplett grün.
 
+**P3 Teil 1: Analytics-Seite (23.11.2026).** Neuer Menüpunkt „Analytics" unter „Onlineshop" mit
+wählbarem Zeitraum (7, 30 oder 90 Tage): Umsatz, Bestellungen, durchschnittlicher Warenkorb und
+Seitenaufrufe als Kennzahlen, Umsatz und Aufrufe je Tag als Balken, dazu die meistverkauften
+Produkte und die meistbesuchten Seiten.
+
+Die Seitenaufrufe zählt der Server der Storefront selbst (`apps/storefront/src/middleware.ts` und
+`lib/zaehler.ts`): Jede ausgelieferte HTML-Seite wird vorgemerkt und alle zehn Sekunden gebündelt an
+`POST /store/v1/shops/{handle}/views` gemeldet. Gespeichert ist nur, wie oft ein Pfad an einem Tag
+aufgerufen wurde (`storefront.page_view`) — kein Cookie, keine IP-Adresse, kein JavaScript im
+Browser, kein fremder Dienst. Darum heißt es „Aufrufe" und nicht „Besucher": Ohne Wiedererkennung
+lassen sich zwei Aufrufe derselben Person nicht zusammenfassen, und Wiedererkennung ist genau das,
+was ein Shop ohne Cookie-Banner nicht haben soll. **Plausible wurde deshalb nicht eingebaut**
+(Wunschliste P3): Es bräuchte ClickHouse und einen eigenen Dienst neben dem Testserver, und es
+liefert dasselbe Bild.
+
+Dazu zwei Endpunkte in bestehenden Modulen: `GET /admin/v1/analytics/views?days=` (Modul storefront)
+und `GET /admin/v1/orders/top-products?days=` (Modul orders); `GET /admin/v1/orders/summary` nimmt
+jetzt denselben Zeitraum entgegen (ohne Angabe wie bisher sieben Tage).
+
+**Getestet:** neuer Datenbanktest `apps/api/src/analytics.db.test.ts` (melden und auswerten, Shops
+bleiben getrennt, Pfade werden zusammengefasst, Unsinn gibt 422, unbekannter Shop 404), dazu
+Einheitstests für Pfad und Art in `apps/storefront/src/lib/zaehler.test.ts`. Durchlauf im Browser
+bei 1440 und 390 Pixeln. `pnpm check` komplett grün; Zähltabelle in `db/test_isolation.sql`
+eingetragen, Tabellenzahlen in den Prüfungen nachgezogen.
+
+**Offen aus P3:** die SEO-Seite (Probleme finden, Suchbegriffe und Platzierungen über DataForSEO,
+Google Search Console, Sitemap). Dafür braucht es Zugangsdaten, die es im Testsystem noch nicht gibt.
+
 ## Nächster Schritt
 
 Die Reihenfolge hat Kristof am Abend des 22.11.2026 neu gesetzt; sie steht in
-`docs/10_Wunschliste.md` unter „Reihenfolge" und gilt vor allem Früheren. Als Nächstes P3
-(Statistiken und SEO), danach P5, P6 und P10. Produktvarianten (P2) kommen ausdrücklich zuletzt.
+`docs/10_Wunschliste.md` unter „Reihenfolge" und gilt vor allem Früheren. Als Nächstes der zweite
+Teil von P3 (SEO-Seite, sobald Zugangsdaten da sind) oder P5, danach P6 und P10. Produktvarianten (P2) kommen ausdrücklich zuletzt.
 Fertig sind P1, P12, P13 und P14. Die Reihenfolge der Pakete steht in derselben
 Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
 

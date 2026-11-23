@@ -6,6 +6,131 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/admin/v1/analytics/views": {
+      "get": {
+        "operationId": "getPageViews",
+        "summary": "Seitenaufrufe des Shops",
+        "description": "Aufrufe je Tag im gewählten Zeitraum (deutsche Zeit, auch Tage ohne Aufruf) und die meistbesuchten Seiten (bis 10). Gezählt wird ohne Cookie; es gibt deshalb keine Besucherzahl, sondern die Zahl der Aufrufe.",
+        "tags": [
+          "Statistik"
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Zeitraum in Tagen bis heute (1 bis 365).",
+            "schema": {
+              "default": 30,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Aufrufe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageViews"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "orders:read"
+        ]
+      }
+    },
     "/admin/v1/api-tokens": {
       "get": {
         "operationId": "listApiTokens",
@@ -10396,11 +10521,23 @@
       "get": {
         "operationId": "getOrderStats",
         "summary": "Kennzahlen der Bestellungen",
-        "description": "Umsatz und Zahl der bezahlten Bestellungen je Tag der letzten 7 Tage (deutsche Zeit), dazu wie viele Bestellungen zu versenden sind und wie viele auf die Zahlung warten.",
+        "description": "Umsatz und Zahl der bezahlten Bestellungen je Tag (deutsche Zeit), dazu wie viele Bestellungen zu versenden sind und wie viele auf die Zahlung warten. Ohne Angabe 7 Tage.",
         "tags": [
           "Bestellungen"
         ],
         "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Zeitraum in Tagen bis heute (1 bis 365).",
+            "schema": {
+              "default": 7,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            }
+          },
           {
             "name": "Shop-Id",
             "in": "header",
@@ -10445,6 +10582,141 @@
           },
           "403": {
             "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Zu viele Anfragen.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Sekunden bis zum nächsten Versuch.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unerwarteter Fehler, ohne Einzelheiten. requestId hilft bei der Suche im Protokoll.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-required-scopes": [
+          "orders:read"
+        ]
+      }
+    },
+    "/admin/v1/orders/top-products": {
+      "get": {
+        "operationId": "getTopProducts",
+        "summary": "Meistverkaufte Produkte",
+        "description": "Die bis zu 10 Produkte mit dem höchsten Umsatz im Zeitraum, aus den Zeilen bezahlter Bestellungen. Der Name ist der aus der Bestellung.",
+        "tags": [
+          "Bestellungen"
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Zeitraum in Tagen bis heute (1 bis 365).",
+            "schema": {
+              "default": 7,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            }
+          },
+          {
+            "name": "Shop-Id",
+            "in": "header",
+            "required": false,
+            "description": "Shop, für den die Anfrage gilt. Bei Anmeldung mit Sitzungs-Cookie Pflicht: eine der Kennungen aus shops in GET /auth/v1/session. Ohne aktive Mitgliedschaft in einem aktiven Shop antwortet die API 403.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Die Produkte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopProducts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Die Anfrage ist fehlerhaft (zum Beispiel kaputtes JSON).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht angemeldet.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Berechtigung fehlt; bei ändernden Anfragen auch: Anfrage von einer fremden Seite (Origin).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Die Eingabe ist ungültig. Die Felder stehen in errors.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -17480,7 +17752,7 @@
               ],
               "additionalProperties": false
             },
-            "description": "Die letzten 7 Tage bis heute, älteste zuerst, auch Tage ohne Bestellung."
+            "description": "Der Zeitraum bis heute, älteste zuerst, auch Tage ohne Bestellung."
           },
           "toShip": {
             "type": "integer",
@@ -17585,6 +17857,78 @@
         ],
         "additionalProperties": false,
         "description": "Bestellung in der Liste."
+      },
+      "PageViews": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "views": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "date",
+                "views"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "start",
+                    "produkt",
+                    "kategorie",
+                    "seite",
+                    "sonstige"
+                  ]
+                },
+                "views": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "path",
+                "kind",
+                "views"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "days",
+          "pages",
+          "total"
+        ],
+        "additionalProperties": false,
+        "description": "Seitenaufrufe im Zeitraum."
       },
       "Price": {
         "type": "object",
@@ -18117,6 +18461,57 @@
         ],
         "additionalProperties": false,
         "description": "Treffer der Bildersuche."
+      },
+      "TopProducts": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "const": "EUR"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "productId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Name aus der Bestellung, nicht der heutige im Katalog."
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Verkaufte Stück im Zeitraum."
+                },
+                "revenue": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Umsatz brutto in Cent."
+                }
+              },
+              "required": [
+                "productId",
+                "name",
+                "quantity",
+                "revenue"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "currency",
+          "products"
+        ],
+        "additionalProperties": false,
+        "description": "Meistverkaufte Produkte im Zeitraum."
       },
       "WebFont": {
         "type": "object",

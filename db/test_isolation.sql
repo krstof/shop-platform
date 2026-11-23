@@ -152,6 +152,9 @@ BEGIN
   INSERT INTO storefront.template (tenant_id, theme_installation_id, kind) VALUES (t, v_ti, 'home') RETURNING id INTO v_tpl;
   INSERT INTO storefront.template_version (tenant_id, template_id, version_number, document)
     VALUES (t, v_tpl, 1, '{"schemaVersion":1,"sections":[]}');
+  -- Seitenaufrufe (Paket P3): eine Zeile je Shop, Tag und Seite
+  INSERT INTO storefront.page_view (tenant_id, day, path, kind, views)
+    VALUES (t, current_date, '/', 'start', 3);
 
   -- integrations: eine eingerichtete Anbindung mit verschlüsselten Zugangsdaten
   INSERT INTO integrations.connection (tenant_id, provider, enabled, settings, secrets)

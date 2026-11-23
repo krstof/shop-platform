@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Inbox,
   LayoutDashboard,
+  ChartLine,
   LogOut,
   Mail,
   Menu,
@@ -138,7 +139,10 @@ const GROUPS: readonly { readonly title?: string; readonly items: readonly MenuI
   },
   {
     title: "Onlineshop",
-    items: [{ to: "/$shop/editor", label: "Editor", icon: PenTool, color: "#e0567a" }],
+    items: [
+      { to: "/$shop/editor", label: "Editor", icon: PenTool, color: "#e0567a" },
+      { to: "/$shop/analytics", label: "Analytics", icon: ChartLine, color: "#0d8f7f" },
+    ],
   },
 ];
 

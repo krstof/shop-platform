@@ -125,6 +125,25 @@ function toOrder(o: OrderView): z.input<typeof orderSchema> {
 
 const cursorKey = z.strictObject({ id: z.uuid() });
 
+/** Zeitraum der Kennzahlen (Paket P3): Standard sieben Tage, höchstens ein Jahr. */
+const DEFAULT_STATS_DAYS = 7;
+const MAX_STATS_DAYS = 365;
+const MAX_TOP_PRODUCTS = 10;
+
+const topProductsResponse = z
+  .object({
+    currency: z.literal("EUR"),
+    products: z.array(
+      z.object({
+        productId: z.uuid(),
+        name: z.string().meta({ description: "Name aus der Bestellung, nicht der heutige im Katalog." }),
+        quantity: z.number().int().meta({ description: "Verkaufte Stück im Zeitraum." }),
+        revenue: z.number().int().meta({ description: "Umsatz brutto in Cent." }),
+      }),
+    ),
+  })
+  .meta({ id: "TopProducts", description: "Meistverkaufte Produkte im Zeitraum." });
+
 const summaryResponse = z
   .object({
     currency: z.literal("EUR"),
@@ -136,7 +155,7 @@ const summaryResponse = z
           revenue: z.number().int().meta({ description: "Umsatz brutto in Cent (bezahlte Bestellungen)." }),
         }),
       )
-      .meta({ description: "Die letzten 7 Tage bis heute, älteste zuerst, auch Tage ohne Bestellung." }),
+      .meta({ description: "Der Zeitraum bis heute, älteste zuerst, auch Tage ohne Bestellung." }),
     toShip: z.number().int().meta({ description: "Bezahlt und noch nicht versendet." }),
     awaitingPayment: z.number().int().meta({ description: "Warten auf die Zahlung." }),
   })
@@ -153,15 +172,51 @@ export function orderAdminEndpoints(repo: OrderRepository, restock?: Restock): E
     operationId: "getOrderStats",
     summary: "Kennzahlen der Bestellungen",
     description:
-      "Umsatz und Zahl der bezahlten Bestellungen je Tag der letzten 7 Tage (deutsche Zeit), dazu wie " +
-      "viele Bestellungen zu versenden sind und wie viele auf die Zahlung warten.",
+      "Umsatz und Zahl der bezahlten Bestellungen je Tag (deutsche Zeit), dazu wie viele " +
+      `Bestellungen zu versenden sind und wie viele auf die Zahlung warten. Ohne Angabe ${DEFAULT_STATS_DAYS} Tage.`,
     tags: ["Bestellungen"],
     access: { scopes: ["orders:read"] },
+    query: z.strictObject({
+      days: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_STATS_DAYS)
+        .default(DEFAULT_STATS_DAYS)
+        .meta({ description: `Zeitraum in Tagen bis heute (1 bis ${MAX_STATS_DAYS}).` }),
+    }),
     response: { status: 200, description: "Die Kennzahlen.", schema: summaryResponse },
-    handler: async () => {
-      const r = await repo.summary(new Date(), 7);
+    handler: async ({ query }) => {
+      const r = await repo.summary(new Date(), query.days);
       return { currency: "EUR" as const, ...r, days: [...r.days] };
     },
+  });
+
+  const top = defineEndpoint({
+    api: "admin",
+    method: "GET",
+    path: "/orders/top-products",
+    operationId: "getTopProducts",
+    summary: "Meistverkaufte Produkte",
+    description:
+      `Die bis zu ${MAX_TOP_PRODUCTS} Produkte mit dem höchsten Umsatz im Zeitraum, aus den Zeilen ` +
+      "bezahlter Bestellungen. Der Name ist der aus der Bestellung.",
+    tags: ["Bestellungen"],
+    access: { scopes: ["orders:read"] },
+    query: z.strictObject({
+      days: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_STATS_DAYS)
+        .default(DEFAULT_STATS_DAYS)
+        .meta({ description: `Zeitraum in Tagen bis heute (1 bis ${MAX_STATS_DAYS}).` }),
+    }),
+    response: { status: 200, description: "Die Produkte.", schema: topProductsResponse },
+    handler: async ({ query }) => ({
+      currency: "EUR" as const,
+      products: await repo.topProducts(new Date(), query.days, MAX_TOP_PRODUCTS),
+    }),
   });
 
   const list = defineEndpoint({
@@ -329,5 +384,5 @@ export function orderAdminEndpoints(repo: OrderRepository, restock?: Restock): E
     }),
   });
 
-  return [stats, list, get, ship, cancel, note, customers];
+  return [stats, top, list, get, ship, cancel, note, customers];
 }
