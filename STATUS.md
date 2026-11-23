@@ -399,18 +399,46 @@ Einheitstests in `packages/text` und `apps/storefront/src/lib/neu.test.ts`. Durc
 komplett laufende Plattform im Browser (Produktseite, Karten, Suche, Produktliste, Formular,
 390 px). `pnpm check` komplett grün, oasdiff ohne Bruch.
 
-**Offen aus P5:** Video am Produkt. Der alte Hinweis in der Wunschliste („braucht JavaScript“)
-stimmt nicht — ein `<video controls>` bringt seine Bedienelemente selbst mit, automatisches
-Abspielen geht stumm ebenfalls ohne JavaScript. Zu entscheiden ist nur, woher die Videos kommen.
+**P5 Teil 2: Video am Produkt (23.11.2026).** Jedes Produkt kann ein Video haben, auf zwei Wegen:
+eine eigene Datei (MP4 oder WebM, höchstens 10 MB) oder ein Link zu YouTube oder Vimeo. In der
+Galerie der Produktseite steht das Video als erstes kleines Feld mit Dreieck; groß wird es erst auf
+Klick (`?bild=video`), damit das Hauptbild vorn bleibt, das der Händler ausgesucht hat.
+
+- **Ohne JavaScript, wie der ganze Shop.** Eine eigene Datei läuft in `<video controls>`, das der
+  Browser selbst bedient. Automatisches Abspielen geht auch ohne, dann immer stumm — mit Ton lassen
+  die Browser es nicht zu.
+- **YouTube und Vimeo** laufen über denselben Weg wie der Baustein „Video“: erst ein Hinweis mit
+  Button, nach dem Zustimmen die Einbettung (youtube-nocookie, Vimeo mit `dnt=1`). Das Cookie
+  `externe-inhalte` gilt wie bisher für den ganzen Shop.
+- **Warum 10 MB:** Eine Anfrage darf höchstens 16 MB groß sein (`packages/http`), und Base64 bläht
+  die Datei um ein Drittel auf. Für längere Filme ist der Link zu YouTube gedacht. Die Datei liegt
+  im öffentlichen Bereich des Objektspeichers und wird unverändert ausgeliefert; umgerechnet wird
+  nichts, das bräuchte ffmpeg auf dem Server.
+- Das Lesen von YouTube- und Vimeo-Adressen stand bisher nur im Modul storefront. Weil catalog
+  dieselbe Prüfung braucht, steht es jetzt im Werkzeugkasten (`packages/kernel/src/video-link.ts`),
+  und storefront reicht es von dort weiter.
+- Caddy lässt für `POST /admin/v1/products/{id}/video` 16 MB durch (eigene Stufe neben den 12 MB
+  für Bilder) und erlaubt in beiden Oberflächen `media-src` von media.<Domain>.
+- Neue Endpunkte: `POST /admin/v1/products/{productId}/video` (Datei) und `DELETE` dazu; Link und
+  automatisches Abspielen laufen über `PATCH /admin/v1/products/{productId}` (`videoUrl`,
+  `videoAutoplay`).
+
+**Getestet:** neuer Prüffall in `apps/api/src/store-catalog.db.test.ts` (Datei hochladen, falsche
+Datei 422, Link setzt die Datei ab, fremde Adresse 422, wegnehmen, zweimal wegnehmen 404), neue
+Einheitstests in `modules/media/src/internal/video.test.ts`. Im Browser gegen die laufende
+Plattform geprüft: hochladen im Backoffice, abspielen im Shop, YouTube mit Hinweis und Zustimmung.
+
+⚠️ **Migrationen nie nachträglich ändern.** Beim Bauen ist aufgefallen (und vom Migrationslauf
+sauber abgefangen), dass die Video-Spalten an eine schon gelaufene Migration angehängt waren. Sie
+stehen jetzt in `20261123T150000_produktvideo.sql`. Für künftige Läufe: Neue Spalten immer in eine
+neue Datei, auch am selben Tag.
 
 ## Nächster Schritt
 
 Die Reihenfolge hat Kristof am Abend des 22.11.2026 neu gesetzt; sie steht in
-`docs/10_Wunschliste.md` unter „Reihenfolge" und gilt vor allem Früheren. Als Nächstes das Video am
-Produkt (Rest von P5), danach P6 (Assistent) und P10. Der zweite Teil von P3 (SEO-Seite) wartet auf
-Zugangsdaten. Produktvarianten (P2) kommen ausdrücklich zuletzt.
-Fertig sind P1, P12, P13 und P14. Die Reihenfolge der Pakete steht in derselben
-Datei; sie folgt dem, was Kristof am 22.11.2026 ausdrücklich zuerst wollte.
+`docs/10_Wunschliste.md` unter „Reihenfolge“ und gilt vor allem Früheren. P5 ist damit fertig. Als
+Nächstes P6 (Assistent), danach P10. Der zweite Teil von P3 (SEO-Seite) wartet auf Zugangsdaten.
+Fertig sind P1, P3 (Analytics), P5, P12, P13 und P14.
 
 ## Offene Entscheidungen
 
