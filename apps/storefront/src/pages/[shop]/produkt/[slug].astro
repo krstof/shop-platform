@@ -29,7 +29,9 @@ const hauptbild = p.images[gewaehlt - 1];
 // Video am Produkt (P5): Es steht als erstes Feld in der Galerie, groß kommt es erst auf Klick.
 // So bleibt das Hauptbild vorn, das der Händler ausgesucht hat.
 const video = p.video ?? null;
-const videoGross = zeigtVideo(Astro.url.searchParams.get("bild"), video !== null);
+// Groß gezeigt wird das Video auf Klick — und von selbst, wenn es gar kein Bild gibt (23.11.2026).
+const videoGross =
+  video !== null && (zeigtVideo(Astro.url.searchParams.get("bild"), true) || p.images.length === 0);
 const extern = Astro.cookies.get(EXTERN_COOKIE)?.value === "ja";
 const einbettung =
   video === null || video.kind === "file" || video.providerId === null
@@ -83,6 +85,7 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
             controls
             preload="metadata"
             playsinline
+            poster={video.posterUrl ?? undefined}
             autoplay={video.autoplay}
             muted={video.autoplay}
           />
@@ -139,6 +142,16 @@ const gemerkt = readMerkzettel(Astro.cookies).includes(p.id);
                 aria-current={videoGross ? "true" : undefined}
               >
                 <span class="bild video-kachel" aria-hidden="true">
+                  {(video.posterThumbnailUrl ?? video.posterUrl) != null && (
+                    <img
+                      class="bild"
+                      src={video.posterThumbnailUrl ?? video.posterUrl}
+                      alt=""
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                    />
+                  )}
                   <span class="video-pfeil" />
                 </span>
                 <span class="unsichtbar">Video zeigen</span>

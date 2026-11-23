@@ -39,11 +39,23 @@ const REJECTION_TEXT: Record<VideoRejection, string> = {
   unreadable: "Die Datei lässt sich nicht lesen. Ist sie beschädigt?",
 };
 
+/** Höchstgröße des Vorschaubildes vor Base64 (wie bei Produktbildern). */
+const MAX_POSTER_BASE64_CHARS = Math.ceil((2 * 1024 * 1024) / 3) * 4;
+
 const addVideoInput = z.strictObject({
   data: z
     .base64()
     .max(MAX_BASE64_CHARS)
     .meta({ description: "Videodatei als Base64 (MP4 oder WebM, höchstens 10 MB)." }),
+  poster: z
+    .base64()
+    .max(MAX_POSTER_BASE64_CHARS)
+    .optional()
+    .meta({
+      description:
+        "Vorschaubild als Base64 (JPEG, PNG oder WebP): ein Standbild aus dem Video. Das Backoffice " +
+        "erzeugt es beim Hochladen im Browser. Ohne Angabe zeigt der Shop ein dunkles Feld mit Dreieck.",
+    }),
   filename: singleLineText(200).optional().meta({ description: "Ursprünglicher Dateiname, nur zur Info." }),
   autoplay: z
     .boolean()
@@ -99,20 +111,35 @@ export function productVideoEndpoints(deps: ProductEndpointDependencies): Endpoi
           detail: REJECTION_TEXT[prepared.reason],
           errors: [{ path: "/data", code: prepared.reason, message: REJECTION_TEXT[prepared.reason] }],
         });
+      // Vorschaubild: Fehlt es oder taugt es nichts, geht der Upload trotzdem durch — dann zeigt
+      // der Shop das dunkle Feld mit Dreieck.
+      const posterVorbereitet =
+        body.poster === undefined
+          ? undefined
+          : await deps.images.prepare(Buffer.from(body.poster, "base64"), "video-vorschau.jpg");
       const result = await withTenantTransaction(db, async (trx) => {
         if ((await lockProduct(trx, params.productId)) !== "ok") throw new NotFoundError();
         const before = await readProduct(trx, params.productId);
         const row = await findProductById(trx, params.productId);
         const alt = row?.video?.kind === "file" ? row.video.mediaId : null;
+        const altesBild = row?.video?.posterMediaId ?? null;
         const datei = await prepared.save();
+        const poster = posterVorbereitet?.ok === true ? await posterVorbereitet.save() : undefined;
         const geaendert = await updateProduct(trx, "", params.productId, before.version, {
-          video: { kind: "file", mediaId: datei.id, providerId: null, autoplay: body.autoplay ?? false },
+          video: {
+            kind: "file",
+            mediaId: datei.id,
+            providerId: null,
+            posterMediaId: poster?.id ?? null,
+            autoplay: body.autoplay ?? false,
+          },
         });
         if (geaendert.kind !== "updated") throw new NotFoundError();
-        return { product: await finish(trx, before), alt };
+        return { product: await finish(trx, before), alt, altesBild };
       });
-      // Die alte Datei erst löschen, wenn niemand mehr auf sie zeigt (nach dem Commit).
+      // Die alten Dateien erst löschen, wenn niemand mehr auf sie zeigt (nach dem Commit).
       if (result.alt !== null) await videos.remove([result.alt]);
+      if (result.altesBild !== null) await deps.images.remove([result.altesBild]);
       return result.product;
     },
   });
@@ -138,11 +165,13 @@ export function productVideoEndpoints(deps: ProductEndpointDependencies): Endpoi
         const row = await findProductById(trx, params.productId);
         if (row === undefined || row.video === null) throw new NotFoundError();
         const alt = row.video.kind === "file" ? row.video.mediaId : null;
+        const altesBild = row.video.posterMediaId;
         const geaendert = await updateProduct(trx, "", params.productId, before.version, { video: null });
         if (geaendert.kind !== "updated") throw new NotFoundError();
-        return { product: await finish(trx, before), alt };
+        return { product: await finish(trx, before), alt, altesBild };
       });
       if (result.alt !== null) await videos.remove([result.alt]);
+      if (result.altesBild !== null) await deps.images.remove([result.altesBild]);
       return result.product;
     },
   });

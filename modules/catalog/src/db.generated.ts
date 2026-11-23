@@ -157,6 +157,7 @@ export interface CatalogProduct {
   video_autoplay: Generated<boolean>;
   video_kind: string | null;
   video_media_id: string | null;
+  video_poster_media_id: string | null;
   video_provider_id: string | null;
   withdrawal_exclusion: string | null;
 }

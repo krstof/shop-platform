@@ -4045,6 +4045,20 @@
                       "null"
                     ]
                   },
+                  "posterUrl": {
+                    "description": "Standbild der eigenen Datei oder null.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "posterThumbnailUrl": {
+                    "description": "Dasselbe Standbild klein.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "autoplay": {
                     "type": "boolean"
                   }
@@ -4053,6 +4067,8 @@
                   "kind",
                   "url",
                   "providerId",
+                  "posterUrl",
+                  "posterThumbnailUrl",
                   "autoplay"
                 ],
                 "additionalProperties": false

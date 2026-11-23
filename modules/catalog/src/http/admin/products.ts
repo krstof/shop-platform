@@ -74,7 +74,7 @@ function videoFromUrl(url: string, autoplay: boolean): ProductVideo {
       detail: VIDEO_URL_FALSCH,
       errors: [{ path: "/videoUrl", code: "unknown_video_provider", message: VIDEO_URL_FALSCH }],
     });
-  return { kind: ref.provider, mediaId: null, providerId: ref.id, autoplay };
+  return { kind: ref.provider, mediaId: null, providerId: ref.id, posterMediaId: null, autoplay };
 }
 
 export interface ProductEndpointDependencies {
@@ -102,11 +102,14 @@ export function productReader({ prices, stock, images, videos }: Omit<ProductEnd
     const videoIds = rows
       .map((r) => (r.video?.kind === "file" ? r.video.mediaId : null))
       .filter((id): id is string => id !== null);
+    const posterIds = rows
+      .map((r) => r.video?.posterMediaId ?? null)
+      .filter((id): id is string => id !== null);
     const [p, sale, s, img, low, vid] = await Promise.all([
       prices.getBasePrices(ids, CURRENCY),
       prices.getSalePrices(ids, CURRENCY),
       stock.getAvailable(ids),
-      images.get([...imageIds.values()].flat()),
+      images.get([...imageIds.values()].flat().concat(posterIds)),
       stock.getLowStockThresholds(ids),
       videos.get(videoIds),
     ]);
@@ -122,6 +125,7 @@ export function productReader({ prices, stock, images, videos }: Omit<ProductEnd
         sale.get(r.variant_id),
         low.get(r.variant_id),
         r.video === null || r.video.mediaId === null ? undefined : vid.get(r.video.mediaId),
+        r.video === null || r.video.posterMediaId === null ? undefined : img.get(r.video.posterMediaId),
       );
     });
   };
@@ -337,13 +341,15 @@ export function productEndpoints(deps: ProductEndpointDependencies): Endpoint[] 
             await publishEvent(trx, productUpdated, { id: r.row.id, changes });
           const verwaisteDatei =
             video !== undefined && altesVideo?.kind === "file" ? altesVideo.mediaId : null;
-          return { kind: "updated" as const, product: after, verwaisteDatei };
+          const verwaistesBild = video !== undefined ? (altesVideo?.posterMediaId ?? null) : null;
+          return { kind: "updated" as const, product: after, verwaisteDatei, verwaistesBild };
         }),
       );
       if (result.kind === "not_found") throw new NotFoundError();
       if (result.kind === "version_mismatch") throw new PreconditionFailedError();
       // Erst nach dem Commit: Die Datei ist weg, sobald niemand mehr auf sie zeigt.
       if (result.verwaisteDatei !== null) await deps.videos.remove([result.verwaisteDatei]);
+      if (result.verwaistesBild !== null) await deps.images.remove([result.verwaistesBild]);
       if (result.product.status === "published") await announce(result.product.slug);
       return result.product;
     },

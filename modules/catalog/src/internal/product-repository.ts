@@ -19,6 +19,8 @@ export interface ProductVideo {
   readonly mediaId: string | null;
   /** Bei YouTube oder Vimeo die Kennung des Videos dort. */
   readonly providerId: string | null;
+  /** Standbild zum Video (eigene Datei), abgelegt wie ein Produktbild. */
+  readonly posterMediaId: string | null;
   readonly autoplay: boolean;
 }
 
@@ -76,6 +78,7 @@ function baseQuery(trx: Transaction<DB>) {
       "p.video_kind",
       "p.video_media_id",
       "p.video_provider_id",
+      "p.video_poster_media_id",
       "p.video_autoplay",
       "pc.category_id",
       (eb) =>
@@ -116,6 +119,7 @@ function toRow(r: RawRow): ProductRow {
           kind: r.video_kind as VideoKind,
           mediaId: r.video_media_id,
           providerId: r.video_provider_id,
+          posterMediaId: r.video_poster_media_id,
           autoplay: r.video_autoplay,
         }
       : null,
@@ -291,6 +295,7 @@ export async function insertProduct(
       video_kind: v.video?.kind ?? null,
       video_media_id: v.video?.mediaId ?? null,
       video_provider_id: v.video?.providerId ?? null,
+      video_poster_media_id: v.video?.posterMediaId ?? null,
       video_autoplay: v.video?.autoplay ?? v.video_autoplay ?? false,
       published_at: status === "published" ? new Date() : null,
       delivery_time_min_days: v.delivery_days?.min ?? null,
@@ -383,6 +388,7 @@ export async function updateProduct(
             video_kind: v.video?.kind ?? null,
             video_media_id: v.video?.mediaId ?? null,
             video_provider_id: v.video?.providerId ?? null,
+            video_poster_media_id: v.video?.posterMediaId ?? null,
             video_autoplay: v.video?.autoplay ?? false,
           }),
       ...(v.video_autoplay === undefined || v.video !== undefined

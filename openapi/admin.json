@@ -13007,6 +13007,14 @@
                     "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
                     "description": "Videodatei als Base64 (MP4 oder WebM, höchstens 10 MB)."
                   },
+                  "poster": {
+                    "description": "Vorschaubild als Base64 (JPEG, PNG oder WebP): ein Standbild aus dem Video. Das Backoffice erzeugt es beim Hochladen im Browser. Ohne Angabe zeigt der Shop ein dunkles Feld mit Dreieck.",
+                    "type": "string",
+                    "maxLength": 2796204,
+                    "format": "base64",
+                    "contentEncoding": "base64",
+                    "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+                  },
                   "filename": {
                     "description": "Ursprünglicher Dateiname, nur zur Info.",
                     "type": "string",
@@ -18751,6 +18759,20 @@
               "null"
             ]
           },
+          "posterUrl": {
+            "description": "Vorschaubild der eigenen Datei (Standbild aus dem Video), sonst null. Der Shop zeigt es vor dem Abspielen.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "posterThumbnailUrl": {
+            "description": "Dasselbe Vorschaubild klein, für die Galerie.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "autoplay": {
             "type": "boolean",
             "description": "Startet im Shop von selbst, immer ohne Ton (sonst lässt der Browser es nicht zu)."
@@ -18760,6 +18782,8 @@
           "kind",
           "url",
           "providerId",
+          "posterUrl",
+          "posterThumbnailUrl",
           "autoplay"
         ],
         "additionalProperties": false,

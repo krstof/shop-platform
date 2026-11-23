@@ -21,6 +21,7 @@ import {
   type ProductSort,
 } from "../lib/product-filter.js";
 import { useShop } from "./layout.js";
+import { useStorefrontZiel } from "../lib/shop.js";
 import { useConfirm } from "../components/dialog.js";
 
 /** Filter beim Ändern: ein Feld auf `undefined` setzen heißt „nicht filtern“. */
@@ -54,6 +55,8 @@ const newButton =
 export function ProductsPage() {
   const confirm = useConfirm();
   const shop = useShop();
+  // „Shop ansehen" führt von der Produktliste zur Produktliste im Shop (Kristof 23.11.2026).
+  useStorefrontZiel("/produkte");
   const navigate = useNavigate();
   const filter = useSearch({ from: "/$shop/produkte" });
   const filtered = isFiltered(filter);

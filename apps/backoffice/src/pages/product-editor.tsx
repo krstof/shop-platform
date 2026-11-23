@@ -10,6 +10,7 @@ import {
   categoryIdsOf,
   fileToBase64,
   imageUploadData,
+  videoVorschaubild,
   request,
   type Product,
   type ProductInput,
@@ -18,6 +19,7 @@ import { centsToInput, parseEuro } from "../lib/money.js";
 import { AiDescriptionButton } from "./ai-description.js";
 import { FormatTextarea } from "./editor/format-bar.js";
 import { useShop } from "./layout.js";
+import { useStorefrontZiel } from "../lib/shop.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
 import { useConfirm } from "../components/dialog.js";
 
@@ -195,6 +197,13 @@ export function EditProductPage() {
     queryKey: ["product", shop.id, productId],
     queryFn: () => request<Product>(`/admin/v1/products/${productId ?? ""}`, { shopId: shop.id }),
   });
+  // „Shop ansehen" führt zu genau diesem Produkt (Kristof 23.11.2026). Ein Entwurf ist im Shop
+  // nicht zu sehen; dann bleibt der Button auf der Startseite, sonst landet man auf „nicht gefunden".
+  useStorefrontZiel(
+    product.data === undefined || product.data.status !== "published"
+      ? null
+      : `/produkt/${product.data.slug}`,
+  );
   if (product.isPending)
     return (
       <div className="flex justify-center py-16 text-gray-400" role="status">
@@ -926,13 +935,20 @@ function VideoKarteInhalt({ product, onChanged }: { product: Product; onChanged:
       );
       return;
     }
-    void run(async () =>
-      request<Product>(`/admin/v1/products/${product.id}/video`, {
+    void run(async () => {
+      // Erst das Standbild im Browser holen, dann beides zusammen hochladen.
+      const [daten, poster] = await Promise.all([fileToBase64(file), videoVorschaubild(file)]);
+      return request<Product>(`/admin/v1/products/${product.id}/video`, {
         method: "POST",
-        body: { data: await fileToBase64(file), filename: file.name, autoplay: video?.autoplay ?? false },
+        body: {
+          data: daten,
+          filename: file.name,
+          autoplay: video?.autoplay ?? false,
+          ...(poster === undefined ? {} : { poster }),
+        },
         shopId: shop.id,
-      }),
-    );
+      });
+    });
   }
 
   function setzeLink() {
@@ -982,7 +998,12 @@ function VideoKarteInhalt({ product, onChanged }: { product: Product; onChanged:
         {video !== null ? (
           <>
             {video.kind === "file" ? (
-              <video src={video.url} controls className="w-full rounded-lg bg-gray-900" />
+              <video
+                src={video.url}
+                controls
+                poster={video.posterUrl ?? undefined}
+                className="w-full rounded-lg bg-gray-900"
+              />
             ) : (
               <p className="text-sm text-gray-700">
                 Video bei {video.kind === "youtube" ? "YouTube" : "Vimeo"}:{" "}

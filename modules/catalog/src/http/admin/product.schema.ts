@@ -44,6 +44,14 @@ export const productVideoSchema = z
       .string()
       .nullable()
       .meta({ description: "Kennung des Videos bei YouTube oder Vimeo, sonst null." }),
+    posterUrl: z.string().nullable().meta({
+      description:
+        "Vorschaubild der eigenen Datei (Standbild aus dem Video), sonst null. Der Shop zeigt es vor dem Abspielen.",
+    }),
+    posterThumbnailUrl: z
+      .string()
+      .nullable()
+      .meta({ description: "Dasselbe Vorschaubild klein, für die Galerie." }),
     autoplay: z.boolean().meta({
       description: "Startet im Shop von selbst, immer ohne Ton (sonst lässt der Browser es nicht zu).",
     }),
@@ -53,16 +61,34 @@ export const productVideoSchema = z
 export type ProductVideoView = z.infer<typeof productVideoSchema>;
 
 /** Baut die Ansicht des Videos; ohne Video oder ohne lesbare Datei: null. */
-export function toProductVideo(row: ProductRow, file: ProductVideoFile | undefined): ProductVideoView | null {
+export function toProductVideo(
+  row: ProductRow,
+  file: ProductVideoFile | undefined,
+  poster?: ProductImage | undefined,
+): ProductVideoView | null {
   const v = row.video;
   if (v === null) return null;
   if (v.kind === "file")
     return file === undefined
       ? null
-      : { kind: "file", url: file.url, providerId: null, autoplay: v.autoplay };
+      : {
+          kind: "file",
+          url: file.url,
+          providerId: null,
+          posterUrl: poster?.url ?? null,
+          posterThumbnailUrl: poster?.thumbnailUrl ?? null,
+          autoplay: v.autoplay,
+        };
   const url = v.providerId === null ? undefined : videoWatchUrl(v.kind, v.providerId);
   if (url === undefined || v.providerId === null) return null;
-  return { kind: v.kind, url, providerId: v.providerId, autoplay: v.autoplay };
+  return {
+    kind: v.kind,
+    url,
+    providerId: v.providerId,
+    posterUrl: null,
+    posterThumbnailUrl: null,
+    autoplay: v.autoplay,
+  };
 }
 
 export const productSchema = z
@@ -123,6 +149,7 @@ export function toProduct(
   salePrice?: number,
   lowStockThreshold?: number,
   videoFile?: ProductVideoFile,
+  videoPoster?: ProductImage,
 ): Product {
   return {
     id: row.id,
@@ -145,7 +172,7 @@ export function toProduct(
         ? null
         : { min: row.delivery_time_min_days, max: row.delivery_time_max_days },
     images: images.map((i) => ({ ...i })),
-    video: toProductVideo(row, videoFile),
+    video: toProductVideo(row, videoFile, videoPoster),
     publishedAt: row.published_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),

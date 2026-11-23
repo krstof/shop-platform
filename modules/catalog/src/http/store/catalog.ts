@@ -66,6 +66,8 @@ export const storeProductSchema = z
           .string()
           .meta({ description: "Bei `file` die Datei zum Abspielen, sonst die Adresse beim Anbieter." }),
         providerId: z.string().nullable(),
+        posterUrl: z.string().nullable().meta({ description: "Standbild der eigenen Datei oder null." }),
+        posterThumbnailUrl: z.string().nullable().meta({ description: "Dasselbe Standbild klein." }),
         autoplay: z.boolean(),
       })
       .nullable()
@@ -113,11 +115,14 @@ export function storeProductReader({ prices, stock, images, videos }: Omit<Store
     const videoIds = rows
       .map((r) => (r.video?.kind === "file" ? r.video.mediaId : null))
       .filter((id): id is string => id !== null);
+    const posterIds = rows
+      .map((r) => r.video?.posterMediaId ?? null)
+      .filter((id): id is string => id !== null);
     const [p, sale, s, img, vid] = await Promise.all([
       prices.getBasePrices(variantIds, CURRENCY),
       prices.getSalePrices(variantIds, CURRENCY),
       stock.getAvailable(variantIds),
-      images.get([...imageIds.values()].flat()),
+      images.get([...imageIds.values()].flat().concat(posterIds)),
       videos.get(videoIds),
     ]);
     return rows.map((r) => {
@@ -144,6 +149,7 @@ export function storeProductReader({ prices, stock, images, videos }: Omit<Store
         video: toProductVideo(
           r,
           r.video === null || r.video.mediaId === null ? undefined : vid.get(r.video.mediaId),
+          r.video === null || r.video.posterMediaId === null ? undefined : img.get(r.video.posterMediaId),
         ),
         deliveryDays:
           r.delivery_time_min_days === null || r.delivery_time_max_days === null

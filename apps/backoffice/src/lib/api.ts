@@ -149,6 +149,9 @@ export interface ProductVideo {
   /** Bei `file` die Datei zum Abspielen, sonst die Adresse beim Anbieter. */
   readonly url: string;
   readonly providerId: string | null;
+  /** Standbild aus dem Video (nur bei einer eigenen Datei). */
+  readonly posterUrl?: string | null;
+  readonly posterThumbnailUrl?: string | null;
   readonly autoplay: boolean;
 }
 
@@ -461,4 +464,57 @@ export async function listAllPlatform<T>(path: string): Promise<T[]> {
     if (cursor === null) break;
   }
   return out;
+}
+
+/**
+ * Standbild aus einem Video holen (Paket P5, Kristof 23.11.2026): Das Video wird nur im Browser
+ * geladen, eine Sekunde vorgespult und das Bild auf eine Leinwand gezeichnet. So entsteht das
+ * Vorschaubild ohne jedes Werkzeug auf dem Server. Klappt es nicht (seltenes Format, kein Bild),
+ * kommt `undefined` zurück und der Upload läuft trotzdem.
+ */
+export function videoVorschaubild(file: Blob): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    let fertig = false;
+    const aufgeben = () => {
+      if (fertig) return;
+      fertig = true;
+      URL.revokeObjectURL(url);
+      resolve(undefined);
+    };
+    const abholen = () => {
+      if (fertig) return;
+      try {
+        const breite = video.videoWidth;
+        const hoehe = video.videoHeight;
+        if (breite === 0 || hoehe === 0) return aufgeben();
+        const canvas = document.createElement("canvas");
+        const faktor = Math.min(1, 1600 / Math.max(breite, hoehe));
+        canvas.width = Math.round(breite * faktor);
+        canvas.height = Math.round(hoehe * faktor);
+        const ctx = canvas.getContext("2d");
+        if (ctx === null) return aufgeben();
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const daten = canvas.toDataURL("image/jpeg", 0.85);
+        fertig = true;
+        URL.revokeObjectURL(url);
+        resolve(daten.slice(daten.indexOf(",") + 1));
+      } catch {
+        aufgeben();
+      }
+    };
+    video.addEventListener("error", aufgeben);
+    video.addEventListener("loadeddata", () => {
+      // Eine Sekunde hinein: Der allererste Bildpunkt ist oft noch schwarz.
+      if (video.duration > 1.2) video.currentTime = 1;
+      else abholen();
+    });
+    video.addEventListener("seeked", abholen);
+    setTimeout(aufgeben, 10_000);
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.src = url;
+  });
 }

@@ -14,6 +14,7 @@ import {
   type Product,
 } from "../lib/api.js";
 import { useShop } from "./layout.js";
+import { useStorefrontZiel } from "../lib/shop.js";
 import { categoriesKey, productsKey, useCategories } from "./products.js";
 import { useConfirm } from "../components/dialog.js";
 
@@ -226,6 +227,8 @@ export function EditCategoryPage() {
     queryKey: ["category", shop.id, categoryId],
     queryFn: () => request<Category>(`/admin/v1/categories/${categoryId ?? ""}`, { shopId: shop.id }),
   });
+  // „Shop ansehen" führt zu genau dieser Kategorie (Kristof 23.11.2026).
+  useStorefrontZiel(category.data === undefined ? null : `/kategorie/${category.data.slug}`);
   if (category.isPending)
     return (
       <div className="flex justify-center py-16 text-gray-400" role="status">

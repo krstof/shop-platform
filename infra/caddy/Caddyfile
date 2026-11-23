@@ -120,10 +120,12 @@ admin.{$SHOP_DOMAIN} {
 	handle {
 		import security_headers
 		header {
+			# media-src mit blob:, weil das Backoffice beim Hochladen eines Produktvideos ein Standbild
+			# daraus zieht (P5): Das Video wird dafür kurz aus dem Zwischenspeicher des Browsers geladen.
 			# img-src: dazu die zwei Vorschau-Adressen der Bildersuche (21.11.2026). Nur die kleinen
 			# Vorschaubilder kommen von dort; das gewählte Bild holt der Server und legt es im
 			# eigenen Medienspeicher ab, damit der Shop später von keinem fremden Dienst abhängt.
-			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.bunny.net; img-src 'self' blob: https://media.{$SHOP_DOMAIN} https://api.openverse.org https://images.unsplash.com; media-src 'self' https://media.{$SHOP_DOMAIN}; connect-src 'self'; font-src 'self' https://fonts.bunny.net; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.bunny.net; img-src 'self' blob: https://media.{$SHOP_DOMAIN} https://api.openverse.org https://images.unsplash.com; media-src 'self' blob: https://media.{$SHOP_DOMAIN}; connect-src 'self'; font-src 'self' https://fonts.bunny.net; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 			Cross-Origin-Resource-Policy "same-origin"
 		}
 		request_body {

@@ -423,10 +423,29 @@ Klick (`?bild=video`), damit das Hauptbild vorn bleibt, das der Händler ausgesu
   automatisches Abspielen laufen über `PATCH /admin/v1/products/{productId}` (`videoUrl`,
   `videoAutoplay`).
 
+**Nachgereicht am selben Tag (Kristof 23.11.2026):**
+
+- **Vorschaubild zum Video.** Beim Hochladen zieht das Backoffice im Browser ein Standbild aus dem
+  Video (eine Sekunde hinein, auf eine Leinwand gezeichnet) und schickt es als `poster` mit. Die
+  API legt es wie ein gewöhnliches Produktbild im Modul media ab
+  (`catalog.product.video_poster_media_id`); die Antwort nennt `posterUrl` und `posterThumbnailUrl`.
+  Der Shop zeigt es in der Galerie-Kachel und als Standbild vor dem Abspielen. Klappt das Standbild
+  nicht, läuft der Upload trotzdem durch, und die Kachel bleibt dunkel mit Dreieck. **Kein ffmpeg
+  auf dem Server.** Dafür musste `media-src` im Backoffice `blob:` erlauben, sonst darf der Browser
+  das eigene Video gar nicht laden.
+- **Produkt ohne Bild:** Dann steht das Video gleich groß an der Stelle des ersten Bildes, ohne Klick.
+- **Hinweis vor einem YouTube-Video** ist jetzt mittig (Überschrift, Text und Button).
+- **„Shop ansehen" führt dorthin, wo man gerade ist** (`StorefrontZielContext` in
+  `apps/backoffice/src/lib/shop.ts`): Produkt → `/produkt/<slug>`, Kategorie → `/kategorie/<slug>`,
+  Produktliste → `/produkte`, sonst die Startseite. Eine Seite meldet ihr Ziel mit
+  `useStorefrontZiel(...)` an; ein unveröffentlichtes Produkt meldet nichts, weil es im Shop nicht
+  zu sehen ist.
+
 **Getestet:** neuer Prüffall in `apps/api/src/store-catalog.db.test.ts` (Datei hochladen, falsche
-Datei 422, Link setzt die Datei ab, fremde Adresse 422, wegnehmen, zweimal wegnehmen 404), neue
-Einheitstests in `modules/media/src/internal/video.test.ts`. Im Browser gegen die laufende
-Plattform geprüft: hochladen im Backoffice, abspielen im Shop, YouTube mit Hinweis und Zustimmung.
+Datei 422, Vorschaubild, Link setzt die Datei ab, fremde Adresse 422, wegnehmen, zweimal wegnehmen
+404), neue Einheitstests in `modules/media/src/internal/video.test.ts`. Im Browser gegen die
+laufende Plattform geprüft: hochladen im Backoffice samt Standbild, abspielen im Shop, YouTube mit
+Hinweis und Zustimmung, Produkt ohne Bild, und die Ziele von „Shop ansehen" auf fünf Seiten.
 
 ⚠️ **Migrationen nie nachträglich ändern.** Beim Bauen ist aufgefallen (und vom Migrationslauf
 sauber abgefangen), dass die Video-Spalten an eine schon gelaufene Migration angehängt waren. Sie

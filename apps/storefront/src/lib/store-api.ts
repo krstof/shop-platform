@@ -50,6 +50,15 @@ export interface StoreProduct {
   readonly publishedAt?: string | null;
   /** Schalter für das Neu-Schildchen (P5); ältere API-Stände ohne, dann gilt „auto“. */
   readonly newBadge?: "auto" | "always" | "never";
+  /** Video am Produkt (P5): eigene Datei oder YouTube/Vimeo; ältere API-Stände ohne. */
+  readonly video?: {
+    readonly kind: "file" | "youtube" | "vimeo";
+    readonly url: string;
+    readonly providerId: string | null;
+    readonly posterUrl?: string | null;
+    readonly posterThumbnailUrl?: string | null;
+    readonly autoplay: boolean;
+  } | null;
 }
 
 /** Fehler der API mit Statuscode; 404 heißt „gibt es nicht“ (Seite 404), alles andere 500. */

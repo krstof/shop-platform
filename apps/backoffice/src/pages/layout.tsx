@@ -3,7 +3,7 @@
 // damit Links und Neuladen den gewählten Shop behalten.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import {
   Building2,
   ChevronDown,
@@ -26,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { storefrontUrl } from "../lib/design.js";
-import { ShopContext, useShop } from "../lib/shop.js";
+import { ShopContext, StorefrontZielContext, useShop } from "../lib/shop.js";
 import { Button, Select, Spinner } from "../components/ui.js";
 import { ApiError, request, type ShopOfUser } from "../lib/api.js";
 import { inboxKey, type ContactMessage } from "../lib/inbox.js";
@@ -187,6 +187,10 @@ function ShopFrame({
   const location = useLocation();
   const assistant = useAssistant();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Wohin „Shop ansehen" führt: Startseite, oder der Pfad, den die offene Seite angemeldet hat
+  // (Kristof 23.11.2026). useCallback, damit sich der Wert nicht bei jedem Zeichnen ändert.
+  const [shopZiel, setShopZiel] = useState<string | null>(null);
+  const melden = useCallback((pfad: string | null) => setShopZiel(pfad), []);
   // Nach jedem Seitenwechsel ist das Handy-Menü wieder zu.
   useEffect(() => setMenuOpen(false), [location.pathname]);
   const onAssistantPage = location.pathname.endsWith("/assistent");
@@ -204,121 +208,123 @@ function ShopFrame({
         .find((m) => location.pathname.startsWith(m.to.replace("$shop", shop.handle)));
 
   return (
-    <div className="min-h-dvh">
-      {/* Computer: feste Leiste links */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-gray-200 bg-gray-50 lg:block">
-        <Sidebar shops={shops} groups={groups} inSettings={inSettings} />
-      </aside>
+    <StorefrontZielContext.Provider value={melden}>
+      <div className="min-h-dvh">
+        {/* Computer: feste Leiste links */}
+        <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-gray-200 bg-gray-50 lg:block">
+          <Sidebar shops={shops} groups={groups} inSettings={inSettings} />
+        </aside>
 
-      {/* Handy und Tablet: Menü klappt als Leiste auf */}
-      {menuOpen && (
-        <div className="fixed inset-0 top-14 z-30 lg:hidden">
-          <button
-            type="button"
-            aria-label="Menü schließen"
-            className="absolute inset-0 bg-gray-900/30"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div
-            id="handy-menue"
-            className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-gray-200 bg-gray-50 shadow-pop"
-          >
-            <Sidebar shops={shops} groups={groups} inSettings={inSettings} />
+        {/* Handy und Tablet: Menü klappt als Leiste auf */}
+        {menuOpen && (
+          <div className="fixed inset-0 top-14 z-30 lg:hidden">
+            <button
+              type="button"
+              aria-label="Menü schließen"
+              className="absolute inset-0 bg-gray-900/30"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div
+              id="handy-menue"
+              className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-gray-200 bg-gray-50 shadow-pop"
+            >
+              <Sidebar shops={shops} groups={groups} inSettings={inSettings} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className={"min-h-dvh lg:pl-64 " + (dashboard ? "dashboard-bg" : "")}>
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200/80 bg-white/75 px-4 backdrop-blur-md sm:px-6">
+        <div className={"min-h-dvh lg:pl-64 " + (dashboard ? "dashboard-bg" : "")}>
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-gray-200/80 bg-white/75 px-4 backdrop-blur-md sm:px-6">
+            <button
+              type="button"
+              className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600 lg:hidden"
+              aria-expanded={menuOpen}
+              aria-controls="handy-menue"
+              aria-label={menuOpen ? "Menü schließen" : "Menü öffnen"}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              {menuOpen ? (
+                <X className="size-5" aria-hidden="true" />
+              ) : (
+                <Menu className="size-5" aria-hidden="true" />
+              )}
+            </button>
+            <p className="flex min-w-0 items-center gap-2 text-gray-500">
+              <SlopifyMark className="size-5 shrink-0 lg:hidden" />
+              <span className="truncate font-medium text-gray-900 lg:font-normal lg:text-gray-500">
+                {shop.name}
+              </span>
+              {current && (
+                <>
+                  <span aria-hidden="true" className="hidden text-gray-300 sm:inline">
+                    /
+                  </span>
+                  <span className="hidden truncate font-medium text-gray-900 sm:inline">{current.label}</span>
+                </>
+              )}
+            </p>
+            <div className="ml-auto flex items-center gap-2">
+              {operator && (
+                <Link
+                  to="/plattform"
+                  className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 md:inline-flex"
+                >
+                  <Building2 className="size-4" aria-hidden="true" />
+                  Plattform
+                </Link>
+              )}
+              <a
+                href={`${storefrontUrl(shop.handle, window.location)}${shopZiel ?? ""}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-xs ring-1 ring-gray-200 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+              >
+                <ExternalLink className="size-4 text-gray-500" aria-hidden="true" />
+                <span className="hidden sm:inline">Shop ansehen</span>
+                <span className="sr-only sm:hidden">Shop ansehen</span>
+              </a>
+              <InboxButton />
+              <UserMenu email={email} operator={operator} />
+            </div>
+          </header>
+          <main
+            className={
+              fullBleed ? "relative isolate" : "relative isolate mx-auto max-w-6xl px-4 py-6 sm:px-8 lg:py-8"
+            }
+          >
+            <Outlet />
+          </main>
+        </div>
+
+        {chatOpen && (
+          <section
+            aria-label="Assistent"
+            className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-gray-50 sm:inset-auto sm:right-5 sm:bottom-24 sm:h-[min(42rem,calc(100dvh-8rem))] sm:w-[26rem] sm:rounded-2xl sm:shadow-pop sm:ring-1 sm:ring-gray-200"
+          >
+            <AssistantChat variant="panel" />
+          </section>
+        )}
+        {!onAssistantPage && (
           <button
             type="button"
-            className="-ml-1 inline-flex size-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600 lg:hidden"
-            aria-expanded={menuOpen}
-            aria-controls="handy-menue"
-            aria-label={menuOpen ? "Menü schließen" : "Menü öffnen"}
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={() => assistant.setOpen(!assistant.open)}
+            aria-pressed={chatOpen}
+            aria-label={chatOpen ? "Chat schließen" : "Assistent öffnen"}
+            title="Assistent"
+            className={
+              "fixed right-5 bottom-5 z-40 size-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-brand-600 text-white shadow-pop transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
+              (chatOpen ? "hidden sm:flex" : "flex")
+            }
           >
-            {menuOpen ? (
-              <X className="size-5" aria-hidden="true" />
+            {chatOpen ? (
+              <X className="size-6" aria-hidden="true" />
             ) : (
-              <Menu className="size-5" aria-hidden="true" />
+              <MessageCircle className="size-6" aria-hidden="true" />
             )}
           </button>
-          <p className="flex min-w-0 items-center gap-2 text-gray-500">
-            <SlopifyMark className="size-5 shrink-0 lg:hidden" />
-            <span className="truncate font-medium text-gray-900 lg:font-normal lg:text-gray-500">
-              {shop.name}
-            </span>
-            {current && (
-              <>
-                <span aria-hidden="true" className="hidden text-gray-300 sm:inline">
-                  /
-                </span>
-                <span className="hidden truncate font-medium text-gray-900 sm:inline">{current.label}</span>
-              </>
-            )}
-          </p>
-          <div className="ml-auto flex items-center gap-2">
-            {operator && (
-              <Link
-                to="/plattform"
-                className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 md:inline-flex"
-              >
-                <Building2 className="size-4" aria-hidden="true" />
-                Plattform
-              </Link>
-            )}
-            <a
-              href={storefrontUrl(shop.handle, window.location)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-xs ring-1 ring-gray-200 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-            >
-              <ExternalLink className="size-4 text-gray-500" aria-hidden="true" />
-              <span className="hidden sm:inline">Shop ansehen</span>
-              <span className="sr-only sm:hidden">Shop ansehen</span>
-            </a>
-            <InboxButton />
-            <UserMenu email={email} operator={operator} />
-          </div>
-        </header>
-        <main
-          className={
-            fullBleed ? "relative isolate" : "relative isolate mx-auto max-w-6xl px-4 py-6 sm:px-8 lg:py-8"
-          }
-        >
-          <Outlet />
-        </main>
+        )}
       </div>
-
-      {chatOpen && (
-        <section
-          aria-label="Assistent"
-          className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-gray-50 sm:inset-auto sm:right-5 sm:bottom-24 sm:h-[min(42rem,calc(100dvh-8rem))] sm:w-[26rem] sm:rounded-2xl sm:shadow-pop sm:ring-1 sm:ring-gray-200"
-        >
-          <AssistantChat variant="panel" />
-        </section>
-      )}
-      {!onAssistantPage && (
-        <button
-          type="button"
-          onClick={() => assistant.setOpen(!assistant.open)}
-          aria-pressed={chatOpen}
-          aria-label={chatOpen ? "Chat schließen" : "Assistent öffnen"}
-          title="Assistent"
-          className={
-            "fixed right-5 bottom-5 z-40 size-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-brand-600 text-white shadow-pop transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 " +
-            (chatOpen ? "hidden sm:flex" : "flex")
-          }
-        >
-          {chatOpen ? (
-            <X className="size-6" aria-hidden="true" />
-          ) : (
-            <MessageCircle className="size-6" aria-hidden="true" />
-          )}
-        </button>
-      )}
-    </div>
+    </StorefrontZielContext.Provider>
   );
 }
 

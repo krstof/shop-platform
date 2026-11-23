@@ -614,13 +614,20 @@ blockquote > p:last-child {
   display: grid;
   gap: 0.75rem;
 }
-/* Video in der Produktgalerie (P5): Kachel mit Dreieck und das große Feld. */
+/* Video in der Produktgalerie (P5): Kachel mit Vorschaubild und Dreieck, dazu das große Feld. */
 .video-kachel {
+  position: relative;
   display: grid;
   place-items: center;
   background: #1f2421;
 }
+.video-kachel .bild {
+  position: absolute;
+  inset: 0;
+  opacity: 0.85;
+}
 .video-pfeil {
+  position: relative;
   display: block;
   width: 0;
   height: 0;
@@ -628,6 +635,7 @@ blockquote > p:last-child {
   border-bottom: 0.65rem solid transparent;
   border-left: 1.1rem solid #fff;
   margin-left: 0.25rem;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 .galerie video.bild {
   background: #1f2421;
@@ -642,9 +650,16 @@ blockquote > p:last-child {
 .galerie .extern-hinweis {
   display: grid;
   align-content: center;
+  justify-items: center;
   gap: 0.75rem;
   padding: 1.5rem;
   background: var(--flaeche);
+  text-align: center;
+}
+/* Überschrift und Button mittig wie der Text (Kristof 23.11.2026). */
+.galerie .extern-hinweis p,
+.galerie .extern-hinweis form {
+  margin: 0;
   text-align: center;
 }
 

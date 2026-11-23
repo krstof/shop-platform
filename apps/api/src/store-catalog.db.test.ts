@@ -252,7 +252,10 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect(weg.statusCode).toBe(200);
   });
 
-  it("Video am Produkt: eigene Datei und YouTube (Paket P5)", async () => {
+  it("Video am Produkt: eigene Datei, Vorschaubild und YouTube (Paket P5)", async () => {
+    // Kleines gültiges PNG (32 × 32) als Standbild aus dem Video.
+    const EXAMPLE_PNG =
+      "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAA1BMVEV6mluJCzqwAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQ4y2NgGAWjYBSMAuwAAAQgAAFWu83mAAAAAElFTkSuQmCC";
     const neu = (
       await inject("POST", "/admin/v1/products", "a", {
         name: "Teekanne Guss",
@@ -279,11 +282,24 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
     expect(mitDatei.video.kind).toBe("file");
     expect(mitDatei.video.autoplay).toBe(true);
     expect(mitDatei.video.url).toMatch(/\/video\.mp4$/);
+    // Ohne mitgeschicktes Standbild bleibt das Vorschaubild leer.
+    expect(mitDatei.video.posterUrl).toBeNull();
+
+    // Mit Standbild (das Backoffice erzeugt es im Browser) steht es in der Antwort.
+    const mitBild = (
+      await inject("POST", `/admin/v1/products/${neu.id}/video`, "a", {
+        data: mp4,
+        filename: "kanne.mp4",
+        poster: EXAMPLE_PNG,
+      })
+    ).json();
+    expect(mitBild.video.posterUrl).toMatch(/^https?:\/\//);
+    expect(mitBild.video.posterThumbnailUrl).toMatch(/^https?:\/\//);
 
     // Im Shop ist das Video sichtbar.
     const imShop = (await inject("GET", "/store/v1/shops/tee-a/products/teekanne-guss")).json();
     expect(imShop.video.kind).toBe("file");
-    expect(imShop.video.autoplay).toBe(true);
+    expect(imShop.video.posterUrl).toBe(mitBild.video.posterUrl);
 
     // Keine Videodatei: 422 mit Hinweis, das alte Video bleibt.
     const falsch = await inject("POST", `/admin/v1/products/${neu.id}/video`, "a", {
@@ -299,13 +315,16 @@ describe.skipIf(adminUrl === undefined)("Storefront-API: Katalog (M4, echte Date
         `/admin/v1/products/${neu.id}`,
         "a",
         { videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-        { "if-match": `"${mitDatei.video === null ? neu.version : mitDatei.version}"` },
+        { "if-match": `"${mitBild.version}"` },
       )
     ).json();
     expect(mitLink.video).toEqual({
       kind: "youtube",
       url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       providerId: "dQw4w9WgXcQ",
+      // Ein Video bei YouTube hat bei uns kein eigenes Vorschaubild.
+      posterUrl: null,
+      posterThumbnailUrl: null,
       autoplay: false,
     });
 
